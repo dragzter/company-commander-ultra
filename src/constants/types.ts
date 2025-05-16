@@ -66,3 +66,9 @@ export type MBtnOptions = {
   id?: string;
   sound?: string;
 };
+
+export type HandlerInitConfig = {
+  eventType: keyof HTMLElementEventMap;
+  selector: string;
+  callback: EventListener;
+};

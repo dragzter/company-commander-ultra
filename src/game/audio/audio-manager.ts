@@ -23,36 +23,40 @@ function AudioManager() {
     });
   }
 
-  function _stop(track: HTMLAudioElement) {
-    track.pause();
-    track.currentTime = 0;
-  }
-
   async function playIntro() {
     intro.volume = 0.3;
     intro.loop = true;
-
     await playTrack(intro);
+  }
 
-    return {
-      stop: () => _stop(intro),
-    };
+  function stopIntro() {
+    intro.pause();
+    intro.currentTime = 0;
+    console.log("calling stop intro");
+  }
+
+  function stopSetup() {
+    setupTrack.pause();
+    setupTrack.currentTime = 0;
   }
 
   async function playGameSetup() {
     setupTrack.volume = 0.3;
     setupTrack.loop = true;
     await playTrack(setupTrack);
-
-    return {
-      stop: () => _stop(setupTrack),
-    };
   }
 
   return {
-    Intro: () => playIntro(),
-    Setup: () => playGameSetup(),
+    Intro: () => ({
+      play: () => playIntro(),
+      stop: () => stopIntro(),
+    }),
+    Setup: () => ({
+      play: () => playGameSetup(),
+      stop: () => stopSetup(),
+    }),
   };
 }
 
-export { AudioManager };
+const singleton = AudioManager();
+export { singleton as AudioManager };

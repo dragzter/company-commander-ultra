@@ -1,12 +1,24 @@
 import type { MBtnOptions } from "../../constants/types.ts";
-import UiServiceManager from "../../services/ui/ui-service.ts";
+import { UiServiceManager } from "../../services/ui/ui-service.ts";
 import { AudioManager } from "../audio/audio-manager.ts";
-
-const { gameBoard, create, buildMenu } = UiServiceManager();
-const { g_menu, dom_insert, board, clear_game_menu, show_game_menu } =
-  gameBoard();
+import { gameSetupTemplate } from "../html-templates/game-setup.ts";
+//import { usePlayerStore } from "../../store/ui-store.ts";
+import { UiAnimationManager } from "../../services/ui/ui-animation-manager.ts";
+import { ANIMATIONS } from "../../constants/identifiers.ts";
+import { DomEventManager } from "../event-handlers/dom-event-manager.ts";
+import { eventConfigs } from "./event-configs.ts";
 
 function UiManager() {
+  const _AudioManager = AudioManager;
+  const _UiServiceManager = UiServiceManager;
+  const _UiAnim = UiAnimationManager;
+  const _DomHandlers = DomEventManager;
+
+  //const store = usePlayerStore;
+
+  const { gameBoard, create, buildMenu, parseHTML } = _UiServiceManager;
+  const { g_menu, dom_insert, board, show, hide, center } = gameBoard();
+
   const mainMenuButtonConfig = (): MBtnOptions[] => {
     return [
       {
@@ -14,7 +26,7 @@ function UiManager() {
         color: "green",
         event: "click",
         cb: () => {
-          //beginGame();
+          createSetupScreen();
         },
       },
       {
@@ -26,7 +38,7 @@ function UiManager() {
         color: "blue",
         event: "click",
         cb: () => {
-          clear_game_menu();
+          console.log("pressed Credits");
         },
       },
       {
@@ -34,33 +46,72 @@ function UiManager() {
         color: "black",
         event: "click",
         cb: () => {
-          show_game_menu();
+          // hide.menu();
         },
       },
     ];
   };
 
   function enterGame() {
-    const gameEnter = document.querySelector("#game-enter")!;
+    if (!document.querySelector("#game-enter")) {
+      throw new Error("Element undefined");
+    }
+
+    const gameEnter = document.querySelector("#game-enter") as HTMLElement;
+
     gameEnter.addEventListener("click", () => {
-      AudioManager()
+      _AudioManager
         .Intro()
+        .play()
         .catch((e) => {
           console.error("Failed to play intro:", e);
         });
 
-      document.getElementById("game-enter-wrapper")?.remove();
+      startScreenLoading();
+      gameEnter.setAttribute("disabled", "true");
+
+      _UiAnim.animate(gameEnter, ANIMATIONS.pulse);
+
+      setTimeout(() => {
+        document.getElementById("game-enter-wrapper")?.remove();
+      }, 4000);
     });
   }
 
-  function createSetupScreen() {
-    const wrapper = create("div", { id: "setup-stage-screen" });
-
-    console.log(wrapper);
+  function startScreenLoading() {
+    document.getElementById("game-enter")!.textContent = "...Loading";
   }
 
-  function initGameMenu() {
-    board.style.background = "url('images/bg/bg2.jpg')";
+  /**
+   * Start Game setup, collect name, company name etc.
+   */
+  function createSetupScreen() {
+    const steps = parseHTML(gameSetupTemplate);
+    center.appendChild(steps as Element);
+    show.center();
+    hide.menu();
+
+    _AudioManager.Intro().stop();
+    _AudioManager
+      .Setup()
+      .play()
+      .catch((e) => {
+        console.error("Failed to play setup:", e);
+      });
+
+    const eventsConfig = eventConfigs(UiServiceManager).gameSetup();
+
+    eventsConfig.forEach((config) => {
+      _DomHandlers.initHandlers(
+        config.eventType,
+        config.selector,
+        config.callback,
+      );
+    });
+  }
+
+  function initMainMenu() {
+    board.style.background = "url('images/bg/bg_2.jpg')";
     board.style.backgroundSize = "cover";
     board.style.backgroundRepeat = "no-repeat";
 
@@ -70,7 +121,19 @@ function UiManager() {
     dom_insert(g_menu, menu);
   }
 
-  return { initGameMenu, enterGame, createSetupScreen };
+  return {
+    initMainMenu,
+    enterGame,
+    createSetupScreen,
+    gameBoard,
+    create,
+    board,
+    center,
+    g_menu,
+    dom_insert,
+    parseHTML,
+  };
 }
 
-export { UiManager };
+const singleton = UiManager();
+export { singleton as UiManager };
