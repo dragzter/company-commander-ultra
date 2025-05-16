@@ -1,7 +1,7 @@
 import type { MBtnOptions } from "../../constants/types.ts";
 import { UiServiceManager } from "../../services/ui/ui-service.ts";
 import { AudioManager } from "../audio/audio-manager.ts";
-import { gameSetupTemplate } from "../html-templates/game-setup.ts";
+import { gameSetupTemplate } from "../html-templates/game-setup-template.ts";
 //import { usePlayerStore } from "../../store/ui-store.ts";
 import { UiAnimationManager } from "../../services/ui/ui-animation-manager.ts";
 import { ANIMATIONS } from "../../constants/identifiers.ts";
@@ -32,13 +32,16 @@ function UiManager() {
       {
         text: "Continue",
         color: "green",
+        cb: () => {
+          console.log("continue campaign");
+        },
       },
       {
         text: "Credits",
         color: "blue",
         event: "click",
         cb: () => {
-          console.log("pressed Credits");
+          console.log("show Credits");
         },
       },
       {
@@ -46,7 +49,7 @@ function UiManager() {
         color: "black",
         event: "click",
         cb: () => {
-          // hide.menu();
+          console.log("Show settings");
         },
       },
     ];
@@ -74,7 +77,7 @@ function UiManager() {
 
       setTimeout(() => {
         document.getElementById("game-enter-wrapper")?.remove();
-      }, 4000);
+      }, 1000);
     });
   }
 
@@ -88,8 +91,8 @@ function UiManager() {
   function createSetupScreen() {
     const steps = parseHTML(gameSetupTemplate);
     center.appendChild(steps as Element);
-    show.center();
     hide.menu();
+    show.center();
 
     _AudioManager.Intro().stop();
     _AudioManager

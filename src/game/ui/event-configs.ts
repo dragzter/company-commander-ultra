@@ -1,6 +1,7 @@
 import type { HandlerInitConfig } from "../../constants/types.ts";
 import { UiServiceManager } from "../../services/ui/ui-service.ts";
-import { usePlayerCompanyStore, usePlayerStore } from "../../store/ui-store.ts";
+import { usePlayerCompanyStore } from "../../store/ui-store.ts";
+import { disableBtn, enableBtn } from "../../utils/html-utils.ts";
 
 export function eventConfigs(UiService: typeof UiServiceManager) {
   const { gameBoard } = UiService;
@@ -12,8 +13,8 @@ export function eventConfigs(UiService: typeof UiServiceManager) {
       eventType: "click",
       selector: "#cancel-game-setup",
       callback: () => {
-        hide.center();
         show.menu();
+        hide.center();
       },
     },
     {
@@ -27,29 +28,38 @@ export function eventConfigs(UiService: typeof UiServiceManager) {
     },
     {
       eventType: "input",
-      selector: "#user-name",
-      callback: () => {
-        // hide.center();
-        // show.menu();
-        console.log("changing name");
+      selector: "#commander-name",
+      callback: (e: Event) => {
+        const el = e.target as HTMLInputElement;
+        const proceedButton = document.querySelector(
+          "#finish-game-setup",
+        ) as HTMLButtonElement;
+        store.setCommanderName(el.value);
+
+        if (store.canProceedToLaunch()) {
+          enableBtn(proceedButton);
+        } else {
+          disableBtn(proceedButton);
+        }
+
+        console.log("changing commander name");
       },
     },
     {
       eventType: "input",
       selector: "#company-name",
-      callback: () => {
-        // hide.center();
-        // show.menu();
-        console.log("changing company name");
-      },
-    },
-    {
-      eventType: "input",
-      selector: "#company-name",
-      callback: () => {
-        // hide.center();
-        // show.menu();
-        console.log("changing company name");
+      callback: (e: Event) => {
+        const el = e.target as HTMLInputElement;
+        store.setCompanyName(el.value);
+        const proceedButton = document.querySelector(
+          "#finish-game-setup",
+        ) as HTMLButtonElement;
+
+        if (store.canProceedToLaunch()) {
+          enableBtn(proceedButton);
+        } else {
+          disableBtn(proceedButton);
+        }
       },
     },
     {
@@ -57,6 +67,10 @@ export function eventConfigs(UiService: typeof UiServiceManager) {
       selector: ".setup-game-wrapper .grid img",
       callback: (e: Event) => {
         const el = e.target as HTMLElement;
+        const proceedButton = document.querySelector(
+          "#finish-game-setup",
+        ) as HTMLButtonElement;
+
         const others: HTMLElement[] = Array.from(
           document.querySelectorAll(".setup-game-wrapper .grid img"),
         );
@@ -68,6 +82,12 @@ export function eventConfigs(UiService: typeof UiServiceManager) {
         el.style.outline = "5px solid white";
         el.style.borderRadius = "8px";
         store.setCompanyUnitPatch(el.dataset.img as string);
+
+        if (store.canProceedToLaunch()) {
+          enableBtn(proceedButton);
+        } else {
+          disableBtn(proceedButton);
+        }
 
         console.log("clicking patch", el.dataset.img);
       },

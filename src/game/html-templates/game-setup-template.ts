@@ -4,13 +4,15 @@ export const gameSetupTemplate = `<div class="setup-game-wrapper">
                             <h3 class="font-h2">Create Your Company</h3>
 
                             <div class="input-wrapper">
-                                <label for="user-name">Your Name</label>
-                                <input id="user-name" type="text" placeholder="Your Name">
+                                <label for="commander-name">Your Name</label>
+                                <input id="commander-name" type="text" placeholder="Your Name" data-min="3">
+                                <p class="helper-text">3 - 15 characters.</p>
                             </div>
 
                             <div class="input-wrapper">
                                 <label for="company-name">Company Name</label>
-                                <input id="company-name" type="text" placeholder="e.g. The Tiger Hawks">
+                                <input id="company-name" type="text" placeholder="e.g. The Tiger Hawks" data-min="5">
+                                <p class="helper-text">5 - 15 characters.</p>
                             </div>
                         </div>
 
@@ -29,8 +31,26 @@ export const gameSetupTemplate = `<div class="setup-game-wrapper">
                         </div>
 
                         <div class="setup-footer flex justify-between">
-                            <button id="cancel-game-setup" class="mbtn red">Cancel</button>
-                            <button id="finish-game-setup" class="mbtn green disabled" disabled>Next</button>
+                            <button id="cancel-game-setup" class="mbtn red">&#10005; Cancel</button>
+                            <button id="finish-game-setup" class="mbtn green disabled" disabled>Next &#10140;</button>
                         </div>
                     </div>
                 </div>`;
+
+export const setupConfirmationTemplate = (
+  name: string,
+  companyName: string,
+  unitPatch: string,
+) => `
+<div id="setup-confirmation" class=" flex column align-center">
+	<h2>Hello Commander, ${name}</h2>
+	<p>You are commanding: ${companyName}</p>
+	<div class="mt-4 p-2">
+		<p>"Leadership is the art of getting someone else to do something you want done because he wants to do it."</p>
+		<p class="helper-text">Dwight D. Eisenhower</p>
+	</div>
+
+	<img src="${unitPatch}" alt="Company Patch">
+	<button id="launch-game" class="red mbtn">Begin</button>
+</div>
+`;
