@@ -1,3 +1,6 @@
+import { DOM } from "../../constants/css-selectors.ts";
+import { clrHash } from "../../utils/html-utils.ts";
+
 export const gameSetupTemplate = `<div class="setup-game-wrapper">
                     <div class="step flex column justify-between h-100">
                         <div class="step-content">
@@ -43,14 +46,31 @@ export const setupConfirmationTemplate = (
   unitPatch: string,
 ) => `
 <div id="setup-confirmation" class=" flex column align-center">
+<h3>CONFIRM</h3>
 	<h2>Hello Commander, ${name}</h2>
 	<p>You are commanding: ${companyName}</p>
-	<div class="mt-4 p-2">
-		<p>"Leadership is the art of getting someone else to do something you want done because he wants to do it."</p>
+	<div class="mt-4 text-center p-2">
+		<h3 class="px-5">"Leadership is the art of getting someone else to do something you want done because he wants to do it."</h3>
 		<p class="helper-text">Dwight D. Eisenhower</p>
 	</div>
 
-	<img src="${unitPatch}" alt="Company Patch">
-	<button id="launch-game" class="red mbtn">Begin</button>
+	<img width="170" class="mb-2" src="images/ui/${unitPatch}" alt="Company Patch">
+	<div class="flex">
+	<button id="launch-game" class="green mbtn me-2">Begin</button>
+	<button id="go-back" class="red mbtn">Go Back</button>
+</div>
+
 </div>
 `;
+
+export const mainMenuTemplate = () => {
+  return `
+		<div id="g-menu-wrapper" class="flex align-center column justify-center h-100">
+				<img width="170" src="images/ui/cc_logo.png" alt="Game Logo">
+				<button id="${clrHash(DOM.mainMenu.newGame)}" class="mbtn green mb-3">New Game</button>
+				<button id="${clrHash(DOM.mainMenu.continue)}" class="mbtn green mb-3">Continue</button>
+				<button id="${clrHash(DOM.mainMenu.credits)}" class="mbtn black mb-3">Credits</button>
+				<button id="${clrHash(DOM.mainMenu.settings)}" class="mbtn blue mb-3">Settings</button>
+		</div>
+	`;
+};

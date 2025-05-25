@@ -10,3 +10,11 @@ export function disableBtn(btn: HTMLButtonElement) {
   btn.classList.add("disabled");
   btn.disabled = true;
 }
+
+/**
+ *  Remove hash from a string to make it suitable for inclusion on HTML
+ * @param selector
+ */
+export function clrHash(selector: string) {
+  return selector.replace("#", "");
+}

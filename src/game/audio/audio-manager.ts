@@ -8,10 +8,9 @@ function AudioManager() {
   function playTrack(track: HTMLAudioElement) {
     const { audio } = urlReader(document.location.search);
 
-    if (!JSON.parse(audio)) return;
+    if (audio && !JSON.parse(audio)) return;
 
     return new Promise((resolve, reject) => {
-      // Wait for audio to be ready
       track.addEventListener(
         "canplay",
         () => {
