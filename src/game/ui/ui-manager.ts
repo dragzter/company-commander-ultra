@@ -12,6 +12,7 @@ import {
   type GameStep,
   usePlayerCompanyStore,
 } from "../../store/ui-store.ts";
+import { Images } from "../../constants/images.ts";
 
 function UiManager() {
   const _AudioManager = AudioManager;
@@ -69,7 +70,7 @@ function UiManager() {
       setTimeout(() => {
         s_(DOM.enterGameWrapper).remove();
 
-        Styler.setCenterBG("bg_2.jpg");
+        Styler.setCenterBG(Images.bg.bg_2);
       }, 1000);
     });
   }

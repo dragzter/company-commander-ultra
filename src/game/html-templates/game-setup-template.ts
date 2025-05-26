@@ -1,5 +1,6 @@
 import { DOM } from "../../constants/css-selectors.ts";
 import { clrHash } from "../../utils/html-utils.ts";
+import { Images } from "../../constants/images.ts";
 
 export const gameSetupTemplate = `<div class="setup-game-wrapper">
                     <div class="step flex column justify-between h-100">
@@ -66,7 +67,7 @@ export const setupConfirmationTemplate = (
 export const mainMenuTemplate = () => {
   return `
 		<div id="g-menu-wrapper" class="flex align-center column justify-center h-100">
-				<img width="170" src="images/ui/cc_logo.png" alt="Game Logo">
+				<img width="170" src="images/ui/${Images.logo.cc_logo}" alt="Game Logo">
 				<button id="${clrHash(DOM.mainMenu.newGame)}" class="mbtn green mb-3">New Game</button>
 <!--				<button id="${clrHash(DOM.mainMenu.continue)}" class="mbtn green
 		// mb-3">Continue</button>-->
@@ -104,13 +105,13 @@ export const companyHomePageTemplate = (
 		</div>
 		<div class="company-actions">
 			<button id="company-go-home">
-				<img src="/images/ui/square/home_button.png" alt="Go Home"/>
+				<img src="/images/ui/square/${Images.btn.sq_home}" alt="Go Home"/>
 			</button>
 			<button id="company-go-market">
-				<img src="/images/ui/square/market_button.png" alt="Go To Market"/>
+				<img src="/images/ui/square/${Images.btn.sq_market}" alt="Go To Market"/>
 			</button>
 			<button id="company-go-roster">
-				<img src="/images/ui/square/list_1_button.png" alt="Go To Roster"/>
+				<img src="/images/ui/square/${Images.btn.sq_list_1}" alt="Go To Roster"/>
 			</button>
 			<button id="company-go-training">
 				<img src="/images/ui/square/training_button.png" alt="Go To Training"/>
