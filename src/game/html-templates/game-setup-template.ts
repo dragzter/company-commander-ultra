@@ -46,7 +46,7 @@ export const setupConfirmationTemplate = (
   unitPatch: string,
 ) => `
 <div id="setup-confirmation" class=" flex column align-center">
-<h3>CONFIRM</h3>
+<h1>CONFIRM SELECTION</h1>
 	<h2>Hello Commander, ${name}</h2>
 	<p>You are commanding: ${companyName}</p>
 	<div class="mt-4 text-center p-2">
@@ -55,10 +55,10 @@ export const setupConfirmationTemplate = (
 	</div>
 
 	<img width="170" class="mb-2" src="images/ui/${unitPatch}" alt="Company Patch">
-	<div class="flex">
-	<button id="launch-game" class="green mbtn me-2">Begin</button>
-	<button id="go-back" class="red mbtn">Go Back</button>
-</div>
+	<div class="flex column">
+		<button id="launch-game" class="green mbtn mb-3">Begin</button>
+		<button id="go-back" class="red mbtn">Go Back</button>
+	</div>
 
 </div>
 `;
@@ -68,9 +68,66 @@ export const mainMenuTemplate = () => {
 		<div id="g-menu-wrapper" class="flex align-center column justify-center h-100">
 				<img width="170" src="images/ui/cc_logo.png" alt="Game Logo">
 				<button id="${clrHash(DOM.mainMenu.newGame)}" class="mbtn green mb-3">New Game</button>
-				<button id="${clrHash(DOM.mainMenu.continue)}" class="mbtn green mb-3">Continue</button>
+<!--				<button id="${clrHash(DOM.mainMenu.continue)}" class="mbtn green
+		// mb-3">Continue</button>-->
 				<button id="${clrHash(DOM.mainMenu.credits)}" class="mbtn black mb-3">Credits</button>
 				<button id="${clrHash(DOM.mainMenu.settings)}" class="mbtn blue mb-3">Settings</button>
 		</div>
+	`;
+};
+
+export const companyHomePageTemplate = (
+  companyName: string,
+  companyCommander: string,
+  companyUnitPatch: string,
+) => {
+  return `
+	<div id="campaign-home-screen">
+		<div id="company-meta">
+			<p class="company-name">
+				<img src="/images/ui/${companyUnitPatch}"/>
+				<span class="ms-2">${companyName}</span>
+			</p>
+			<p class="company-commander">Commander: ${companyCommander}</p>
+		</div>
+		<div class="company-stats">
+			<p class="company-count">Total Men</p>
+			<p class="company-men-lost">Men Lost</p>
+			<p class="company-missions-completed">Missions Completed</p>
+			<p class="company-missions-failed">Missions Failed</p>
+			<p class="company-total-missions">Total Missions</p>
+			<p class="company-level">Company Level</p>
+			<p class="company-inventory-status">Inventory Items/ Total Items</p>
+		</div>
+		<div class="company-level">
+			<div class="company-level-progress"></div>
+		</div>
+		<div class="company-actions">
+			<button id="company-go-home">
+				<img src="/images/ui/square/home_button.png" alt="Go Home"/>
+			</button>
+			<button id="company-go-market">
+				<img src="/images/ui/square/market_button.png" alt="Go To Market"/>
+			</button>
+			<button id="company-go-roster">
+				<img src="/images/ui/square/list_1_button.png" alt="Go To Roster"/>
+			</button>
+			<button id="company-go-training">
+				<img src="/images/ui/square/training_button.png" alt="Go To Training"/>
+			</button>
+			<button id="company-go-missions">
+				<img src="/images/ui/square/missions_button.png" alt="Go To Missions"/>
+			</button>
+			<button id="company-go-inventory">
+				<img src="/images/ui/square/inventory_button.png" alt="Go To Inventory"/>
+			</button>
+			<button id="company-go-memorial">
+				<img src="/images/ui/square/heroes_button.png" alt="Go To Fallen Heroes"/>
+			</button>
+			<button id="company-go-abilities">
+				<img src="/images/ui/square/list_2_button.png" alt="Go To Abilities"/>
+			</button>
+		</div>
+	</div>
 	`;
 };

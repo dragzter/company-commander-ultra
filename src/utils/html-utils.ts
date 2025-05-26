@@ -18,3 +18,14 @@ export function disableBtn(btn: HTMLButtonElement) {
 export function clrHash(selector: string) {
   return selector.replace("#", "");
 }
+
+export function s_(selector: string) {
+  if (selector.includes("#")) {
+    return document.getElementById(clrHash(selector)) as HTMLElement;
+  }
+  return document.querySelector(selector) as HTMLElement;
+}
+
+export function sa_(selector: string) {
+  return document.querySelectorAll(selector);
+}

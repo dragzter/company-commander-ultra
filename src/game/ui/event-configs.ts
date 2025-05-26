@@ -1,31 +1,29 @@
 import type { HandlerInitConfig } from "../../constants/types.ts";
-import { UiServiceManager } from "../../services/ui/ui-service.ts";
 import { usePlayerCompanyStore } from "../../store/ui-store.ts";
-import { disableBtn, enableBtn } from "../../utils/html-utils.ts";
+import { disableBtn, enableBtn, s_, sa_ } from "../../utils/html-utils.ts";
 import { DOM } from "../../constants/css-selectors.ts";
 import { Styler } from "./styler-manager.ts";
 import { UiManager } from "./ui-manager.ts";
 
+/**
+ * Defines the
+ */
 export function eventConfigs() {
-  const { gameBoard } = UiServiceManager;
-  const { hide, show } = gameBoard();
   const store = usePlayerCompanyStore.getState();
 
+  // Handlers for the setup screen
   const gameSetupEventConfig: HandlerInitConfig[] = [
     {
       eventType: "click",
       selector: DOM.setupScreen.cancel,
       callback: () => {
-        show.menu();
-        hide.center();
+        UiManager.reRenderMainMenu();
       },
     },
     {
       eventType: "click",
-      selector: "#finish-game-setup",
+      selector: DOM.setupScreen.finish,
       callback: () => {
-        // hide.center();
-        // show.menu();
         console.log("clicking finish");
         UiManager.createConfirmationScreen();
       },
@@ -35,9 +33,7 @@ export function eventConfigs() {
       selector: DOM.setupScreen.commanderInput,
       callback: (e: Event) => {
         const el = e.target as HTMLInputElement;
-        const proceedButton = document.querySelector(
-          "#finish-game-setup",
-        ) as HTMLButtonElement;
+        const proceedButton = s_(DOM.setupScreen.finish) as HTMLButtonElement;
         store.setCommanderName(el.value);
 
         if (store.canProceedToLaunch()) {
@@ -53,9 +49,7 @@ export function eventConfigs() {
       callback: (e: Event) => {
         const el = e.target as HTMLInputElement;
         store.setCompanyName(el.value);
-        const proceedButton = document.querySelector(
-          "#finish-game-setup",
-        ) as HTMLButtonElement;
+        const proceedButton = s_(DOM.setupScreen.finish) as HTMLButtonElement;
 
         if (store.canProceedToLaunch()) {
           enableBtn(proceedButton);
@@ -69,13 +63,11 @@ export function eventConfigs() {
       selector: DOM.setupScreen.unitPatch,
       callback: (e: Event) => {
         const el = e.target as HTMLElement;
-        const proceedButton = document.querySelector(
-          "#finish-game-setup",
-        ) as HTMLButtonElement;
+        const proceedButton = s_(DOM.setupScreen.finish) as HTMLButtonElement;
 
         const others: HTMLElement[] = Array.from(
-          document.querySelectorAll(DOM.setupScreen.unitPatch),
-        );
+          sa_(DOM.setupScreen.unitPatch),
+        ) as HTMLElement[];
 
         others.forEach((o: HTMLElement) => {
           o.style.outline = "none";
@@ -95,22 +87,33 @@ export function eventConfigs() {
     },
   ];
 
+  // Confirmation screen
   const gameConfirmationEventConfig: HandlerInitConfig[] = [
     {
       eventType: "click",
       selector: DOM.confirmScreen.launch,
       callback: () => {
         console.log("BEGIN GAME!");
+        UiManager.renderCompanyHomePage();
+      },
+    },
+    {
+      eventType: "click",
+      selector: DOM.confirmScreen.goBack,
+      callback: () => {
+        console.log("go back!");
       },
     },
   ];
 
+  // Main Menu handlers
   const mainMenuEventConfig: HandlerInitConfig[] = [
     {
       selector: DOM.mainMenu.newGame,
       eventType: "click",
       callback: () => {
         console.log("callback new game");
+        UiManager.renderSetupScreen();
       },
     },
     {

@@ -55,7 +55,8 @@ function DomEventManager() {
     const elements = document.querySelectorAll(selector);
 
     if (!elements?.length) {
-      throw new Error(`No elements found for selector: ${selector}`);
+      console.warn(`No elements found for selector: ${selector}`);
+      return;
     }
 
     const id = _getId();

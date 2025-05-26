@@ -3,6 +3,7 @@ import type {
   ElOptions,
   MBtnOptions,
 } from "../../constants/types.ts";
+import { s_ } from "../../utils/html-utils.ts";
 
 type GameElements = {
   upper: HTMLElement;
@@ -83,7 +84,7 @@ function UiServiceManager() {
     ];
 
     if (!allowedTypes.includes(element)) {
-      console.error(element + " is not an allowed element type.");
+      console.warn(element + " is not an allowed element type.");
       return;
     }
 
@@ -166,12 +167,12 @@ function UiServiceManager() {
 
     if (!board) throw new Error("#game is not defined.");
 
-    const upper = board.querySelector("#g-upper") as HTMLElement;
-    const lower = board.querySelector("#g-lower") as HTMLElement;
-    const center = board.querySelector("#g-center") as HTMLElement;
-    const left = board.querySelector("#g-left") as HTMLElement;
-    const right = board.querySelector("#g-right") as HTMLElement;
-    const g_menu = board.querySelector("#g-menu") as HTMLElement;
+    const upper = s_("#g-upper");
+    const lower = s_("#g-lower");
+    const center = s_("#g-center");
+    const left = s_("#g-left");
+    const right = s_("#g-right");
+    const g_menu = s_("#g-menu");
 
     function ins(element: HTMLElement, html: Element) {
       if (element) {
@@ -180,12 +181,14 @@ function UiServiceManager() {
     }
 
     function hideElement(element: HTMLElement) {
-      element.style.visibility = "hidden";
+      element.classList.remove("visible");
+      element.classList.add("hidden");
       element.style.zIndex = "var(--prio-low)";
     }
 
     function showElement(element: HTMLElement) {
-      element.style.visibility = "visible";
+      element.classList.add("visible");
+      element.classList.remove("hidden");
       element.style.zIndex = "var(--prio-highest)";
     }
 

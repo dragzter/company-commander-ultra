@@ -9,6 +9,16 @@ export const DOM = {
     right: "#g-right",
     center: "#g-center",
   },
+  company: {
+    home: "#company-go-home",
+    market: "#company-go-market",
+    roster: "#company-go-roster",
+    training: "#company-go-training",
+    missions: "#company-go-missions",
+    inventory: "#company-go-inventory",
+    heroes: "#company-go-memorial",
+    abilities: "#company-go-abilities",
+  },
   enterGameWrapper: "#game-enter-wrapper",
   enterGame: "#game-enter",
   setupScreen: {
@@ -26,6 +36,7 @@ export const DOM = {
   },
   confirmScreen: {
     launch: "#launch-game",
+    goBack: "#go-back",
     confirmationParent: "#setup-confirmation",
   },
 };

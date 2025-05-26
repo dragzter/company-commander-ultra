@@ -1,4 +1,5 @@
 import {
+  companyHomePageTemplate,
   gameSetupTemplate,
   mainMenuTemplate,
   setupConfirmationTemplate,
@@ -9,6 +10,7 @@ import { UiServiceManager } from "../../services/ui/ui-service.ts";
 // import { UiAnimationManager } from "../../services/ui/ui-animation-manager.ts";
 import { DomEventManager } from "../event-handlers/dom-event-manager.ts";
 import { usePlayerCompanyStore } from "../../store/ui-store.ts";
+import { UiManager } from "./ui-manager.ts";
 
 function ScreenManager() {
   const _AudioManager = AudioManager;
@@ -61,7 +63,7 @@ function ScreenManager() {
       ),
     );
 
-    center.innerHTML = "";
+    UiManager.clear.center();
     center.appendChild(content as Element);
 
     const eventsConfig = eventConfigs().confirmationScreen();
@@ -76,6 +78,8 @@ function ScreenManager() {
   }
 
   function createMainMenu() {
+    UiManager.clear.center();
+
     const content = parseHTML(mainMenuTemplate());
     g_menu.appendChild(content as Element);
     const eventsConfig = eventConfigs().mainMenu();
@@ -89,11 +93,23 @@ function ScreenManager() {
     });
   }
 
+  function createCompanyHomePage() {
+    UiManager.clear.center();
+    const { companyName, commanderName, companyUnitPatchURL } =
+      usePlayerCompanyStore.getState();
+
+    const content = parseHTML(
+      companyHomePageTemplate(companyName, commanderName, companyUnitPatchURL),
+    );
+    center.appendChild(content as Element);
+  }
+
   return {
     generate: {
       setupScreen: () => createSetupScreen(),
       confirmScreen: () => createConfirmationScreen(),
       mainMenu: () => createMainMenu(),
+      companyHomePage: () => createCompanyHomePage(),
     },
   };
 }

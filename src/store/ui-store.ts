@@ -5,13 +5,15 @@ import { URLReader } from "../utils/url-reader.ts";
 const { nocache } = URLReader(document.location.search);
 const skipPersistence = nocache === "true";
 
-// type PlayerStore = {
-//   gameStarted: boolean;
-//   playerName: string;
-//   playerCompanyName: string;
-//   startGame: () => void;
-//   setPlayerName: (n: string) => void;
-// };
+export const GAME_STEPS = {
+  at_intro_0: "at_intro_0",
+  at_main_menu_1: "at_main_menu_1",
+  at_setup_screen_2: "at_setup_screen_2",
+  at_confirmation_screen_3: "at_confirmation_screen_3",
+  at_company_homepage_4: "at_company_homepage_4", // Game started - load in at this stage
+};
+
+export type GameStep = (typeof GAME_STEPS)[keyof typeof GAME_STEPS];
 
 type CompanyStore = {
   companyName: string;
@@ -22,25 +24,9 @@ type CompanyStore = {
   setCompanyUnitPatch: (patchImgUrl: string) => void;
   setCompanyName: (companyName: string) => void;
   canProceedToLaunch: () => boolean;
+  gameStep: GameStep;
+  setGameStep: (step: GameStep) => void;
 };
-
-// export const usePlayerStore = createStore<PlayerStore>()(
-//   persist(
-//     (set) => ({
-//       // Initial State
-//       gameStarted: false,
-//       playerName: "Commander",
-//       playerCompanyName: "PlayerCompany",
-//
-//       // Actions
-//       startGame: () => set({ gameStarted: true }),
-//       setPlayerName: (n: string) => set({ playerName: n }),
-//     }),
-//     {
-//       name: "cc-ui-store",
-//     },
-//   ),
-// );
 
 export const usePlayerCompanyStore = createStore<CompanyStore>()(
   skipPersistence
@@ -49,15 +35,12 @@ export const usePlayerCompanyStore = createStore<CompanyStore>()(
         commanderName: "",
         companyUnitPatchURL: "",
         companyMembers: [],
+        gameStep: GAME_STEPS.at_intro_0,
+        setGameStep: (step: GameStep) => set({ gameStep: step }),
         setCompanyName: (n: string) => set({ companyName: n }),
         setCompanyUnitPatch: (url: string) => set({ companyUnitPatchURL: url }),
         setCommanderName: (n: string) => set({ commanderName: n }),
         canProceedToLaunch: () => {
-          console.log(
-            get().companyName.length,
-            get().commanderName.length,
-            get().companyUnitPatchURL,
-          );
           return (
             get().companyName.length > 4 &&
             get().companyName.length < 16 &&
@@ -72,8 +55,10 @@ export const usePlayerCompanyStore = createStore<CompanyStore>()(
           companyName: "",
           commanderName: "",
           companyUnitPatchURL: "",
+          gameStep: GAME_STEPS.at_intro_0,
           companyMembers: [],
           setCompanyName: (n: string) => set({ companyName: n }),
+          setGameStep: (step: GameStep) => set({ gameStep: step }),
           setCompanyUnitPatch: (url: string) =>
             set({ companyUnitPatchURL: url }),
           setCommanderName: (n: string) => set({ commanderName: n }),
