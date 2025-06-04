@@ -16,16 +16,30 @@ export const GAME_STEPS = {
 export type GameStep = (typeof GAME_STEPS)[keyof typeof GAME_STEPS];
 
 type CompanyStore = {
+  // State
   companyName: string;
   companyUnitPatchURL: string;
   companyMembers: [];
   commanderName: string;
+  gameStep: GameStep;
+  totalMenInCompany: number;
+  totalMenLostAllTime: number;
+  totalEnemiesKilledAllTime: number;
+  totalMissionsCompleted: number;
+  totalMissionsFailed: number;
+  companyLevel: number;
+  totalItemsInInventory: number;
+  totalInventoryCapacity: number;
+  inventory: [];
+
+  // Setters
   setCommanderName: (n: string) => void;
   setCompanyUnitPatch: (patchImgUrl: string) => void;
   setCompanyName: (companyName: string) => void;
-  canProceedToLaunch: () => boolean;
-  gameStep: GameStep;
   setGameStep: (step: GameStep) => void;
+
+  // Booleans
+  canProceedToLaunch: () => boolean;
 };
 
 export const usePlayerCompanyStore = createStore<CompanyStore>()(

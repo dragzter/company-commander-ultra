@@ -83,50 +83,54 @@ export const companyHomePageTemplate = (
   companyUnitPatch: string,
 ) => {
   return `
-	<div id="campaign-home-screen">
-		<div id="company-meta">
-			<p class="company-name">
-				<img src="/images/ui/${companyUnitPatch}"/>
+	<div id="campaign-home-screen" class="flex h-100 column justify-between">
+		<div id="company-meta" class="p-2">
+			<p class="company-name flex justify-between align-center m-0">
+				<img width="80" src="/images/ui/${companyUnitPatch}"/>
 				<span class="ms-2">${companyName}</span>
 			</p>
-			<p class="company-commander">Commander: ${companyCommander}</p>
+			<p class="company-commander text-end">Commander: ${companyCommander}</p>
 		</div>
-		<div class="company-stats">
-			<p class="company-count">Total Men</p>
-			<p class="company-men-lost">Men Lost</p>
-			<p class="company-missions-completed">Missions Completed</p>
-			<p class="company-missions-failed">Missions Failed</p>
-			<p class="company-total-missions">Total Missions</p>
-			<p class="company-level">Company Level</p>
-			<p class="company-inventory-status">Inventory Items/ Total Items</p>
+		<div class="company-stats p-2">
+			<p class="company-count">Total Men <span>12</span></p>
+			<p class="company-men-lost">Men Lost <span>3</span></p>
+			<p class="company-enemies-killed">Enemies Killed <span>18</span></p>
+			<p class="company-missions-completed">Missions Completed <span>6</span></p>
+			<p class="company-missions-failed">Missions Failed <span>2</span></p>
+			<p class="company-total-missions">Total Missions <span>8</span></p>
+			<p class="company-level">Company Level <span>2</span></p>
+			<p class="company-inventory-status">Inventory Items/ Capacity <span>34 / 70</span></p>
 		</div>
-		<div class="company-level">
-			<div class="company-level-progress"></div>
+		<div class="company-level-bar-wrapper p-2">
+			<p class="m-0">Level 2</p>
+			<div class="company-level-progress ">
+				<div class="progress-bar"></div>
+			</div>
 		</div>
-		<div class="company-actions">
-			<button id="company-go-home">
-				<img src="/images/ui/square/${Images.btn.sq_home}" alt="Go Home"/>
+		<div class="company-actions grid grid-8-col p-2">
+			<button id="company-go-home" class="mbtn icon-btn">
+				<img class="grid-img-fit" src="/images/ui/square/${Images.btn.sq_home}" alt="Go Home"/>
 			</button>
-			<button id="company-go-market">
-				<img src="/images/ui/square/${Images.btn.sq_market}" alt="Go To Market"/>
+			<button id="company-go-market" class="mbtn icon-btn">
+				<img class="grid-img-fit" src="/images/ui/square/${Images.btn.sq_market}" alt="Go To Market"/>
 			</button>
-			<button id="company-go-roster">
-				<img src="/images/ui/square/${Images.btn.sq_list_1}" alt="Go To Roster"/>
+			<button id="company-go-roster" class="mbtn icon-btn">
+				<img class="grid-img-fit" src="/images/ui/square/${Images.btn.sq_list_1}" alt="Go To Roster"/>
 			</button>
-			<button id="company-go-training">
-				<img src="/images/ui/square/training_button.png" alt="Go To Training"/>
+			<button id="company-go-training" class="mbtn icon-btn">
+				<img class="grid-img-fit" src="/images/ui/square/${Images.btn.sq_training}" alt="Go To Training"/>
 			</button>
-			<button id="company-go-missions">
-				<img src="/images/ui/square/missions_button.png" alt="Go To Missions"/>
+			<button id="company-go-missions" class="mbtn icon-btn">
+				<img class="grid-img-fit" src="/images/ui/square/${Images.btn.sq_mission}" alt="Go To Missions"/>
 			</button>
-			<button id="company-go-inventory">
-				<img src="/images/ui/square/inventory_button.png" alt="Go To Inventory"/>
+			<button id="company-go-inventory" class="mbtn icon-btn">
+				<img class="grid-img-fit" src="/images/ui/square/inventory_button.png" alt="Go To Inventory"/>
 			</button>
-			<button id="company-go-memorial">
-				<img src="/images/ui/square/heroes_button.png" alt="Go To Fallen Heroes"/>
+			<button id="company-go-memorial" class="mbtn icon-btn">
+				<img class="grid-img-fit" src="/images/ui/square/heroes_button.png" alt="Go To Fallen Heroes"/>
 			</button>
-			<button id="company-go-abilities">
-				<img src="/images/ui/square/list_2_button.png" alt="Go To Abilities"/>
+			<button id="company-go-abilities" class="mbtn icon-btn">
+				<img class="grid-img-fit" src="/images/ui/square/list_2_button.png" alt="Go To Abilities"/>
 			</button>
 		</div>
 	</div>

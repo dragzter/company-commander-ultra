@@ -6,7 +6,7 @@ import { ANIMATIONS } from "../../constants/identifiers.ts";
 import { ScreenManager } from "./screen-manager.ts";
 import { DOM } from "../../constants/css-selectors.ts";
 import { s_ } from "../../utils/html-utils.ts";
-import { Styler } from "./styler-manager.ts";
+import { Styler } from "../../utils/styler-manager.ts";
 import {
   GAME_STEPS,
   type GameStep,
@@ -14,6 +14,11 @@ import {
 } from "../../store/ui-store.ts";
 import { Images } from "../../constants/images.ts";
 
+/**
+ * The most high level UI controller of the game.  UiManager is able to consume and initiate all UI
+ * utils and game flow tasks.
+ * @constructor
+ */
 function UiManager() {
   const _AudioManager = AudioManager;
   const _UiServiceManager = UiServiceManager;
@@ -37,6 +42,9 @@ function UiManager() {
     const loadGameAt = {
       [GAME_STEPS.at_intro_0]: () => initMainMenu(),
       [GAME_STEPS.at_main_menu_1]: () => initMainMenu(),
+      [GAME_STEPS.at_setup_screen_2]: () => renderSetupScreen(),
+      [GAME_STEPS.at_confirmation_screen_3]: () => createConfirmationScreen(),
+      [GAME_STEPS.at_company_homepage_4]: () => renderCompanyHomePage(),
     };
 
     loadGameAt[gameStep]();
@@ -101,7 +109,7 @@ function UiManager() {
   }
 
   function renderCompanyHomePage() {
-    _setStep(GAME_STEPS.at_confirmation_screen_3);
+    _setStep(GAME_STEPS.at_company_homepage_4);
     _ScreenManager.generate.companyHomePage();
   }
 

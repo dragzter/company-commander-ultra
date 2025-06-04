@@ -43,6 +43,8 @@ const btn = {
 const logo = {
   cc_logo: "cc_logo.png",
   cc_logo_sm: "cc_logo_sm.png",
+  cc_title_dark: "cc_title_dark.png",
+  cc_title_lite: "cc_title_lite.png",
 };
 
 const icon = {
@@ -98,12 +100,12 @@ for (let i = 0; i < blackPortraitCount; i++) {
 export const Images = {
   bg,
   btn,
-  patch,
   logo,
   icon,
-  sand_portrait,
+  patch,
   portrait,
   red_portrait,
+  sand_portrait,
   blue_portrait,
   black_portrait,
 };

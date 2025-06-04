@@ -5,6 +5,31 @@ export const FACTION_IDENTIFIERS = {
   scarlet_accord: "scarlet_accord",
 };
 
+// export const COMPANY_NAMES = {
+//   desert_wolves: {
+//     ashcroft_infantry_brigade_42: "ashcroft_infantry_brigade_42",
+//     light_brigade_369: "light_brigade_369",
+//     light_scouts_9: "light_scouts_9",
+//     light_brigade_31: "light_brigade_31",
+//     guards_rifle_brigade_67: "guards_rifle_brigade_67",
+//   },
+//   iron_corps: {
+//     mechanized_scouts_5: "mechanized_scouts_5",
+//     mechanized_scouts_8: "mechanized_scouts_8",
+//     infantry_regiment_402: "infantry_regiment_402",
+//     assault_recon_battalion_177: "assault_recon_battalion_177"
+//   },
+//   scarlet_accord: {
+//     infantry_regiment_19: "infantry_regiment_19",
+//     scouts_38: "scouts_38"
+//   },
+//   liberties_vanguard: {
+//     infantry_regiment_4: "infantry_regiment_4",
+//     assault_infantry_regiment_88: "assault_infantry_regiment_88",
+//     militia_regiment_5: "militia_regiment_5"
+//   },
+// };
+
 export const FACTION_IDENTIFIERS_SECONDARY = {
   steppes_raiders: "steppes_raiders",
   coronados_chosen: "coronados_chosen",

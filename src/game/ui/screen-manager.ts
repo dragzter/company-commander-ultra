@@ -12,6 +12,11 @@ import { DomEventManager } from "../event-handlers/dom-event-manager.ts";
 import { usePlayerCompanyStore } from "../../store/ui-store.ts";
 import { UiManager } from "./ui-manager.ts";
 
+/**
+ * Manager which templates are displayed.  Orchestrates all the things that need to happen when
+ * a screen is changed or a page is loaded.
+ * @constructor
+ */
 function ScreenManager() {
   const _AudioManager = AudioManager;
   const _UiServiceManager = UiServiceManager;
@@ -54,7 +59,6 @@ function ScreenManager() {
     const commanderName = store.commanderName;
     const companyUnitPatchURL = store.companyUnitPatchURL;
 
-    console.log(companyUnitPatchURL, "Creating with this");
     const content = parseHTML(
       setupConfirmationTemplate(
         commanderName,
@@ -75,6 +79,8 @@ function ScreenManager() {
         config.callback,
       );
     });
+
+    show.center();
   }
 
   function createMainMenu() {
@@ -102,6 +108,7 @@ function ScreenManager() {
       companyHomePageTemplate(companyName, commanderName, companyUnitPatchURL),
     );
     center.appendChild(content as Element);
+    console.log(center);
   }
 
   return {

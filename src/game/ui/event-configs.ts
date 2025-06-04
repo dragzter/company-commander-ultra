@@ -2,11 +2,12 @@ import type { HandlerInitConfig } from "../../constants/types.ts";
 import { usePlayerCompanyStore } from "../../store/ui-store.ts";
 import { disableBtn, enableBtn, s_, sa_ } from "../../utils/html-utils.ts";
 import { DOM } from "../../constants/css-selectors.ts";
-import { Styler } from "./styler-manager.ts";
+import { Styler } from "../../utils/styler-manager.ts";
 import { UiManager } from "./ui-manager.ts";
 
 /**
- * Defines the
+ * Contains definitions for the events of all html templates.
+ * Configured when the html is called and appended to the DOM.
  */
 export function eventConfigs() {
   const store = usePlayerCompanyStore.getState();

@@ -1,5 +1,9 @@
-import { UiServiceManager } from "../../services/ui/ui-service.ts";
+import { UiServiceManager } from "../services/ui/ui-service.ts";
 
+/**
+ * The style function provides utilities for common stying tasks.
+ * __styler__ is a utility
+ */
 function styler() {
   const _UiServiceManager = UiServiceManager;
 

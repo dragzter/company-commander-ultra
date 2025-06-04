@@ -213,6 +213,69 @@ button.mbtn {
 		}
 	}
 	
+	&.icon-btn {
+		background: none;
+		border: none;
+		cursor: pointer;
+		width: auto;
+		height: auto;
+		
+		&:hover {
+			filter: brightness(0.85);
+		}
+	}
+}
+
+/*
+ * Company Screen
+ */
+#campaign-home-screen {
+	.company-actions {
+		background: #000;
+		padding-block: 13px;
+	}
+	
+	.company-level-bar-wrapper {
+		height: 45px;
+		
+		.company-level-progress {
+			width: 100%;
+			height: 100%;
+			background: #cfcfcf;
+			
+			.progress-bar {
+				background: #a5a96c;
+				height: 100%;
+				width: 56%;
+			}
+		}
+	}
+	
+	.company-stats {
+		p {
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			font-size: 18px;
+			margin-top: 0;
+			margin-bottom: 10px;
+			border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+			
+			span {
+				font-weight: 900;
+			}
+		}
+	}
+	
+	#company-meta {
+		background: #000;
+		
+		.company-name {
+			span {
+				font-size: 28px;
+			}
+		}
+	}
 }
 
 /**
@@ -307,6 +370,10 @@ button.mbtn {
 
 .text-center {
 	text-align: center !important;
+}
+
+.text-end {
+	text-align: end;
 }
 
 .bg-darken-1 {
@@ -649,6 +716,10 @@ input[type="text"] {
 	.grid-md-gap-md {
 		gap: 1rem;
 	}
+}
+
+.m-0 {
+	margin: 0 !important;
 }
 
 .ms-0 {
