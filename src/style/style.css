@@ -3,6 +3,11 @@
 	line-height: 1.5;
 	font-weight: 400;
 	
+	--md-border-radius: 6px;
+	--std-border-radius: 8px;
+	--lg-border-radius: 10px;
+	--xl-border-radius: 12px;
+	
 	--prio-low: 1;
 	--prio-normal: 3;
 	--prio-medium: 6;
@@ -12,6 +17,64 @@
 	color-scheme: light dark;
 	color: rgba(255, 255, 255, 0.87);
 	background-color: #242424;
+	
+	--white-1: #fff;
+	--white-2: #f3f3f3;
+	--white-3: #e3e3e3;
+	
+	--black-1: #333;
+	--black-2: #222;
+	--black-3: #111;
+	--black-4: #000;
+	
+	--gray-1: #999;
+	--gray-2: #888;
+	--gray-3: #777;
+	--gray-4: #666;
+	--gray-5: #555;
+	--gray-6: #444;
+	
+	--gunmetal: #424756;
+	
+	--drab: #555d50;
+	
+	--camo-brown-1: #675645;
+	--camo-brown-2: #3d3328;
+	
+	--hud-lite: #cfcfcf;
+	
+	--accent-magenta-1: #f5567a;
+	--accent-magenta-2: #ea3e65;
+	--accent-magenta-3: #c02246;
+	
+	--accent-cyan-1: #b0ffff;
+	--accent-cyan-2: #78ffff;
+	--accent-cyan-3: #00FFFFFF;
+	
+	--accent-sienna-1: #ee9971;
+	--accent-sienna-2: #d07950;
+	--accent-sienna-3: #A0522DFF;
+	
+	--red-1: #e52929;
+	--red-2: #c41b1b;
+	--red-3: #730b0b;
+	
+	--camo-green-1: #6ea171;
+	--camo-green-2: #4d784e;
+	--camo-green-3: #334f33;
+	
+	--camo-tan-1: #e1d798;
+	--camo-tan-2: #8a8249;
+	--camo-tan-3: #56502a;
+	
+	--primary-green-1: #b7bc80;
+	--primary-green-2: #a5a96c;
+	--primary-green-3: #676940;
+	
+	--orange-1: #f8b158;
+	--orange-2: #de9943;
+	--orange-3: #c4771f;
+	--orange-4: #9a5b08;
 	
 	font-synthesis: none;
 	text-rendering: optimizeLegibility;
@@ -143,7 +206,7 @@ button.mbtn {
 	background-repeat: no-repeat;
 	font-size: 16px;
 	font-weight: 600;
-	border-radius: 8px;
+	border-radius: var(--std-border-radius);
 	cursor: pointer;
 	transition: 0.2s;
 	
@@ -219,6 +282,7 @@ button.mbtn {
 		cursor: pointer;
 		width: auto;
 		height: auto;
+		transition: ease-in 0.3s;
 		
 		&:hover {
 			filter: brightness(0.85);
@@ -236,17 +300,19 @@ button.mbtn {
 	}
 	
 	.company-level-bar-wrapper {
-		height: 45px;
+		position: absolute;
+		bottom: 102px;
+		width: 100%;
 		
 		.company-level-progress {
 			width: 100%;
-			height: 100%;
+			height: 30px;
 			background: #cfcfcf;
 			
 			.progress-bar {
 				background: #a5a96c;
 				height: 100%;
-				width: 56%;
+				width: 2px;
 			}
 		}
 	}
@@ -276,6 +342,85 @@ button.mbtn {
 			}
 		}
 	}
+}
+
+.company-actions {
+	.icon-btn.active {
+		box-shadow: 0 2px 5px 4px rgba(255, 255, 255, 0.3);
+	}
+}
+
+/**
+ *  Flip 3d Vertically
+ */
+.flip-container {
+	width: 84px;
+	height: 84px;
+	perspective: 1000px;
+	display: inline-block;
+}
+
+.flip-btn {
+	width: 100% !important;
+	height: 100% !important;
+	padding: 0;
+	border: none;
+	background: none;
+	position: relative;
+	cursor: pointer;
+}
+
+.flipper {
+	width: 100%;
+	height: 100%;
+	position: relative;
+	transform-style: preserve-3d;
+	transition: transform 0.6s;
+	border-radius: var(--std-border-radius);
+}
+
+.flip-container:hover {
+	button {
+		box-shadow: none !important;
+	}
+	
+	.flipper {
+		transform: rotateY(180deg);
+	}
+}
+
+.front-face,
+.back-face {
+	position: absolute;
+	width: 100%;
+	height: 100%;
+	top: 0;
+	left: 0;
+	border-radius: var(--std-border-radius);
+	backface-visibility: hidden;
+}
+
+
+.front-face img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	display: block;
+}
+
+.back-face {
+	transform: rotateY(180deg);
+	background-image: url("images/bg/camo_4_84x84.jpg");
+	background-repeat: no-repeat;
+	background-size: cover;
+	background-position: center center;
+	color: white;
+	display: flex;
+	font-size: 12px;
+	align-items: center;
+	justify-content: center;
+	font-weight: bold;
+	text-shadow: 0 0 2px rgba(0, 0, 0, 0.4);
 }
 
 /**
@@ -438,7 +583,7 @@ label {
 input[type="text"] {
 	padding: 8px;
 	font-size: 18px;
-	border-radius: 6px;
+	border-radius: var(--std-border-radius);
 	border: 2px solid #eee;
 }
 
@@ -447,6 +592,11 @@ input[type="text"] {
 	display: grid;
 	gap: 1rem; /* Default gap */
 	box-sizing: border-box;
+}
+
+.grid-fix-84 {
+	width: 84px;
+	height: 84px;
 }
 
 /* Column Helpers (1 to 12) */
@@ -923,7 +1073,7 @@ input[type="text"] {
 	background: url("images/bg/bg_90.jpg") no-repeat center;
 	background-size: cover;
 	border: 1px solid #555;
-	border-radius: 10px;
+	border-radius: var(--std-border-radius);
 	position: relative;
 	z-index: 2;
 	

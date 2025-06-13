@@ -20,6 +20,7 @@ type CompanyStore = {
   companyName: string;
   companyUnitPatchURL: string;
   companyMembers: [];
+  creditBalance: number;
   commanderName: string;
   gameStep: GameStep;
   totalMenInCompany: number;
@@ -30,9 +31,12 @@ type CompanyStore = {
   companyLevel: number;
   totalItemsInInventory: number;
   totalInventoryCapacity: number;
+  companyExperience: number;
   inventory: [];
 
   // Setters
+  addCredits: (n: number) => void;
+  subtractCredits: (n: number) => void;
   setCommanderName: (n: string) => void;
   setCompanyUnitPatch: (patchImgUrl: string) => void;
   setCompanyName: (companyName: string) => void;
@@ -50,6 +54,26 @@ export const usePlayerCompanyStore = createStore<CompanyStore>()(
         companyUnitPatchURL: "",
         companyMembers: [],
         gameStep: GAME_STEPS.at_intro_0,
+
+        creditBalance: 0,
+        totalMenInCompany: 0,
+        totalMenLostAllTime: 0,
+        totalEnemiesKilledAllTime: 0,
+        totalMissionsCompleted: 0,
+        totalMissionsFailed: 0,
+        companyLevel: 0,
+        totalInventoryCapacity: 0,
+        totalItemsInInventory: 0,
+        inventory: [],
+        companyExperience: 0,
+
+        // Actions
+        addCredits: (creds: number) => ({
+          creditBalance: get().creditBalance + creds,
+        }),
+        subtractCredits: (creds: number) => ({
+          creditBalance: get().creditBalance - creds,
+        }),
         setGameStep: (step: GameStep) => set({ gameStep: step }),
         setCompanyName: (n: string) => set({ companyName: n }),
         setCompanyUnitPatch: (url: string) => set({ companyUnitPatchURL: url }),
@@ -71,6 +95,25 @@ export const usePlayerCompanyStore = createStore<CompanyStore>()(
           companyUnitPatchURL: "",
           gameStep: GAME_STEPS.at_intro_0,
           companyMembers: [],
+          totalMenInCompany: 0,
+          totalMenLostAllTime: 0,
+          totalEnemiesKilledAllTime: 0,
+          totalMissionsCompleted: 0,
+          totalMissionsFailed: 0,
+          companyLevel: 0,
+          totalInventoryCapacity: 0,
+          totalItemsInInventory: 0,
+          inventory: [],
+          companyExperience: 0,
+          creditBalance: 0,
+
+          // Actions
+          addCredits: (creds: number) => ({
+            creditBalance: get().creditBalance + creds,
+          }),
+          subtractCredits: (creds: number) => ({
+            creditBalance: get().creditBalance - creds,
+          }),
           setCompanyName: (n: string) => set({ companyName: n }),
           setGameStep: (step: GameStep) => set({ gameStep: step }),
           setCompanyUnitPatch: (url: string) =>

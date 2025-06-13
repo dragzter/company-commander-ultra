@@ -18,6 +18,7 @@ export const DOM = {
     inventory: "#company-go-inventory",
     heroes: "#company-go-memorial",
     abilities: "#company-go-abilities",
+    all: ".company-actions button",
   },
   enterGameWrapper: "#game-enter-wrapper",
   enterGame: "#game-enter",

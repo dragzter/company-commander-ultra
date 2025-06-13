@@ -11,6 +11,7 @@ import { UiServiceManager } from "../../services/ui/ui-service.ts";
 import { DomEventManager } from "../event-handlers/dom-event-manager.ts";
 import { usePlayerCompanyStore } from "../../store/ui-store.ts";
 import { UiManager } from "./ui-manager.ts";
+import { DOM } from "../../constants/css-selectors.ts";
 
 /**
  * Manager which templates are displayed.  Orchestrates all the things that need to happen when
@@ -108,7 +109,22 @@ function ScreenManager() {
       companyHomePageTemplate(companyName, commanderName, companyUnitPatchURL),
     );
     center.appendChild(content as Element);
+
+    // Set home button as selected
+    UiManager.selectCompanyHomeButton(DOM.company.home);
+
+    const eventsConfig = eventConfigs().companyHome();
+
+    eventsConfig.forEach((config) => {
+      _DomHandlers.initHandlers(
+        config.eventType,
+        config.selector,
+        config.callback,
+      );
+    });
+
     console.log(center);
+    show.center();
   }
 
   return {

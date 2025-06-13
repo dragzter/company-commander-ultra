@@ -5,7 +5,7 @@ import { UiAnimationManager } from "../../services/ui/ui-animation-manager.ts";
 import { ANIMATIONS } from "../../constants/identifiers.ts";
 import { ScreenManager } from "./screen-manager.ts";
 import { DOM } from "../../constants/css-selectors.ts";
-import { s_ } from "../../utils/html-utils.ts";
+import { s_, sa_ } from "../../utils/html-utils.ts";
 import { Styler } from "../../utils/styler-manager.ts";
 import {
   GAME_STEPS,
@@ -87,6 +87,17 @@ function UiManager() {
     s_("#game-enter").textContent = "...Loading";
   }
 
+  function unselectCompanyHomeButtons() {
+    sa_(DOM.company.all).forEach((b) => b.classList.remove("active"));
+  }
+
+  function selectCompanyHomeButton(cssSelector: string) {
+    unselectCompanyHomeButtons();
+    setTimeout(() => {
+      s_(cssSelector).classList.add("active");
+    }, 0);
+  }
+
   // --------------
   // Render SCREENS
   // --------------
@@ -118,10 +129,45 @@ function UiManager() {
     _ScreenManager.generate.setupScreen();
   }
 
+  function renderRosterScreen() {
+    console.log("rendering rtoster screen");
+  }
+
+  function renderMarketScreen() {
+    console.log("rendering market screen");
+  }
+
+  function renderInventoryScreen() {
+    console.log("render Inventory Screen");
+  }
+
+  function renderAbilitiesScreen() {
+    console.log("render Abilities Screen");
+  }
+
+  function renderTrainingScreen() {
+    console.log("render Training Screen");
+  }
+
+  function renderMissionsScreen() {
+    console.log("render Missions Screen");
+  }
+
+  function renderHeroesScreen() {
+    console.log("render Heroes Screen");
+  }
+
   return {
     createConfirmationScreen,
     renderCompanyHomePage,
     renderSetupScreen,
+    renderRosterScreen,
+    renderMarketScreen,
+    renderInventoryScreen,
+    renderAbilitiesScreen,
+    renderTrainingScreen,
+    renderMissionsScreen,
+    renderHeroesScreen,
     initMainMenu,
     enterGame,
     gameBoard,
@@ -140,6 +186,7 @@ function UiManager() {
     reRenderMainMenu,
     dom_insert,
     parseHTML,
+    selectCompanyHomeButton,
     handleGameStep,
     getGameProgressFromState,
   };

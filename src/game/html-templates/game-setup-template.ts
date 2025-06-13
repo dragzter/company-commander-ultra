@@ -1,6 +1,7 @@
 import { DOM } from "../../constants/css-selectors.ts";
 import { clrHash } from "../../utils/html-utils.ts";
 import { Images } from "../../constants/images.ts";
+import { usePlayerCompanyStore } from "../../store/ui-store.ts";
 
 export const gameSetupTemplate = `<div class="setup-game-wrapper">
                     <div class="step flex column justify-between h-100">
@@ -82,57 +83,86 @@ export const companyHomePageTemplate = (
   companyCommander: string,
   companyUnitPatch: string,
 ) => {
-  return `
-	<div id="campaign-home-screen" class="flex h-100 column justify-between">
-		<div id="company-meta" class="p-2">
-			<p class="company-name flex justify-between align-center m-0">
-				<img width="80" src="/images/ui/${companyUnitPatch}"/>
-				<span class="ms-2">${companyName}</span>
-			</p>
-			<p class="company-commander text-end">Commander: ${companyCommander}</p>
+  const store = usePlayerCompanyStore.getState();
+  const {
+    totalMenInCompany,
+    totalMissionsFailed,
+    totalMissionsCompleted,
+    totalInventoryCapacity,
+    totalItemsInInventory,
+    totalMenLostAllTime,
+    totalEnemiesKilledAllTime,
+    companyLevel,
+    companyExperience,
+    creditBalance,
+  } = store;
+
+  const stats = `
+	<div class="company-stats p-2">
+			<p class="company-count">Total Men <span>${totalMenInCompany}</span></p>
+			<p class="company-men-lost">Men Lost <span>${totalMenLostAllTime}</span></p>
+			<p class="company-enemies-killed">Enemies Killed <span>${totalEnemiesKilledAllTime}</span></p>
+			<p class="company-missions-completed">Missions Completed <span>${totalMissionsCompleted}</span></p>
+			<p class="company-missions-failed">Missions Failed <span>${totalMissionsFailed}</span></p>
+			<p class="credit-balance">Credit Balance <span>$${creditBalance}</span></p>
+			<p class="company-level">Company Level <span>${companyLevel}</span></p>
+			<p class="company-inventory-status">Inventory Items/ Capacity <span>${totalItemsInInventory} / ${totalInventoryCapacity}</span></p>
 		</div>
-		<div class="company-stats p-2">
-			<p class="company-count">Total Men <span>12</span></p>
-			<p class="company-men-lost">Men Lost <span>3</span></p>
-			<p class="company-enemies-killed">Enemies Killed <span>18</span></p>
-			<p class="company-missions-completed">Missions Completed <span>6</span></p>
-			<p class="company-missions-failed">Missions Failed <span>2</span></p>
-			<p class="company-total-missions">Total Missions <span>8</span></p>
-			<p class="company-level">Company Level <span>2</span></p>
-			<p class="company-inventory-status">Inventory Items/ Capacity <span>34 / 70</span></p>
-		</div>
-		<div class="company-level-bar-wrapper p-2">
-			<p class="m-0">Level 2</p>
-			<div class="company-level-progress ">
-				<div class="progress-bar"></div>
-			</div>
-		</div>
-		<div class="company-actions grid grid-8-col p-2">
-			<button id="company-go-home" class="mbtn icon-btn">
-				<img class="grid-img-fit" src="/images/ui/square/${Images.btn.sq_home}" alt="Go Home"/>
-			</button>
-			<button id="company-go-market" class="mbtn icon-btn">
-				<img class="grid-img-fit" src="/images/ui/square/${Images.btn.sq_market}" alt="Go To Market"/>
-			</button>
-			<button id="company-go-roster" class="mbtn icon-btn">
-				<img class="grid-img-fit" src="/images/ui/square/${Images.btn.sq_list_1}" alt="Go To Roster"/>
-			</button>
-			<button id="company-go-training" class="mbtn icon-btn">
-				<img class="grid-img-fit" src="/images/ui/square/${Images.btn.sq_training}" alt="Go To Training"/>
-			</button>
-			<button id="company-go-missions" class="mbtn icon-btn">
-				<img class="grid-img-fit" src="/images/ui/square/${Images.btn.sq_mission}" alt="Go To Missions"/>
-			</button>
-			<button id="company-go-inventory" class="mbtn icon-btn">
-				<img class="grid-img-fit" src="/images/ui/square/inventory_button.png" alt="Go To Inventory"/>
-			</button>
-			<button id="company-go-memorial" class="mbtn icon-btn">
-				<img class="grid-img-fit" src="/images/ui/square/heroes_button.png" alt="Go To Fallen Heroes"/>
-			</button>
-			<button id="company-go-abilities" class="mbtn icon-btn">
-				<img class="grid-img-fit" src="/images/ui/square/list_2_button.png" alt="Go To Abilities"/>
-			</button>
-		</div>
+	`;
+  const promptToSelectMen = `
+	<div class="flex align-center justify-center w-100">
+		<button id="select-men" class="mbtn green">Build Roster</button>
 	</div>
 	`;
+
+  return `
+  <div id="campaign-home-screen" class="flex h-100 column justify-between">
+    <div id="company-meta" class="p-2">
+      <div class="company-name flex justify-between align-center m-0">
+        <img width="80" src="/images/ui/${companyUnitPatch}"/>
+        <div>
+            <span class="ms-2">${companyName}</span>
+            <p class="company-commander text-end">Commander: ${companyCommander}</p>
+        </div>
+      </div>
+    </div>
+
+    ${totalMenInCompany > 0 ? stats : promptToSelectMen}
+
+    <div class="company-level-bar-wrapper">
+      <p class="ms-2 mb-1">Level ${companyLevel}</p>
+      <div class="company-level-progress">
+        <div class="progress-bar" data-experience="${companyExperience}"></div>
+      </div>
+    </div>
+
+    <div class="company-actions grid grid-8-col p-2">
+      ${[
+        ["company-go-home", "Go Home", Images.btn.sq_home],
+        ["company-go-market", "Market", Images.btn.sq_market],
+        ["company-go-roster", "Company Roster", Images.btn.sq_list_1],
+        ["company-go-training", "Training", Images.btn.sq_training],
+        ["company-go-missions", "Missions", Images.btn.sq_mission],
+        ["company-go-inventory", "Company Inventory", "inventory_button.png"],
+        ["company-go-memorial", "Memorial Wall", "heroes_button.png"],
+        ["company-go-abilities", "Company Abilities", "list_2_button.png"],
+      ]
+        .map(
+          ([id, tooltip, img]) => `
+        <div class="flip-container">
+          <button id="${id}" class="mbtn icon-btn flip-btn" data-tooltip="${tooltip}">
+            <div class="flipper">
+              <div class="front-face">
+                <img class="grid-img-fit" src="/images/ui/square/${img}" alt="${tooltip}" />
+              </div>
+              <div class="back-face">${tooltip}</div>
+            </div>
+          </button>
+        </div>
+      `,
+        )
+        .join("")}
+    </div>
+  </div>
+`;
 };

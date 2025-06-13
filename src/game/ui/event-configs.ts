@@ -140,9 +140,77 @@ export function eventConfigs() {
     },
   ];
 
+  const companyHomeEventConfig: HandlerInitConfig[] = [
+    {
+      selector: DOM.company.home,
+      eventType: "click",
+      callback: () => {
+        console.log("clicking home");
+        UiManager.selectCompanyHomeButton(DOM.company.home);
+      },
+    },
+    {
+      selector: DOM.company.heroes,
+      eventType: "click",
+      callback: () => {
+        console.log("clicking heroes");
+        UiManager.selectCompanyHomeButton(DOM.company.heroes);
+      },
+    },
+    {
+      selector: DOM.company.abilities,
+      eventType: "click",
+      callback: () => {
+        console.log("clicking abilities");
+        UiManager.selectCompanyHomeButton(DOM.company.abilities);
+      },
+    },
+    {
+      selector: DOM.company.roster,
+      eventType: "click",
+      callback: () => {
+        console.log("clicking roster");
+        UiManager.selectCompanyHomeButton(DOM.company.roster);
+      },
+    },
+    {
+      selector: DOM.company.missions,
+      eventType: "click",
+      callback: () => {
+        console.log("clicking missions");
+        UiManager.selectCompanyHomeButton(DOM.company.missions);
+      },
+    },
+    {
+      selector: DOM.company.market,
+      eventType: "click",
+      callback: () => {
+        console.log("clicking market");
+        UiManager.selectCompanyHomeButton(DOM.company.market);
+      },
+    },
+    {
+      selector: DOM.company.training,
+      eventType: "click",
+      callback: () => {
+        console.log("clicking training");
+        UiManager.selectCompanyHomeButton(DOM.company.training);
+      },
+    },
+    {
+      selector: DOM.company.inventory,
+      eventType: "click",
+      callback: () => {
+        console.log("clicking inventory");
+        UiManager.selectCompanyHomeButton(DOM.company.inventory);
+      },
+    },
+  ];
+
   return {
     gameSetup: () => gameSetupEventConfig,
     confirmationScreen: () => gameConfirmationEventConfig,
     mainMenu: () => mainMenuEventConfig,
+    companyHome: () => companyHomeEventConfig,
   };
 }
