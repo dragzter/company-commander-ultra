@@ -12,6 +12,11 @@ import { DomEventManager } from "../event-handlers/dom-event-manager.ts";
 import { usePlayerCompanyStore } from "../../store/ui-store.ts";
 import { UiManager } from "./ui-manager.ts";
 import { DOM } from "../../constants/css-selectors.ts";
+import {
+  marketTemplate,
+  troopsMarketTemplate,
+} from "../html-templates/market-templates.ts";
+import { Styler } from "../../utils/styler-manager.ts";
 
 /**
  * Manager which templates are displayed.  Orchestrates all the things that need to happen when
@@ -102,12 +107,8 @@ function ScreenManager() {
 
   function createCompanyHomePage() {
     UiManager.clear.center();
-    const { companyName, commanderName, companyUnitPatchURL } =
-      usePlayerCompanyStore.getState();
 
-    const content = parseHTML(
-      companyHomePageTemplate(companyName, commanderName, companyUnitPatchURL),
-    );
+    const content = parseHTML(companyHomePageTemplate());
     center.appendChild(content as Element);
 
     // Set home button as selected
@@ -123,8 +124,48 @@ function ScreenManager() {
       );
     });
 
-    console.log(center);
+    Styler.setCenterBG("bg_81.jpg", true);
+
     show.center();
+  }
+
+  function createMarketPage() {
+    UiManager.clear.center();
+
+    const content = parseHTML(marketTemplate());
+    center.appendChild(content as Element);
+    const eventsConfig = [
+      ...eventConfigs().companyHome(),
+      ...eventConfigs().market(),
+    ];
+
+    eventsConfig.forEach((config) => {
+      _DomHandlers.initHandlers(
+        config.eventType,
+        config.selector,
+        config.callback,
+      );
+    });
+
+    Styler.setCenterBG("bg_store_88.jpg", true);
+  }
+
+  function createTroopsPage() {
+    UiManager.clear.center();
+    const content = parseHTML(troopsMarketTemplate());
+    center.appendChild(content as Element);
+
+    const eventsConfig = [...eventConfigs().companyHome()];
+    eventsConfig.forEach((config) => {
+      _DomHandlers.initHandlers(
+        config.eventType,
+        config.selector,
+        config.callback,
+      );
+    });
+
+    UiManager.selectCompanyHomeButton(DOM.company.market);
+    Styler.setCenterBG("bg_76.jpg", true);
   }
 
   return {
@@ -133,6 +174,8 @@ function ScreenManager() {
       confirmScreen: () => createConfirmationScreen(),
       mainMenu: () => createMainMenu(),
       companyHomePage: () => createCompanyHomePage(),
+      createMarketPage,
+      createTroopsPage,
     },
   };
 }

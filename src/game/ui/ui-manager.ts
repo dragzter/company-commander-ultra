@@ -12,7 +12,6 @@ import {
   type GameStep,
   usePlayerCompanyStore,
 } from "../../store/ui-store.ts";
-import { Images } from "../../constants/images.ts";
 
 /**
  * The most high level UI controller of the game.  UiManager is able to consume and initiate all UI
@@ -39,6 +38,7 @@ function UiManager() {
 
   function handleGameStep(gameStep: string) {
     console.log("we are at ", gameStep);
+    Styler.setCenterBG("bg_1.jpg", true);
     const loadGameAt = {
       [GAME_STEPS.at_intro_0]: () => initMainMenu(),
       [GAME_STEPS.at_main_menu_1]: () => initMainMenu(),
@@ -60,6 +60,10 @@ function UiManager() {
       throw new Error("Element '#game-enter' is undefined, does it exist?");
     }
 
+    const state = usePlayerCompanyStore.getState();
+
+    state.initializeCompany();
+
     const gameEnter = s_(DOM.enterGame);
 
     gameEnter.addEventListener("click", () => {
@@ -77,8 +81,6 @@ function UiManager() {
 
       setTimeout(() => {
         s_(DOM.enterGameWrapper).remove();
-
-        Styler.setCenterBG(Images.bg.bg_2);
       }, 1000);
     });
   }
@@ -114,6 +116,11 @@ function UiManager() {
     s_(".setup-game-wrapper")?.remove();
   }
 
+  function renderSetupScreen() {
+    _setStep(GAME_STEPS.at_setup_screen_2);
+    _ScreenManager.generate.setupScreen();
+  }
+
   function createConfirmationScreen() {
     _setStep(GAME_STEPS.at_confirmation_screen_3);
     _ScreenManager.generate.confirmScreen();
@@ -124,17 +131,18 @@ function UiManager() {
     _ScreenManager.generate.companyHomePage();
   }
 
-  function renderSetupScreen() {
-    _setStep(GAME_STEPS.at_setup_screen_2);
-    _ScreenManager.generate.setupScreen();
-  }
-
   function renderRosterScreen() {
     console.log("rendering rtoster screen");
   }
 
   function renderMarketScreen() {
     console.log("rendering market screen");
+    _ScreenManager.generate.createMarketPage();
+  }
+
+  function renderMarketTroopsScreen() {
+    console.log("rendering the troops for hire");
+    _ScreenManager.generate.createTroopsPage();
   }
 
   function renderInventoryScreen() {
@@ -163,6 +171,7 @@ function UiManager() {
     renderSetupScreen,
     renderRosterScreen,
     renderMarketScreen,
+    renderMarketTroopsScreen,
     renderInventoryScreen,
     renderAbilitiesScreen,
     renderTrainingScreen,

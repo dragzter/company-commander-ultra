@@ -147,6 +147,7 @@ export function eventConfigs() {
       callback: () => {
         console.log("clicking home");
         UiManager.selectCompanyHomeButton(DOM.company.home);
+        UiManager.renderCompanyHomePage();
       },
     },
     {
@@ -171,6 +172,7 @@ export function eventConfigs() {
       callback: () => {
         console.log("clicking roster");
         UiManager.selectCompanyHomeButton(DOM.company.roster);
+        UiManager.renderRosterScreen();
       },
     },
     {
@@ -187,6 +189,17 @@ export function eventConfigs() {
       callback: () => {
         console.log("clicking market");
         UiManager.selectCompanyHomeButton(DOM.company.market);
+        UiManager.renderMarketScreen();
+      },
+    },
+    {
+      // This one only shows when there's no men in the company
+      selector: DOM.company.hireSoldiers,
+      eventType: "click",
+      callback: () => {
+        console.log("clicking market");
+        UiManager.selectCompanyHomeButton(DOM.company.market);
+        UiManager.renderMarketScreen();
       },
     },
     {
@@ -207,10 +220,21 @@ export function eventConfigs() {
     },
   ];
 
+  const marketEventConfig: HandlerInitConfig[] = [
+    {
+      selector: DOM.market.marketTroopsLink,
+      eventType: "click",
+      callback: () => {
+        UiManager.renderMarketTroopsScreen();
+      },
+    },
+  ];
+
   return {
     gameSetup: () => gameSetupEventConfig,
     confirmationScreen: () => gameConfirmationEventConfig,
     mainMenu: () => mainMenuEventConfig,
     companyHome: () => companyHomeEventConfig,
+    market: () => marketEventConfig,
   };
 }

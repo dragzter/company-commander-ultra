@@ -1,9 +1,4 @@
-import {
-  ITEM_TYPES,
-  type ItemsVolume,
-  type MedItem,
-  RARITY,
-} from "../types.ts";
+import { ITEM_TYPES, type ItemsVolume, type MedItem, RARITY } from "./types.ts";
 
 export const MedicalItems: ItemsVolume<MedItem> = {
   common: {
@@ -15,7 +10,7 @@ export const MedicalItems: ItemsVolume<MedItem> = {
       description:
         "Standard-issue Combat MedKit.  Used for treating battlefield injuries",
       usable: true,
-      quantity: 1,
+      uses: 2,
       target: "friendly",
       tags: ["medical"],
       effect: {
@@ -35,12 +30,12 @@ export const MedicalItems: ItemsVolume<MedItem> = {
       description:
         "Standard-issue Stim Pack.  No addictive properties whatsoever.",
       usable: true,
-      quantity: 1,
+      uses: 1,
       target: "friendly",
       tags: ["medical"],
       effect: {
         type: "heal",
-        description: "Recovers HP",
+        description: "Increases Awareness and Toughness",
         effectiveness: 3,
         effect_value: 20,
         duration: 1,
@@ -56,7 +51,7 @@ export const MedicalItems: ItemsVolume<MedItem> = {
       rarity: "common",
       description: "A Highly potent stimulant manufactured in former Colombia.",
       usable: true,
-      quantity: 1,
+      uses: 1,
       target: "friendly",
       tags: ["medical"],
       effect: {
@@ -77,7 +72,7 @@ export const MedicalItems: ItemsVolume<MedItem> = {
         "A hormonal stimulant that acts on the pain receptors as well as increasing aggression" +
         " and response time.",
       usable: true,
-      quantity: 1,
+      uses: 1,
       target: "friendly",
       tags: ["medical"],
       effect: {
@@ -104,7 +99,7 @@ export const MedicalItems: ItemsVolume<MedItem> = {
         " this substance has been lost in time, all existing units can be traced to a hidden" +
         " Iron Corps facility in what used to be New Mexico.",
       usable: true,
-      quantity: 1,
+      uses: 1,
       target: "friendly",
       tags: ["medical"],
       effect: {

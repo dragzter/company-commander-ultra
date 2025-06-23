@@ -12,6 +12,7 @@ export const DOM = {
   company: {
     home: "#company-go-home",
     market: "#company-go-market",
+    hireSoldiers: "#select-men",
     roster: "#company-go-roster",
     training: "#company-go-training",
     missions: "#company-go-missions",
@@ -19,6 +20,18 @@ export const DOM = {
     heroes: "#company-go-memorial",
     abilities: "#company-go-abilities",
     all: ".company-actions button",
+  },
+  market: {
+    marketTroopsLink: "#market-troops",
+    marketArmorLink: "#market-armor",
+    marketWeaponsLink: "#marketWeapons",
+    marketSuppliesLink: "#market-supplies",
+    screens: {
+      troops: "#troops-page",
+      weapons: "#weapons-page",
+      armor: "#armor-page",
+      supplies: "#supply-page",
+    },
   },
   enterGameWrapper: "#game-enter-wrapper",
   enterGame: "#game-enter",

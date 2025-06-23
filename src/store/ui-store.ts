@@ -1,6 +1,7 @@
 import { createStore } from "zustand/vanilla";
 import { persist } from "zustand/middleware";
 import { URLReader } from "../utils/url-reader.ts";
+import type { Company, Soldier } from "../game/entities/types.ts";
 
 const { nocache } = URLReader(document.location.search);
 const skipPersistence = nocache === "true";
@@ -33,6 +34,7 @@ type CompanyStore = {
   totalInventoryCapacity: number;
   companyExperience: number;
   inventory: [];
+  company: Company;
 
   // Setters
   addCredits: (n: number) => void;
@@ -41,6 +43,9 @@ type CompanyStore = {
   setCompanyUnitPatch: (patchImgUrl: string) => void;
   setCompanyName: (companyName: string) => void;
   setGameStep: (step: GameStep) => void;
+  addSoldierToCompany: (soldier: Soldier) => void;
+
+  initializeCompany: () => void;
 
   // Booleans
   canProceedToLaunch: () => boolean;
@@ -66,6 +71,26 @@ export const usePlayerCompanyStore = createStore<CompanyStore>()(
         totalItemsInInventory: 0,
         inventory: [],
         companyExperience: 0,
+        company: {} as Company,
+
+        addSoldierToCompany: (soldier: Soldier) => {
+          const currentCompany = get().company;
+          currentCompany.soldiers.push(soldier);
+          set({ company: { ...currentCompany } });
+        },
+
+        initializeCompany: () => {
+          set({
+            company: {
+              level: 0,
+              experience: 0,
+              name: "",
+              soldiers: [],
+              companyName: "",
+              commander: "",
+            },
+          });
+        },
 
         // Actions
         addCredits: (creds: number) => ({
@@ -75,9 +100,21 @@ export const usePlayerCompanyStore = createStore<CompanyStore>()(
           creditBalance: get().creditBalance - creds,
         }),
         setGameStep: (step: GameStep) => set({ gameStep: step }),
-        setCompanyName: (n: string) => set({ companyName: n }),
+        setCompanyName: (n: string) => {
+          set({ companyName: n });
+
+          const currentCompany = { ...get().company };
+          currentCompany.companyName = n;
+          set({ company: { ...currentCompany } });
+        },
         setCompanyUnitPatch: (url: string) => set({ companyUnitPatchURL: url }),
-        setCommanderName: (n: string) => set({ commanderName: n }),
+        setCommanderName: (n: string) => {
+          set({ commanderName: n });
+
+          const currentCompany = { ...get().company };
+          currentCompany.commander = n;
+          set({ company: { ...currentCompany } });
+        },
         canProceedToLaunch: () => {
           return (
             get().companyName.length > 4 &&
@@ -106,6 +143,20 @@ export const usePlayerCompanyStore = createStore<CompanyStore>()(
           inventory: [],
           companyExperience: 0,
           creditBalance: 0,
+          company: {} as Company,
+
+          initializeCompany: () => {
+            set({
+              company: {
+                level: 0,
+                experience: 0,
+                name: "",
+                soldiers: [],
+                companyName: "",
+                commander: "",
+              },
+            });
+          },
 
           // Actions
           addCredits: (creds: number) => ({
@@ -114,11 +165,28 @@ export const usePlayerCompanyStore = createStore<CompanyStore>()(
           subtractCredits: (creds: number) => ({
             creditBalance: get().creditBalance - creds,
           }),
-          setCompanyName: (n: string) => set({ companyName: n }),
+          setCompanyName: (n: string) => {
+            set({ companyName: n });
+
+            const currentCompany = { ...get().company };
+            currentCompany.companyName = n;
+            set({ company: { ...currentCompany } });
+          },
           setGameStep: (step: GameStep) => set({ gameStep: step }),
           setCompanyUnitPatch: (url: string) =>
             set({ companyUnitPatchURL: url }),
-          setCommanderName: (n: string) => set({ commanderName: n }),
+          setCommanderName: (n: string) => {
+            set({ commanderName: n });
+
+            const currentCompany = { ...get().company };
+            currentCompany.commander = n;
+            set({ company: { ...currentCompany } });
+          },
+          addSoldierToCompany: (soldier: Soldier) => {
+            const currentCompany = get().company;
+            currentCompany.soldiers.push(soldier);
+            set({ company: { ...currentCompany } });
+          },
           canProceedToLaunch: () => {
             return (
               get().companyName.length > 4 &&

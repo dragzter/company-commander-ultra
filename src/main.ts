@@ -3,13 +3,12 @@ import "./style/animate.css";
 import "./utils/name-utils.ts";
 
 import "./game";
-import { URLReader } from "./utils/url-reader.ts";
+// import { GetItem } from "./constants/items/item-manager.ts";
 import { Images } from "./constants/images.ts";
-import { GetItem } from "./constants/items/item-manager.ts";
+import { SoldierManager } from "./game/entities/soldier-manager.ts";
+
+console.log(SoldierManager.generateFirstList());
+
+// const params = URLReader(document.location.search);
 
 console.log(Images);
-
-const params = URLReader(document.location.search);
-
-console.log(params);
-console.log(GetItem.common.ranged_weapon());

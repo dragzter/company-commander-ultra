@@ -24,14 +24,14 @@ export const gameSetupTemplate = `<div class="setup-game-wrapper">
                         <div class="step-body">
                             <h3>Choose Your Unit Patch</h3>
                             <div class="grid grid-8-col grid-align-center grid-justify-center">
-                                <img class="grid-img-fit" src="/images/ui/patch_1.png" data-img="patch_1.png" alt="Unit Patch">
-                                <img class="grid-img-fit" src="/images/ui/patch_2.png" data-img="patch_2.png" alt="Unit Patch">
-                                <img class="grid-img-fit" src="/images/ui/patch_3.png" data-img="patch_3.png" alt="Unit Patch">
-                                <img class="grid-img-fit" src="/images/ui/patch_4.png" data-img="patch_4.png" alt="Unit Patch">
-                                <img class="grid-img-fit" src="/images/ui/patch_5.png" data-img="patch_5.png" alt="Unit Patch">
-                                <img class="grid-img-fit" src="/images/ui/patch_6.png" data-img="patch_6.png" alt="Unit Patch">
-                                <img class="grid-img-fit" src="/images/ui/patch_7.png" data-img="patch_7.png" alt="Unit Patch">
-                                <img class="grid-img-fit" src="/images/ui/patch_8.png" data-img="patch_8.png" alt="Unit Patch">
+                                <img class="grid-img-fit" src="/images/unit-patches/patch_1.png" data-img="patch_1.png" alt="Unit Patch">
+                                <img class="grid-img-fit" src="/images/unit-patches/patch_2.png" data-img="patch_2.png" alt="Unit Patch">
+                                <img class="grid-img-fit" src="/images/unit-patches/patch_3.png" data-img="patch_3.png" alt="Unit Patch">
+                                <img class="grid-img-fit" src="/images/unit-patches/patch_4.png" data-img="patch_4.png" alt="Unit Patch">
+                                <img class="grid-img-fit" src="/images/unit-patches/patch_5.png" data-img="patch_5.png" alt="Unit Patch">
+                                <img class="grid-img-fit" src="/images/unit-patches/patch_6.png" data-img="patch_6.png" alt="Unit Patch">
+                                <img class="grid-img-fit" src="/images/unit-patches/patch_7.png" data-img="patch_7.png" alt="Unit Patch">
+                                <img class="grid-img-fit" src="/images/unit-patches/patch_8.png" data-img="patch_8.png" alt="Unit Patch">
                             </div>
                         </div>
 
@@ -56,7 +56,7 @@ export const setupConfirmationTemplate = (
 		<p class="helper-text">Dwight D. Eisenhower</p>
 	</div>
 
-	<img width="170" class="mb-2" src="images/ui/${unitPatch}" alt="Company Patch">
+	<img width="170" class="mb-2" src="images/unit-patches/${unitPatch}" alt="Company Patch">
 	<div class="flex column">
 		<button id="launch-game" class="green mbtn mb-3">Begin</button>
 		<button id="go-back" class="red mbtn">Go Back</button>
@@ -78,11 +78,62 @@ export const mainMenuTemplate = () => {
 	`;
 };
 
-export const companyHomePageTemplate = (
-  companyName: string,
-  companyCommander: string,
-  companyUnitPatch: string,
-) => {
+export const companyHeaderPartial = (title = "") => {
+  const store = usePlayerCompanyStore.getState();
+  const { companyUnitPatchURL, companyName, commanderName } = store;
+  let titleHtml = "";
+
+  if (title) {
+    titleHtml = `<h3>${title}</h3>`;
+  }
+
+  return `
+      <div id="company-meta" class="p-2">
+      <div class="company-name flex justify-between align-center m-0">
+        <img width="80" src="/images/unit-patches/${companyUnitPatchURL}"/>
+        ${titleHtml}
+        <div>
+            <span class="ms-2">${companyName}</span>
+            <p class="company-commander text-end">Commander: ${commanderName}</p>
+        </div>
+      </div>
+    </div>
+  `;
+};
+
+export const companyActionsTemplate = () => {
+  return `
+  <div class="company-actions grid grid-8-col p-2">
+      ${[
+        ["company-go-home", "Go Home", Images.btn.sq_home],
+        ["company-go-market", "Market", Images.btn.sq_market],
+        ["company-go-roster", "Company Roster", Images.btn.sq_list_1],
+        ["company-go-training", "Training", Images.btn.sq_training],
+        ["company-go-missions", "Missions", Images.btn.sq_mission],
+        ["company-go-inventory", "Company Inventory", "inventory_button.png"],
+        ["company-go-memorial", "Memorial Wall", "heroes_button.png"],
+        ["company-go-abilities", "Company Abilities", "list_2_button.png"],
+      ]
+        .map(
+          ([id, tooltip, img]) => `
+        <div class="flip-container">
+          <button id="${id}" class="mbtn icon-btn flip-btn" data-tooltip="${tooltip}">
+            <div class="flipper">
+              <div class="front-face">
+                <img class="grid-img-fit" src="/images/ui/square/${img}" alt="${tooltip}" />
+              </div>
+              <div class="back-face">${tooltip}</div>
+            </div>
+          </button>
+        </div>
+      `,
+        )
+        .join("")}
+    </div>
+  `;
+};
+
+export const companyHomePageTemplate = () => {
   const store = usePlayerCompanyStore.getState();
   const {
     totalMenInCompany,
@@ -111,21 +162,13 @@ export const companyHomePageTemplate = (
 	`;
   const promptToSelectMen = `
 	<div class="flex align-center justify-center w-100">
-		<button id="select-men" class="mbtn green">Build Roster</button>
+		<button id="select-men" class="mbtn red">Visit Market</button>
 	</div>
 	`;
 
   return `
   <div id="campaign-home-screen" class="flex h-100 column justify-between">
-    <div id="company-meta" class="p-2">
-      <div class="company-name flex justify-between align-center m-0">
-        <img width="80" src="/images/ui/${companyUnitPatch}"/>
-        <div>
-            <span class="ms-2">${companyName}</span>
-            <p class="company-commander text-end">Commander: ${companyCommander}</p>
-        </div>
-      </div>
-    </div>
+    ${companyHeaderPartial()}
 
     ${totalMenInCompany > 0 ? stats : promptToSelectMen}
 
@@ -136,33 +179,7 @@ export const companyHomePageTemplate = (
       </div>
     </div>
 
-    <div class="company-actions grid grid-8-col p-2">
-      ${[
-        ["company-go-home", "Go Home", Images.btn.sq_home],
-        ["company-go-market", "Market", Images.btn.sq_market],
-        ["company-go-roster", "Company Roster", Images.btn.sq_list_1],
-        ["company-go-training", "Training", Images.btn.sq_training],
-        ["company-go-missions", "Missions", Images.btn.sq_mission],
-        ["company-go-inventory", "Company Inventory", "inventory_button.png"],
-        ["company-go-memorial", "Memorial Wall", "heroes_button.png"],
-        ["company-go-abilities", "Company Abilities", "list_2_button.png"],
-      ]
-        .map(
-          ([id, tooltip, img]) => `
-        <div class="flip-container">
-          <button id="${id}" class="mbtn icon-btn flip-btn" data-tooltip="${tooltip}">
-            <div class="flipper">
-              <div class="front-face">
-                <img class="grid-img-fit" src="/images/ui/square/${img}" alt="${tooltip}" />
-              </div>
-              <div class="back-face">${tooltip}</div>
-            </div>
-          </button>
-        </div>
-      `,
-        )
-        .join("")}
-    </div>
+    ${companyActionsTemplate()}
   </div>
 `;
 };

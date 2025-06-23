@@ -3,7 +3,8 @@ import {
   type ItemsVolume,
   RARITY,
   type ThrowableItem,
-} from "../types.ts";
+} from "./types.ts";
+import { DAMAGE_TYPES } from "../types.ts";
 
 export const ThrowableItems: ItemsVolume<ThrowableItem> = {
   common: {
@@ -15,9 +16,9 @@ export const ThrowableItems: ItemsVolume<ThrowableItem> = {
       description:
         "Standard-issue fragmentation grenade used to clear enemy positions.",
       usable: true,
-      quantity: 1,
       damage: 60,
       damage_type: "explosive",
+      icon: "throwable_0.png",
       target: "enemy_area",
       tags: ["explosive", "throwable"],
     },
@@ -29,10 +30,10 @@ export const ThrowableItems: ItemsVolume<ThrowableItem> = {
       description:
         "Non-lethal stun grenade used for room clearing and disorientation.",
       usable: true,
-      quantity: 1,
       damage: 2,
       damage_type: "explosive",
       tags: ["psychological", "throwable"],
+      icon: "throwable_6.png",
       target: "enemy_area",
       effect: {
         type: "debuff",
@@ -54,28 +55,30 @@ export const ThrowableItems: ItemsVolume<ThrowableItem> = {
       quantity: 1,
       damage: 0,
       damage_type: "chemical",
+      icon: "throwable_3.png",
       target: "enemy_area",
       effect: {
         type: "debuff",
         duration: 3,
         effectiveness: 4,
         result: "concealment",
-        description:
-          "Temporarily incapacitates with a loud bang and intense flash.",
+        description: "Temporarily conceals you with smoke.",
       },
       tags: ["psychological", "throwable"],
     },
-    ied_molotov: {
-      id: "ied_molotov",
-      name: "Improvised Incendiary (Molotov)",
+    incendiary_grenade: {
+      id: "incendiary_grenade",
+      name: "HE7 Incendiary Grenade",
       type: ITEM_TYPES.throwable,
       rarity: "common",
       description:
-        "Crude but effective incendiary weapon made from a glass bottle and flammable liquid.",
+        "High explosive napalm grenade, showers effective area with highly flammable napalm gel" +
+        " upon detonation.",
       usable: true,
       quantity: 1,
       damage: 35,
       damage_type: "explosive",
+      icon: "throwable_3.png",
       target: "enemy_area",
       tags: ["thermal", "throwable"],
       effect: {
@@ -91,10 +94,12 @@ export const ThrowableItems: ItemsVolume<ThrowableItem> = {
       id: "nbc_neutralizer",
       name: "NBC Neutralizer",
       type: ITEM_TYPES.throwable,
+      damage_type: DAMAGE_TYPES.neutral,
       rarity: "common",
       description: "Neutralized Nuclear, Biological and Chemical gases.",
       usable: true,
       quantity: 1,
+      icon: "throwable_3.png",
       target: "friendly_area",
       tags: ["neutralizer", "throwable"],
       effect: {
@@ -118,6 +123,7 @@ export const ThrowableItems: ItemsVolume<ThrowableItem> = {
       quantity: 1,
       damage: 35,
       damage_type: "kinetic",
+      icon: "throwable_3.png",
       target: "enemy",
       tags: ["kinetic", "throwable"],
     },
@@ -134,6 +140,7 @@ export const ThrowableItems: ItemsVolume<ThrowableItem> = {
       quantity: 1,
       damage: 80,
       damage_type: "explosive",
+      icon: "throwable_0.png",
       target: "enemy_area",
       tags: ["explosive", "throwable"],
     },
@@ -147,6 +154,7 @@ export const ThrowableItems: ItemsVolume<ThrowableItem> = {
       quantity: 1,
       damage: 80,
       damage_type: "explosive",
+      icon: "throwable_5.png",
       target: "enemy",
       tags: ["explosive", "throwable"],
     },
@@ -161,6 +169,7 @@ export const ThrowableItems: ItemsVolume<ThrowableItem> = {
       damage: 0,
       damage_type: "chemical",
       tags: ["chemical", "throwable"],
+      icon: "throwable_1.png",
       target: "enemy_area",
       effect: {
         type: "debuff",
@@ -178,9 +187,9 @@ export const ThrowableItems: ItemsVolume<ThrowableItem> = {
       description: "Emits a burst of harmful radiation.",
       usable: true,
       quantity: 1,
-      icon: "",
       damage: 0,
       damage_type: "radiation",
+      icon: "throwable_5.png",
       target: "enemy_area",
       tags: ["radiation", "throwable"],
       effect: {
@@ -195,15 +204,16 @@ export const ThrowableItems: ItemsVolume<ThrowableItem> = {
   },
   epic: {
     mind_ripper: {
-      id: "mind_ripper",
-      name: "Mind Ripper",
+      id: "psychic_shredder",
+      name: "Psychic Shredder",
       type: ITEM_TYPES.throwable,
       rarity: "epic",
-      description: "Assaults the psyche with unbearable sound.",
+      description: "Assaults the psyche with unbearable sound invoking terror.",
       usable: true,
       quantity: 1,
       damage: 0,
       damage_type: "psychological",
+      icon: "throwable_2.png",
       target: "enemy_area",
       tags: ["psychological", "throwable"],
       effect: {

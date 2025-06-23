@@ -19,6 +19,10 @@ export function clrHash(selector: string) {
   return selector.replace("#", "");
 }
 
+/**
+ * Wrapper for querySelector or getElementById
+ * @param selector
+ */
 export function s_(selector: string) {
   if (selector.includes("#")) {
     return document.getElementById(clrHash(selector)) as HTMLElement;
@@ -26,6 +30,10 @@ export function s_(selector: string) {
   return document.querySelector(selector) as HTMLElement;
 }
 
+/**
+ * Wrapper for querySelectorAll
+ * @param selector
+ */
 export function sa_(selector: string) {
   return document.querySelectorAll(selector);
 }

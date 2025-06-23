@@ -1,15 +1,11 @@
-import {
-  type BallisticWeapon,
-  ITEM_TYPES,
-  type ItemsVolume,
-} from "../types.ts";
+import { type BallisticWeapon, ITEM_TYPES, type ItemsVolume } from "./types.ts";
 
 export const BallisticItems: ItemsVolume<BallisticWeapon> = {
   common: {
     m5_assault_rifle: {
       id: "m5_assault_rifle",
       name: "M5 Assault Rifle",
-      type: ITEM_TYPES.ranged_weapon,
+      type: ITEM_TYPES.ballistic_weapon,
       rarity: "common",
       description: "Standard-issue Infantry Rifle.",
       usable: true,
@@ -23,7 +19,7 @@ export const BallisticItems: ItemsVolume<BallisticWeapon> = {
     hunting_rifle: {
       id: "hunting_rifle",
       name: "Hunting Rifle",
-      type: ITEM_TYPES.ranged_weapon,
+      type: ITEM_TYPES.ballistic_weapon,
       rarity: "common",
       description: "Common hunting rifle.",
       usable: true,
@@ -37,7 +33,7 @@ export const BallisticItems: ItemsVolume<BallisticWeapon> = {
     damaged_war_rifle: {
       id: "damaged_war_rifle",
       name: "War Rifle",
-      type: ITEM_TYPES.ranged_weapon,
+      type: ITEM_TYPES.ballistic_weapon,
       rarity: "common",
       description: "This baby has seen some action.",
       usable: true,
@@ -51,7 +47,7 @@ export const BallisticItems: ItemsVolume<BallisticWeapon> = {
     s44_galt: {
       id: "s44_galt",
       name: "S44 Galt Carbine",
-      type: ITEM_TYPES.ranged_weapon,
+      type: ITEM_TYPES.ballistic_weapon,
       rarity: "common",
       description:
         "Developed in former Belgium, this mid-range carbine is a staple for light infantry.",
@@ -66,7 +62,7 @@ export const BallisticItems: ItemsVolume<BallisticWeapon> = {
     double_barrel_shotgun: {
       id: "double_barrel_shotgun",
       name: "Double barrel shotgun",
-      type: ITEM_TYPES.ranged_weapon,
+      type: ITEM_TYPES.ballistic_weapon,
       rarity: "common",
       description:
         "Usually hanging over a fireplace in a log cabin, but now in your hands.",
@@ -81,7 +77,7 @@ export const BallisticItems: ItemsVolume<BallisticWeapon> = {
     m201_automatic_shotgun: {
       id: "m201_automatic_shotgun",
       name: "M201 Automatic Shotgun",
-      type: ITEM_TYPES.ranged_weapon,
+      type: ITEM_TYPES.ballistic_weapon,
       rarity: "common",
       description:
         "Developed for the law enforcement sector, this highly reliable shotgun serves as an" +
@@ -97,7 +93,7 @@ export const BallisticItems: ItemsVolume<BallisticWeapon> = {
     lsaw_guardsman: {
       id: "lsaw_guardsman",
       name: "LSAW Guardsman Rifle",
-      type: ITEM_TYPES.ranged_weapon,
+      type: ITEM_TYPES.ballistic_weapon,
       rarity: "common",
       description:
         "High caliber counter sniping rifle for the professional on the move.",
@@ -112,12 +108,12 @@ export const BallisticItems: ItemsVolume<BallisticWeapon> = {
     apd_assault_rifle: {
       id: "apd_assault_rifle",
       name: "APD-2 Assault Rifle",
-      type: ITEM_TYPES.ranged_weapon,
+      type: ITEM_TYPES.ballistic_weapon,
       rarity: "common",
       description:
         "Based on the venerable AK-47, this rifle boasts a higher rate of fire.",
       usable: true,
-      icon: "",
+      icon: "weapon_23.png",
       quantity: 1,
       damage: 8,
       damage_type: "ballistic",
@@ -127,17 +123,33 @@ export const BallisticItems: ItemsVolume<BallisticWeapon> = {
     m1205_commando: {
       id: "m1205_commando",
       name: "M1205 Commando Submachine Gun",
-      type: ITEM_TYPES.ranged_weapon,
+      type: ITEM_TYPES.ballistic_weapon,
       rarity: "common",
       description:
         "Compact and reliable, this submachine gun is capable of horrific damage.",
       usable: true,
-      icon: "",
+      icon: "weapon_9.png",
       quantity: 1,
-      damage: 14,
+      damage: 11,
       damage_type: "ballistic",
       target: "enemy",
       speed_base: 6,
+    },
+    fasw_machine_gun: {
+      id: "fasw_machine_gun",
+      name: "FASW Machine Gun",
+      type: ITEM_TYPES.ballistic_weapon,
+      rarity: "common",
+      description:
+        "Tried and true squad assault automatic weapon system excellent for providing cover fire" +
+        " and suppressing enemy combatants.",
+      usable: true,
+      icon: "weapon_27.png",
+      quantity: 1,
+      damage: 16,
+      damage_type: "ballistic",
+      target: "enemy",
+      speed_base: 5,
     },
   },
   rare: {},

@@ -1,6 +1,7 @@
 const bg = {
   bg_1: "bg_1.jpg",
   bg_2: "bg_2.jpg",
+  bg_76: "bg_76.jpg",
   bg_77: "bg_77.jpg",
   bg_78: "bg_78.jpg",
   bg_79: "bg_79.jpg",
@@ -17,6 +18,14 @@ const bg = {
   bg_90: "bg_90.jpg",
   bg_store_85: "bg_store_85.jpg",
   bg_store_88: "bg_store_88.jpg",
+  camo_1_84x84: "camo_1_84x84.jpg",
+  camo_1_800x800: "camo_1_800x800.jpg",
+  camo_2_84x84: "camo_2_84x84.jpg",
+  camo_2_800x800: "camo_2_800x800.jpg",
+  camo_3_84x84: "camo_3_84x84.jpg",
+  camo_3_800x800: "camo_3_800x800.jpg",
+  camo_4_84x84: "camo_4_84x84.jpg",
+  camo_4_800x800: "camo_4_800x800.jpg",
 };
 
 const btn = {
@@ -52,7 +61,7 @@ const icon = {
   star_inactive: "star_inactive.png",
 };
 
-const patch = {
+const player_patch = {
   patch_1: "patch_1.png",
   patch_2: "patch_2.png",
   patch_3: "patch_3.png",
@@ -62,6 +71,43 @@ const patch = {
   patch_7: "patch_7.png",
   patch_8: "patch_8.png",
 };
+
+const cpu_patch = {
+  patch_0: "patch_0.png",
+  patch_9: "patch_9.png",
+  patch_10: "patch_10.png",
+  patch_11: "patch_11.png",
+  patch_12: "patch_12.png",
+  patch_13: "patch_13.png",
+  patch_14: "patch_14.png",
+  patch_15: "patch_15.png",
+  patch_16: "patch_16.png",
+  patch_17: "patch_17.png",
+  patch_18: "patch_18.png",
+  patch_19: "patch_19.png",
+};
+
+/**
+ * Weapon & Armor Items
+ */
+const armorCount = 20;
+const ballisticWeaponsCount = 33;
+const throwableCount = 6;
+
+const armor: Record<string, string> = {};
+for (let i = 0; i < armorCount; i++) {
+  armor["armor_" + i] = `armor_${i}.png`;
+}
+
+const ballistic_weapon: Record<string, string> = {};
+for (let i = 0; i < ballisticWeaponsCount; i++) {
+  ballistic_weapon["weapon_" + i] = `weapon_${i}.png`;
+}
+
+const throwable: Record<string, string> = {};
+for (let i = 0; i < throwableCount; i++) {
+  throwable["weapon_" + i] = `throwable_${i}.png`;
+}
 
 /**
  * Portrait Avatar
@@ -102,10 +148,12 @@ export const Images = {
   btn,
   logo,
   icon,
-  patch,
+  player_patch,
+  cpu_patch,
   portrait,
   red_portrait,
   sand_portrait,
   blue_portrait,
   black_portrait,
+  Items: { armor, ballistic_weapon },
 };

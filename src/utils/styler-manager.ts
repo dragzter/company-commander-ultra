@@ -15,10 +15,14 @@ function styler() {
     el.style.borderRadius = "8px";
   }
 
-  function setCenterBG(img: string) {
+  function setCenterBG(img: string, applyOverlay = false) {
     center.style.backgroundImage = "url(images/bg/" + img + ")";
     center.style.backgroundRepeat = "no-repeat";
     center.style.backgroundSize = "cover";
+
+    if (applyOverlay) {
+      center.classList.add("overlay");
+    }
   }
 
   return { selectedWhite5, setCenterBG };

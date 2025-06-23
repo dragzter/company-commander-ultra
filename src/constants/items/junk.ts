@@ -3,7 +3,7 @@ import {
   type ItemsVolume,
   type JunkItem,
   RARITY,
-} from "../types.ts";
+} from "./types.ts";
 
 export const Junk: ItemsVolume<JunkItem> = {
   common: {
