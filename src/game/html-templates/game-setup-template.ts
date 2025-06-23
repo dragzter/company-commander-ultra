@@ -110,8 +110,8 @@ export const companyActionsTemplate = () => {
         ["company-go-roster", "Company Roster", Images.btn.sq_list_1],
         ["company-go-training", "Training", Images.btn.sq_training],
         ["company-go-missions", "Missions", Images.btn.sq_mission],
-        ["company-go-inventory", "Company Inventory", "inventory_button.png"],
-        ["company-go-memorial", "Memorial Wall", "heroes_button.png"],
+        ["company-go-inventory", "Company Inventory", Images.btn.sq_inventory],
+        ["company-go-memorial", "Memorial Wall", Images.btn.sq_heroes],
         ["company-go-abilities", "Company Abilities", "list_2_button.png"],
       ]
         .map(

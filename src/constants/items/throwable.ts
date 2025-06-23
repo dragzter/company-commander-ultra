@@ -16,7 +16,7 @@ export const ThrowableItems: ItemsVolume<ThrowableItem> = {
       description:
         "Standard-issue fragmentation grenade used to clear enemy positions.",
       usable: true,
-      damage: 60,
+      damage: 20,
       damage_type: "explosive",
       icon: "throwable_0.png",
       target: "enemy_area",
@@ -76,7 +76,7 @@ export const ThrowableItems: ItemsVolume<ThrowableItem> = {
         " upon detonation.",
       usable: true,
       quantity: 1,
-      damage: 35,
+      damage: 10,
       damage_type: "explosive",
       icon: "throwable_3.png",
       target: "enemy_area",
