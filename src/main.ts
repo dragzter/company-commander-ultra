@@ -9,6 +9,8 @@ import { SoldierManager } from "./game/entities/soldier-manager.ts";
 
 console.log(SoldierManager.generateFirstList());
 
+console.log(SoldierManager.getSoldierTraitProfile());
+
 // const params = URLReader(document.location.search);
 
 console.log(Images);

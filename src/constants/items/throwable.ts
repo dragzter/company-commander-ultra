@@ -78,7 +78,7 @@ export const ThrowableItems: ItemsVolume<ThrowableItem> = {
       quantity: 1,
       damage: 10,
       damage_type: "explosive",
-      icon: "throwable_3.png",
+      icon: "throwable_4.png",
       target: "enemy_area",
       tags: ["thermal", "throwable"],
       effect: {
@@ -99,7 +99,7 @@ export const ThrowableItems: ItemsVolume<ThrowableItem> = {
       description: "Neutralized Nuclear, Biological and Chemical gases.",
       usable: true,
       quantity: 1,
-      icon: "throwable_3.png",
+      icon: "throwable_7.png",
       target: "friendly_area",
       tags: ["neutralizer", "throwable"],
       effect: {
@@ -123,7 +123,7 @@ export const ThrowableItems: ItemsVolume<ThrowableItem> = {
       quantity: 1,
       damage: 35,
       damage_type: "kinetic",
-      icon: "throwable_3.png",
+      icon: "throwable_8.png",
       target: "enemy",
       tags: ["kinetic", "throwable"],
     },
@@ -140,7 +140,7 @@ export const ThrowableItems: ItemsVolume<ThrowableItem> = {
       quantity: 1,
       damage: 80,
       damage_type: "explosive",
-      icon: "throwable_0.png",
+      icon: "throwable_9.png",
       target: "enemy_area",
       tags: ["explosive", "throwable"],
     },
@@ -158,9 +158,9 @@ export const ThrowableItems: ItemsVolume<ThrowableItem> = {
       target: "enemy",
       tags: ["explosive", "throwable"],
     },
-    nerve_gas_vial: {
-      id: "nerve_gas_vial",
-      name: "Nerve Gas Vial",
+    nerve_gas_detonator: {
+      id: "nerve_gas_detonator",
+      name: "CM55 Nerve Gas Detonator",
       type: ITEM_TYPES.throwable,
       rarity: RARITY.rare,
       description: "A vile chemical agent that burns the skin.",
@@ -189,7 +189,7 @@ export const ThrowableItems: ItemsVolume<ThrowableItem> = {
       quantity: 1,
       damage: 0,
       damage_type: "radiation",
-      icon: "throwable_5.png",
+      icon: "throwable_10.png",
       target: "enemy_area",
       tags: ["radiation", "throwable"],
       effect: {

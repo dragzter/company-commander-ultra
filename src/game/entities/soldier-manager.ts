@@ -2,6 +2,7 @@ import {
   type Designation,
   type Soldier,
   SOLDIER_DESIGNATION,
+  TraitProfile,
 } from "./types.ts";
 import { v4 as uuidv4 } from "uuid";
 
@@ -16,6 +17,7 @@ import type {
   BallisticWeapon,
   Item,
 } from "../../constants/items/types.ts";
+import { getRandomValueFromStringArray } from "../../utils/random.ts";
 
 function SoldierManager() {
   const experienceIncreaseBase = 100;
@@ -86,6 +88,16 @@ function SoldierManager() {
     };
   }
 
+  function getSoldierTraitProfile() {
+    const profiles = Object.keys(TraitProfile);
+    const selectedProfile = getRandomValueFromStringArray(profiles);
+
+    return {
+      profile: selectedProfile,
+      traits: TraitProfile[selectedProfile],
+    };
+  }
+
   function generateFirstList(): Soldier[] {
     return [
       getNewSoldier(1, SOLDIER_DESIGNATION.rifleman),
@@ -111,6 +123,7 @@ function SoldierManager() {
     generateSupportManAtLevel: (lvl: number) =>
       getNewSoldier(lvl, SOLDIER_DESIGNATION.support),
     generateFirstList,
+    getSoldierTraitProfile,
   };
 }
 

@@ -28,6 +28,10 @@ const bg = {
   camo_4_800x800: "camo_4_800x800.jpg",
 };
 
+const junk = {
+  junk_0: "junk_0.png",
+};
+
 const btn = {
   btn_black: "btn-black.png",
   btn_blue: "btn-blue.png",
@@ -91,8 +95,8 @@ const cpu_patch = {
  * Weapon & Armor Items
  */
 const armorCount = 20;
-const ballisticWeaponsCount = 33;
-const throwableCount = 6;
+const ballisticWeaponsCount = 61;
+const throwableCount = 11;
 
 const armor: Record<string, string> = {};
 for (let i = 0; i < armorCount; i++) {
@@ -106,15 +110,17 @@ for (let i = 0; i < ballisticWeaponsCount; i++) {
 
 const throwable: Record<string, string> = {};
 for (let i = 0; i < throwableCount; i++) {
-  throwable["weapon_" + i] = `throwable_${i}.png`;
+  throwable["throwable_" + i] = `throwable_${i}.png`;
 }
 
 /**
  * Portrait Avatar
  */
+const playerFactionPortraitCount = 168;
+
+// Major factions
 const sandPortraitCount = 75;
 const redPortraitCount = 48;
-const playerFactionPortraitCount = 168;
 const bluePortraitCount = 61;
 const blackPortraitCount = 76;
 
@@ -155,5 +161,6 @@ export const Images = {
   sand_portrait,
   blue_portrait,
   black_portrait,
-  Items: { armor, ballistic_weapon },
+  junk,
+  Items: { armor, ballistic_weapon, throwable },
 };
