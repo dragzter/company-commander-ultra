@@ -2,22 +2,22 @@ import {
   type Designation,
   type Soldier,
   SOLDIER_DESIGNATION,
-  TraitProfile,
-} from "./types.ts";
+} from "../types.ts";
+import { TraitProfile } from "./soldier-traits.ts";
 import { v4 as uuidv4 } from "uuid";
 
 import {
-  ATTRIBUTES_BY_LEVEL,
+  ATTRIBUTES_INCREASES_BY_LEVEL,
   SOLDIER_BASE,
   STANDARD_LOADOUTS,
-} from "./levels.ts";
-import { generateName } from "../../utils/name-utils.ts";
+} from "../levels.ts";
+import { generateName } from "../../../utils/name-utils.ts";
 import type {
   Armor,
   BallisticWeapon,
   Item,
-} from "../../constants/items/types.ts";
-import { getRandomValueFromStringArray } from "../../utils/random.ts";
+} from "../../../constants/items/types.ts";
+import { getRandomValueFromStringArray } from "../../../utils/random.ts";
 
 function SoldierManager() {
   const experienceIncreaseBase = 100;
@@ -38,7 +38,7 @@ function SoldierManager() {
     ) as Soldier;
 
     for (let i = 1; lvl > i; i++) {
-      const definition = ATTRIBUTES_BY_LEVEL[i];
+      const definition = ATTRIBUTES_INCREASES_BY_LEVEL[i];
       soldier.attributes = {
         hit_points: soldier.attributes.hit_points + definition.hit_points,
         level: definition.level,
@@ -98,15 +98,15 @@ function SoldierManager() {
     };
   }
 
-  function generateFirstList(): Soldier[] {
+  function generateTroopList(lvl = 1): Soldier[] {
     return [
-      getNewSoldier(1, SOLDIER_DESIGNATION.rifleman),
-      getNewSoldier(1, SOLDIER_DESIGNATION.rifleman),
-      getNewSoldier(1, SOLDIER_DESIGNATION.rifleman),
-      getNewSoldier(1, SOLDIER_DESIGNATION.rifleman),
-      getNewSoldier(1, SOLDIER_DESIGNATION.support),
-      getNewSoldier(1, SOLDIER_DESIGNATION.support),
-      getNewSoldier(1, SOLDIER_DESIGNATION.medic),
+      getNewSoldier(lvl, SOLDIER_DESIGNATION.rifleman),
+      getNewSoldier(lvl, SOLDIER_DESIGNATION.rifleman),
+      getNewSoldier(lvl, SOLDIER_DESIGNATION.rifleman),
+      getNewSoldier(lvl, SOLDIER_DESIGNATION.rifleman),
+      getNewSoldier(lvl, SOLDIER_DESIGNATION.support),
+      getNewSoldier(lvl, SOLDIER_DESIGNATION.support),
+      getNewSoldier(lvl, SOLDIER_DESIGNATION.medic),
     ];
   }
 
@@ -122,7 +122,7 @@ function SoldierManager() {
       getNewSoldier(lvl, SOLDIER_DESIGNATION.medic),
     generateSupportManAtLevel: (lvl: number) =>
       getNewSoldier(lvl, SOLDIER_DESIGNATION.support),
-    generateFirstList,
+    generateTroopList,
     getSoldierTraitProfile,
   };
 }

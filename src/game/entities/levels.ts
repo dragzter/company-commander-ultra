@@ -10,7 +10,7 @@ import { MedicalItems } from "../../constants/items/medical-items.ts";
 import { ThrowableItems } from "../../constants/items/throwable.ts";
 
 /**
- * Starting gear for new recruits
+ * Starting gear for new recruits (Level Agnostic equipment)
  */
 export const STANDARD_LOADOUTS: StandardLoadout = {
   rifleman: {
@@ -37,7 +37,7 @@ export const STANDARD_LOADOUTS: StandardLoadout = {
   },
 };
 
-export const ATTRIBUTES_BY_LEVEL: Attributes[] = [
+export const ATTRIBUTES_INCREASES_BY_LEVEL: Attributes[] = [
   {
     hit_points: 70,
     morale: 50,
@@ -121,13 +121,15 @@ export const ATTRIBUTES_BY_LEVEL: Attributes[] = [
 ];
 
 export const SOLDIER_BASE: Soldier = {
+  trait_profile: "",
   id: "",
   name: "",
-  attributes: ATTRIBUTES_BY_LEVEL[0],
+  attributes: ATTRIBUTES_INCREASES_BY_LEVEL[0],
   experience: 0,
   level: 1,
   active: false,
   designation: SOLDIER_DESIGNATION.rifleman,
   inventory: [],
+  traits: [],
   events: [],
 };

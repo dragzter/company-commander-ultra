@@ -161,9 +161,15 @@ export const companyHomePageTemplate = () => {
 		</div>
 	`;
   const promptToSelectMen = `
-	<div class="flex align-center justify-center w-100">
-		<button id="select-men" class="mbtn red">Visit Market</button>
-	</div>
+    <div class="company-stats p-2">
+			<p class="company-count">Total Men <span>${totalMenInCompany}</span></p>
+			<p class="credit-balance">Credit Balance <span>$${creditBalance}</span></p>
+			<p class="company-level">Company Level <span>${companyLevel}</span></p>
+			<p class="company-inventory-status">Inventory Items/ Capacity <span>${totalItemsInInventory} / ${totalInventoryCapacity}</span></p>
+		</div>
+	  <div class="flex align-center justify-center w-100">
+		    <button id="select-men" class="mbtn red">Recruit Men</button>
+	  </div>
 	`;
 
   return `

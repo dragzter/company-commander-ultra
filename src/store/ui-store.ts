@@ -1,7 +1,8 @@
 import { createStore } from "zustand/vanilla";
 import { persist } from "zustand/middleware";
 import { URLReader } from "../utils/url-reader.ts";
-import type { Company, Soldier } from "../game/entities/types.ts";
+import type { Company } from "../game/entities/company/company.ts";
+import type { Soldier } from "../game/entities/types.ts";
 
 const { nocache } = URLReader(document.location.search);
 const skipPersistence = nocache === "true";
@@ -60,7 +61,7 @@ export const usePlayerCompanyStore = createStore<CompanyStore>()(
         companyMembers: [],
         gameStep: GAME_STEPS.at_intro_0,
 
-        creditBalance: 0,
+        creditBalance: 1000,
         totalMenInCompany: 0,
         totalMenLostAllTime: 0,
         totalEnemiesKilledAllTime: 0,
@@ -103,7 +104,7 @@ export const usePlayerCompanyStore = createStore<CompanyStore>()(
         setCompanyName: (n: string) => {
           set({ companyName: n });
 
-          const currentCompany = { ...get().company };
+          const currentCompany: Company = { ...get().company };
           currentCompany.companyName = n;
           set({ company: { ...currentCompany } });
         },
@@ -142,7 +143,7 @@ export const usePlayerCompanyStore = createStore<CompanyStore>()(
           totalItemsInInventory: 0,
           inventory: [],
           companyExperience: 0,
-          creditBalance: 0,
+          creditBalance: 1000,
           company: {} as Company,
 
           initializeCompany: () => {
