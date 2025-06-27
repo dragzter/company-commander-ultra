@@ -1,8 +1,11 @@
 import {
   type Attributes,
+  type CombatProfile,
   type Soldier,
   SOLDIER_DESIGNATION,
+  SOLDIER_STATUS,
   type StandardLoadout,
+  type TraitDict,
 } from "./types.ts";
 import { BallisticItems } from "../../constants/items/ballistic.ts";
 import { ArmorItems } from "../../constants/items/armor.ts";
@@ -121,15 +124,20 @@ export const ATTRIBUTES_INCREASES_BY_LEVEL: Attributes[] = [
 ];
 
 export const SOLDIER_BASE: Soldier = {
-  trait_profile: "",
   id: "",
   name: "",
   attributes: ATTRIBUTES_INCREASES_BY_LEVEL[0],
   experience: 0,
   level: 1,
-  active: false,
   designation: SOLDIER_DESIGNATION.rifleman,
+  status: SOLDIER_STATUS.inactive,
+  combatProfile: {
+    chanceToEvade: 0.03,
+    chanceToHit: 0.7,
+    suppression: 0.3,
+    mitigateDamage: 0.03,
+  } as CombatProfile,
+  trait_profile: {} as TraitDict,
   inventory: [],
-  traits: [],
   events: [],
 };

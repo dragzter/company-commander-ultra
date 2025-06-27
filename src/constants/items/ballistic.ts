@@ -45,6 +45,7 @@ export const BallisticItems: ItemsVolume<BallisticWeapon> = {
       speed_base: 3,
     },
     m240_delta_machine_gun: {
+      // MG support
       id: "m240_delta_machine_gun",
       name: "M240 Delta Pattern Machine Gun",
       type: ITEM_TYPES.ballistic_weapon,
@@ -53,7 +54,7 @@ export const BallisticItems: ItemsVolume<BallisticWeapon> = {
       usable: true,
       icon: "weapon_45.png",
       quantity: 1,
-      damage: 13,
+      damage: 29,
       damage_type: "ballistic",
       target: "enemy",
       speed_base: 7,
@@ -128,10 +129,10 @@ export const BallisticItems: ItemsVolume<BallisticWeapon> = {
       usable: true,
       icon: "weapon_34.png",
       quantity: 1,
-      damage: 28,
+      damage: 29,
       damage_type: "ballistic",
       target: "enemy",
-      speed_base: 3,
+      speed_base: 2,
     },
     akpd_assault_rifle: {
       id: "akpd_assault_rifle",
@@ -164,6 +165,7 @@ export const BallisticItems: ItemsVolume<BallisticWeapon> = {
       speed_base: 6,
     },
     fasw_machine_gun: {
+      // MG support
       id: "fasw_machine_gun",
       name: "M60 3F Machine Gun",
       type: ITEM_TYPES.ballistic_weapon,
@@ -174,7 +176,7 @@ export const BallisticItems: ItemsVolume<BallisticWeapon> = {
       usable: true,
       icon: "weapon_55.png",
       quantity: 1,
-      damage: 16,
+      damage: 35,
       damage_type: "ballistic",
       target: "enemy",
       speed_base: 5,

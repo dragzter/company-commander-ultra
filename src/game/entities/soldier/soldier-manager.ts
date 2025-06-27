@@ -1,9 +1,11 @@
 import {
+  type Attributes,
   type Designation,
   type Soldier,
   SOLDIER_DESIGNATION,
+  type TraitDict,
 } from "../types.ts";
-import { TraitProfile } from "./soldier-traits.ts";
+import { TraitProfileStats } from "./soldier-traits.ts";
 import { v4 as uuidv4 } from "uuid";
 
 import {
@@ -17,7 +19,12 @@ import type {
   BallisticWeapon,
   Item,
 } from "../../../constants/items/types.ts";
-import { getRandomValueFromStringArray } from "../../../utils/random.ts";
+import {
+  getRandomPortraitImage,
+  getRandomValueFromStringArray,
+} from "../../../utils/random.ts";
+import { toFNum } from "../../../utils/number-utils.ts";
+import { Images } from "../../../constants/images.ts";
 
 function SoldierManager() {
   const experienceIncreaseBase = 100;
@@ -50,14 +57,18 @@ function SoldierManager() {
     }
 
     soldier.name = generateName();
+    soldier.avatar = getSoldierAvatar();
     soldier.inventory = inventory;
     soldier.weapon = weapon;
     soldier.armor = armor;
     soldier.level = lvl;
     soldier.id = uuidv4();
     soldier.designation = designation;
-    soldier.active = false;
+    soldier.trait_profile = getSoldierTraitProfile();
     soldier.experience = getExperienceBaseAtLevel(lvl).experience;
+
+    applyTraitProfileStats(soldier);
+    initializeCombatProfile(soldier);
 
     return soldier;
   }
@@ -65,6 +76,50 @@ function SoldierManager() {
   function getNewSoldier(level = 1, designation: Designation) {
     const { weapon, armor, inventory } = STANDARD_LOADOUTS[designation];
     return gs(level, designation, armor, weapon, inventory);
+  }
+
+  function applyTraitProfileStats(soldier: Soldier) {
+    const traitKeys = Object.keys(soldier.trait_profile.stats);
+    const soldierAtts = soldier.attributes;
+
+    for (const key of traitKeys) {
+      soldierAtts[key as keyof Attributes] =
+        soldierAtts[key as keyof Attributes] + soldier.trait_profile.stats[key];
+    }
+  }
+
+  function getSoldierAvatar() {
+    const key = getRandomPortraitImage(Images.portrait);
+    return Images.portrait[key];
+  }
+
+  function initializeCombatProfile(soldier: Soldier) {
+    const atts = soldier.attributes;
+    const cp = soldier.combatProfile;
+    const calculator = attrToCombatProfileValue();
+
+    const fromDex = calculator.dexterity(atts.dexterity);
+    const fromTough = calculator.toughness(atts.toughness);
+    const fromAware = calculator.awareness(atts.awareness);
+    //const fromMorale = calculator.morale(atts.morale)
+
+    cp.mitigateDamage = toFNum(cp.mitigateDamage + fromTough);
+    cp.chanceToHit = toFNum(cp.chanceToHit + fromAware + fromDex);
+    cp.chanceToEvade = toFNum(cp.chanceToEvade + fromAware + fromDex);
+  }
+
+  function attrToCombatProfileValue() {
+    const dexterityDivisor = 12;
+    const toughnessDivisor = 8;
+    const moraleDivisor = 8;
+    const awarenessDivisor = 14;
+
+    return {
+      morale: (m: number) => toFNum(m / moraleDivisor / 100),
+      dexterity: (m: number) => toFNum(m / dexterityDivisor / 100),
+      awareness: (m: number) => toFNum(m / awarenessDivisor / 100),
+      toughness: (m: number) => toFNum(m / toughnessDivisor / 100),
+    };
   }
 
   function getExperienceBaseAtLevel(lvl: number): {
@@ -88,13 +143,13 @@ function SoldierManager() {
     };
   }
 
-  function getSoldierTraitProfile() {
-    const profiles = Object.keys(TraitProfile);
-    const selectedProfile = getRandomValueFromStringArray(profiles);
+  function getSoldierTraitProfile(): TraitDict {
+    const profiles = Object.keys(TraitProfileStats);
+    const selectedProfile: string = getRandomValueFromStringArray(profiles);
 
     return {
-      profile: selectedProfile,
-      traits: TraitProfile[selectedProfile],
+      name: selectedProfile,
+      stats: TraitProfileStats[selectedProfile],
     };
   }
 
@@ -113,15 +168,11 @@ function SoldierManager() {
   return {
     generateSoldierAtLevel: gs,
     getExperienceBaseAtLevel,
-    getNewRifleman: () => getNewSoldier(1, SOLDIER_DESIGNATION.rifleman),
-    getNewSupportMan: () => getNewSoldier(1, SOLDIER_DESIGNATION.support),
-    getNewMedic: () => getNewSoldier(1, SOLDIER_DESIGNATION.medic),
-    generateRiflemanAtLevel: (lvl: number) =>
+    getNewRifleman: (lvl = 1) =>
       getNewSoldier(lvl, SOLDIER_DESIGNATION.rifleman),
-    generateMedicAtLevel: (lvl: number) =>
-      getNewSoldier(lvl, SOLDIER_DESIGNATION.medic),
-    generateSupportManAtLevel: (lvl: number) =>
+    getNewSupportMan: (lvl = 1) =>
       getNewSoldier(lvl, SOLDIER_DESIGNATION.support),
+    getNewMedic: (lvl = 1) => getNewSoldier(lvl, SOLDIER_DESIGNATION.medic),
     generateTroopList,
     getSoldierTraitProfile,
   };

@@ -1,5 +1,38 @@
 import { getRandomValueFromStringArray } from "../../../utils/random.ts";
 
+const PERMANENT_ENHANCEMENT: Record<string, Record<string, number>> = {
+  hardened: {
+    toughness: 5,
+    hit_points: 6,
+  },
+  calm_under_fire: {
+    morale: 6,
+    awareness: 9,
+  },
+  battle_tested: {
+    hit_points: 8,
+    toughness: 2,
+  },
+  brave: {
+    morale: 8,
+  },
+  tactician: {
+    awareness: 10,
+  },
+  scout: {
+    dexterity: 5,
+    awareness: 3,
+  },
+  warrior: {
+    toughness: 9,
+    dexterity: 4,
+  },
+  stoic: {
+    toughness: 7,
+    hit_points: 7,
+  },
+};
+
 const PERMANENT_INJURY: Record<string, Record<string, number>> = {
   one_eyed: {
     awareness: -8,
@@ -121,4 +154,15 @@ function getRandomPermanentInjury() {
   return PERMANENT_INJURY[injury];
 }
 
-export { PERMANENT_INJURY, getRandomPermanentInjury };
+function getRandomPermanentEnhancement() {
+  const enhancements = Object.keys(PERMANENT_ENHANCEMENT);
+  const enhancement = getRandomValueFromStringArray(enhancements);
+  return PERMANENT_ENHANCEMENT[enhancement];
+}
+
+export {
+  PERMANENT_ENHANCEMENT,
+  PERMANENT_INJURY,
+  getRandomPermanentInjury,
+  getRandomPermanentEnhancement,
+};

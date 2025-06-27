@@ -22,6 +22,7 @@ type CompanyStore = {
   companyName: string;
   companyUnitPatchURL: string;
   companyMembers: [];
+  marketAvailableTroops: Soldier[];
   creditBalance: number;
   commanderName: string;
   gameStep: GameStep;
@@ -38,6 +39,7 @@ type CompanyStore = {
   company: Company;
 
   // Setters
+  setMarketAvailableTroops: (soldiers: Soldier[]) => void;
   addCredits: (n: number) => void;
   subtractCredits: (n: number) => void;
   setCommanderName: (n: string) => void;
@@ -61,6 +63,7 @@ export const usePlayerCompanyStore = createStore<CompanyStore>()(
         companyMembers: [],
         gameStep: GAME_STEPS.at_intro_0,
 
+        marketAvailableTroops: [],
         creditBalance: 1000,
         totalMenInCompany: 0,
         totalMenLostAllTime: 0,
@@ -74,6 +77,7 @@ export const usePlayerCompanyStore = createStore<CompanyStore>()(
         companyExperience: 0,
         company: {} as Company,
 
+        // Actions
         addSoldierToCompany: (soldier: Soldier) => {
           const currentCompany = get().company;
           currentCompany.soldiers.push(soldier);
@@ -93,7 +97,10 @@ export const usePlayerCompanyStore = createStore<CompanyStore>()(
           });
         },
 
-        // Actions
+        setMarketAvailableTroops: (soldiers: Soldier[]) => ({
+          marketAvailableTroops: soldiers,
+        }),
+
         addCredits: (creds: number) => ({
           creditBalance: get().creditBalance + creds,
         }),
@@ -145,6 +152,11 @@ export const usePlayerCompanyStore = createStore<CompanyStore>()(
           companyExperience: 0,
           creditBalance: 1000,
           company: {} as Company,
+          marketAvailableTroops: [],
+
+          setMarketAvailableTroops: (soldiers: Soldier[]) => ({
+            marketAvailableTroops: soldiers,
+          }),
 
           initializeCompany: () => {
             set({

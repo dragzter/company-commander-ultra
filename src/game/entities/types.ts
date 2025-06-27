@@ -22,6 +22,13 @@ export type CombatProfile = {
   suppression: number; // lowered by Morale, Toughness
 };
 
+export type SoldierTrait = Record<string, string[]>;
+export type SoldierTraitProfile = Record<string, number>;
+export type TraitDict = {
+  name: string;
+  stats: SoldierTraitProfile;
+};
+
 /**
  * Some statuses represent a permanent alteration to a soldiers attributes, like a permanent injury
  */
@@ -46,6 +53,7 @@ export interface Soldier {
   level: number; // increases all attributes according to a scale
   experience: number;
   status: SoldierStatus;
+  avatar: string;
 
   armor?: Armor;
   weapon?: BallisticWeapon;
@@ -53,8 +61,7 @@ export interface Soldier {
   // Attributes
   attributes: Attributes;
   designation: Designation;
-  traits: string[];
-  trait_profile: string;
+  trait_profile: TraitDict;
 
   combatProfile: CombatProfile;
 
@@ -69,7 +76,7 @@ export interface Attributes {
   morale: number; // affects how easy it is to suppress, affect with psychic weapons, run away
   toughness: number; // Mitigation - flat reduction in damage
   awareness: number; // evasion
-  level?: number;
+  level: number;
 }
 
 export type StandardLoadout = Record<

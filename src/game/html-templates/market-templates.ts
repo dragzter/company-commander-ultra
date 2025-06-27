@@ -39,7 +39,7 @@ export const troopsMarketTemplate = () => {
 	<div class="entity-card">
 	  <div class="card-body">
 	  		<img class="card-image" src="/images/green-portrait/${Images.portrait.p_2}" alt="">
-	  		
+
 	  		<div class="card-details">
 	  			<h4 class="card-title">Ronald D. Wayland</h4>
 	  			<div class="details-wrapper">
@@ -57,7 +57,7 @@ export const troopsMarketTemplate = () => {
 								<div>78/100</div>
 							</div>
 						</div>
-						
+
 						<div class="details-right">
 							<div class="detail-item">
 								<div>Toughness:</div>
