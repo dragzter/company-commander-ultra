@@ -17,6 +17,8 @@ import {
   troopsMarketTemplate,
 } from "../html-templates/market-templates.ts";
 import { Styler } from "../../utils/styler-manager.ts";
+import { SoldierManager } from "../entities/soldier/soldier-manager.ts";
+import type { Soldier } from "../entities/types.ts";
 
 /**
  * Manager which templates are displayed.  Orchestrates all the things that need to happen when
@@ -152,7 +154,19 @@ function ScreenManager() {
 
   function createTroopsPage() {
     UiManager.clear.center();
-    const content = parseHTML(troopsMarketTemplate());
+    const { marketAvailableTroops, setMarketAvailableTroops } =
+      usePlayerCompanyStore.getState();
+
+    let soldiers: Soldier[];
+
+    if (!marketAvailableTroops.length) {
+      soldiers = SoldierManager.generateTroopList();
+      setMarketAvailableTroops(soldiers);
+    } else {
+      soldiers = marketAvailableTroops;
+    }
+
+    const content = parseHTML(troopsMarketTemplate(soldiers));
     center.appendChild(content as Element);
 
     const eventsConfig = [...eventConfigs().companyHome()];

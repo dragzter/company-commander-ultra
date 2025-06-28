@@ -4,7 +4,7 @@ import {
   companyActionsTemplate,
   companyHeaderPartial,
 } from "./game-setup-template.ts";
-import { Images } from "../../constants/images.ts";
+import type { Soldier } from "../entities/types.ts";
 
 export const marketTemplate = () => {
   const { market } = DOM;
@@ -29,156 +29,65 @@ export const marketTemplate = () => {
 	`;
 };
 
-export const troopsMarketTemplate = () => {
+export const troopsMarketTemplate = (troops: Soldier[]) => {
   return `
 <div id="troops-market" class="flex h-100 column justify-between">
 	${companyHeaderPartial("Available Troops")}
 	
 	<div class="troops-list">
 	
-	<div class="entity-card">
-	  <div class="card-body">
-	  		<img class="card-image" src="/images/green-portrait/${Images.portrait.p_2}" alt="">
-
-	  		<div class="card-details">
-	  			<h4 class="card-title">Ronald D. Wayland</h4>
-	  			<div class="details-wrapper">
-						<div class="details-left">
-							<div class="detail-item">
-								<div>Hitpoints:</div>
-								<div>89</div>
+	${troops
+    .map((trooper) => {
+      return `
+			<div class="entity-card designation-${trooper.designation}">
+				<div class="card-body">
+					<img class="card-image" src="/images/green-portrait/${trooper.avatar}" alt="Troopert Image">
+					<div class="card-details">
+						<h4 class="card-title">${trooper.name} <span class="designation">${trooper.designation.toUpperCase()}</span></h4>
+						<div class="details-wrapper">
+							<div class="details-left">
+								<div class="detail-item">
+									<div>Hitpoints:</div>
+									<div>${trooper.attributes.hit_points}</div>
+								</div>
+								<div class="detail-item">
+									<div>Morale:</div>
+									<div>${trooper.attributes.morale} / 100</div>
+								</div>
+								<div class="detail-item">
+									<div>Accuracy:</div>
+									<div>${trooper.combatProfile.chanceToHit * 100}% / 100%</div>
+								</div>
 							</div>
-							<div class="detail-item">
-								<div>Morale:</div>
-								<div>70/100</div>
-							</div>
-							<div class="detail-item">
-								<div>Accuracy:</div>
-								<div>78/100</div>
-							</div>
-						</div>
-
-						<div class="details-right">
-							<div class="detail-item">
-								<div>Toughness:</div>
-								<div>50/100</div>
-							</div>
-							<div class="detail-item">
-								<div>Awareness:</div>
-								<div>44/100</div>
-							</div>
-							<div class="detail-item">
-								<div>Dexterity:</div>
-								<div>44/100</div>
+	
+							<div class="details-right">
+								<div class="detail-item">
+									<div>Toughness:</div>
+									<div>${trooper.attributes.toughness} / 100</div>
+								</div>
+								<div class="detail-item">
+									<div>Awareness:</div>
+									<div>${trooper.attributes.awareness} / 100</div>
+								</div>
+								<div class="detail-item">
+									<div>Dexterity:</div>
+									<div>${trooper.attributes.dexterity} / 100</div>
+								</div>
 							</div>
 						</div>
 					</div>
-				</div>
-		</div>
-	  <div class="card-footer">
-	  	<div class="detail-item">
-	  		<div>Level:</div>
-	  		<div>3/10</div>
 			</div>
-		</div>
-	</div>
-	
-	<div class="entity-card">
-	  <div class="card-body">
-	  		<img class="card-image" src="/images/green-portrait/${Images.portrait.p_6}" alt="">
-	  	
-	  		<div class="card-details">
-	  			<h4 class="card-title">Henry F. Powers</h4>
-	  			<div class="details-wrapper">
-						<div class="details-left">
-							<div class="detail-item">
-								<div>Hitpoints:</div>
-								<div>85</div>
-							</div>
-							<div class="detail-item">
-								<div>Morale:</div>
-								<div>72/100</div>
-							</div>
-							<div class="detail-item">
-								<div>Accuracy:</div>
-								<div>75/100</div>
-							</div>
-						</div>
-						
-						<div class="details-right">
-							<div class="detail-item">
-								<div>Toughness:</div>
-								<div>53/100</div>
-							</div>
-							<div class="detail-item">
-								<div>Awareness:</div>
-								<div>48/100</div>
-							</div>
-							<div class="detail-item">
-								<div>Dexterity:</div>
-								<div>38/100</div>
-							</div>
-						</div>
+				<div class="card-footer">
+					<div class="detail-item">
+						<div>Level:</div>
+						<div>${trooper.level}/10</div>
+						<div>${trooper.trait_profile.name.toUpperCase()}</div>
 					</div>
 				</div>
-		</div>
-	  <div class="card-footer">
-	  	<div class="detail-item">
-	  		<div>Level:</div>
-	  		<div>3/10</div>
-			</div>
-		</div>
+			</div>`;
+    })
+    .join("")}
 	</div>
-	
-	<div class="entity-card">
-	  <div class="card-body">
-	  		<img class="card-image" src="/images/green-portrait/${Images.portrait.p_46}" alt="">
-	  	
-	  		<div class="card-details">
-	  			<h4 class="card-title">Wesley J. Stone</h4>
-	  			<div class="details-wrapper">
-						<div class="details-left">
-							<div class="detail-item">
-								<div>Hitpoints:</div>
-								<div>85</div>
-							</div>
-							<div class="detail-item">
-								<div>Morale:</div>
-								<div>76/100</div>
-							</div>
-							<div class="detail-item">
-								<div>Accuracy:</div>
-								<div>78/100</div>
-							</div>
-						</div>
-						
-						<div class="details-right">
-							<div class="detail-item">
-								<div>Toughness:</div>
-								<div>50/100</div>
-							</div>
-							<div class="detail-item">
-								<div>Awareness:</div>
-								<div>43/100</div>
-							</div>
-							<div class="detail-item">
-								<div>Dexterity:</div>
-								<div>48/100</div>
-							</div>
-						</div>
-					</div>
-				</div>
-		</div>
-	  <div class="card-footer">
-	  	<div class="detail-item">
-	  		<div>Level:</div>
-	  		<div>3/10</div>
-			</div>
-		</div>
-	</div>
-	
-	</div>
-	
 	${companyActionsTemplate()}
 </div>
 	`;

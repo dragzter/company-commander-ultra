@@ -34,6 +34,12 @@
 	--gray-5: #555;
 	--gray-6: #444;
 	
+	
+	--cyan-1: #74adb0;
+	--cyan-2: #59868a;
+	--cyan-3: #345a5c;
+	--cyan-4: #233f41;
+	
 	--gunmetal: #424756;
 	
 	--drab: #555d50;
@@ -329,6 +335,13 @@ button.mbtn {
 	overflow: hidden;
 	font-size: 13px;
 	
+	.designation {
+		font-size: 10px;
+		padding: 3px 8px;
+		background: #000;
+		border-radius: 6px;
+	}
+	
 	.card-body {
 		background: var(--camo-green-2);
 		display: flex;
@@ -371,6 +384,26 @@ button.mbtn {
 		& div:first-child {
 			color: var(--accent-cyan-1);
 			font-weight: bold;
+		}
+	}
+	
+	&.designation-support {
+		.card-body {
+			background: var(--camo-tan-3);
+		}
+		
+		.card-footer {
+			background: var(--camo-tan-2);
+		}
+	}
+	
+	&.designation-medic {
+		.card-body {
+			background: var(--cyan-3);
+		}
+		
+		.card-footer {
+			background: var(--cyan-2);
 		}
 	}
 }

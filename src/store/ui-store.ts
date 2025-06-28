@@ -97,9 +97,10 @@ export const usePlayerCompanyStore = createStore<CompanyStore>()(
           });
         },
 
-        setMarketAvailableTroops: (soldiers: Soldier[]) => ({
-          marketAvailableTroops: soldiers,
-        }),
+        setMarketAvailableTroops: (soldiers: Soldier[]) =>
+          set({
+            marketAvailableTroops: soldiers,
+          }),
 
         addCredits: (creds: number) => ({
           creditBalance: get().creditBalance + creds,
@@ -126,9 +127,9 @@ export const usePlayerCompanyStore = createStore<CompanyStore>()(
         canProceedToLaunch: () => {
           return (
             get().companyName.length > 4 &&
-            get().companyName.length < 16 &&
+            get().companyName.length < 20 &&
             get().commanderName.length > 2 &&
-            get().commanderName.length < 16 &&
+            get().commanderName.length < 20 &&
             get().companyUnitPatchURL !== ""
           );
         },
@@ -154,9 +155,10 @@ export const usePlayerCompanyStore = createStore<CompanyStore>()(
           company: {} as Company,
           marketAvailableTroops: [],
 
-          setMarketAvailableTroops: (soldiers: Soldier[]) => ({
-            marketAvailableTroops: soldiers,
-          }),
+          setMarketAvailableTroops: (soldiers: Soldier[]) =>
+            set({
+              marketAvailableTroops: soldiers,
+            }),
 
           initializeCompany: () => {
             set({
