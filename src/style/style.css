@@ -315,9 +315,7 @@ button.mbtn {
 
 #troops-market {
 	.troops-list {
-		flex-direction: column;
 		align-items: center;
-		gap: 10px;
 		overflow-y: scroll;
 		max-height: 480px;
 		height: 100%;
@@ -329,7 +327,7 @@ button.mbtn {
 
 .entity-card {
 	width: 550px;
-	margin: 0 auto;
+	margin: 0 auto 12px 10px;
 	min-height: 152px;
 	border-radius: var(--std-border-radius);
 	overflow: hidden;
@@ -1108,6 +1106,30 @@ input[type="text"] {
 
 .p-5 {
 	padding: 3rem;
+}
+
+.pe-0 {
+	padding-right: 0;
+}
+
+.pe-1 {
+	padding-right: 0.25rem;
+}
+
+.pe-2 {
+	padding-right: 0.5rem;
+}
+
+.pe-3 {
+	padding-right: 1rem;
+}
+
+.pe-4 {
+	padding-right: 1.5rem;
+}
+
+.pe-5 {
+	padding-right: 3rem;
 }
 
 .px-0 {

@@ -5,6 +5,7 @@ import {
   companyHeaderPartial,
 } from "./game-setup-template.ts";
 import type { Soldier } from "../entities/types.ts";
+import { Images } from "../../constants/images.ts";
 
 export const marketTemplate = () => {
   const { market } = DOM;
@@ -39,11 +40,21 @@ export const troopsMarketTemplate = (troops: Soldier[]) => {
 	${troops
     .map((trooper) => {
       return `
-			<div class="entity-card designation-${trooper.designation}">
+			<div class="entity-card designation-${trooper.designation}" >
 				<div class="card-body">
 					<img class="card-image" src="/images/green-portrait/${trooper.avatar}" alt="Troopert Image">
 					<div class="card-details">
-						<h4 class="card-title">${trooper.name} <span class="designation">${trooper.designation.toUpperCase()}</span></h4>
+						<h4 class="card-title flex justify-between align-center">
+							<span>
+								${trooper.name}
+								<span class="designation">
+									${trooper.designation.toUpperCase()}
+								</span>
+							</span>
+							<button data-trooper-id="${trooper.id}" class="mbtn icon-btn add-soldier-to-company pe-0">
+								<img width="30" src="images/ui/square/${Images.btn.sq_add}" alt="Add soldier to company">
+							</button>
+						</h4>
 						<div class="details-wrapper">
 							<div class="details-left">
 								<div class="detail-item">
