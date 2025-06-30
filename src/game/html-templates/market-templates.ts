@@ -6,6 +6,7 @@ import {
 } from "./game-setup-template.ts";
 import type { Soldier } from "../entities/types.ts";
 import { Images } from "../../constants/images.ts";
+import { usePlayerCompanyStore } from "../../store/ui-store.ts";
 
 export const marketTemplate = () => {
   const { market } = DOM;
@@ -30,13 +31,16 @@ export const marketTemplate = () => {
 	`;
 };
 
-export const troopsMarketTemplate = (troops: Soldier[]) => {
+export const troopsMarketTemplate = (
+  troops: Soldier[],
+  rerolls = usePlayerCompanyStore.getState().recruitReroll,
+) => {
   return `
 <div id="troops-market" class="flex h-100 column justify-between">
 	${companyHeaderPartial("Available Troops")}
 	
 	<div class="troops-list">
-	
+	<div class="reroll-counter">Rerolls: ${rerolls}</div>
 	${troops
     .map((trooper) => {
       return `
@@ -51,9 +55,14 @@ export const troopsMarketTemplate = (troops: Soldier[]) => {
 									${trooper.designation.toUpperCase()}
 								</span>
 							</span>
-							<button data-trooper-id="${trooper.id}" class="mbtn icon-btn add-soldier-to-company pe-0">
-								<img width="30" src="images/ui/square/${Images.btn.sq_add}" alt="Add soldier to company">
-							</button>
+							<span>
+								<button data-reroll="${trooper.id}" class="mbtn icon-btn reroll-recruit pe-0" title="Reroll">
+									<img width="30" src="images/ui/square/${Images.btn.sq_btn_redo}" alt="Reroll">
+								</button>
+								<button data-trooperjson="${JSON.stringify(trooper)}" title="Recruit" class="mbtn icon-btn recruit-soldier pe-0">
+									<img width="30" src="images/ui/square/${Images.btn.sq_add}" alt="Add soldier to company">
+								</button>
+							</span>
 						</h4>
 						<div class="details-wrapper">
 							<div class="details-left">
@@ -99,6 +108,7 @@ export const troopsMarketTemplate = (troops: Soldier[]) => {
     })
     .join("")}
 	</div>
+	<div id="recruit-staging"></div>
 	${companyActionsTemplate()}
 </div>
 	`;

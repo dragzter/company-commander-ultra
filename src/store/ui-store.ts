@@ -37,6 +37,7 @@ type CompanyStore = {
   companyExperience: number;
   inventory: [];
   company: Company;
+  recruitReroll: number;
 
   // Setters
   setMarketAvailableTroops: (soldiers: Soldier[]) => void;
@@ -62,6 +63,7 @@ export const usePlayerCompanyStore = createStore<CompanyStore>()(
         companyUnitPatchURL: "",
         companyMembers: [],
         gameStep: GAME_STEPS.at_intro_0,
+        recruitReroll: 4,
 
         marketAvailableTroops: [],
         creditBalance: 1000,
@@ -78,12 +80,16 @@ export const usePlayerCompanyStore = createStore<CompanyStore>()(
         company: {} as Company,
 
         // Actions
-        addSoldierToCompany: (soldier: Soldier) => {
-          const currentCompany = get().company;
-          currentCompany.soldiers.push(soldier);
-          set({ company: { ...currentCompany } });
-        },
+        useRecruitReroll: () =>
+          set((state) => {
+            if (state.recruitReroll - 1 <= 0) {
+              return state;
+            }
 
+            return {
+              recruitReroll: state.recruitReroll - 1,
+            };
+          }),
         initializeCompany: () => {
           set({
             company: {
@@ -93,6 +99,7 @@ export const usePlayerCompanyStore = createStore<CompanyStore>()(
               soldiers: [],
               companyName: "",
               commander: "",
+              inventory: [],
             },
           });
         },
@@ -101,36 +108,47 @@ export const usePlayerCompanyStore = createStore<CompanyStore>()(
           set({
             marketAvailableTroops: soldiers,
           }),
-
-        addCredits: (creds: number) => ({
-          creditBalance: get().creditBalance + creds,
-        }),
-        subtractCredits: (creds: number) => ({
-          creditBalance: get().creditBalance - creds,
-        }),
+        addCredits: (creds: number) =>
+          set((state) => ({
+            creditBalance: state.creditBalance + creds,
+          })),
+        subtractCredits: (creds: number) =>
+          set((state) => ({
+            creditBalance: state.creditBalance - creds,
+          })),
         setGameStep: (step: GameStep) => set({ gameStep: step }),
-        setCompanyName: (n: string) => {
-          set({ companyName: n });
-
-          const currentCompany: Company = { ...get().company };
-          currentCompany.companyName = n;
-          set({ company: { ...currentCompany } });
-        },
         setCompanyUnitPatch: (url: string) => set({ companyUnitPatchURL: url }),
-        setCommanderName: (n: string) => {
-          set({ commanderName: n });
-
-          const currentCompany = { ...get().company };
-          currentCompany.commander = n;
-          set({ company: { ...currentCompany } });
-        },
+        setCompanyName: (n: string) =>
+          set((state) => ({
+            companyName: n,
+            company: {
+              ...state.company,
+              name: n,
+            },
+          })),
+        setCommanderName: (n: string) =>
+          set((state) => ({
+            commanderName: n,
+            company: {
+              ...state.company,
+              commander: n,
+            },
+          })),
+        addSoldierToCompany: (soldier: Soldier) =>
+          set((state) => ({
+            company: {
+              ...state.company,
+              soldiers: [...state.company.soldiers, soldier],
+            },
+          })),
         canProceedToLaunch: () => {
+          const state = get();
           return (
-            get().companyName.length > 4 &&
-            get().companyName.length < 20 &&
-            get().commanderName.length > 2 &&
-            get().commanderName.length < 20 &&
-            get().companyUnitPatchURL !== ""
+            state.companyName.length > 4 &&
+            state.companyName.length < 16 &&
+            state.commanderName.length > 2 &&
+            state.commanderName.length < 16 &&
+            state.companyUnitPatchURL !== ""
           );
         },
       })
@@ -154,6 +172,7 @@ export const usePlayerCompanyStore = createStore<CompanyStore>()(
           creditBalance: 1000,
           company: {} as Company,
           marketAvailableTroops: [],
+          recruitReroll: 4,
 
           setMarketAvailableTroops: (soldiers: Soldier[]) =>
             set({
@@ -169,46 +188,64 @@ export const usePlayerCompanyStore = createStore<CompanyStore>()(
                 soldiers: [],
                 companyName: "",
                 commander: "",
+                inventory: [],
               },
             });
           },
 
           // Actions
-          addCredits: (creds: number) => ({
-            creditBalance: get().creditBalance + creds,
-          }),
-          subtractCredits: (creds: number) => ({
-            creditBalance: get().creditBalance - creds,
-          }),
-          setCompanyName: (n: string) => {
-            set({ companyName: n });
+          useRecruitReroll: () =>
+            set((state) => {
+              if (state.recruitReroll - 1 <= 0) {
+                return state;
+              }
 
-            const currentCompany = { ...get().company };
-            currentCompany.companyName = n;
-            set({ company: { ...currentCompany } });
-          },
+              return {
+                recruitReroll: state.recruitReroll - 1,
+              };
+            }),
+          addCredits: (creds: number) =>
+            set((state) => ({
+              creditBalance: state.creditBalance + creds,
+            })),
+          subtractCredits: (creds: number) =>
+            set((state) => ({
+              creditBalance: state.creditBalance - creds,
+            })),
+          setCompanyName: (n: string) =>
+            set((state) => ({
+              companyName: n,
+              company: {
+                ...state.company,
+                name: n,
+              },
+            })),
           setGameStep: (step: GameStep) => set({ gameStep: step }),
           setCompanyUnitPatch: (url: string) =>
             set({ companyUnitPatchURL: url }),
-          setCommanderName: (n: string) => {
-            set({ commanderName: n });
-
-            const currentCompany = { ...get().company };
-            currentCompany.commander = n;
-            set({ company: { ...currentCompany } });
-          },
-          addSoldierToCompany: (soldier: Soldier) => {
-            const currentCompany = get().company;
-            currentCompany.soldiers.push(soldier);
-            set({ company: { ...currentCompany } });
-          },
+          setCommanderName: (n: string) =>
+            set((state) => ({
+              commanderName: n,
+              company: {
+                ...state.company,
+                commander: n,
+              },
+            })),
+          addSoldierToCompany: (soldier: Soldier) =>
+            set((state) => ({
+              company: {
+                ...state.company,
+                soldiers: [...state.company.soldiers, soldier],
+              },
+            })),
           canProceedToLaunch: () => {
+            const state = get();
             return (
-              get().companyName.length > 4 &&
-              get().companyName.length < 16 &&
-              get().commanderName.length > 2 &&
-              get().commanderName.length < 16 &&
-              get().companyUnitPatchURL !== ""
+              state.companyName.length > 4 &&
+              state.companyName.length < 16 &&
+              state.commanderName.length > 2 &&
+              state.commanderName.length < 16 &&
+              state.companyUnitPatchURL !== ""
             );
           },
         }),

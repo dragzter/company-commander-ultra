@@ -44,6 +44,9 @@ function SoldierManager() {
       JSON.stringify(SOLDIER_BASE),
     ) as Soldier;
 
+    soldier.weapon = weapon;
+    soldier.armor = armor;
+
     for (let i = 1; lvl > i; i++) {
       const definition = ATTRIBUTES_INCREASES_BY_LEVEL[i];
       soldier.attributes = {
@@ -56,11 +59,11 @@ function SoldierManager() {
       };
     }
 
+    soldier.attributes.toughness += armor.toughness as number;
+
     soldier.name = generateName();
     soldier.avatar = getSoldierAvatar();
     soldier.inventory = inventory;
-    soldier.weapon = weapon;
-    soldier.armor = armor;
     soldier.level = lvl;
     soldier.id = uuidv4();
     soldier.designation = designation;

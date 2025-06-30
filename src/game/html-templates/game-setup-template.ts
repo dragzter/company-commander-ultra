@@ -168,7 +168,7 @@ export const companyHomePageTemplate = () => {
 			<p class="company-inventory-status">Inventory Items/ Capacity <span>${totalItemsInInventory} / ${totalInventoryCapacity}</span></p>
 		</div>
 	  <div class="flex align-center justify-center w-100">
-		    <button id="select-men" class="mbtn red">Recruit Men</button>
+		    <button id="go-to-troops-screen" class="mbtn red">Recruit Men</button>
 	  </div>
 	`;
 

@@ -140,6 +140,7 @@ export function eventConfigs() {
     },
   ];
 
+  // Company home page
   const companyHomeEventConfig: HandlerInitConfig[] = [
     {
       selector: DOM.company.home,
@@ -194,7 +195,7 @@ export function eventConfigs() {
     },
     {
       // This one only shows when there's no men in the company
-      selector: DOM.company.hireSoldiers,
+      selector: DOM.company.goToTroopsScreen,
       eventType: "click",
       callback: () => {
         console.log("clicking market");
@@ -230,11 +231,26 @@ export function eventConfigs() {
     },
   ];
 
+  const troopsScreenEventConfig: HandlerInitConfig[] = [
+    {
+      selector: ".recruit-soldier",
+      eventType: "click",
+      callback: (e: Event) => {
+        e.stopPropagation();
+        // const { addSoldierToCompany } = usePlayerCompanyStore.getState();
+        const _this = e.target as HTMLButtonElement;
+        const soldierId = _this.dataset.trooperid;
+        console.log(soldierId);
+      },
+    },
+  ];
+
   return {
     gameSetup: () => gameSetupEventConfig,
     confirmationScreen: () => gameConfirmationEventConfig,
     mainMenu: () => mainMenuEventConfig,
     companyHome: () => companyHomeEventConfig,
     market: () => marketEventConfig,
+    troopsScreen: () => troopsScreenEventConfig,
   };
 }

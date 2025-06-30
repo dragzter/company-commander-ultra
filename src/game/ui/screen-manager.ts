@@ -169,7 +169,10 @@ function ScreenManager() {
     const content = parseHTML(troopsMarketTemplate(soldiers));
     center.appendChild(content as Element);
 
-    const eventsConfig = [...eventConfigs().companyHome()];
+    const eventsConfig = [
+      ...eventConfigs().companyHome(),
+      ...eventConfigs().troopsScreen(),
+    ];
     eventsConfig.forEach((config) => {
       _DomHandlers.initHandlers(
         config.eventType,

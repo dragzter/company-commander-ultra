@@ -303,6 +303,10 @@ button.mbtn {
 		height: auto;
 		transition: ease-in 0.3s;
 		
+		img {
+			pointer-events: none;
+		}
+		
 		&:hover {
 			filter: brightness(0.85);
 		}
@@ -319,15 +323,46 @@ button.mbtn {
 		overflow-y: scroll;
 		max-height: 480px;
 		height: 100%;
+		padding-left: 10px;
 		padding-top: 30px;
 		padding-bottom: 30px;
 	}
 }
 
+.reroll-counter {
+	padding: 3px 8px;
+	background: var(--camo-brown-1);
+	margin-bottom: 9px;
+	color: #fff;
+	width: 200px;
+	display: inline-block;
+	border-radius: 6px;
+	position: absolute;
+	top: 115px;
+	right: 15px;
+	z-index: 10;
+	text-align: center;
+}
+
+#recruit-staging {
+	width: 195px;
+	height: 425px;
+	padding: 10px;
+	top: 155px;
+	right: 15px;
+	position: fixed;
+	background: url("images/bg/camo_2_800x800.jpg");
+	background-size: cover;
+	background-position: center;
+	background-repeat: no-repeat;
+	z-index: 10;
+	border-radius: 8px;
+}
+
 
 .entity-card {
 	width: 550px;
-	margin: 0 auto 12px 10px;
+	margin: 0 auto 12px 0;
 	min-height: 152px;
 	border-radius: var(--std-border-radius);
 	overflow: hidden;

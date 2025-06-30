@@ -1,4 +1,5 @@
 import type { Soldier } from "../types.ts";
+import type { Item } from "../../../constants/items/types.ts";
 
 export interface Company {
   soldiers: Soldier[];
@@ -7,4 +8,5 @@ export interface Company {
   experience: number;
   companyName: string;
   commander: string;
+  inventory: Item[];
 }

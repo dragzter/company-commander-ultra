@@ -12,7 +12,7 @@ export const DOM = {
   company: {
     home: "#company-go-home",
     market: "#company-go-market",
-    hireSoldiers: "#select-men",
+    goToTroopsScreen: "#go-to-troops-screen",
     roster: "#company-go-roster",
     training: "#company-go-training",
     missions: "#company-go-missions",
@@ -20,6 +20,8 @@ export const DOM = {
     heroes: "#company-go-memorial",
     abilities: "#company-go-abilities",
     all: ".company-actions button",
+    recruitSoldier: ".recruit-soldier",
+    rerollCounter: ".reroll-counter",
   },
   market: {
     marketTroopsLink: "#market-troops",

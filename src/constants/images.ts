@@ -37,6 +37,7 @@ const btn = {
   btn_blue: "btn-blue.png",
   btn_green: "btn-green.png",
   btn_red: "btn-red.png",
+  sq_btn_redo: "btn-redo.png",
   sq_add: "btn-add.png",
   sq_add_blue: "btn-add-blue.png",
   sq_backwards: "backwards_button.png",
