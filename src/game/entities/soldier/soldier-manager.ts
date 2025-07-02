@@ -162,8 +162,15 @@ function SoldierManager() {
       getNewSoldier(lvl, SOLDIER_DESIGNATION.rifleman),
       getNewSoldier(lvl, SOLDIER_DESIGNATION.rifleman),
       getNewSoldier(lvl, SOLDIER_DESIGNATION.rifleman),
+      getNewSoldier(lvl, SOLDIER_DESIGNATION.rifleman),
+      getNewSoldier(lvl, SOLDIER_DESIGNATION.rifleman),
+      getNewSoldier(lvl, SOLDIER_DESIGNATION.rifleman),
+      getNewSoldier(lvl, SOLDIER_DESIGNATION.rifleman),
       getNewSoldier(lvl, SOLDIER_DESIGNATION.support),
       getNewSoldier(lvl, SOLDIER_DESIGNATION.support),
+      getNewSoldier(lvl, SOLDIER_DESIGNATION.support),
+      getNewSoldier(lvl, SOLDIER_DESIGNATION.support),
+      getNewSoldier(lvl, SOLDIER_DESIGNATION.medic),
       getNewSoldier(lvl, SOLDIER_DESIGNATION.medic),
     ];
   }
