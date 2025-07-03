@@ -15,7 +15,7 @@ import { ThrowableItems } from "../../constants/items/throwable.ts";
 /**
  * Starting gear for new recruits (Level Agnostic equipment)
  */
-export const STANDARD_LOADOUTS: StandardLoadout = {
+const StandardEquipmentLoadouts: StandardLoadout = {
   rifleman: {
     weapon: BallisticItems.common.m5_assault_rifle,
     armor: ArmorItems.common.s3_flak_jacket,
@@ -40,7 +40,7 @@ export const STANDARD_LOADOUTS: StandardLoadout = {
   },
 };
 
-export const ATTRIBUTES_INCREASES_BY_LEVEL: Attributes[] = [
+const ATTRIBUTES_INCREASES_BY_LEVEL: Attributes[] = [
   {
     hit_points: 70,
     morale: 50,
@@ -123,21 +123,34 @@ export const ATTRIBUTES_INCREASES_BY_LEVEL: Attributes[] = [
   },
 ];
 
-export const SOLDIER_BASE: Soldier = {
+function getStatsForLevel(lvl: number) {
+  if (lvl < 0 || lvl > 10) return;
+  return ATTRIBUTES_INCREASES_BY_LEVEL[lvl - 1];
+}
+
+const SOLDIER_BASE: Soldier = {
   id: "",
   name: "",
   attributes: ATTRIBUTES_INCREASES_BY_LEVEL[0],
   experience: 0,
   level: 1,
+  avatar: "",
   designation: SOLDIER_DESIGNATION.rifleman,
   status: SOLDIER_STATUS.inactive,
   combatProfile: {
     chanceToEvade: 0.03,
-    chanceToHit: 0.7,
+    chanceToHit: 0.6,
     suppression: 0.3,
     mitigateDamage: 0.03,
   } as CombatProfile,
   trait_profile: {} as TraitDict,
   inventory: [],
   events: [],
+};
+
+export {
+  getStatsForLevel,
+  SOLDIER_BASE,
+  ATTRIBUTES_INCREASES_BY_LEVEL,
+  StandardEquipmentLoadouts,
 };

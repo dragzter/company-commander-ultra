@@ -10,8 +10,9 @@ import { v4 as uuidv4 } from "uuid";
 
 import {
   ATTRIBUTES_INCREASES_BY_LEVEL,
+  getStatsForLevel,
   SOLDIER_BASE,
-  STANDARD_LOADOUTS,
+  StandardEquipmentLoadouts,
 } from "../levels.ts";
 import { generateName } from "../../../utils/name-utils.ts";
 import type {
@@ -76,8 +77,25 @@ function SoldierManager() {
     return soldier;
   }
 
+  function levelUpSoldier(soldier: Soldier, lvl: number) {
+    const atts = getStatsForLevel(lvl) as Attributes;
+    addUpAttributes(soldier, atts);
+  }
+
+  function addUpAttributes(soldier: Soldier, attributes: Attributes) {
+    const atts = attributes;
+    soldier.attributes = {
+      hit_points: soldier.attributes.hit_points + atts.hit_points,
+      level: atts.level,
+      dexterity: soldier.attributes.dexterity + atts.dexterity,
+      morale: soldier.attributes.morale + atts.morale,
+      toughness: soldier.attributes.toughness + atts.toughness,
+      awareness: soldier.attributes.awareness + atts.awareness,
+    };
+  }
+
   function getNewSoldier(level = 1, designation: Designation) {
-    const { weapon, armor, inventory } = STANDARD_LOADOUTS[designation];
+    const { weapon, armor, inventory } = StandardEquipmentLoadouts[designation];
     return gs(level, designation, armor, weapon, inventory);
   }
 
@@ -185,6 +203,7 @@ function SoldierManager() {
     getNewMedic: (lvl = 1) => getNewSoldier(lvl, SOLDIER_DESIGNATION.medic),
     generateTroopList,
     getSoldierTraitProfile,
+    levelUpSoldier,
   };
 }
 

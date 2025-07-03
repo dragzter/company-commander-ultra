@@ -5,8 +5,8 @@ import {
   companyHeaderPartial,
 } from "./game-setup-template.ts";
 import type { Soldier } from "../entities/types.ts";
-import { Images } from "../../constants/images.ts";
 import { usePlayerCompanyStore } from "../../store/ui-store.ts";
+import { Partial } from "./partials/partial.ts";
 
 export const marketTemplate = () => {
   const { market } = DOM;
@@ -41,72 +41,7 @@ export const troopsMarketTemplate = (
 	
 	<div class="troops-list">
 	<div class="reroll-counter">Rerolls: ${rerolls}</div>
-	${troops
-    .map((trooper) => {
-      return `
-			<div class="entity-card designation-${trooper.designation}" >
-				<div class="card-body">
-					<img class="card-image" src="/images/green-portrait/${trooper.avatar}" alt="Troopert Image">
-					<div class="card-details">
-						<h4 class="card-title flex justify-between align-center">
-							<span>
-								${trooper.name}
-								<span class="designation">
-									${trooper.designation.toUpperCase()}
-								</span>
-							</span>
-							<span>
-								<button data-reroll="${trooper.id}" class="mbtn icon-btn reroll-recruit pe-0" title="Reroll">
-									<img width="30" src="images/ui/square/${Images.btn.sq_btn_redo}" alt="Reroll">
-								</button>
-								<button data-trooperjson="${JSON.stringify(trooper)}" title="Recruit" class="mbtn icon-btn recruit-soldier pe-0">
-									<img width="30" src="images/ui/square/${Images.btn.sq_add}" alt="Add soldier to company">
-								</button>
-							</span>
-						</h4>
-						<div class="details-wrapper">
-							<div class="details-left">
-								<div class="detail-item">
-									<div>Hitpoints:</div>
-									<div>${trooper.attributes.hit_points}</div>
-								</div>
-								<div class="detail-item">
-									<div>Morale:</div>
-									<div>${trooper.attributes.morale} / 100</div>
-								</div>
-								<div class="detail-item">
-									<div>Accuracy:</div>
-									<div>${trooper.combatProfile.chanceToHit * 100}% / 100%</div>
-								</div>
-							</div>
-	
-							<div class="details-right">
-								<div class="detail-item">
-									<div>Toughness:</div>
-									<div>${trooper.attributes.toughness} / 100</div>
-								</div>
-								<div class="detail-item">
-									<div>Awareness:</div>
-									<div>${trooper.attributes.awareness} / 100</div>
-								</div>
-								<div class="detail-item">
-									<div>Dexterity:</div>
-									<div>${trooper.attributes.dexterity} / 100</div>
-								</div>
-							</div>
-						</div>
-					</div>
-			</div>
-				<div class="card-footer">
-					<div class="detail-item">
-						<div>Level:</div>
-						<div>${trooper.level}/10</div>
-						<div>${trooper.trait_profile.name.toUpperCase()}</div>
-					</div>
-				</div>
-			</div>`;
-    })
-    .join("")}
+	${troops.map((trooper) => Partial.trooper(trooper)).join("")}
 	</div>
 	<div id="recruit-staging"></div>
 	${companyActionsTemplate()}

@@ -404,6 +404,10 @@ button.mbtn {
 		border-top: 2px solid #333;
 		border-bottom-right-radius: var(--std-border-radius);
 		border-bottom-left-radius: var(--std-border-radius);
+		
+		.detail-item {
+			width: 205px;
+		}
 	}
 	
 	img.card-image {
@@ -429,7 +433,7 @@ button.mbtn {
 	}
 	
 	.detail-item {
-		width: 180px;
+		width: 190px;
 		display: flex;
 		justify-content: space-between;
 		

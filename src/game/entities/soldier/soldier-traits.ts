@@ -3,20 +3,26 @@ import type { SoldierTraitProfile } from "../types.ts";
 const TraitProfileStats: Record<string, SoldierTraitProfile> = {
   loyalist: {
     morale: 16,
-    toughness: 10,
-    dexterity: -2,
+    toughness: 12,
+    dexterity: -4,
     awareness: -5,
   },
   soldier: {
     morale: 10,
-    toughness: 16,
+    toughness: 18,
     dexterity: -2,
     awareness: 6,
+  },
+  scoundrel: {
+    awareness: 18,
+    morale: -8,
+    toughness: -6,
+    dexterity: 9,
   },
   sentinel: {
     awareness: 15,
     morale: 2,
-    toughness: 4,
+    toughness: 5,
     hit_points: 5,
     dexterity: -4,
   },
@@ -24,17 +30,23 @@ const TraitProfileStats: Record<string, SoldierTraitProfile> = {
     morale: 2,
     toughness: 15,
     awareness: 6,
-    hit_points: 13,
+    hit_points: 25,
+  },
+  crusader: {
+    morale: 12,
+    toughness: 10,
+    awareness: -12,
+    hit_points: 20,
   },
   drifter: {
-    dexterity: 3,
-    awareness: 4,
-    morale: -6,
-    hit_points: -1,
-    toughness: -5,
+    dexterity: 5,
+    awareness: 8,
+    morale: -8,
+    hit_points: -4,
+    toughness: -10,
   },
   defector: {
-    awareness: 13,
+    awareness: 15,
     morale: 3,
     hit_points: -20,
   },
@@ -67,37 +79,43 @@ const TraitProfileStats: Record<string, SoldierTraitProfile> = {
   survivor: {
     toughness: 20,
     awareness: 2,
-    hit_points: 6,
+    hit_points: 10,
   },
   zealot: {
     morale: 20,
     toughness: -15,
-    awareness: -4,
+    hit_points: 10,
+    awareness: -10,
   },
   skeptic: {
     morale: -4,
     toughness: -5,
     awareness: -1,
   },
+  lunatic: {
+    awareness: -25,
+    toughness: 20,
+    morale: 20,
+  },
   warhero: {
-    awareness: 17,
-    hit_points: 8,
-    toughness: 2,
+    awareness: 18,
+    hit_points: 10,
+    toughness: 8,
   },
   sharpshooter: {
-    dexterity: 8, // 5 (competent) + 3 (agile)
-    awareness: 17, // 3 (competent) + 8 (vigilant) + 6 (agile)
+    dexterity: 8,
+    awareness: 17,
     morale: 2,
-    hit_points: -1,
+    hit_points: -3,
   },
   bulldog: {
-    toughness: 27, // 7 + 10 + 10 (resilient)
+    toughness: 27,
     dexterity: -2,
     awareness: -3,
     hit_points: 9,
   },
   grunt: {
-    toughness: 23, // 10 + 7 + 6
+    toughness: 23,
     dexterity: -2,
     awareness: 2,
     hit_points: 6,
@@ -109,14 +127,14 @@ const TraitProfileStats: Record<string, SoldierTraitProfile> = {
     hit_points: -1,
   },
   veteran: {
-    awareness: 15, // 6 (focused) + 9 (intelligent)
+    awareness: 15,
     toughness: 4,
-    morale: 4, // -2 (intelligent) + 6 (hardliner)
+    morale: 4,
     hit_points: 3,
   },
   rebel: {
-    morale: 10, // 5 (brazen) + 5 (reckless)
-    awareness: -13, // -1 -8 (reckless) -4 (clumsy)
+    morale: 10,
+    awareness: -13,
     dexterity: -4,
   },
   rookie: {
@@ -126,10 +144,41 @@ const TraitProfileStats: Record<string, SoldierTraitProfile> = {
     hit_points: -6,
   },
   brawler: {
-    morale: 10, // 5 (reckless) + 5 (ferocious)
-    awareness: -11, // -3 (ferocious) -8 (reckless)
+    morale: 10,
+    awareness: -11,
     toughness: 4,
-    hit_points: 14, // 9 + 5
+    hit_points: 14,
+  },
+  bruiser: {
+    hit_points: 10,
+    toughness: 15,
+    awareness: -5,
+  },
+  douchy: {
+    dexterity: -5,
+    awareness: 5,
+    morale: -4,
+  },
+  alpha_dog: {
+    morale: 20,
+    hit_points: 5,
+    awareness: 10,
+  },
+  psycho: {
+    morale: 30,
+    awareness: -20,
+    hit_points: -10,
+    dexterity: 5,
+  },
+  kind_of_a_dick: {
+    dexterity: -5,
+    morale: -5,
+    hit_points: 5,
+    awareness: 5,
+  },
+  smartass: {
+    morale: -10,
+    awareness: 20,
   },
 };
 

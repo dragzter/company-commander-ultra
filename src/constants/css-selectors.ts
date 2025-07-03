@@ -28,11 +28,11 @@ export const DOM = {
     marketArmorLink: "#market-armor",
     marketWeaponsLink: "#marketWeapons",
     marketSuppliesLink: "#market-supplies",
-    screens: {
-      troops: "#troops-page",
-      weapons: "#weapons-page",
-      armor: "#armor-page",
-      supplies: "#supply-page",
+    pages: {
+      recruitTroops: {
+        rerollSoldier: ".reroll-soldier",
+        recruitSoldier: ".recruit-soldier",
+      },
     },
   },
   enterGameWrapper: "#game-enter-wrapper",

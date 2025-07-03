@@ -3,6 +3,11 @@ import { persist } from "zustand/middleware";
 import { URLReader } from "../utils/url-reader.ts";
 import type { Company } from "../game/entities/company/company.ts";
 import type { Soldier } from "../game/entities/types.ts";
+import { SoldierManager } from "../game/entities/soldier/soldier-manager.ts";
+import { Partial } from "../game/html-templates/partials/partial.ts";
+import { eventConfigs } from "../game/ui/event-configs.ts";
+import { DomEventManager } from "../game/event-handlers/dom-event-manager.ts";
+import { animateHTMLReplace } from "../utils/html-utils.ts";
 
 const { nocache } = URLReader(document.location.search);
 const skipPersistence = nocache === "true";
@@ -48,6 +53,8 @@ type CompanyStore = {
   setCompanyName: (companyName: string) => void;
   setGameStep: (step: GameStep) => void;
   addSoldierToCompany: (soldier: Soldier) => void;
+  rerollSoldier: (id: string) => Promise<void>;
+  useRecruitReroll: () => void;
 
   initializeCompany: () => void;
 
@@ -63,7 +70,7 @@ export const usePlayerCompanyStore = createStore<CompanyStore>()(
         companyUnitPatchURL: "",
         companyMembers: [],
         gameStep: GAME_STEPS.at_intro_0,
-        recruitReroll: 4,
+        recruitReroll: 6,
 
         marketAvailableTroops: [],
         creditBalance: 1000,
@@ -80,10 +87,60 @@ export const usePlayerCompanyStore = createStore<CompanyStore>()(
         company: {} as Company,
 
         // Actions
+        rerollSoldier: async (id: string) => {
+          const state = get();
+          const rerollIndex = state.marketAvailableTroops.findIndex(
+            (soldier) => soldier.id === id,
+          );
+
+          const soldierBeingRerolled = state.marketAvailableTroops[rerollIndex];
+
+          const { armor, weapon, designation, level, inventory } =
+            soldierBeingRerolled;
+
+          const newSoldier = SoldierManager.generateSoldierAtLevel(
+            level,
+            designation,
+            armor,
+            weapon,
+            inventory,
+          );
+
+          set((state) => ({
+            marketAvailableTroops: state.marketAvailableTroops.map(
+              (troop, index) => {
+                if (index === rerollIndex) {
+                  return newSoldier;
+                }
+
+                return troop;
+              },
+            ),
+          }));
+          const trooperCard = document.querySelector(
+            `[data-troopercard='${id}']`,
+          ) as HTMLElement;
+
+          await animateHTMLReplace(
+            trooperCard,
+            Partial.parsedTrooper(newSoldier),
+          ).then(() => {
+            DomEventManager.initEventArray(eventConfigs().troopsScreen());
+
+            const rerollCounterDiv = document.querySelector(
+              ".reroll-counter",
+            ) as HTMLElement;
+
+            rerollCounterDiv.textContent = `Rerolls: ${state.recruitReroll}`;
+          });
+          state.useRecruitReroll();
+        },
         useRecruitReroll: () =>
           set((state) => {
             if (state.recruitReroll - 1 <= 0) {
-              return state;
+              return {
+                recruitReroll: 0,
+              };
             }
 
             return {
@@ -172,7 +229,7 @@ export const usePlayerCompanyStore = createStore<CompanyStore>()(
           creditBalance: 1000,
           company: {} as Company,
           marketAvailableTroops: [],
-          recruitReroll: 4,
+          recruitReroll: 6,
 
           setMarketAvailableTroops: (soldiers: Soldier[]) =>
             set({
@@ -194,10 +251,65 @@ export const usePlayerCompanyStore = createStore<CompanyStore>()(
           },
 
           // Actions
+          rerollSoldier: async (id: string) => {
+            const state = get();
+            const rerollIndex = state.marketAvailableTroops.findIndex(
+              (soldier) => soldier.id === id,
+            );
+
+            const soldierBeingRerolled =
+              state.marketAvailableTroops[rerollIndex];
+
+            const { armor, weapon, designation, level, inventory } =
+              soldierBeingRerolled;
+
+            const newSoldier = SoldierManager.generateSoldierAtLevel(
+              level,
+              designation,
+              armor,
+              weapon,
+              inventory,
+            );
+
+            set((state) => ({
+              marketAvailableTroops: state.marketAvailableTroops.map(
+                (troop, index) => {
+                  if (index === rerollIndex) {
+                    return newSoldier;
+                  }
+
+                  return troop;
+                },
+              ),
+            }));
+
+            const trooperCard = document.querySelector(
+              `[data-troopercard='${id}']`,
+            ) as HTMLElement;
+
+            await animateHTMLReplace(
+              trooperCard,
+              Partial.parsedTrooper(newSoldier),
+            ).then(() => {
+              DomEventManager.initEventArray(eventConfigs().troopsScreen());
+
+              const rerollCounterDiv = document.querySelector(
+                ".reroll-counter",
+              ) as HTMLElement;
+
+              setTimeout(() => {
+                rerollCounterDiv.textContent = `Rerolls: ${state.recruitReroll}`;
+              }, 50);
+            });
+
+            state.useRecruitReroll();
+          },
           useRecruitReroll: () =>
             set((state) => {
               if (state.recruitReroll - 1 <= 0) {
-                return state;
+                return {
+                  recruitReroll: 0,
+                };
               }
 
               return {

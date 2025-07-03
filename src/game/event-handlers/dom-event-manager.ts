@@ -1,3 +1,5 @@
+import type { HandlerInitConfig } from "../../constants/types.ts";
+
 function DomEventManager() {
   const handlerMap: Map<
     string,
@@ -94,10 +96,17 @@ function DomEventManager() {
     handlerMap.clear();
   }
 
+  function initEventArray(eventConfig: HandlerInitConfig[]) {
+    eventConfig.forEach((config) => {
+      initHandlers(config.eventType, config.selector, config.callback);
+    });
+  }
+
   return {
     destroy,
     initHandler,
     initHandlers,
+    initEventArray,
     removeHandlers,
     getMap: () => new Map(handlerMap),
   };

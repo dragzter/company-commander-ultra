@@ -37,3 +37,18 @@ export function s_(selector: string) {
 export function sa_(selector: string) {
   return document.querySelectorAll(selector);
 }
+
+export function animateHTMLReplace(
+  original: HTMLElement,
+  replacement: HTMLElement,
+  duration = 800,
+) {
+  return new Promise((resolve) => {
+    original.classList.add("animate__animated", "animate__backOutDown");
+
+    setTimeout(() => {
+      replacement.classList.add("animate__animated", "animate__backInDown");
+      resolve(original.replaceWith(replacement));
+    }, duration);
+  });
+}

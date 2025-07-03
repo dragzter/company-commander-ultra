@@ -233,14 +233,27 @@ export function eventConfigs() {
 
   const troopsScreenEventConfig: HandlerInitConfig[] = [
     {
-      selector: ".recruit-soldier",
+      selector: DOM.market.pages.recruitTroops.recruitSoldier,
       eventType: "click",
       callback: (e: Event) => {
         e.stopPropagation();
         // const { addSoldierToCompany } = usePlayerCompanyStore.getState();
         const _this = e.target as HTMLButtonElement;
-        const soldierId = _this.dataset.trooperid;
-        console.log(soldierId);
+        const soldier = _this.dataset.trooperjson as string;
+        console.log(JSON.parse(soldier));
+      },
+    },
+    {
+      selector: DOM.market.pages.recruitTroops.rerollSoldier,
+      eventType: "click",
+      callback: (e: Event) => {
+        e.stopPropagation();
+
+        const { rerollSoldier } = usePlayerCompanyStore.getState();
+
+        const _this = e.target as HTMLButtonElement;
+        const id = _this.dataset.trooperid as string;
+        rerollSoldier(id);
       },
     },
   ];
