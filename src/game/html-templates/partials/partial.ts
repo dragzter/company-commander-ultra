@@ -1,4 +1,4 @@
-import type { Soldier } from "../../entities/types.ts";
+import type { Soldier, SoldierTraitProfile } from "../../entities/types.ts";
 import { Images } from "../../../constants/images.ts";
 import { UiServiceManager } from "../../../services/ui/ui-service.ts";
 
@@ -45,6 +45,10 @@ function Partial() {
 									<div>${trooper.attributes.morale}</div>
 								</div>
 								<div class="detail-item">
+									<div>Evade Chance:</div>
+									<div>${trooper.combatProfile.chanceToEvade * 100}% / 100%</div>
+								</div>
+								<div class="detail-item">
 									<div>Hit Chance:</div>
 									<div>${trooper.combatProfile.chanceToHit * 100}% / 100%</div>
 								</div>
@@ -71,7 +75,12 @@ function Partial() {
 					<div class="detail-item">
 						<div>Level:</div>
 						<div>${trooper.level}/10</div>
-						<div>${trooper.trait_profile.name.toUpperCase().replaceAll("_", " ")}</div>
+						<div class="tooltip-wrapper">
+                <span class="trait-profile">${trooper.trait_profile.name.toUpperCase().replaceAll("_", " ")}</span>
+                <div class="tooltip-body">
+                    ${_traitProfileHTML(trooper.trait_profile.stats)}
+                </div>
+						</div>
 					</div>
 				</div>
 			</div>`;
@@ -92,9 +101,29 @@ function Partial() {
     return parseHTML(`<div class="reroll-counter">Rerolls: ${counter}</div>`);
   }
 
+  function _traitProfileHTML(traitProfile: SoldierTraitProfile) {
+    return `
+    <div>
+        ${Object.entries(traitProfile)
+          .map((tp) => {
+            return `<div class="trait-profile-value">${tp[0].replaceAll("_", " ").toUpperCase()}: <span>${tp[1]}</span></div>`;
+          })
+          .join("")}
+    </div>
+    `;
+  }
+
+  function _parsedTraitProfileHTML(traitProfile: SoldierTraitProfile) {
+    return parseHTML(_traitProfileHTML(traitProfile));
+  }
+
   return {
-    render: { parsedTrooper: _pt, parsedRerollCounter: _rc },
-    create: { trooper: _t },
+    render: {
+      parsedTrooper: _pt,
+      parsedRerollCounter: _rc,
+      parsedTraitProfile: _parsedTraitProfileHTML,
+    },
+    create: { trooper: _t, traitProfile: _traitProfileHTML },
   };
 }
 

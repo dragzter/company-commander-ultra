@@ -22,6 +22,9 @@
 	--white-2: #f3f3f3;
 	--white-3: #e3e3e3;
 	
+	--green-info-1: #00ff59;
+	--green-info-2: #1fd75f;
+	
 	--black-1: #333;
 	--black-2: #222;
 	--black-3: #111;
@@ -368,6 +371,24 @@ button.mbtn {
 	overflow: hidden;
 	font-size: 13px;
 	outline: 2px solid var(--camo-green-3);
+	
+	.trait-profile {
+		padding: 2px 6px;
+		border-radius: var(--std-border-radius);
+		background: #233f41;
+		
+		&:hover {
+			filter: brightness(1.7);
+		}
+	}
+	
+	.trait-profile-value {
+		color: #fff !important;
+		
+		span {
+			color: var(--green-info-1) !important;
+		}
+	}
 	
 	.designation {
 		font-size: 10px;
@@ -1305,4 +1326,39 @@ input[type="text"] {
 
 .hidden {
 	visibility: hidden !important;
+}
+
+.tooltip-wrapper {
+	position: relative;
+	cursor: pointer;
+	
+	.tooltip-body {
+		position: absolute;
+		pointer-events: none;
+		opacity: 0;
+		bottom: 13px;
+		width: auto;
+		left: 50%;
+		transform: translateX(-50%);
+		min-width: 158px;
+		background: black;
+		z-index: 10;
+		padding: 12px 18px;
+		border-radius: var(--std-border-radius);
+		aspect-ratio: 2.2 / 1;
+		background: url(images/ui/info_panel_300.png);
+		background-size: 100% 100%;
+		background-repeat: no-repeat;
+		transition: all 0.3s;
+		font-size: 11px;
+	}
+	
+	&:hover {
+		
+		.tooltip-body {
+			opacity: 1;
+			bottom: 20px;
+			z-index: 20;
+		}
+	}
 }

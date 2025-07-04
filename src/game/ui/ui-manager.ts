@@ -2,7 +2,7 @@ import { UiServiceManager } from "../../services/ui/ui-service.ts";
 import { AudioManager } from "../audio/audio-manager.ts";
 
 import { UiAnimationManager } from "../../services/ui/ui-animation-manager.ts";
-import { ANIMATIONS } from "../../constants/identifiers.ts";
+import { Animations } from "../../constants/animations.ts";
 import { ScreenManager } from "./screen-manager.ts";
 import { DOM } from "../../constants/css-selectors.ts";
 import { s_, sa_ } from "../../utils/html-utils.ts";
@@ -77,7 +77,7 @@ function UiManager() {
       startScreenLoading();
       gameEnter.setAttribute("disabled", "true");
 
-      _UiAnim.animate(gameEnter, ANIMATIONS.pulse);
+      _UiAnim.animate(gameEnter, Animations.pulse[1]);
 
       setTimeout(() => {
         s_(DOM.enterGameWrapper).remove();

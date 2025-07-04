@@ -94,6 +94,11 @@ const cpu_patch = {
   patch_19: "patch_19.png",
 };
 
+const panels = {
+  info_panel_300: "info_panel_300.png",
+  info_panel_600: "info_panel_600.png",
+};
+
 /**
  * Weapon & Armor Items
  */
@@ -164,6 +169,7 @@ export const Images = {
   sand_portrait,
   blue_portrait,
   black_portrait,
+  panels,
   junk,
   Items: { armor, ballistic_weapon, throwable },
 };

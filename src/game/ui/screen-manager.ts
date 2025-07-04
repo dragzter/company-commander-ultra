@@ -4,7 +4,7 @@ import {
   mainMenuTemplate,
   setupConfirmationTemplate,
 } from "../html-templates/game-setup-template.ts";
-import { eventConfigs } from "./event-configs.ts";
+import { eventConfigs as ec } from "./event-configs.ts";
 import { AudioManager } from "../audio/audio-manager.ts";
 import { UiServiceManager } from "../../services/ui/ui-service.ts";
 // import { UiAnimationManager } from "../../services/ui/ui-animation-manager.ts";
@@ -29,7 +29,6 @@ function ScreenManager() {
   const _AudioManager = AudioManager;
   const _UiServiceManager = UiServiceManager;
   //const _UiAnim = UiAnimationManager;
-  const _DomHandlers = DomEventManager;
 
   const { gameBoard, parseHTML } = _UiServiceManager;
   const { show, hide, center, g_menu } = gameBoard();
@@ -48,16 +47,7 @@ function ScreenManager() {
         console.error("Failed to play setup:", e);
       });
 
-    const eventsConfig = eventConfigs().gameSetup();
-
-    eventsConfig.forEach((config) => {
-      // Bind event handlers to HTML elements
-      _DomHandlers.initHandlers(
-        config.eventType,
-        config.selector,
-        config.callback,
-      );
-    });
+    DomEventManager.initEventArray(ec().gameSetup());
   }
 
   function createConfirmationScreen() {
@@ -78,15 +68,7 @@ function ScreenManager() {
     UiManager.clear.center();
     center.appendChild(content as Element);
 
-    const eventsConfig = eventConfigs().confirmationScreen();
-
-    eventsConfig.forEach((config) => {
-      _DomHandlers.initHandlers(
-        config.eventType,
-        config.selector,
-        config.callback,
-      );
-    });
+    DomEventManager.initEventArray(ec().confirmationScreen());
 
     show.center();
   }
@@ -96,15 +78,8 @@ function ScreenManager() {
 
     const content = parseHTML(mainMenuTemplate());
     g_menu.appendChild(content as Element);
-    const eventsConfig = eventConfigs().mainMenu();
 
-    eventsConfig.forEach((config) => {
-      _DomHandlers.initHandlers(
-        config.eventType,
-        config.selector,
-        config.callback,
-      );
-    });
+    DomEventManager.initEventArray(ec().mainMenu());
   }
 
   function createCompanyHomePage() {
@@ -116,15 +91,7 @@ function ScreenManager() {
     // Set home button as selected
     UiManager.selectCompanyHomeButton(DOM.company.home);
 
-    const eventsConfig = eventConfigs().companyHome();
-
-    eventsConfig.forEach((config) => {
-      _DomHandlers.initHandlers(
-        config.eventType,
-        config.selector,
-        config.callback,
-      );
-    });
+    DomEventManager.initEventArray(ec().companyHome());
 
     Styler.setCenterBG("bg_81.jpg", true);
 
@@ -136,18 +103,8 @@ function ScreenManager() {
 
     const content = parseHTML(marketTemplate());
     center.appendChild(content as Element);
-    const eventsConfig = [
-      ...eventConfigs().companyHome(),
-      ...eventConfigs().market(),
-    ];
 
-    eventsConfig.forEach((config) => {
-      _DomHandlers.initHandlers(
-        config.eventType,
-        config.selector,
-        config.callback,
-      );
-    });
+    DomEventManager.initEventArray(ec().companyHome().concat(ec().market()));
 
     Styler.setCenterBG("bg_store_88.jpg", true);
   }
@@ -169,17 +126,9 @@ function ScreenManager() {
     const content = parseHTML(troopsMarketTemplate(soldiers));
     center.appendChild(content as Element);
 
-    const eventsConfig = [
-      ...eventConfigs().companyHome(),
-      ...eventConfigs().troopsScreen(),
-    ];
-    eventsConfig.forEach((config) => {
-      _DomHandlers.initHandlers(
-        config.eventType,
-        config.selector,
-        config.callback,
-      );
-    });
+    DomEventManager.initEventArray(
+      ec().companyHome().concat(ec().troopsScreen()),
+    );
 
     UiManager.selectCompanyHomeButton(DOM.company.market);
     Styler.setCenterBG("bg_76.jpg", true);

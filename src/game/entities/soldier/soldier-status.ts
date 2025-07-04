@@ -35,24 +35,24 @@ const PERMANENT_ENHANCEMENT: Record<string, Record<string, number>> = {
 
 const PERMANENT_INJURY: Record<string, Record<string, number>> = {
   one_eyed: {
-    awareness: -8,
+    awareness: -10,
   },
   crippled_leg: {
-    dexterity: -10,
-    toughness: -2,
+    dexterity: -30,
+    toughness: -4,
     hit_points: -5,
   },
   shattered_rib: {
-    hit_points: -12,
+    hit_points: -16,
     toughness: -3,
     dexterity: -3,
   },
   shell_shocked: {
-    morale: -20,
+    morale: -30,
     awareness: -6,
   },
   mangled_arm: {
-    dexterity: -12,
+    dexterity: -22,
     morale: -5,
   },
   nerve_damage: {
@@ -61,7 +61,7 @@ const PERMANENT_INJURY: Record<string, Record<string, number>> = {
     toughness: -5,
   },
   mangled_nose: {
-    morale: -6,
+    morale: -5,
   },
   body_burns: {
     morale: -4,
@@ -75,18 +75,18 @@ const PERMANENT_INJURY: Record<string, Record<string, number>> = {
     awareness: -2,
   },
   shattered_knee: {
-    dexterity: -10,
+    dexterity: -20,
     morale: -3,
   },
   herniated_disc: {
-    dexterity: -5,
+    dexterity: -6,
   },
   facial_scars: {
     toughness: 3,
     morale: 4,
   },
   mangled_foot: {
-    dexterity: -13,
+    dexterity: -18,
   },
   chronic_headache: {
     morale: -3,
@@ -107,32 +107,32 @@ const PERMANENT_INJURY: Record<string, Record<string, number>> = {
     morale: -8,
   },
   crushed_shoulder: {
-    dexterity: -8,
-    hit_points: -3,
+    dexterity: -15,
+    hit_points: -8,
   },
   missing_leg: {
-    dexterity: -34,
+    dexterity: -44,
     morale: -16,
-    hit_points: -15,
+    hit_points: -25,
   },
   chronic_pain: {
-    morale: -4,
+    morale: -5,
     toughness: -2,
     dexterity: -3,
   },
   lung_scarring: {
-    hit_points: -12,
+    hit_points: -15,
     toughness: -6,
   },
   missing_finger: {
     dexterity: -4,
   },
   missing_fingers: {
-    dexterity: -9,
+    dexterity: -15,
     morale: -2,
   },
   missing_hand: {
-    dexterity: -30,
+    dexterity: -40,
     morale: -8,
   },
   scarring: {

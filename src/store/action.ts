@@ -36,6 +36,8 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
 
     const soldierBeingRerolled = get().marketAvailableTroops[rerollIndex];
 
+    if (!soldierBeingRerolled) return;
+
     const { armor, weapon, designation, level, inventory } =
       soldierBeingRerolled;
 
