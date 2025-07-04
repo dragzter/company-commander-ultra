@@ -16,6 +16,7 @@ export default defineConfig([
         project: "./tsconfig.json",
       },
       globals: globals.browser,
+      noUnsafeCall: false,
     },
     rules: {
       // your custom rules here (optional)

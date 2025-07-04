@@ -3,12 +3,15 @@ import { Images } from "../../../constants/images.ts";
 import { UiServiceManager } from "../../../services/ui/ui-service.ts";
 
 /**
- * Renders the Trooper template in the trooper market screen.
- * @param trooper
+ * Creates HTML partials
  */
 function Partial() {
   const { parseHTML } = UiServiceManager;
 
+  /**
+   * Create HTML for a trooper entity-card for the troops market page.
+   * @param trooper: Soldier
+   */
   function _t(trooper: Soldier) {
     return `
 			<div data-troopercard="${trooper.id}" class="entity-card designation-${trooper.designation}" >
@@ -42,7 +45,7 @@ function Partial() {
 									<div>${trooper.attributes.morale}</div>
 								</div>
 								<div class="detail-item">
-									<div>Accuracy:</div>
+									<div>Hit Chance:</div>
 									<div>${trooper.combatProfile.chanceToHit * 100}% / 100%</div>
 								</div>
 							</div>
@@ -74,11 +77,25 @@ function Partial() {
 			</div>`;
   }
 
+  /**
+   * Pass the HTML string through the HTML parser
+   * @param trooper: Soldier
+   */
   function _pt(trooper: Soldier): HTMLElement {
     return parseHTML(_t(trooper)) as HTMLElement;
   }
 
-  return { trooper: _t, parsedTrooper: _pt };
+  /**
+   * Reroll counter div
+   */
+  function _rc(counter: number) {
+    return parseHTML(`<div class="reroll-counter">Reroll: ${counter}</div>`);
+  }
+
+  return {
+    render: { parsedTrooper: _pt, parsedRerollCounter: _rc },
+    create: { trooper: _t },
+  };
 }
 
 const singleton = Partial();

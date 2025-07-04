@@ -33,7 +33,7 @@ export const marketTemplate = () => {
 
 export const troopsMarketTemplate = (
   troops: Soldier[],
-  rerolls = usePlayerCompanyStore.getState().recruitReroll,
+  rerolls = usePlayerCompanyStore.getState().rerollCounter,
 ) => {
   return `
 <div id="troops-market" class="flex h-100 column justify-between">
@@ -41,7 +41,7 @@ export const troopsMarketTemplate = (
 	
 	<div class="troops-list">
 	<div class="reroll-counter">Rerolls: ${rerolls}</div>
-	${troops.map((trooper) => Partial.trooper(trooper)).join("")}
+	${troops.map((trooper) => Partial.create.trooper(trooper)).join("")}
 	</div>
 	<div id="recruit-staging"></div>
 	${companyActionsTemplate()}

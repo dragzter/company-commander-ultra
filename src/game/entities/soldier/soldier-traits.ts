@@ -13,6 +13,11 @@ const TraitProfileStats: Record<string, SoldierTraitProfile> = {
     dexterity: -2,
     awareness: 6,
   },
+  model_soldier: {
+    morale: 12,
+    toughness: 12,
+    awareness: 4,
+  },
   scoundrel: {
     awareness: 18,
     morale: -8,
@@ -31,6 +36,15 @@ const TraitProfileStats: Record<string, SoldierTraitProfile> = {
     toughness: 15,
     awareness: 6,
     hit_points: 25,
+  },
+  wiry: {
+    toughness: 15,
+    dexterity: 6,
+  },
+  trail_blazer: {
+    toughness: 5,
+    awareness: 16,
+    dexterity: 8,
   },
   crusader: {
     morale: 12,
@@ -97,7 +111,7 @@ const TraitProfileStats: Record<string, SoldierTraitProfile> = {
     toughness: 20,
     morale: 20,
   },
-  warhero: {
+  war_hero: {
     awareness: 18,
     hit_points: 10,
     toughness: 8,
@@ -108,11 +122,24 @@ const TraitProfileStats: Record<string, SoldierTraitProfile> = {
     morale: 2,
     hit_points: -3,
   },
+  brutal: {
+    hit_points: 8,
+    morale: 5,
+    toughness: 6,
+  },
   bulldog: {
     toughness: 27,
     dexterity: -2,
     awareness: -3,
     hit_points: 9,
+  },
+  burly: {
+    toughness: 15,
+    hit_points: 4,
+    dexterity: -4,
+  },
+  thoughtful: {
+    awareness: 10,
   },
   grunt: {
     toughness: 23,

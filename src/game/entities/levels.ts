@@ -42,7 +42,7 @@ const StandardEquipmentLoadouts: StandardLoadout = {
 
 const ATTRIBUTES_INCREASES_BY_LEVEL: Attributes[] = [
   {
-    hit_points: 70,
+    hit_points: 100,
     morale: 50,
     dexterity: 50,
     toughness: 50,
@@ -50,7 +50,7 @@ const ATTRIBUTES_INCREASES_BY_LEVEL: Attributes[] = [
     level: 1,
   },
   {
-    hit_points: 5,
+    hit_points: 10,
     dexterity: 1,
     morale: 1,
     toughness: 2,
@@ -58,7 +58,7 @@ const ATTRIBUTES_INCREASES_BY_LEVEL: Attributes[] = [
     level: 2,
   },
   {
-    hit_points: 5,
+    hit_points: 10,
     dexterity: 1,
     morale: 1,
     toughness: 3,
@@ -66,7 +66,7 @@ const ATTRIBUTES_INCREASES_BY_LEVEL: Attributes[] = [
     level: 3,
   },
   {
-    hit_points: 10,
+    hit_points: 15,
     dexterity: 1,
     morale: 1,
     toughness: 3,
@@ -74,7 +74,7 @@ const ATTRIBUTES_INCREASES_BY_LEVEL: Attributes[] = [
     level: 4,
   },
   {
-    hit_points: 5,
+    hit_points: 10,
     dexterity: 1,
     morale: 1,
     toughness: 3,
@@ -82,7 +82,7 @@ const ATTRIBUTES_INCREASES_BY_LEVEL: Attributes[] = [
     level: 5,
   },
   {
-    hit_points: 20,
+    hit_points: 30,
     dexterity: 0,
     morale: 1,
     toughness: 4,
@@ -90,7 +90,7 @@ const ATTRIBUTES_INCREASES_BY_LEVEL: Attributes[] = [
     level: 6,
   },
   {
-    hit_points: 10,
+    hit_points: 15,
     dexterity: 0,
     morale: 1,
     toughness: 2,
@@ -98,7 +98,7 @@ const ATTRIBUTES_INCREASES_BY_LEVEL: Attributes[] = [
     level: 7,
   },
   {
-    hit_points: 10,
+    hit_points: 15,
     dexterity: 1,
     morale: 3,
     toughness: 3,
@@ -106,7 +106,7 @@ const ATTRIBUTES_INCREASES_BY_LEVEL: Attributes[] = [
     level: 8,
   },
   {
-    hit_points: 10,
+    hit_points: 15,
     dexterity: 0,
     morale: 2,
     toughness: 5,
