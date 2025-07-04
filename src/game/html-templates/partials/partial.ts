@@ -89,7 +89,7 @@ function Partial() {
    * Reroll counter div
    */
   function _rc(counter: number) {
-    return parseHTML(`<div class="reroll-counter">Reroll: ${counter}</div>`);
+    return parseHTML(`<div class="reroll-counter">Rerolls: ${counter}</div>`);
   }
 
   return {

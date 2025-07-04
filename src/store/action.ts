@@ -30,12 +30,11 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
 
   // Actions
   rerollSoldier: async (id: string) => {
-    const state = get();
-    const rerollIndex = state.marketAvailableTroops.findIndex(
+    const rerollIndex = get().marketAvailableTroops.findIndex(
       (soldier) => soldier.id === id,
     );
 
-    const soldierBeingRerolled = state.marketAvailableTroops[rerollIndex];
+    const soldierBeingRerolled = get().marketAvailableTroops[rerollIndex];
 
     const { armor, weapon, designation, level, inventory } =
       soldierBeingRerolled;
@@ -66,16 +65,16 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
       Partial.render.parsedTrooper(newSoldier),
     ).then(() => {
       DomEventManager.initEventArray(eventConfigs().troopsScreen());
+      get().useRerollCounter();
 
       const rerollCounterDiv = document.querySelector(
         ".reroll-counter",
       ) as HTMLElement;
 
       rerollCounterDiv.replaceWith(
-        Partial.render.parsedRerollCounter(state.rerollCounter),
+        Partial.render.parsedRerollCounter(get().rerollCounter) as HTMLElement,
       );
     });
-    state.useRerollCounter();
   },
   useRerollCounter: () =>
     set((state: CompanyStore) => {
