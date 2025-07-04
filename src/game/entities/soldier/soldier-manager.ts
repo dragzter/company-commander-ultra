@@ -130,10 +130,10 @@ function SoldierManager() {
   }
 
   function attrToCombatProfileValue() {
-    const dexterityDivisor = 12;
-    const toughnessDivisor = 8;
+    const dexterityDivisor = 10;
+    const toughnessDivisor = 9;
     const moraleDivisor = 8;
-    const awarenessDivisor = 14;
+    const awarenessDivisor = 15;
 
     return {
       morale: (m: number) => toFNum(m / moraleDivisor / 100),

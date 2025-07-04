@@ -138,10 +138,10 @@ const SOLDIER_BASE: Soldier = {
   designation: SOLDIER_DESIGNATION.rifleman,
   status: SOLDIER_STATUS.inactive,
   combatProfile: {
-    chanceToEvade: 0.03,
+    chanceToEvade: 0.01,
     chanceToHit: 0.6,
     suppression: 0.3,
-    mitigateDamage: 0.03,
+    mitigateDamage: 0.02,
   } as CombatProfile,
   trait_profile: {} as TraitDict,
   inventory: [],

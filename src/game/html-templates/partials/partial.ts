@@ -41,20 +41,24 @@ function Partial() {
 									<div>${trooper.attributes.hit_points}</div>
 								</div>
 								<div class="detail-item">
-									<div>Morale:</div>
-									<div>${trooper.attributes.morale}</div>
+									<div>Mitigation:</div>
+									<div>${Math.floor(trooper.combatProfile.mitigateDamage * 100)}% / 100%</div>
 								</div>
 								<div class="detail-item">
 									<div>Evade Chance:</div>
-									<div>${trooper.combatProfile.chanceToEvade * 100}% / 100%</div>
+									<div>${Math.floor(trooper.combatProfile.chanceToEvade * 100)}% / 100%</div>
 								</div>
 								<div class="detail-item">
 									<div>Hit Chance:</div>
-									<div>${trooper.combatProfile.chanceToHit * 100}% / 100%</div>
+									<div>${Math.floor(trooper.combatProfile.chanceToHit * 100)}% / 100%</div>
 								</div>
 							</div>
 	
 							<div class="details-right">
+							  <div class="detail-item">
+									<div>Morale:</div>
+									<div>${trooper.attributes.morale}</div>
+								</div>
 								<div class="detail-item">
 									<div>Toughness:</div>
 									<div>${trooper.attributes.toughness}</div>

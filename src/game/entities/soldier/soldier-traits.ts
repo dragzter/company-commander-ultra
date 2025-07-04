@@ -80,6 +80,11 @@ const TraitProfileStats: Record<string, SoldierTraitProfile> = {
     hit_points: -4,
     toughness: -10,
   },
+  fearless: {
+    morale: 30,
+    awareness: -5,
+    toughness: 5,
+  },
   defector: {
     awareness: 15,
     morale: 3,
