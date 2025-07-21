@@ -1,5 +1,9 @@
 // Inventory
 import type { DamageType } from "../types.ts";
+import type {
+  EffectResult,
+  EffectType,
+} from "../../game/entities/effects/effect.ts";
 
 export const RARITY = {
   common: "common",
@@ -20,29 +24,6 @@ export const ITEM_TYPES = {
   throwable: "throwable",
 } as const;
 
-export const EFFECT_TYPES = {
-  heal: "heal",
-  damage: "damage",
-  buff: "buff",
-  debuff: "debuff",
-} as const;
-
-export const EFFECT_RESULTS = {
-  panic: "panic",
-  suppression: "suppression",
-  confusion: "confusion",
-  adrenaline_boost: "adrenaline_boost",
-  healing: "healing",
-  recovery: "recovery",
-  focus: "focus",
-  fatigue: "fatigue",
-  bleed: "bleed",
-  burn: "burn",
-  poison: "poison",
-  cleansing: "cleansing",
-  concealment: "concealment",
-} as const;
-
 export const TARGET_TYPES = {
   none: "none",
   self: "self",
@@ -54,13 +35,9 @@ export const TARGET_TYPES = {
 
 export type ItemType = keyof typeof ITEM_TYPES;
 
-export type EffectType = keyof typeof EFFECT_TYPES;
-
 export type Rarity = keyof typeof RARITY;
 
 export type TargetType = keyof typeof TARGET_TYPES;
-
-export type EffectResult = keyof typeof EFFECT_RESULTS;
 
 export type EffectSeverity = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
 

@@ -4,7 +4,10 @@ import { Partial } from "../game/html-templates/partials/partial.ts";
 import { DomEventManager } from "../game/event-handlers/dom-event-manager.ts";
 import { eventConfigs } from "../game/ui/event-configs.ts";
 import { type CompanyStore, GAME_STEPS, type GameStep } from "./ui-store.ts";
-import type { Company } from "../game/entities/company/company.ts";
+import {
+  type Company,
+  COMPANY_RESOURCES_BY_LEVEL,
+} from "../game/entities/company/company.ts";
 import type { Soldier } from "../game/entities/types.ts";
 
 export const StoreActions = (set: any, get: () => CompanyStore) => ({
@@ -100,6 +103,7 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
         companyName: "",
         commander: "",
         inventory: [],
+        resourceProfile: COMPANY_RESOURCES_BY_LEVEL[0],
       },
     });
   },

@@ -1,5 +1,7 @@
 import { faker } from "@faker-js/faker";
 import json from "./json/names-1.json";
+import json2 from "./json/last-names-1.json";
+
 import {
   getRandomNumberFromRange,
   getRandomValueFromStringArray as grv,
@@ -37,12 +39,15 @@ function generateName() {
   ];
 
   const nameIndex = getRandomNumberFromRange(json.names.length);
+  const lastNameIndex = getRandomNumberFromRange(json2.names.length);
   const firstName = json.names[nameIndex];
-  const lastName = faker.person.lastName();
+  const alternateLastName = Math.floor(Math.random() * 10);
+  const lastName =
+    alternateLastName > 6
+      ? faker.person.lastName()
+      : json2.names[lastNameIndex];
 
-  const hasMiddleName = Math.floor(Math.random() * 10);
-
-  if (hasMiddleName > 3) {
+  if (Math.floor(Math.random() * 10) > 3) {
     return `${firstName} ${grv(letters)}. ${lastName}`;
   }
   return `${firstName} ${lastName}`;
