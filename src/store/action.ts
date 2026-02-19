@@ -1,5 +1,5 @@
 import { SoldierManager } from "../game/entities/soldier/soldier-manager.ts";
-import { animateHTMLReplace } from "../utils/html-utils.ts";
+import { animateHTMLRemove, animateHTMLReplace } from "../utils/html-utils.ts";
 import { Partial } from "../game/html-templates/partials/partial.ts";
 import { DomEventManager } from "../game/event-handlers/dom-event-manager.ts";
 import { eventConfigs } from "../game/ui/event-configs.ts";
@@ -9,6 +9,10 @@ import {
   COMPANY_RESOURCES_BY_LEVEL,
 } from "../game/entities/company/company.ts";
 import type { Soldier } from "../game/entities/types.ts";
+import {
+  STARTING_CREDITS,
+  RECRUIT_COST_PER_SOLDIER,
+} from "../constants/economy.ts";
 
 export const StoreActions = (set: any, get: () => CompanyStore) => ({
   companyName: "",
@@ -17,8 +21,9 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
   gameStep: GAME_STEPS.at_intro_0,
   rerollCounter: 6,
 
-  marketAvailableTroops: [] as Soldier[],
-  creditBalance: 1000,
+  marketAvailableTroops: [],
+  recruitStaging: [],
+  creditBalance: STARTING_CREDITS,
   totalMenInCompany: 0,
   totalMenLostAllTime: 0,
   totalEnemiesKilledAllTime: 0,
@@ -94,17 +99,25 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
       };
     }),
   initializeCompany: () => {
-    set({
-      company: {
-        level: 0,
-        experience: 0,
-        name: "",
-        soldiers: [],
-        companyName: "",
-        commander: "",
-        inventory: [],
-        resourceProfile: COMPANY_RESOURCES_BY_LEVEL[0],
-      },
+    set((state) => {
+      if (
+        state.company.soldiers?.length ||
+        (state.company.name && state.company.commander)
+      ) {
+        return {};
+      }
+
+      return {
+        company: {
+          level: 0,
+          experience: 0,
+          name: "",
+          soldiers: [],
+          commander: "",
+          inventory: [],
+          resourceProfile: COMPANY_RESOURCES_BY_LEVEL[0],
+        },
+      };
     });
   },
 
@@ -112,6 +125,19 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
     set({
       marketAvailableTroops: soldiers,
     }),
+  filterMarketTroops: async (id: string) => {
+    set((state: CompanyStore) => ({
+      marketAvailableTroops: state.marketAvailableTroops?.filter(
+        (s) => s.id !== id,
+      ),
+    }));
+
+    const trooperCard = document.querySelector(
+      `[data-troopercard='${id}']`,
+    ) as HTMLElement;
+
+    await animateHTMLRemove(trooperCard, 800);
+  },
   addCredits: (creds: number) =>
     set((state: CompanyStore) => ({
       creditBalance: state.creditBalance + creds,
@@ -145,6 +171,41 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
         soldiers: [...state.company.soldiers, soldier],
       },
     })),
+  addToRecruitStaging: (soldier: Soldier) =>
+    set((state: CompanyStore) => ({
+      recruitStaging: [...(state.recruitStaging ?? []), soldier],
+    })),
+  removeFromRecruitStaging: (soldierId: string) =>
+    set((state: CompanyStore) => {
+      const staging = state.recruitStaging ?? [];
+      const soldier = staging.find((s) => s.id === soldierId);
+      if (!soldier) return {};
+      return {
+        recruitStaging: staging.filter((s) => s.id !== soldierId),
+        marketAvailableTroops: [...state.marketAvailableTroops, soldier],
+      };
+    }),
+  confirmRecruitment: () =>
+    set((state: CompanyStore) => {
+      const staging = state.recruitStaging ?? [];
+      const totalCost = staging.length * RECRUIT_COST_PER_SOLDIER;
+      if (staging.length === 0 || state.creditBalance < totalCost) {
+        return {};
+      }
+      const newSoldiers = [...state.company.soldiers, ...staging];
+      const newMarketIds = new Set(staging.map((s) => s.id));
+      return {
+        creditBalance: state.creditBalance - totalCost,
+        recruitStaging: [],
+        company: {
+          ...state.company,
+          soldiers: newSoldiers,
+        },
+        marketAvailableTroops: state.marketAvailableTroops.filter(
+          (s) => !newMarketIds.has(s.id),
+        ),
+      };
+    }),
   canProceedToLaunch: () => {
     const state = get();
     return (

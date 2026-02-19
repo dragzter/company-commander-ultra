@@ -23,6 +23,7 @@ export type CompanyStore = {
   companyName: string;
   companyUnitPatchURL: string;
   marketAvailableTroops: Soldier[];
+  recruitStaging: Soldier[];
   creditBalance: number;
   commanderName: string;
   gameStep: GameStep;
@@ -47,7 +48,11 @@ export type CompanyStore = {
   setCompanyName: (companyName: string) => void;
   setGameStep: (step: GameStep) => void;
   addSoldierToCompany: (soldier: Soldier) => void;
+  addToRecruitStaging: (soldier: Soldier) => void;
+  removeFromRecruitStaging: (soldierId: string) => void;
+  confirmRecruitment: () => void;
   rerollSoldier: (id: string) => Promise<void>;
+  filterMarketTroops: (id: string) => void;
   useRerollCounter: () => void;
 
   initializeCompany: () => void;

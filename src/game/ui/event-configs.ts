@@ -4,6 +4,7 @@ import { disableBtn, enableBtn, s_, sa_ } from "../../utils/html-utils.ts";
 import { DOM } from "../../constants/css-selectors.ts";
 import { Styler } from "../../utils/styler-manager.ts";
 import { UiManager } from "./ui-manager.ts";
+import { Partial } from "../html-templates/partials/partial.ts";
 
 /**
  * Contains definitions for the events of all html templates.
@@ -236,11 +237,36 @@ export function eventConfigs() {
       selector: DOM.market.pages.recruitTroops.recruitSoldier,
       eventType: "click",
       callback: (e: Event) => {
+        const { recruitStagingDiv } = DOM.market.pages.recruitTroops;
         e.stopPropagation();
-        // const { addSoldierToCompany } = usePlayerCompanyStore.getState();
+        const { addToRecruitStaging, filterMarketTroops } =
+          usePlayerCompanyStore.getState();
         const _this = e.target as HTMLButtonElement;
-        const soldier = _this.dataset.trooperjson as string;
-        console.log(JSON.parse(soldier));
+        const soldier = JSON.parse(_this.dataset.trooperjson as string);
+        addToRecruitStaging(soldier);
+        filterMarketTroops(soldier.id);
+        const newSoldierHTML = Partial.render.parsedStagedTrooperCard(soldier);
+        s_(recruitStagingDiv).append(newSoldierHTML);
+      },
+    },
+    {
+      selector: DOM.market.pages.recruitTroops.removeFromStaging,
+      eventType: "click",
+      callback: (e: Event) => {
+        e.stopPropagation();
+        const _this = e.target as HTMLButtonElement;
+        const soldierId = _this.dataset.soldierId;
+        if (!soldierId) return;
+        usePlayerCompanyStore.getState().removeFromRecruitStaging(soldierId);
+        UiManager.renderMarketTroopsScreen();
+      },
+    },
+    {
+      selector: DOM.market.pages.recruitTroops.confirmRecruitment,
+      eventType: "click",
+      callback: () => {
+        usePlayerCompanyStore.getState().confirmRecruitment();
+        UiManager.renderMarketTroopsScreen();
       },
     },
     {
@@ -248,9 +274,7 @@ export function eventConfigs() {
       eventType: "click",
       callback: (e: Event) => {
         e.stopPropagation();
-
         const { rerollSoldier } = usePlayerCompanyStore.getState();
-
         const _this = e.target as HTMLButtonElement;
         const id = _this.dataset.trooperid as string;
         rerollSoldier(id);

@@ -1,5 +1,6 @@
 import type { Soldier, SoldierTraitProfile } from "../../entities/types.ts";
 import { Images } from "../../../constants/images.ts";
+import { RECRUIT_COST_PER_SOLDIER } from "../../../constants/economy.ts";
 import { UiServiceManager } from "../../../services/ui/ui-service.ts";
 
 /**
@@ -29,7 +30,7 @@ function Partial() {
 								<button data-trooperid="${trooper.id}" class="mbtn icon-btn reroll-soldier pe-0" title="Reroll">
 									<img width="30" src="images/ui/square/${Images.btn.sq_btn_redo}" alt="Reroll">
 								</button>
-								<button data-trooperjson="${JSON.stringify(trooper)}" title="Recruit" class="mbtn icon-btn recruit-soldier pe-0">
+								<button data-trooperjson='${JSON.stringify(trooper)}' title="Recruit" class="mbtn icon-btn recruit-soldier pe-0">
 									<img width="30" src="images/ui/square/${Images.btn.sq_add}" alt="Add soldier to company">
 								</button>
 							</span>
@@ -71,6 +72,10 @@ function Partial() {
 									<div>Dexterity:</div>
 									<div>${trooper.attributes.dexterity}</div>
 								</div>
+								<div class="detail-item recruit-cost">
+									<div>Cost:</div>
+									<div>$${RECRUIT_COST_PER_SOLDIER}</div>
+								</div>
 							</div>
 						</div>
 					</div>
@@ -99,6 +104,29 @@ function Partial() {
   }
 
   /**
+   * Displayed when a user selects a soldier for recruitment on the market trooper screen.
+   * @param soldier
+   */
+  function _stc(soldier: Soldier) {
+    return `
+    <div data-staged-soldier-id="${soldier.id}" class="flex staged-trooper align-center">
+        <button type="button" data-soldier-id="${soldier.id}" class="mbtn icon-btn remove-from-staging" title="Remove from selection">&times;</button>
+        <img src="/images/green-portrait/${soldier.avatar}" alt="Staged Trooper">
+        <div>
+            <p>${soldier.name}</p>
+            <p class="soldier-designation">${soldier.designation}</p>
+        </div>
+    </div>`;
+  }
+
+  /**
+   * Parsed staged trooper card (for appending dynamically).
+   */
+  function _pstc(soldier: Soldier): HTMLElement {
+    return parseHTML(_stc(soldier)) as HTMLElement;
+  }
+
+  /**
    * Reroll counter div
    */
   function _rc(counter: number) {
@@ -124,10 +152,15 @@ function Partial() {
   return {
     render: {
       parsedTrooper: _pt,
+      parsedStagedTrooperCard: _pstc,
       parsedRerollCounter: _rc,
       parsedTraitProfile: _parsedTraitProfileHTML,
     },
-    create: { trooper: _t, traitProfile: _traitProfileHTML },
+    create: {
+      stagedTrooperCard: _stc,
+      trooper: _t,
+      traitProfile: _traitProfileHTML,
+    },
   };
 }
 

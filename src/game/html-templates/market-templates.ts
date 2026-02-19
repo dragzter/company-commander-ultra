@@ -1,4 +1,5 @@
 import { DOM } from "../../constants/css-selectors.ts";
+import { RECRUIT_COST_PER_SOLDIER } from "../../constants/economy.ts";
 import { clrHash } from "../../utils/html-utils.ts";
 import {
   companyActionsTemplate,
@@ -35,15 +36,27 @@ export const troopsMarketTemplate = (
   troops: Soldier[],
   rerolls = usePlayerCompanyStore.getState().rerollCounter,
 ) => {
+  const store = usePlayerCompanyStore.getState();
+  const recruitStaging = store.recruitStaging ?? [];
+  const { creditBalance } = store;
+  const totalCost = recruitStaging.length * RECRUIT_COST_PER_SOLDIER;
+  const canAfford = creditBalance >= totalCost;
+  const hasStaged = recruitStaging.length > 0;
   return `
 <div id="troops-market" class="flex h-100 column justify-between">
 	${companyHeaderPartial("Available Troops")}
-	
+	<div class="recruit-balance p-2">Credits: $${creditBalance} | Selected: ${recruitStaging.length} × $${RECRUIT_COST_PER_SOLDIER} = $${totalCost}</div>
 	<div class="troops-list">
 	<div class="reroll-counter">Rerolls: ${rerolls}</div>
 	${troops.map((trooper) => Partial.create.trooper(trooper)).join("")}
 	</div>
-	<div id="recruit-staging"></div>
+	<div id="recruit-staging-area" class="recruit-staging-area">
+		<p class="recruit-staging-label">Selected for recruitment</p>
+		<div id="recruit-staging">
+		${recruitStaging.map((s) => Partial.create.stagedTrooperCard(s)).join("")}
+		</div>
+		<button id="confirm-recruitment" type="button" class="mbtn green ${!hasStaged || !canAfford ? "disabled" : ""}" ${!hasStaged || !canAfford ? "disabled" : ""}>Confirm recruitment ($${totalCost})</button>
+	</div>
 	${companyActionsTemplate()}
 </div>
 	`;

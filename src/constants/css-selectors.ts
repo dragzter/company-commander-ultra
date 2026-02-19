@@ -20,7 +20,6 @@ export const DOM = {
     heroes: "#company-go-memorial",
     abilities: "#company-go-abilities",
     all: ".company-actions button",
-    recruitSoldier: ".recruit-soldier",
     rerollCounter: ".reroll-counter",
   },
   market: {
@@ -32,6 +31,9 @@ export const DOM = {
       recruitTroops: {
         rerollSoldier: ".reroll-soldier",
         recruitSoldier: ".recruit-soldier",
+        recruitStagingDiv: "#recruit-staging",
+        confirmRecruitment: "#confirm-recruitment",
+        removeFromStaging: ".remove-from-staging",
       },
     },
   },
