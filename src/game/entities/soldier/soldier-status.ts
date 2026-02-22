@@ -1,4 +1,4 @@
-import { getRandomValueFromStringArray } from "../../../utils/random.ts";
+import { getRandomValueFromStringArray } from "../../../utils/math.ts";
 
 const PERMANENT_ENHANCEMENT: Record<string, Record<string, number>> = {
   hardened: {

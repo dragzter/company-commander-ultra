@@ -43,6 +43,14 @@ export type EffectSeverity = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
 
 export type WeaponBaseSpeed = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10; // Lower is slower
 
+/** Level/tier of gear (1-10). Same base item at higher level = better stats. */
+export type GearLevel = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
+
+/** Armor bonus: flat stats (TGH, HP, etc) or percent (MIT, AVD). Percent bonuses don't scale with tier. */
+export type ArmorBonus =
+  | { type: "flat"; stat: "toughness" | "hp" | "dex" | "awareness" | "morale"; value: number }
+  | { type: "percent"; stat: "mitigation" | "avoidance"; value: number };
+
 export interface Item {
   damage?: number;
   damage_type?: DamageType;
@@ -50,18 +58,21 @@ export interface Item {
   effect?: ItemEffect;
   icon?: string;
   id: string;
+  level?: GearLevel; // Gear tier 1-10
   name: string;
   uses?: number;
   price?: number;
   quantity?: number;
-  rarity?: Rarity; // Weapons only
-  size?: number; // Weapons only
+  rarity?: Rarity;
+  restrictRole?: "support" | "rifleman" | "medic" | "any"; // Weapon role restriction
+  size?: number;
   speed_base?: WeaponBaseSpeed;
   tags?: string[];
   target: TargetType;
   toughness?: number; // Armor only
   type: ItemType;
   usable?: boolean;
+  passiveEffect?: string; // Epic armor: display-only passive description
 }
 
 export type ThrowableItem = Pick<
@@ -94,7 +105,8 @@ export type Armor = Pick<
   | "effect"
   | "icon"
   | "toughness"
->;
+  | "level"
+> & { bonuses?: ArmorBonus[]; passiveEffect?: string };
 
 export type MedItem = Pick<
   Item,

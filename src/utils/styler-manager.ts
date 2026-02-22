@@ -16,7 +16,7 @@ function styler() {
   }
 
   function setCenterBG(img: string, applyOverlay = false) {
-    center.style.backgroundImage = "url(images/bg/" + img + ")";
+    center.style.backgroundImage = "url(/images/bg/" + img + ")";
     center.style.backgroundRepeat = "no-repeat";
     center.style.backgroundSize = "cover";
 

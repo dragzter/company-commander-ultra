@@ -4,6 +4,7 @@ import { URLReader } from "../utils/url-reader.ts";
 import type { Company } from "../game/entities/company/company.ts";
 import type { Soldier } from "../game/entities/types.ts";
 import { StoreActions } from "./action.ts";
+import { STARTING_CREDITS } from "../constants/economy.ts";
 
 const { nocache } = URLReader(document.location.search);
 const skipPersistence = nocache === "true";
@@ -44,11 +45,13 @@ export type CompanyStore = {
   addCredits: (n: number) => void;
   subtractCredits: (n: number) => void;
   setCommanderName: (n: string) => void;
+  setCreditBalance: (amount: number) => void;
   setCompanyUnitPatch: (patchImgUrl: string) => void;
   setCompanyName: (companyName: string) => void;
   setGameStep: (step: GameStep) => void;
   addSoldierToCompany: (soldier: Soldier) => void;
   addToRecruitStaging: (soldier: Soldier) => void;
+  tryAddToRecruitStaging: (soldier: Soldier) => { success: boolean; reason?: "capacity" | "afford" };
   removeFromRecruitStaging: (soldierId: string) => void;
   confirmRecruitment: () => void;
   rerollSoldier: (id: string) => Promise<void>;
@@ -56,6 +59,35 @@ export type CompanyStore = {
   useRerollCounter: () => void;
 
   initializeCompany: () => void;
+  addInitialTroopsIfEmpty: () => void;
+  onCompanyLevelUp: () => void;
+  releaseSoldier: (soldierId: string) => void;
+  destroyCompanyItem: (index: number) => void;
+  addItemsToCompanyInventory: (
+    items: import("../constants/items/types.ts").Item[],
+    totalCost: number,
+  ) => { success: boolean; reason?: "capacity" | "credits" };
+  consumeSoldierThrowable: (soldierId: string, inventoryIndex: number) => boolean;
+  equipItemToSoldier: (
+    soldierId: string,
+    slotType: "weapon" | "armor" | "equipment",
+    item: import("../constants/items/types.ts").Item,
+    options?: { fromArmoryIndex?: number; equipmentIndex?: number },
+  ) => { success: boolean; reason?: string };
+  unequipItemToArmory: (
+    soldierId: string,
+    slotType: "weapon" | "armor" | "equipment",
+    equipmentIndex?: number,
+  ) => { success: boolean; reason?: string };
+  emptySoldierToCompanyInventory: (soldierId: string) => { success: boolean; reason?: string };
+  moveItemBetweenSlots: (op: {
+    sourceSoldierId: string;
+    sourceSlotType: "weapon" | "armor" | "equipment";
+    sourceEqIndex?: number;
+    destSoldierId: string;
+    destSlotType: "weapon" | "armor" | "equipment";
+    destEqIndex?: number;
+  }) => { success: boolean; reason?: string };
 
   // Booleans
   canProceedToLaunch: () => boolean;
@@ -65,6 +97,14 @@ export const usePlayerCompanyStore = createStore<CompanyStore>()(
   !skipPersistence
     ? persist((set, get) => StoreActions(set, get), {
         name: "cc-company-store",
+        merge: (persisted, current) => {
+          const merged = { ...current, ...(persisted as object) } as CompanyStore;
+          const bal = merged.creditBalance as number | string;
+          if (bal === 1000 || String(bal) === "1000") {
+            merged.creditBalance = STARTING_CREDITS;
+          }
+          return merged;
+        },
       })
     : (set, get) => StoreActions(set, get),
 );

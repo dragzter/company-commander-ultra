@@ -1,5 +1,7 @@
+import type { Mission } from "../../constants/missions.ts";
 import { UiServiceManager } from "../../services/ui/ui-service.ts";
 import { AudioManager } from "../audio/audio-manager.ts";
+import { getEquipPickerBodyHtml } from "../html-templates/equip-picker-template.ts";
 
 import { UiAnimationManager } from "../../services/ui/ui-animation-manager.ts";
 import { Animations } from "../../constants/animations.ts";
@@ -96,7 +98,8 @@ function UiManager() {
   function selectCompanyHomeButton(cssSelector: string) {
     unselectCompanyHomeButtons();
     setTimeout(() => {
-      s_(cssSelector).classList.add("active");
+      const el = s_(cssSelector);
+      if (el) el.classList.add("active");
     }, 0);
   }
 
@@ -132,7 +135,7 @@ function UiManager() {
   }
 
   function renderRosterScreen() {
-    console.log("rendering rtoster screen");
+    _ScreenManager.generate.createRosterPage();
   }
 
   function renderMarketScreen() {
@@ -141,28 +144,65 @@ function UiManager() {
   }
 
   function renderMarketTroopsScreen() {
-    console.log("rendering the troops for hire");
     _ScreenManager.generate.createTroopsPage();
   }
 
+  function showTroopsRecruitError(reason: "capacity" | "afford") {
+    const el = document.getElementById("troops-recruit-error");
+    if (!el) return;
+    el.textContent = reason === "afford" ? "Not enough credits to recruit this soldier." : "Company is at full capacity.";
+    el.classList.add("visible");
+    setTimeout(() => el.classList.remove("visible"), 3500);
+  }
+
+  function renderWeaponsMarketScreen() {
+    _ScreenManager.generate.createWeaponsMarketPage();
+  }
+
+  function renderArmorMarketScreen() {
+    _ScreenManager.generate.createArmorMarketPage();
+  }
+
+  function renderSuppliesMarketScreen() {
+    _ScreenManager.generate.createSuppliesMarketPage();
+  }
+
   function renderInventoryScreen() {
-    console.log("render Inventory Screen");
+    _ScreenManager.generate.createInventoryPage();
+  }
+
+  function refreshEquipPickerContent() {
+    const picker = document.getElementById("equip-picker-popup");
+    if (!picker || picker.hasAttribute("hidden")) return;
+    const { soldiers, armory } = getEquipPickerBodyHtml();
+    const soldiersEl = picker.querySelector(".equip-picker-soldiers-list");
+    const armoryEl = picker.querySelector(".equip-picker-armory-grid");
+    if (soldiersEl) soldiersEl.innerHTML = soldiers;
+    if (armoryEl) armoryEl.innerHTML = armory;
   }
 
   function renderAbilitiesScreen() {
-    console.log("render Abilities Screen");
+    _ScreenManager.generate.createAbilitiesPage();
   }
 
   function renderTrainingScreen() {
-    console.log("render Training Screen");
+    _ScreenManager.generate.createTrainingPage();
   }
 
   function renderMissionsScreen() {
-    console.log("render Missions Screen");
+    _ScreenManager.generate.createMissionsPage();
+  }
+
+  function renderReadyRoomScreen(mission?: Mission | null) {
+    _ScreenManager.generate.createReadyRoomPage(mission);
+  }
+
+  function renderCombatScreen(mission?: Mission | null) {
+    _ScreenManager.generate.createCombatPage(mission);
   }
 
   function renderHeroesScreen() {
-    console.log("render Heroes Screen");
+    _ScreenManager.generate.createMemorialPage();
   }
 
   return {
@@ -172,10 +212,17 @@ function UiManager() {
     renderRosterScreen,
     renderMarketScreen,
     renderMarketTroopsScreen,
+    showTroopsRecruitError,
+    renderWeaponsMarketScreen,
+    renderArmorMarketScreen,
+    renderSuppliesMarketScreen,
     renderInventoryScreen,
+    refreshEquipPickerContent,
     renderAbilitiesScreen,
     renderTrainingScreen,
     renderMissionsScreen,
+    renderReadyRoomScreen,
+    renderCombatScreen,
     renderHeroesScreen,
     initMainMenu,
     enterGame,

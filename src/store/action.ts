@@ -1,7 +1,7 @@
 import { SoldierManager } from "../game/entities/soldier/soldier-manager.ts";
 import { animateHTMLRemove, animateHTMLReplace } from "../utils/html-utils.ts";
 import { Partial } from "../game/html-templates/partials/partial.ts";
-import { DomEventManager } from "../game/event-handlers/dom-event-manager.ts";
+import { DomEventManager } from "../game/ui/event-handlers/dom-event-manager.ts";
 import { eventConfigs } from "../game/ui/event-configs.ts";
 import { type CompanyStore, GAME_STEPS, type GameStep } from "./ui-store.ts";
 import {
@@ -11,8 +11,14 @@ import {
 import type { Soldier } from "../game/entities/types.ts";
 import {
   STARTING_CREDITS,
-  RECRUIT_COST_PER_SOLDIER,
+  getRecruitCost,
+  DEFAULT_INVENTORY_CAPACITY,
+  getArmorySlots,
 } from "../constants/economy.ts";
+import {
+  getMaxCompanySize,
+} from "../game/entities/company/company.ts";
+import { TARGET_TYPES } from "../constants/items/types.ts";
 
 export const StoreActions = (set: any, get: () => CompanyStore) => ({
   companyName: "",
@@ -70,20 +76,30 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
       `[data-troopercard='${id}']`,
     ) as HTMLElement;
 
+    const state = get();
+    const staging = state.recruitStaging ?? [];
+    const maxSize = getMaxCompanySize(state.companyLevel ?? 1);
+    const currentCount = state.company.soldiers?.length ?? state.totalMenInCompany ?? 0;
+    const slotsLeft = maxSize - currentCount;
+    const stagingCost = staging.reduce((s, x) => s + getRecruitCost(x.trait_profile?.stats), 0);
+    const newSoldierCost = getRecruitCost(soldierBeingRerolled.trait_profile?.stats);
+    const remaining = state.creditBalance - stagingCost;
+    const canAddOneMore = slotsLeft > staging.length && remaining >= newSoldierCost;
+
+    get().useRerollCounter();
+
     await animateHTMLReplace(
       trooperCard,
-      Partial.render.parsedTrooper(newSoldier),
+      Partial.render.parsedTrooper(newSoldier, canAddOneMore),
     ).then(() => {
       DomEventManager.initEventArray(eventConfigs().troopsScreen());
-      get().useRerollCounter();
 
-      const rerollCounterDiv = document.querySelector(
-        ".reroll-counter",
-      ) as HTMLElement;
-
-      rerollCounterDiv.replaceWith(
-        Partial.render.parsedRerollCounter(get().rerollCounter) as HTMLElement,
-      );
+      const rerollCounterDiv = document.querySelector(".reroll-counter");
+      if (rerollCounterDiv) {
+        rerollCounterDiv.replaceWith(
+          Partial.render.parsedRerollCounter(get().rerollCounter) as HTMLElement,
+        );
+      }
     });
   },
   useRerollCounter: () =>
@@ -98,6 +114,8 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
         rerollCounter: state.rerollCounter - 1,
       };
     }),
+  setCreditBalance: (amount: number) =>
+    set({ creditBalance: amount }),
   initializeCompany: () => {
     set((state) => {
       if (
@@ -108,8 +126,12 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
       }
 
       return {
+        creditBalance: STARTING_CREDITS,
+        totalMenInCompany: 0,
+        totalInventoryCapacity: DEFAULT_INVENTORY_CAPACITY,
+        companyLevel: 1,
         company: {
-          level: 0,
+          level: 1,
           experience: 0,
           name: "",
           soldiers: [],
@@ -172,9 +194,34 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
       },
     })),
   addToRecruitStaging: (soldier: Soldier) =>
-    set((state: CompanyStore) => ({
-      recruitStaging: [...(state.recruitStaging ?? []), soldier],
-    })),
+    set((state: CompanyStore) => {
+      const staging = state.recruitStaging ?? [];
+      const maxSize = getMaxCompanySize(state.companyLevel ?? 1);
+      const currentCount = state.company.soldiers?.length ?? state.totalMenInCompany ?? 0;
+      const slotsLeft = maxSize - currentCount;
+      if (staging.length >= slotsLeft) return {};
+      const stagingCost = staging.reduce((s, x) => s + getRecruitCost(x.trait_profile?.stats), 0);
+      const newCost = stagingCost + getRecruitCost(soldier.trait_profile?.stats);
+      if (state.creditBalance < newCost) return {};
+      return {
+        recruitStaging: [...staging, soldier],
+        marketAvailableTroops: state.marketAvailableTroops.filter((s) => s.id !== soldier.id),
+      };
+    }),
+  /** Returns { success, reason? }. Only adds when success. */
+  tryAddToRecruitStaging: (soldier: Soldier): { success: boolean; reason?: "capacity" | "afford" } => {
+    const state = get();
+    const staging = state.recruitStaging ?? [];
+    const maxSize = getMaxCompanySize(state.companyLevel ?? 1);
+    const currentCount = state.company.soldiers?.length ?? state.totalMenInCompany ?? 0;
+    const slotsLeft = maxSize - currentCount;
+    if (staging.length >= slotsLeft) return { success: false, reason: "capacity" };
+    const stagingCost = staging.reduce((s, x) => s + getRecruitCost(x.trait_profile?.stats), 0);
+    const newCost = stagingCost + getRecruitCost(soldier.trait_profile?.stats);
+    if (state.creditBalance < newCost) return { success: false, reason: "afford" };
+    get().addToRecruitStaging(soldier);
+    return { success: true };
+  },
   removeFromRecruitStaging: (soldierId: string) =>
     set((state: CompanyStore) => {
       const staging = state.recruitStaging ?? [];
@@ -188,24 +235,72 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
   confirmRecruitment: () =>
     set((state: CompanyStore) => {
       const staging = state.recruitStaging ?? [];
-      const totalCost = staging.length * RECRUIT_COST_PER_SOLDIER;
-      if (staging.length === 0 || state.creditBalance < totalCost) {
-        return {};
-      }
-      const newSoldiers = [...state.company.soldiers, ...staging];
-      const newMarketIds = new Set(staging.map((s) => s.id));
+      if (staging.length === 0) return {};
+      const maxSize = getMaxCompanySize(state.companyLevel ?? 1);
+      const currentCount = state.company.soldiers?.length ?? state.totalMenInCompany ?? 0;
+      const toAdd = Math.min(staging.length, maxSize - currentCount);
+      if (toAdd <= 0) return {};
+      const added = staging.slice(0, toAdd);
+      const totalCost = added.reduce((s, x) => s + getRecruitCost(x.trait_profile?.stats), 0);
+      if (state.creditBalance < totalCost) return {};
+      const newSoldiers = [...state.company.soldiers, ...added];
+      const newMarketIds = new Set(added.map((s) => s.id));
+      const returned = staging.filter((s) => !newMarketIds.has(s.id));
       return {
         creditBalance: state.creditBalance - totalCost,
-        recruitStaging: [],
+        recruitStaging: returned,
+        totalMenInCompany: newSoldiers.length,
         company: {
           ...state.company,
           soldiers: newSoldiers,
         },
-        marketAvailableTroops: state.marketAvailableTroops.filter(
-          (s) => !newMarketIds.has(s.id),
-        ),
+        marketAvailableTroops: [...state.marketAvailableTroops, ...returned],
       };
     }),
+  onCompanyLevelUp: () => {
+    const soldiers = SoldierManager.generateTroopList(
+      get().companyLevel ?? 1,
+    );
+    get().setMarketAvailableTroops(soldiers);
+  },
+  addInitialTroopsIfEmpty: () =>
+    set((state: CompanyStore) => {
+      const soldiers = state.company?.soldiers ?? [];
+      if (soldiers.length > 0) return {};
+      const modelTrait = SoldierManager.getSoldierTraitProfileByName("model_soldier");
+      const initial = [
+        SoldierManager.getNewRifleman(1, modelTrait),
+        SoldierManager.getNewRifleman(1, modelTrait),
+      ];
+      return {
+        company: {
+          ...state.company,
+          soldiers: initial,
+        },
+        totalMenInCompany: initial.length,
+      };
+    }),
+  releaseSoldier: (soldierId: string) =>
+    set((state: CompanyStore) => {
+      const soldiers = state.company?.soldiers ?? [];
+      const filtered = soldiers.filter((s) => s.id !== soldierId);
+      if (filtered.length === soldiers.length) return {};
+      return {
+        company: { ...state.company, soldiers: filtered },
+        totalMenInCompany: filtered.length,
+      };
+    }),
+  destroyCompanyItem: (index: number) =>
+    set((state: CompanyStore) => {
+      const inventory = state.company?.inventory ?? [];
+      if (index < 0 || index >= inventory.length) return {};
+      const newInv = inventory.slice();
+      newInv.splice(index, 1);
+      return {
+        company: { ...state.company, inventory: newInv },
+      };
+    }),
+
   canProceedToLaunch: () => {
     const state = get();
     return (
@@ -215,5 +310,318 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
       state.commanderName.length < 16 &&
       state.companyUnitPatchURL !== ""
     );
+  },
+
+  /** Add items to company inventory. Add to existing stacks of same id first, then new. Returns { success, reason? }. */
+  addItemsToCompanyInventory: (
+    items: import("../constants/items/types.ts").Item[],
+    totalCost: number,
+  ): { success: boolean; reason?: "capacity" | "credits" } => {
+    const state = get();
+    const level = state.company?.level ?? state.companyLevel ?? 1;
+    const capacity = getArmorySlots(level);
+    if (state.creditBalance < totalCost) return { success: false, reason: "credits" };
+    let inv = [...(state.company?.inventory ?? [])];
+    for (const it of items) {
+      const item = { ...it };
+      const canStack = (item.uses != null || item.quantity != null);
+      const existingIdx = canStack ? inv.findIndex((x) => x.id === item.id && (x.uses != null || x.quantity != null)) : -1;
+      if (existingIdx >= 0) {
+        const ex = inv[existingIdx];
+        const exUses = ex.uses ?? ex.quantity ?? 1;
+        const addUses = item.uses ?? item.quantity ?? 1;
+        inv = inv.slice();
+        inv[existingIdx] = { ...ex, uses: exUses + addUses };
+      } else {
+        if (inv.length >= capacity) return { success: false, reason: "capacity" };
+        inv = [...inv, item];
+      }
+    }
+    set((s: CompanyStore) => ({
+      creditBalance: s.creditBalance - totalCost,
+      company: { ...s.company, inventory: inv },
+    }));
+    return { success: true };
+  },
+  consumeSoldierThrowable: (soldierId: string, inventoryIndex: number) => {
+    let consumed = false;
+    set((state: CompanyStore) => {
+      const company = state.company;
+      const soldiers = company?.soldiers ?? [];
+      const idx = soldiers.findIndex((s) => s.id === soldierId);
+      if (idx < 0) return {};
+      const soldier = soldiers[idx];
+      const inv = soldier.inventory ?? [];
+      if (inventoryIndex < 0 || inventoryIndex >= inv.length) return {};
+      const item = inv[inventoryIndex];
+      if (!item || (item.type as string) !== "throwable") return {};
+      const uses = item.uses ?? item.quantity ?? 1;
+      const newInv = inv.slice();
+      if (uses > 1) {
+        newInv[inventoryIndex] = { ...item, uses: uses - 1 };
+      } else {
+        newInv.splice(inventoryIndex, 1);
+      }
+      const newSoldiers = soldiers.map((s) =>
+        s.id === soldierId ? { ...s, inventory: newInv } : s,
+      );
+      consumed = true;
+      return {
+        company: { ...company, soldiers: newSoldiers },
+      };
+    });
+    return consumed;
+  },
+
+  /** Equip item to soldier slot. If from armory, remove from armory. If slot occupied, return old to armory. */
+  equipItemToSoldier: (
+    soldierId: string,
+    slotType: "weapon" | "armor" | "equipment",
+    item: import("../constants/items/types.ts").Item,
+    options?: { fromArmoryIndex?: number; equipmentIndex?: number },
+  ) => {
+    const state = get();
+    const level = state.company?.level ?? state.companyLevel ?? 1;
+    const armoryCapacity = getArmorySlots(level);
+    const armory = state.company?.inventory ?? [];
+    const soldiers = state.company?.soldiers ?? [];
+    const soldierIdx = soldiers.findIndex((s) => s.id === soldierId);
+    if (soldierIdx < 0) return { success: false, reason: "soldier not found" };
+
+    const soldier = soldiers[soldierIdx];
+    let toAddToArmory: import("../constants/items/types.ts").Item[] = [];
+    let newArmory = armory.slice();
+
+    if (slotType === "weapon") {
+      if (soldier.weapon) {
+        toAddToArmory.push({ ...soldier.weapon, target: (soldier.weapon as any).target ?? TARGET_TYPES.none } as any);
+      }
+    } else if (slotType === "armor") {
+      if (soldier.armor) {
+        toAddToArmory.push({ ...soldier.armor, target: (soldier.armor as any).target ?? TARGET_TYPES.none } as any);
+      }
+    } else {
+      const inv = soldier.inventory ?? [];
+      const eqIdx = options?.equipmentIndex ?? inv.length;
+      if (eqIdx < inv.length && inv[eqIdx]) {
+        toAddToArmory.push({ ...inv[eqIdx], target: (inv[eqIdx] as any).target ?? TARGET_TYPES.none } as any);
+      }
+    }
+
+    if (options?.fromArmoryIndex != null) {
+      if (options.fromArmoryIndex < 0 || options.fromArmoryIndex >= armory.length) {
+        return { success: false, reason: "invalid armory index" };
+      }
+      newArmory = armory.slice();
+      newArmory.splice(options.fromArmoryIndex, 1);
+    }
+
+    const armoryAfter = [...newArmory, ...toAddToArmory];
+    if (armoryAfter.length > armoryCapacity) return { success: false, reason: "armory full" };
+
+    set((s: CompanyStore) => {
+      const newSoldiers = s.company?.soldiers?.map((sol) => {
+        if (sol.id !== soldierId) return sol;
+        const inv = sol.inventory ?? [];
+        if (slotType === "weapon") {
+          return { ...sol, weapon: { ...item } };
+        }
+        if (slotType === "armor") {
+          return { ...sol, armor: { ...item } };
+        }
+        const eqIdx = options?.equipmentIndex ?? inv.length;
+        const newInv = inv.slice();
+        if (eqIdx < newInv.length) {
+          newInv[eqIdx] = { ...item };
+        } else {
+          newInv.push({ ...item });
+        }
+        return { ...sol, inventory: newInv };
+      }) ?? [];
+      return {
+        company: {
+          ...s.company,
+          soldiers: newSoldiers,
+          inventory: armoryAfter,
+        },
+      };
+    });
+    return { success: true };
+  },
+
+  /** Unequip item from soldier to armory. Returns success. */
+  unequipItemToArmory: (
+    soldierId: string,
+    slotType: "weapon" | "armor" | "equipment",
+    equipmentIndex?: number,
+  ) => {
+    const state = get();
+    const level = state.company?.level ?? state.companyLevel ?? 1;
+    const armoryCapacity = getArmorySlots(level);
+    const armoryLen = state.company?.inventory?.length ?? 0;
+    if (armoryLen >= armoryCapacity) return { success: false, reason: "armory full" };
+
+    let itemToAdd: import("../constants/items/types.ts").Item | null = null;
+
+    set((s: CompanyStore) => {
+      const soldiers = s.company?.soldiers ?? [];
+      const soldier = soldiers.find((sol) => sol.id === soldierId);
+      if (!soldier) return {};
+
+      if (slotType === "weapon" && soldier.weapon) {
+        itemToAdd = { ...soldier.weapon, target: (soldier.weapon as any).target ?? TARGET_TYPES.none } as any;
+      } else if (slotType === "armor" && soldier.armor) {
+        itemToAdd = { ...soldier.armor, target: (soldier.armor as any).target ?? TARGET_TYPES.none } as any;
+      } else if (slotType === "equipment" && equipmentIndex != null) {
+        const inv = soldier.inventory ?? [];
+        if (equipmentIndex >= 0 && equipmentIndex < inv.length) {
+          const it = inv[equipmentIndex];
+          itemToAdd = { ...it, target: (it as any).target ?? TARGET_TYPES.none } as any;
+        }
+      }
+      if (!itemToAdd) return {};
+
+      const newSoldiers = soldiers.map((sol) => {
+        if (sol.id !== soldierId) return sol;
+        if (slotType === "weapon") return { ...sol, weapon: undefined };
+        if (slotType === "armor") return { ...sol, armor: undefined };
+        const inv = (sol.inventory ?? []).slice();
+        if (equipmentIndex != null && equipmentIndex >= 0 && equipmentIndex < inv.length) {
+          inv.splice(equipmentIndex, 1);
+        }
+        return { ...sol, inventory: inv };
+      });
+
+      const armory = s.company?.inventory ?? [];
+      return {
+        company: {
+          ...s.company,
+          soldiers: newSoldiers,
+          inventory: [...armory, itemToAdd!],
+        },
+      };
+    });
+    return { success: !!itemToAdd };
+  },
+
+  /** Move item between two soldier slots (organize mode). Supports swap. */
+  moveItemBetweenSlots: (op: {
+    sourceSoldierId: string;
+    sourceSlotType: "weapon" | "armor" | "equipment";
+    sourceEqIndex?: number;
+    destSoldierId: string;
+    destSlotType: "weapon" | "armor" | "equipment";
+    destEqIndex?: number;
+  }) => {
+    const state = get();
+    const soldiers = state.company?.soldiers ?? [];
+    const src = soldiers.find((s) => s.id === op.sourceSoldierId);
+    const dest = soldiers.find((s) => s.id === op.destSoldierId);
+    if (!src || !dest) return { success: false, reason: "soldier not found" };
+
+    const getItem = (s: typeof src, slot: string, eqIdx?: number) => {
+      if (slot === "weapon") return s.weapon;
+      if (slot === "armor") return s.armor;
+      const inv = s.inventory ?? [];
+      if (eqIdx != null && eqIdx < inv.length) return inv[eqIdx];
+      return undefined;
+    };
+
+    const srcItem = getItem(src, op.sourceSlotType, op.sourceEqIndex);
+    if (!srcItem) return { success: false, reason: "no item in source" };
+
+    set((s: CompanyStore) => {
+      const ss = s.company?.soldiers ?? [];
+      const destItem = getItem(
+        ss.find((x) => x.id === op.destSoldierId)!,
+        op.destSlotType,
+        op.destEqIndex,
+      );
+
+      const ensureTarget = (i: any) => i ? { ...i, target: i.target ?? TARGET_TYPES.none } : undefined;
+      const destWithTarget = destItem ? ensureTarget(destItem) : undefined;
+      const newSoldiers = ss.map((sol) => {
+        if (sol.id === op.sourceSoldierId) {
+          if (op.sourceSlotType === "weapon") {
+            return { ...sol, weapon: destWithTarget };
+          }
+          if (op.sourceSlotType === "armor") {
+            return { ...sol, armor: destWithTarget };
+          }
+          const inv = (sol.inventory ?? []).slice();
+          if (op.sourceEqIndex != null && op.sourceEqIndex < inv.length) {
+            if (destWithTarget) inv[op.sourceEqIndex] = destWithTarget as any;
+            else inv.splice(op.sourceEqIndex, 1);
+          }
+          return { ...sol, inventory: inv.filter(Boolean) };
+        }
+        if (sol.id === op.destSoldierId) {
+          const srcWithTarget = { ...srcItem, target: (srcItem as any).target ?? TARGET_TYPES.none };
+          if (op.destSlotType === "weapon") {
+            return { ...sol, weapon: srcWithTarget };
+          }
+          if (op.destSlotType === "armor") {
+            return { ...sol, armor: srcWithTarget };
+          }
+          const inv = (sol.inventory ?? []).slice();
+          const idx = op.destEqIndex ?? inv.length;
+          if (idx < inv.length && destItem) {
+            inv[idx] = srcWithTarget as any;
+          } else if (idx < inv.length) {
+            inv.splice(idx, 0, srcWithTarget as any);
+          } else {
+            inv.push(srcWithTarget as any);
+          }
+          return { ...sol, inventory: inv };
+        }
+        return sol;
+      });
+
+      return { company: { ...s.company, soldiers: newSoldiers } };
+    });
+    return { success: true };
+  },
+
+  /** When releasing a soldier, put their weapon/armor/inventory into armory if room. Add to existing stacks first. */
+  emptySoldierToCompanyInventory: (soldierId: string) => {
+    const state = get();
+    const level = state.company?.level ?? state.companyLevel ?? 1;
+    const armoryCapacity = getArmorySlots(level);
+    const soldier = state.company?.soldiers?.find((s) => s.id === soldierId);
+    if (!soldier) return { success: false, reason: "soldier not found" };
+
+    const toAdd: import("../constants/items/types.ts").Item[] = [];
+    const ensureTarget = (i: any) => ({ ...i, target: i.target ?? TARGET_TYPES.none });
+    if (soldier.weapon) toAdd.push(ensureTarget(soldier.weapon) as any);
+    if (soldier.armor) toAdd.push(ensureTarget(soldier.armor) as any);
+    (soldier.inventory ?? []).forEach((i) => toAdd.push(ensureTarget(i) as any));
+
+    let inv = [...(state.company?.inventory ?? [])];
+    for (const it of toAdd) {
+      const item = { ...it };
+      const canStack = (item.uses != null || item.quantity != null);
+      const existingIdx = canStack ? inv.findIndex((x) => x.id === item.id && (x.uses != null || x.quantity != null)) : -1;
+      if (existingIdx >= 0) {
+        const ex = inv[existingIdx];
+        const exUses = ex.uses ?? ex.quantity ?? 1;
+        const addUses = item.uses ?? item.quantity ?? 1;
+        inv = inv.slice();
+        inv[existingIdx] = { ...ex, uses: exUses + addUses };
+      } else {
+        if (inv.length >= armoryCapacity) return { success: false, reason: "armory full" };
+        inv = [...inv, item];
+      }
+    }
+
+    const newSoldiers = (state.company?.soldiers ?? []).filter((sol) => sol.id !== soldierId);
+    set((s: CompanyStore) => ({
+      company: {
+        ...s.company,
+        soldiers: newSoldiers,
+        inventory: inv,
+      },
+      totalMenInCompany: newSoldiers.length,
+    }));
+    return { success: true };
   },
 });

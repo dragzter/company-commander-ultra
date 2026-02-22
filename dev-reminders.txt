@@ -1,0 +1,37 @@
+# Dev Reminders
+
+## Handoff Notes (fc28ab5f transcript - implementation complete)
+- **Armory slots**: 20 base, +4 every other level, 40 at L10. Use `getArmorySlots(level)` from economy.ts.
+- **Throwables**: All have `uses: 5` (bundles). No stacking. `consumeSoldierThrowable` decrements uses.
+- **Flashbang**: Applies `stun`. Psychic Shredder: `panic`. Incendiary: `burn` (4 ticks, 8/4 dmg).
+- **Grenades**: Max 3 targets, adjacent 50% dmg/effect. Evade factor 0.4. Dead targets skipped.
+- **Combat effects**: stun, panic, smoked, burning, blinded, suppressed. Stunned = -50% toughness. Morale reduces panic/suppression duration (cap 50%).
+- **Buttons**: Use mbtn-sm, mbtn-md, or mbtn-lg per dev-reminders.
+
+## Testing
+- STARTING_CREDITS = 100,000 (src/constants/economy.ts) - REVERT to 5000 before release
+
+## Layout
+- App must support min width 360px - test at that size (dev-reminders for 360px)
+- 380px support for action buttons, confirm screen
+
+## Completed (Phase 1-9)
+- Phase 1: 18 weapons (incl. M42, R99, HMG-9), 15 armors, gear-market.ts, scaleWeapon/scaleArmor, getWeaponPrice/getArmorPrice
+- Phase 2: Weapons/Armor market with armory grid, wieldBy sections, buy popup, red Weapons btn, level/price badges, supplies split common/rare/epic
+- Phase 3: Armor % bonus scaling (3% L1 → 10% L10), rare=blue, epic=purple
+- Phase 4: Throwables uses (grenades 5, TK 10, stim 2, medkit 5), per-use pricing, ×N badge
+- Phase 5: Combat effects (stun, panic, smoked, burning, blinded, suppressed), Psychic Shredder 6s/3s, Flashbang 4s/2s, Incendiary burn
+- Phase 6: Combat UI smaller cards (5 across), R/S/M role badge, overlays, Reset + Quit confirm
+- Phase 7: Roster 2 cols, FirstName L., trait badge popup, roster-slot-badge; Troops: Recruit $cost, Reroll/Recruit 50/50
+- Phase 8: Equip Troops opens equip picker overlay; equip from armory item popup; unequip in roster inventory
+- Phase 9: Game max-height 1000px, vh→dvh fix, uses badge lower-right, mission system (5 types, 10+4 epic, difficulty bar, rewards)
+
+## Completed (fc28ab5f continuation)
+- Equip picker overlay: Equip Troops opens picker (not roster). Organize mode: click slot→highlight valid dests, click dest→move/swap. Click same slot→deselect.
+- Equip from armory: item popup has Equip→opens picker with item preselected, highlights valid slots. Click slot→equip (swap if occupied).
+- Unequip: roster soldier inventory popup shows items; click item→detail with blue Unequip button. Sends to armory if room.
+- Buy stacking: addItemsToCompanyInventory and emptySoldierToCompanyInventory merge into existing stacks of same id (stackable items only).
+- Combat footer: Mission Details (blue, left), Quit (right, confirm). Begin/Reset in header bar.
+- Trait popup: bottom=top of badge, right-aligned. Full labels (Dexterity not DEX), justify-between, values right.
+- Combat popups: position absolute within #game (combat-root). Abilities/quit confirm constrained to combat area.
+- UI: Incend. abbreviation in supplies; soldier-silhouette.svg for mission enemies; mission card kind badge full width, Launch bottom-anchored; #game max-height 1000px.

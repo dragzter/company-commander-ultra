@@ -8,17 +8,32 @@ import { eventConfigs as ec } from "./event-configs.ts";
 import { AudioManager } from "../audio/audio-manager.ts";
 import { UiServiceManager } from "../../services/ui/ui-service.ts";
 // import { UiAnimationManager } from "../../services/ui/ui-animation-manager.ts";
-import { DomEventManager } from "../event-handlers/dom-event-manager.ts";
+import { DomEventManager } from "./event-handlers/dom-event-manager.ts";
 import { usePlayerCompanyStore } from "../../store/ui-store.ts";
 import { UiManager } from "./ui-manager.ts";
 import { DOM } from "../../constants/css-selectors.ts";
 import {
   marketTemplate,
   troopsMarketTemplate,
+  weaponsMarketTemplate,
+  armorMarketTemplate,
+  suppliesMarketTemplate,
 } from "../html-templates/market-templates.ts";
+import { missionsTemplate } from "../html-templates/missions-template.ts";
+import { readyRoomTemplate } from "../html-templates/ready-room-template.ts";
+import { rosterTemplate } from "../html-templates/roster-template.ts";
+import { inventoryTemplate } from "../html-templates/inventory-template.ts";
+import { memorialTemplate } from "../html-templates/memorial-template.ts";
+import { trainingTemplate } from "../html-templates/training-template.ts";
+import { abilitiesTemplate } from "../html-templates/abilities-template.ts";
+import { combatTemplate } from "../html-templates/combat-template.ts";
+import { soldierToCombatant, createEnemyCombatant } from "../combat/combatant-utils.ts";
+import { getActiveSlots } from "../../constants/company-slots.ts";
+import { generateMissions } from "../../services/missions/mission-generator.ts";
 import { Styler } from "../../utils/styler-manager.ts";
 import { SoldierManager } from "../entities/soldier/soldier-manager.ts";
 import type { Soldier } from "../entities/types.ts";
+import type { Mission } from "../../constants/missions.ts";
 
 /**
  * Manager which templates are displayed.  Orchestrates all the things that need to happen when
@@ -88,13 +103,9 @@ function ScreenManager() {
     const content = parseHTML(companyHomePageTemplate());
     center.appendChild(content as Element);
 
-    // Set home button as selected
     UiManager.selectCompanyHomeButton(DOM.company.home);
-
     DomEventManager.initEventArray(ec().companyHome());
-
     Styler.setCenterBG("bg_81.jpg", true);
-
     show.center();
   }
 
@@ -107,6 +118,47 @@ function ScreenManager() {
     DomEventManager.initEventArray(ec().companyHome().concat(ec().market()));
 
     Styler.setCenterBG("bg_store_88.jpg", true);
+  }
+
+  function createMissionsPage() {
+    UiManager.clear.center();
+    const missions = generateMissions();
+    const content = parseHTML(missionsTemplate(missions));
+    center.appendChild(content as Element);
+    DomEventManager.initEventArray(ec().companyHome().concat(ec().missionsScreen()));
+    UiManager.selectCompanyHomeButton(DOM.company.missions);
+    Styler.setCenterBG("bg_81.jpg", true);
+    show.center();
+  }
+
+  function createReadyRoomPage(mission?: Mission | null) {
+    UiManager.clear.center();
+    const content = parseHTML(readyRoomTemplate(mission ?? null));
+    center.appendChild(content as Element);
+    DomEventManager.initEventArray(ec().companyHome().concat(ec().readyRoomScreen()));
+    UiManager.selectCompanyHomeButton(DOM.company.missions);
+    Styler.setCenterBG("bg_81.jpg", true);
+    show.center();
+  }
+
+  function createCombatPage(mission?: Mission | null) {
+    UiManager.clear.center();
+    const store = usePlayerCompanyStore.getState();
+    const company = store.company;
+    const soldiers = company?.soldiers ?? [];
+    const activeCount = getActiveSlots(company);
+    const activeSoldiers = soldiers.slice(0, activeCount);
+    const players = activeSoldiers.map((s) => soldierToCombatant(s));
+    const enemyCount = mission?.enemyCount ?? 3;
+    const companyLevel = store.companyLevel ?? 1;
+    const enemies = Array.from({ length: enemyCount }, (_, i) =>
+      createEnemyCombatant(i, enemyCount, companyLevel),
+    );
+    const content = parseHTML(combatTemplate(mission ?? null, players, enemies));
+    center.appendChild(content as Element);
+    DomEventManager.initEventArray(ec().companyHome().concat(ec().combatScreen(players, enemies)));
+    Styler.setCenterBG("bg_81.jpg", true);
+    show.center();
   }
 
   function createTroopsPage() {
@@ -126,12 +178,90 @@ function ScreenManager() {
     const content = parseHTML(troopsMarketTemplate(soldiers));
     center.appendChild(content as Element);
 
-    DomEventManager.initEventArray(
-      ec().companyHome().concat(ec().troopsScreen()),
-    );
+    DomEventManager.initEventArray(ec().companyHome().concat(ec().troopsScreen()));
 
     UiManager.selectCompanyHomeButton(DOM.company.market);
     Styler.setCenterBG("bg_76.jpg", true);
+  }
+
+  function createWeaponsMarketPage() {
+    UiManager.clear.center();
+    const content = parseHTML(weaponsMarketTemplate());
+    center.appendChild(content as Element);
+    DomEventManager.initEventArray(ec().companyHome().concat(ec().market()).concat(ec().weaponsScreen()));
+    UiManager.selectCompanyHomeButton(DOM.company.market);
+    Styler.setCenterBG("bg_76.jpg", true);
+    show.center();
+  }
+
+  function createArmorMarketPage() {
+    UiManager.clear.center();
+    const content = parseHTML(armorMarketTemplate());
+    center.appendChild(content as Element);
+    DomEventManager.initEventArray(ec().companyHome().concat(ec().market()).concat(ec().armorScreen()));
+    UiManager.selectCompanyHomeButton(DOM.company.market);
+    Styler.setCenterBG("bg_76.jpg", true);
+    show.center();
+  }
+
+  function createSuppliesMarketPage() {
+    UiManager.clear.center();
+    const content = parseHTML(suppliesMarketTemplate());
+    center.appendChild(content as Element);
+    DomEventManager.initEventArray(ec().companyHome().concat(ec().market()).concat(ec().suppliesScreen()));
+    UiManager.selectCompanyHomeButton(DOM.company.market);
+    Styler.setCenterBG("bg_76.jpg", true);
+    show.center();
+  }
+
+  function createRosterPage() {
+    UiManager.clear.center();
+    const content = parseHTML(rosterTemplate());
+    center.appendChild(content as Element);
+    DomEventManager.initEventArray(ec().companyHome().concat(ec().rosterScreen()));
+    UiManager.selectCompanyHomeButton(DOM.company.roster);
+    Styler.setCenterBG("bg_81.jpg", true);
+    show.center();
+  }
+
+  function createInventoryPage() {
+    UiManager.clear.center();
+    const content = parseHTML(inventoryTemplate());
+    center.appendChild(content as Element);
+    DomEventManager.initEventArray(ec().companyHome().concat(ec().inventoryScreen()));
+    UiManager.selectCompanyHomeButton(DOM.company.inventory);
+    Styler.setCenterBG("bg_81.jpg", true);
+    show.center();
+  }
+
+  function createMemorialPage() {
+    UiManager.clear.center();
+    const content = parseHTML(memorialTemplate());
+    center.appendChild(content as Element);
+    DomEventManager.initEventArray(ec().companyHome().concat(ec().memorialScreen()));
+    UiManager.selectCompanyHomeButton(DOM.company.heroes);
+    Styler.setCenterBG("bg_81.jpg", true);
+    show.center();
+  }
+
+  function createTrainingPage() {
+    UiManager.clear.center();
+    const content = parseHTML(trainingTemplate());
+    center.appendChild(content as Element);
+    DomEventManager.initEventArray(ec().companyHome().concat(ec().trainingScreen()));
+    UiManager.selectCompanyHomeButton(DOM.company.training);
+    Styler.setCenterBG("bg_81.jpg", true);
+    show.center();
+  }
+
+  function createAbilitiesPage() {
+    UiManager.clear.center();
+    const content = parseHTML(abilitiesTemplate());
+    center.appendChild(content as Element);
+    DomEventManager.initEventArray(ec().companyHome().concat(ec().abilitiesScreen()));
+    UiManager.selectCompanyHomeButton(DOM.company.abilities);
+    Styler.setCenterBG("bg_81.jpg", true);
+    show.center();
   }
 
   return {
@@ -142,6 +272,17 @@ function ScreenManager() {
       companyHomePage: () => createCompanyHomePage(),
       createMarketPage,
       createTroopsPage,
+      createWeaponsMarketPage,
+      createArmorMarketPage,
+      createSuppliesMarketPage,
+      createMissionsPage,
+      createReadyRoomPage,
+      createCombatPage,
+      createRosterPage,
+      createInventoryPage,
+      createMemorialPage,
+      createTrainingPage,
+      createAbilitiesPage,
     },
   };
 }

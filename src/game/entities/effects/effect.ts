@@ -7,6 +7,11 @@ export const EFFECT_TYPES = {
 
 export const EFFECT_RESULTS = {
   panic: "panic",
+  stun: "stun",
+  smoked: "smoked",
+  burning: "burning",
+  blinded: "blinded",
+  suppressed: "suppressed",
   suppression: "suppression",
   confusion: "confusion",
   adrenaline_boost: "adrenaline_boost",

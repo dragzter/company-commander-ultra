@@ -50,13 +50,14 @@ function UiServiceManager() {
       "gap-3",
       "h-100",
     );
-    const buttons = [];
+    const buttons: HTMLElement[] = [];
 
     for (let i = 0; i < buttonDefs.length; i++) {
-      buttons.push(mbtn(buttonDefs[i]));
+      const b = mbtn(buttonDefs[i]);
+      if (b) buttons.push(b as HTMLElement);
     }
 
-    menu.append(...(buttons as HTMLElement[]));
+    menu.append(...buttons);
 
     if (before) {
       menu.prepend(before);
@@ -119,8 +120,8 @@ function UiServiceManager() {
   }
 
   function parseHTML(template: string) {
-    return document.createRange().createContextualFragment(template)
-      .firstElementChild;
+    const fragment = document.createRange().createContextualFragment(template);
+    return fragment.firstElementChild;
   }
 
   function btn(options: BtnOptions) {
@@ -153,7 +154,7 @@ function UiServiceManager() {
   function mbtn(options: MBtnOptions) {
     const up_options: BtnOptions = {
       text: options.text,
-      classes: [options.color, "mbtn", ...(options.classes ?? "")],
+      classes: [options.color, "mbtn", ...(options.classes ?? [])],
       event: options?.event ?? undefined,
       cb: options?.cb ?? undefined,
       id: options?.id ?? undefined,

@@ -23,6 +23,13 @@ const TraitProfileStats: Record<string, SoldierTraitProfile> = {
     morale: 6,
     toughness: 8,
   },
+  unremarkable: {
+    dexterity: 0,
+    awareness: 0,
+    morale: 0,
+    toughness: 0,
+    hit_points: 0,
+  },
   model_soldier: {
     morale: 12,
     toughness: 12,
@@ -67,6 +74,11 @@ const TraitProfileStats: Record<string, SoldierTraitProfile> = {
     awareness: 16,
     dexterity: 8,
   },
+  cold_blooded: {
+    awareness: 12,
+    dexterity: 6,
+    morale: -8,
+  },
   crusader: {
     morale: 12,
     toughness: 10,
@@ -79,6 +91,10 @@ const TraitProfileStats: Record<string, SoldierTraitProfile> = {
     morale: -8,
     hit_points: -4,
     toughness: -10,
+  },
+  duelist: {
+    dexterity: 9,
+    awareness: 12,
   },
   fearless: {
     morale: 30,
@@ -95,9 +111,19 @@ const TraitProfileStats: Record<string, SoldierTraitProfile> = {
     toughness: 7,
     awareness: -15,
   },
+  hothead: {
+    morale: 18,
+    toughness: 10,
+    awareness: -12,
+  },
   opportunist: {
     dexterity: 8,
     awareness: 14,
+  },
+  obsessed: {
+    awareness: 10,
+    dexterity: 8,
+    morale: -12,
   },
   cynic: {
     morale: -8,
@@ -137,6 +163,23 @@ const TraitProfileStats: Record<string, SoldierTraitProfile> = {
     toughness: 20,
     morale: 20,
   },
+  merc: {
+    morale: 4,
+    toughness: 6,
+    dexterity: 4,
+    awareness: 4,
+    hit_points: -6,
+  },
+  methodical: {
+    awareness: 12,
+    toughness: 10,
+    dexterity: -4,
+  },
+  nimble: {
+    dexterity: 9,
+    awareness: 8,
+    toughness: -10,
+  },
   war_hero: {
     awareness: 18,
     hit_points: 10,
@@ -147,6 +190,49 @@ const TraitProfileStats: Record<string, SoldierTraitProfile> = {
     awareness: 28,
     morale: 2,
     hit_points: -3,
+  },
+  marksman: {
+    dexterity: 9,
+    awareness: 24,
+    morale: 3,
+    hit_points: -4,
+  },
+  guardian: {
+    morale: 3,
+    toughness: 12,
+    awareness: 8,
+    hit_points: 22,
+  },
+  hardened: {
+    toughness: 18,
+    awareness: 4,
+    hit_points: 12,
+  },
+  pathfinder: {
+    toughness: 6,
+    awareness: 14,
+    dexterity: 7,
+  },
+  agile: {
+    dexterity: 8,
+    awareness: 10,
+    toughness: -12,
+  },
+  cunning: {
+    dexterity: 7,
+    awareness: 12,
+    morale: -2,
+  },
+  trooper: {
+    morale: 8,
+    toughness: 16,
+    awareness: 4,
+    dexterity: -3,
+  },
+  jaded: {
+    morale: -6,
+    dexterity: -4,
+    awareness: 10,
   },
   joker: {
     awareness: 20,
@@ -182,6 +268,11 @@ const TraitProfileStats: Record<string, SoldierTraitProfile> = {
     awareness: 4, // 4 (skittish)
     morale: -6,
     hit_points: -1,
+  },
+  steady: {
+    toughness: 12,
+    awareness: 8,
+    dexterity: -2,
   },
   stoic: {
     toughness: 25,

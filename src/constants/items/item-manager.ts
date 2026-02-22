@@ -5,7 +5,7 @@ import { type Item, ITEM_TYPES, type ItemType } from "./types.ts";
 import {
   //getRandomIndex,
   getRandomNumberFromRange,
-} from "../../utils/random.ts";
+} from "../../utils/math.ts";
 import { BallisticItems } from "./ballistic.ts";
 
 const CommonItemMap: Record<string, Record<string, Partial<Item>>> = {

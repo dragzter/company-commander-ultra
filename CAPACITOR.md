@@ -6,6 +6,7 @@ The app is wrapped with [Capacitor](https://capacitorjs.com/) so you can build a
 
 - Xcode (Mac)
 - iOS Simulator or a device
+- CocoaPods (`brew install cocoapods` or see [Capacitor environment setup](https://capacitorjs.com/docs/getting-started/environment-setup))
 
 ## Workflow
 

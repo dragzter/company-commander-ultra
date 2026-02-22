@@ -51,6 +51,18 @@ export type CommanderAbility = {
   ability_level: number;
 };
 
+import {
+  getMaxCompanySize as getMaxCompanySizeFromCapacity,
+  MAX_COMPANY_SIZE_LEVEL_1 as CAPACITY_LEVEL_1,
+} from "../../../constants/company-capacity.ts";
+
+/** Max company size at level 1 (4 active, 8 total, 8 reserve) */
+export const MAX_COMPANY_SIZE_LEVEL_1 = CAPACITY_LEVEL_1;
+
+export function getMaxCompanySize(level: number): number {
+  return getMaxCompanySizeFromCapacity(level);
+}
+
 export type CompanyResourcesProfile = {
   level: number;
   soldier_slots: {
@@ -74,16 +86,16 @@ export const COMPANY_RESOURCES_BY_LEVEL: CompanyResourcesProfile[] = [
   {
     level: 1,
     soldier_slots: {
-      medic: 0,
-      support: 0,
-      rifleman: 6,
+      medic: 1,
+      support: 2,
+      rifleman: 5,
     },
     company_abilities: [],
     commander_abilities: [],
     soldier_mission_slots: {
-      medic: 0,
-      support: 0,
-      rifleman: 5,
+      medic: 1,
+      support: 1,
+      rifleman: 2,
     },
   },
   {

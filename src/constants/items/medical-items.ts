@@ -10,7 +10,7 @@ export const MedicalItems: ItemsVolume<MedItem> = {
       description:
         "Standard-issue Combat MedKit.  Used for treating battlefield injuries",
       usable: true,
-      uses: 2,
+      uses: 5,
       target: "friendly",
       tags: ["medical"],
       effect: {
@@ -30,7 +30,7 @@ export const MedicalItems: ItemsVolume<MedItem> = {
       description:
         "Standard-issue Stim Pack.  No addictive properties whatsoever.",
       usable: true,
-      uses: 1,
+      uses: 2,
       target: "friendly",
       tags: ["medical"],
       effect: {

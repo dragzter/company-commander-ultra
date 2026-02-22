@@ -54,3 +54,13 @@ export function animateHTMLReplace(
     }, duration);
   });
 }
+
+export function animateHTMLRemove(element: HTMLElement, duration = 800) {
+  return new Promise<void>((resolve) => {
+    element.classList.add(...Animations.backOutDown);
+    setTimeout(() => {
+      element.remove();
+      resolve();
+    }, duration);
+  });
+}

@@ -23,8 +23,8 @@ import type {
 import {
   getRandomPortraitImage,
   getRandomValueFromStringArray,
-} from "../../../utils/random.ts";
-import { toFNum } from "../../../utils/number-utils.ts";
+  toFNum,
+} from "../../../utils/math.ts";
 import { Images } from "../../../constants/images.ts";
 
 function SoldierManager() {
@@ -40,6 +40,7 @@ function SoldierManager() {
     armor = {} as Armor,
     weapon = {} as BallisticWeapon,
     inventory = [] as Item[],
+    traitOverride?: TraitDict,
   ) {
     const soldier: Soldier = JSON.parse(
       JSON.stringify(SOLDIER_BASE),
@@ -68,7 +69,7 @@ function SoldierManager() {
     soldier.level = lvl;
     soldier.id = uuidv4();
     soldier.designation = designation;
-    soldier.trait_profile = getSoldierTraitProfile();
+    soldier.trait_profile = traitOverride ?? getSoldierTraitProfile();
     soldier.experience = getExperienceBaseAtLevel(lvl).experience;
 
     applyTraitProfileStats(soldier);
@@ -94,9 +95,9 @@ function SoldierManager() {
     };
   }
 
-  function getNewSoldier(level = 1, designation: Designation) {
+  function getNewSoldier(level = 1, designation: Designation, traitOverride?: TraitDict) {
     const { weapon, armor, inventory } = StandardEquipmentLoadouts[designation];
-    return gs(level, designation, armor, weapon, inventory);
+    return gs(level, designation, armor, weapon, inventory, traitOverride);
   }
 
   function applyTraitProfileStats(soldier: Soldier) {
@@ -174,6 +175,12 @@ function SoldierManager() {
     };
   }
 
+  function getSoldierTraitProfileByName(traitName: string): TraitDict {
+    const stats = TraitProfileStats[traitName as keyof typeof TraitProfileStats];
+    if (!stats) throw new Error(`Unknown trait: ${traitName}`);
+    return { name: traitName, stats };
+  }
+
   function generateTroopList(lvl = 1): Soldier[] {
     return [
       getNewSoldier(lvl, SOLDIER_DESIGNATION.rifleman),
@@ -196,13 +203,16 @@ function SoldierManager() {
   return {
     generateSoldierAtLevel: gs,
     getExperienceBaseAtLevel,
-    getNewRifleman: (lvl = 1) =>
-      getNewSoldier(lvl, SOLDIER_DESIGNATION.rifleman),
-    getNewSupportMan: (lvl = 1) =>
-      getNewSoldier(lvl, SOLDIER_DESIGNATION.support),
-    getNewMedic: (lvl = 1) => getNewSoldier(lvl, SOLDIER_DESIGNATION.medic),
+    getNewRifleman: (lvl = 1, traitOverride?: TraitDict) =>
+      getNewSoldier(lvl, SOLDIER_DESIGNATION.rifleman, traitOverride),
+    getNewSupportMan: (lvl = 1, traitOverride?: TraitDict) =>
+      getNewSoldier(lvl, SOLDIER_DESIGNATION.support, traitOverride),
+    getNewMedic: (lvl = 1, traitOverride?: TraitDict) =>
+      getNewSoldier(lvl, SOLDIER_DESIGNATION.medic, traitOverride),
+    getNewSoldier,
     generateTroopList,
     getSoldierTraitProfile,
+    getSoldierTraitProfileByName,
     levelUpSoldier,
   };
 }

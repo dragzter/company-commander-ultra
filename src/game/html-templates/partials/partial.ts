@@ -1,7 +1,7 @@
 import type { Soldier, SoldierTraitProfile } from "../../entities/types.ts";
-import { Images } from "../../../constants/images.ts";
-import { RECRUIT_COST_PER_SOLDIER } from "../../../constants/economy.ts";
+import { getRecruitCost } from "../../../constants/economy.ts";
 import { UiServiceManager } from "../../../services/ui/ui-service.ts";
+import { formatDisplayName } from "../../../utils/name-utils.ts";
 
 /**
  * Creates HTML partials
@@ -11,86 +11,54 @@ function Partial() {
 
   /**
    * Create HTML for a trooper entity-card for the troops market page.
+   * Layout: avatar | name (row 1), stats (row 2), buttons (row 3)
+   * Stat labels: HP, MIT, AVD, CTH, MOR, TGH, AWR, DEX
    * @param trooper: Soldier
+   * @param canRecruit: whether the player can add one more to staging (afford + cap)
    */
-  function _t(trooper: Soldier) {
+  function _t(trooper: Soldier, canRecruit = true) {
+    const disabledClass = canRecruit ? "" : " recruit-disabled";
+    const recruitDisabledAttr = canRecruit ? "" : ' aria-disabled="true"';
+    const hp = trooper.attributes.hit_points;
+    const mit = Math.floor(trooper.combatProfile.mitigateDamage * 100);
+    const avd = Math.floor(trooper.combatProfile.chanceToEvade * 100);
+    const cth = Math.floor(trooper.combatProfile.chanceToHit * 100);
+    const mor = trooper.attributes.morale;
+    const tgh = trooper.attributes.toughness;
+    const awr = trooper.attributes.awareness;
+    const dex = trooper.attributes.dexterity;
     return `
-			<div data-troopercard="${trooper.id}" class="entity-card designation-${trooper.designation}" >
+			<div data-troopercard="${trooper.id}" class="entity-card designation-${trooper.designation}${disabledClass}" >
 				<div class="card-body">
-					<img class="card-image" src="/images/green-portrait/${trooper.avatar}" alt="Troopert Image">
-					<div class="card-details">
-						<h4 class="card-title flex justify-between align-center">
-							<span>
-								${trooper.name}
-								<span class="designation">
-									${trooper.designation.toUpperCase()}
-								</span>
-							</span>
-							<span>
-								<button data-trooperid="${trooper.id}" class="mbtn icon-btn reroll-soldier pe-0" title="Reroll">
-									<img width="30" src="images/ui/square/${Images.btn.sq_btn_redo}" alt="Reroll">
-								</button>
-								<button data-trooperjson='${JSON.stringify(trooper)}' title="Recruit" class="mbtn icon-btn recruit-soldier pe-0">
-									<img width="30" src="images/ui/square/${Images.btn.sq_add}" alt="Add soldier to company">
-								</button>
-							</span>
-						</h4>
-						<div class="details-wrapper">
-							<div class="details-left">
-								<div class="detail-item">
-									<div>Hitpoints:</div>
-									<div>${trooper.attributes.hit_points}</div>
-								</div>
-								<div class="detail-item">
-									<div>Mitigation:</div>
-									<div>${Math.floor(trooper.combatProfile.mitigateDamage * 100)}% / 100%</div>
-								</div>
-								<div class="detail-item">
-									<div>Evade Chance:</div>
-									<div>${Math.floor(trooper.combatProfile.chanceToEvade * 100)}% / 100%</div>
-								</div>
-								<div class="detail-item">
-									<div>Hit Chance:</div>
-									<div>${Math.floor(trooper.combatProfile.chanceToHit * 100)}% / 100%</div>
-								</div>
-							</div>
-	
-							<div class="details-right">
-							  <div class="detail-item">
-									<div>Morale:</div>
-									<div>${trooper.attributes.morale}</div>
-								</div>
-								<div class="detail-item">
-									<div>Toughness:</div>
-									<div>${trooper.attributes.toughness}</div>
-								</div>
-								<div class="detail-item">
-									<div>Awareness:</div>
-									<div>${trooper.attributes.awareness}</div>
-								</div>
-								<div class="detail-item">
-									<div>Dexterity:</div>
-									<div>${trooper.attributes.dexterity}</div>
-								</div>
-								<div class="detail-item recruit-cost">
-									<div>Cost:</div>
-									<div>$${RECRUIT_COST_PER_SOLDIER}</div>
-								</div>
-							</div>
+					<div class="card-row card-row-1">
+						<img class="card-image" src="/images/green-portrait/${trooper.avatar}" alt="Trooper Image">
+						<div class="card-title-block">
+							<span class="card-name">${formatDisplayName(trooper.name)}</span>
+							<span class="card-role">${trooper.designation.toUpperCase()}</span>
 						</div>
 					</div>
-			</div>
+					<div class="card-row card-row-2">
+						<div class="card-stats-grid">
+							<div class="detail-item stat-hp"><span class="stat-label">HP</span><span class="stat-value">${hp}</span></div>
+							<div class="detail-item"><span class="stat-label">MIT</span><span class="stat-value">${mit}%</span></div>
+							<div class="detail-item"><span class="stat-label">AVD</span><span class="stat-value">${avd}%</span></div>
+							<div class="detail-item"><span class="stat-label">CTH</span><span class="stat-value">${cth}%</span></div>
+							<div class="detail-item"><span class="stat-label">MOR</span><span class="stat-value">${mor}</span></div>
+							<div class="detail-item"><span class="stat-label">TGH</span><span class="stat-value">${tgh}</span></div>
+							<div class="detail-item"><span class="stat-label">AWR</span><span class="stat-value">${awr}</span></div>
+							<div class="detail-item"><span class="stat-label">DEX</span><span class="stat-value">${dex}</span></div>
+						</div>
+					</div>
+					<div class="card-row card-row-3">
+						<div class="card-actions card-actions-50">
+							<button data-trooperid="${trooper.id}" class="game-btn game-btn-md game-btn-red reroll-soldier" title="Reroll">Reroll</button>
+							<button data-trooper-id="${trooper.id}" data-can-recruit="${canRecruit}" title="Recruit" class="game-btn game-btn-md game-btn-green recruit-soldier"${recruitDisabledAttr}>Recruit $${getRecruitCost(trooper.trait_profile?.stats)}</button>
+						</div>
+					</div>
+				</div>
 				<div class="card-footer">
-					<div class="detail-item">
-						<div>Level:</div>
-						<div>${trooper.level}/10</div>
-						<div class="tooltip-wrapper">
-                <span class="trait-profile">${trooper.trait_profile.name.toUpperCase().replaceAll("_", " ")}</span>
-                <div class="tooltip-body">
-                    ${_traitProfileHTML(trooper.trait_profile.stats)}
-                </div>
-						</div>
-					</div>
+					<span class="trooper-level-badge">Lv ${trooper.level}</span>
+					${_traitWithTooltip(trooper.trait_profile)}
 				</div>
 			</div>`;
   }
@@ -98,23 +66,81 @@ function Partial() {
   /**
    * Pass the HTML string through the HTML parser
    * @param trooper: Soldier
+   * @param canRecruit: whether the player can add one more to staging
    */
-  function _pt(trooper: Soldier): HTMLElement {
-    return parseHTML(_t(trooper)) as HTMLElement;
+  function _pt(trooper: Soldier, canRecruit = true): HTMLElement {
+    return parseHTML(_t(trooper, canRecruit)) as HTMLElement;
+  }
+
+  /**
+   * Roster soldier card - same layout as troops market entity card but with Inventory and Release buttons.
+   */
+  function _rsc(soldier: Soldier, index: number, isActive: boolean) {
+    const slotClass = isActive ? "roster-active" : "roster-reserve";
+    const attrs = soldier.attributes ?? {};
+    const combat = soldier.combatProfile ?? {};
+    const hp = attrs.hit_points ?? 0;
+    const mit = Math.floor((combat.mitigateDamage ?? 0) * 100);
+    const avd = Math.floor((combat.chanceToEvade ?? 0) * 100);
+    const cth = Math.floor((combat.chanceToHit ?? 0) * 100);
+    const mor = attrs.morale ?? 0;
+    const tgh = attrs.toughness ?? 0;
+    const awr = attrs.awareness ?? 0;
+    const dex = attrs.dexterity ?? 0;
+    const designation = (soldier.designation ?? "rifleman").toUpperCase();
+    const avatar = soldier.avatar ?? "default.png";
+    return `
+<div data-soldier-id="${soldier.id}" data-soldier-index="${index}" class="entity-card roster-card designation-${soldier.designation ?? "rifleman"} ${slotClass}">
+  <div class="card-body">
+    <div class="card-row card-row-1">
+      <img class="card-image" src="/images/green-portrait/${avatar}" alt="">
+      <div class="card-title-block">
+        <span class="card-name">${formatDisplayName(soldier.name)}</span>
+        <span class="card-role">${designation}</span>
+      </div>
+    </div>
+    <div class="card-row card-row-2">
+      <div class="card-stats-grid">
+        <div class="detail-item stat-hp"><span class="stat-label">HP</span><span class="stat-value">${hp}</span></div>
+        <div class="detail-item"><span class="stat-label">MIT</span><span class="stat-value">${mit}%</span></div>
+        <div class="detail-item"><span class="stat-label">AVD</span><span class="stat-value">${avd}%</span></div>
+        <div class="detail-item"><span class="stat-label">CTH</span><span class="stat-value">${cth}%</span></div>
+        <div class="detail-item"><span class="stat-label">MOR</span><span class="stat-value">${mor}</span></div>
+        <div class="detail-item"><span class="stat-label">TGH</span><span class="stat-value">${tgh}</span></div>
+        <div class="detail-item"><span class="stat-label">AWR</span><span class="stat-value">${awr}</span></div>
+        <div class="detail-item"><span class="stat-label">DEX</span><span class="stat-value">${dex}</span></div>
+      </div>
+    </div>
+    <div class="card-row card-row-3">
+      <div class="card-actions card-actions-50">
+        <button type="button" data-soldier-id="${soldier.id}" class="game-btn game-btn-sm game-btn-green roster-inventory-btn" title="Equipment">Inventory</button>
+        <button type="button" data-soldier-id="${soldier.id}" class="game-btn game-btn-sm game-btn-red roster-release-btn" title="Release">Release</button>
+      </div>
+    </div>
+  </div>
+  <div class="card-footer">
+    <span class="trooper-level-badge">Lv ${soldier.level}</span>
+    ${_traitWithTooltip(soldier.trait_profile)}
+  </div>
+</div>`;
   }
 
   /**
    * Displayed when a user selects a soldier for recruitment on the market trooper screen.
+   * Avatar full width edge-to-edge, metadata with camo background, X button top-right of avatar.
    * @param soldier
    */
   function _stc(soldier: Soldier) {
     return `
-    <div data-staged-soldier-id="${soldier.id}" class="flex staged-trooper align-center">
-        <button type="button" data-soldier-id="${soldier.id}" class="mbtn icon-btn remove-from-staging" title="Remove from selection">&times;</button>
-        <img src="/images/green-portrait/${soldier.avatar}" alt="Staged Trooper">
-        <div>
-            <p>${soldier.name}</p>
-            <p class="soldier-designation">${soldier.designation}</p>
+    <div data-staged-soldier-id="${soldier.id}" class="staged-trooper-card">
+        <div class="staged-trooper-avatar-wrap">
+            <img src="/images/green-portrait/${soldier.avatar}" alt="Staged Trooper" class="staged-trooper-avatar">
+            <button type="button" data-soldier-id="${soldier.id}" class="staged-trooper-remove remove-from-staging" title="Remove from selection">&times;</button>
+        </div>
+        <div class="staged-trooper-metadata">
+            <p class="staged-trooper-name">${formatDisplayName(soldier.name)}</p>
+            <p class="staged-trooper-role">${soldier.designation.toUpperCase()}</p>
+            <p class="staged-trooper-level">Lv ${soldier.level}</p>
         </div>
     </div>`;
   }
@@ -130,16 +156,25 @@ function Partial() {
    * Reroll counter div
    */
   function _rc(counter: number) {
-    return parseHTML(`<div class="reroll-counter">Rerolls: ${counter}</div>`);
+    return parseHTML(`<div class="recruit-staging-reroll reroll-counter">Rerolls: ${counter}</div>`);
   }
+
+  const STAT_KEYS: Record<string, string> = {
+    hit_points: "HP",
+    morale: "MOR",
+    toughness: "TGH",
+    awareness: "AWR",
+    dexterity: "DEX",
+  };
 
   function _traitProfileHTML(traitProfile: SoldierTraitProfile) {
     return `
-    <div>
+    <div class="trait-profile-grid">
         ${Object.entries(traitProfile)
-          .map((tp) => {
-            return `<div class="trait-profile-value">${tp[0].replaceAll("_", " ").toUpperCase()}: <span>${tp[1]}</span></div>`;
-          })
+          .map(
+            ([k, v]) =>
+              `<span class="trait-profile-row"><span class="trait-profile-key">${(STAT_KEYS[k] ?? k).replaceAll("_", " ")}</span><span class="trait-profile-num">${v > 0 ? "+" : ""}${v}</span></span>`,
+          )
           .join("")}
     </div>
     `;
@@ -147,6 +182,23 @@ function Partial() {
 
   function _parsedTraitProfileHTML(traitProfile: SoldierTraitProfile) {
     return parseHTML(_traitProfileHTML(traitProfile));
+  }
+
+  /**
+   * Reusable trait display with hover tooltip (same as market).
+   * Use in both troops market cards and roster cards.
+   */
+  function _traitWithTooltip(profile: { name: string; stats?: Record<string, number> } | null | undefined): string {
+    if (!profile?.name) return "";
+    const name = profile.name.toUpperCase().replaceAll("_", " ");
+    const stats = profile.stats ?? {};
+    return `
+<div class="tooltip-wrapper trait-tooltip-wrap">
+  <span class="trait-profile">${name}</span>
+  <div class="tooltip-body trait-profile-tooltip">
+    ${_traitProfileHTML(stats)}
+  </div>
+</div>`;
   }
 
   return {
@@ -159,7 +211,9 @@ function Partial() {
     create: {
       stagedTrooperCard: _stc,
       trooper: _t,
+      rosterCard: _rsc,
       traitProfile: _traitProfileHTML,
+      traitWithTooltip: _traitWithTooltip,
     },
   };
 }

@@ -5,7 +5,7 @@ import json2 from "./json/last-names-1.json";
 import {
   getRandomNumberFromRange,
   getRandomValueFromStringArray as grv,
-} from "./random.ts";
+} from "./math.ts";
 import "../game/entities/types.ts";
 
 function generateName() {
@@ -51,6 +51,17 @@ function generateName() {
     return `${firstName} ${grv(letters)}. ${lastName}`;
   }
   return `${firstName} ${lastName}`;
+}
+
+/** Format name for display: "FirstName L." (first name + first letter of last name) */
+export function formatDisplayName(name: string | null | undefined): string {
+  if (name == null || typeof name !== "string") return "";
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 0) return "";
+  if (parts.length === 1) return parts[0];
+  const lastName = parts[parts.length - 1];
+  const initial = lastName.charAt(0).toUpperCase();
+  return `${parts[0]} ${initial}.`;
 }
 
 export { generateName };
