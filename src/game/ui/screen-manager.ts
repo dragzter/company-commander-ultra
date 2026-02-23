@@ -24,13 +24,14 @@ import {
 import { missionsTemplate } from "../html-templates/missions-template.ts";
 import { readyRoomTemplate } from "../html-templates/ready-room-template.ts";
 import { rosterTemplate } from "../html-templates/roster-template.ts";
+import { formationTemplate } from "../html-templates/formation-template.ts";
 import { inventoryTemplate } from "../html-templates/inventory-template.ts";
 import { memorialTemplate } from "../html-templates/memorial-template.ts";
 import { trainingTemplate } from "../html-templates/training-template.ts";
 import { abilitiesTemplate } from "../html-templates/abilities-template.ts";
 import { combatTemplate } from "../html-templates/combat-template.ts";
 import { soldierToCombatant, createEnemyCombatant } from "../combat/combatant-utils.ts";
-import { getActiveSlots } from "../../constants/company-slots.ts";
+import { getActiveSlots, getFormationSlots, getSoldierById } from "../../constants/company-slots.ts";
 import { generateMissions } from "../../services/missions/mission-generator.ts";
 import { Styler } from "../../utils/styler-manager.ts";
 import { SoldierManager } from "../entities/soldier/soldier-manager.ts";
@@ -147,9 +148,12 @@ function ScreenManager() {
     UiManager.clear.center();
     const store = usePlayerCompanyStore.getState();
     const company = store.company;
-    const soldiers = company?.soldiers ?? [];
     const activeCount = getActiveSlots(company);
-    const activeSoldiers = soldiers.slice(0, activeCount);
+    const formationSlots = getFormationSlots(company);
+    const activeSoldiers = formationSlots
+      .slice(0, activeCount)
+      .map((id) => (id ? getSoldierById(company, id) : null))
+      .filter((s): s is NonNullable<typeof s> => s != null);
     const players = activeSoldiers.map((s) => soldierToCombatant(s));
     const enemyCount = mission?.enemyCount ?? 3;
     const companyLevel = store.companyLevel ?? 1;
@@ -191,7 +195,8 @@ function ScreenManager() {
     UiManager.clear.center();
     const content = parseHTML(weaponsMarketTemplate());
     center.appendChild(content as Element);
-    DomEventManager.initEventArray(ec().companyHome().concat(ec().market()).concat(ec().weaponsScreen()));
+    DomEventManager.initEventArray(ec().companyHome().concat(ec().market()));
+    DomEventManager.initDelegatedEventArray(center as HTMLElement, ec().weaponsScreen(), "weapons-screen");
     UiManager.selectCompanyHomeButton(DOM.company.market);
     Styler.setCenterBG("bg_76.jpg", true);
     show.center();
@@ -201,7 +206,8 @@ function ScreenManager() {
     UiManager.clear.center();
     const content = parseHTML(armorMarketTemplate());
     center.appendChild(content as Element);
-    DomEventManager.initEventArray(ec().companyHome().concat(ec().market()).concat(ec().armorScreen()));
+    DomEventManager.initEventArray(ec().companyHome().concat(ec().market()));
+    DomEventManager.initDelegatedEventArray(center as HTMLElement, ec().armorScreen(), "armor-screen");
     UiManager.selectCompanyHomeButton(DOM.company.market);
     Styler.setCenterBG("bg_76.jpg", true);
     show.center();
@@ -211,9 +217,20 @@ function ScreenManager() {
     UiManager.clear.center();
     const content = parseHTML(suppliesMarketTemplate());
     center.appendChild(content as Element);
-    DomEventManager.initEventArray(ec().companyHome().concat(ec().market()).concat(ec().suppliesScreen()));
+    DomEventManager.initEventArray(ec().companyHome().concat(ec().market()));
+    DomEventManager.initDelegatedEventArray(center as HTMLElement, ec().suppliesScreen(), "supplies-screen");
     UiManager.selectCompanyHomeButton(DOM.company.market);
     Styler.setCenterBG("bg_76.jpg", true);
+    show.center();
+  }
+
+  function createFormationPage() {
+    UiManager.clear.center();
+    const content = parseHTML(formationTemplate());
+    center.appendChild(content as Element);
+    DomEventManager.initEventArray(ec().companyHome().concat(ec().formationScreen()));
+    UiManager.selectCompanyHomeButton(DOM.company.roster);
+    Styler.setCenterBG("bg_81.jpg", true);
     show.center();
   }
 
@@ -305,6 +322,7 @@ function ScreenManager() {
       createReadyRoomPage,
       createCombatPage,
       createRosterPage,
+      createFormationPage,
       createInventoryPage,
       createMemorialPage,
       createTrainingPage,

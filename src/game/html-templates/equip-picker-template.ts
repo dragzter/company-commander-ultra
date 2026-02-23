@@ -4,7 +4,7 @@ import { getItemIconUrl } from "../../utils/item-utils.ts";
 import { formatDisplayName } from "../../utils/name-utils.ts";
 import { usePlayerCompanyStore } from "../../store/ui-store.ts";
 import { MAX_EQUIPMENT_SLOTS } from "../../constants/inventory-slots.ts";
-import { getActiveSlots } from "../../constants/company-slots.ts";
+import { getActiveSlots, getFormationSlots, getSoldierById } from "../../constants/company-slots.ts";
 
 function escapeAttr(s: string): string {
   return s.replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -82,26 +82,19 @@ function soldierRow(s: Soldier, isActive: boolean): string {
 </div>`;
 }
 
-const ROLE_ORDER: Record<string, number> = {
-  rifleman: 0,
-  support: 1,
-  medic: 2,
-};
-
-function roleSortKey(des: string): number {
-  return ROLE_ORDER[des] ?? 99;
-}
-
-/** Returns HTML for soldiers list - used to refresh picker without full re-render */
+/** Returns HTML for soldiers list - used to refresh picker without full re-render. Uses formation order (no sort). */
 export function getEquipPickerBodyHtml(): { soldiers: string } {
   const store = usePlayerCompanyStore.getState();
-  const soldiers = store.company?.soldiers ?? [];
-  const activeCount = getActiveSlots(store.company);
-  const active = soldiers.slice(0, activeCount).sort((a, b) => roleSortKey((a.designation ?? "").toLowerCase()) - roleSortKey((b.designation ?? "").toLowerCase()));
-  const reserve = soldiers.slice(activeCount).sort((a, b) => roleSortKey((a.designation ?? "").toLowerCase()) - roleSortKey((b.designation ?? "").toLowerCase()));
-  return {
-    soldiers: [...active, ...reserve].map((s, i) => soldierRow(s, i < active.length)).join(""),
-  };
+  const company = store.company;
+  const formationSlots = getFormationSlots(company);
+  const activeCount = getActiveSlots(company);
+  const rows: string[] = [];
+  for (let i = 0; i < formationSlots.length; i++) {
+    const sid = formationSlots[i];
+    const s = sid ? getSoldierById(company, sid) : null;
+    if (s) rows.push(soldierRow(s, i < activeCount));
+  }
+  return { soldiers: rows.join("") };
 }
 
 export function equipPickerTemplate(): string {

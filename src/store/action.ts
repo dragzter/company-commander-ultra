@@ -25,6 +25,7 @@ import {
 import {
   getMaxCompanySize,
 } from "../game/entities/company/company.ts";
+import { getFormationSlots, getActiveSlots, getReserveSlots } from "../constants/company-slots.ts";
 import { TARGET_TYPES } from "../constants/items/types.ts";
 import { MAX_EQUIPMENT_SLOTS } from "../constants/inventory-slots.ts";
 import { weaponWieldOk } from "../utils/equip-utils.ts";
@@ -261,6 +262,9 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
       const newSoldiers = [...state.company.soldiers, ...added];
       const newMarketIds = new Set(added.map((s) => s.id));
       const returned = staging.filter((s) => !newMarketIds.has(s.id));
+      const currentSlots = getFormationSlots(state.company);
+      const idsToPlace = [...added.map((s) => s.id)];
+      const newFormationSlots = currentSlots.map((slot) => (slot != null ? slot : idsToPlace.shift() ?? null));
       return {
         creditBalance: state.creditBalance - totalCost,
         recruitStaging: returned,
@@ -268,6 +272,7 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
         company: {
           ...state.company,
           soldiers: newSoldiers,
+          formationSlots: newFormationSlots,
         },
         marketAvailableTroops: [...state.marketAvailableTroops, ...returned],
       };
@@ -289,10 +294,12 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
         SoldierManager.getNewSupportMan(1, modelTrait),
         SoldierManager.getNewMedic(1, modelTrait),
       ];
+      const formationSlots = getFormationSlots({ ...state.company, soldiers: initial });
       return {
         company: {
           ...state.company,
           soldiers: initial,
+          formationSlots,
         },
         totalMenInCompany: initial.length,
       };
@@ -315,8 +322,10 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
       const soldiers = state.company?.soldiers ?? [];
       const filtered = soldiers.filter((s) => s.id !== soldierId);
       if (filtered.length === soldiers.length) return {};
+      const slots = getFormationSlots(state.company);
+      const newSlots = slots.map((id) => (id === soldierId ? null : id));
       return {
-        company: { ...state.company, soldiers: filtered },
+        company: { ...state.company, soldiers: filtered, formationSlots: newSlots },
         totalMenInCompany: filtered.length,
       };
     }),
@@ -688,6 +697,30 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
     return { success: true };
   },
 
+  /** Swap two soldiers by slot index. Used for Formation/Ready Room to move between active/reserve. */
+  swapSoldierPositions: (slotA: number, slotB: number) => {
+    set((s: CompanyStore) => {
+      const slots = getFormationSlots(s.company);
+      if (slotA < 0 || slotA >= slots.length || slotB < 0 || slotB >= slots.length) return {};
+      const copy = slots.slice();
+      [copy[slotA], copy[slotB]] = [copy[slotB], copy[slotA]];
+      return { company: { ...s.company, formationSlots: copy } };
+    });
+  },
+
+  /** Move a soldier from one slot to an empty slot. Target must be empty. */
+  moveSoldierToPosition: (fromSlot: number, toSlot: number) => {
+    set((s: CompanyStore) => {
+      const slots = getFormationSlots(s.company);
+      if (fromSlot < 0 || fromSlot >= slots.length || toSlot < 0 || toSlot >= slots.length) return {};
+      if (slots[toSlot] != null) return {}; // target must be empty, use swap for filled
+      const copy = slots.slice();
+      copy[toSlot] = copy[fromSlot];
+      copy[fromSlot] = null;
+      return { company: { ...s.company, formationSlots: copy } };
+    });
+  },
+
   /** Grant mission rewards: credits on victory, items (armory or holding if full). Respects per-category caps. Updates mission stats. */
   grantMissionRewards: (mission: Mission | null, victory: boolean) => {
     set((s: CompanyStore) => ({
@@ -776,8 +809,11 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
         enemiesKilled: playerKills?.get(s.id) ?? 0,
       }));
       const memorialFallen = [...(state.memorialFallen ?? []), ...entries];
+      const formationSlots = getFormationSlots(state.company).map((id) =>
+        id != null && toRemove.has(id) ? null : id,
+      );
       return {
-        company: { ...state.company, soldiers: remaining },
+        company: { ...state.company, soldiers: remaining, formationSlots },
         totalMenInCompany: remaining.length,
         totalMenLostAllTime: (state.totalMenLostAllTime ?? 0) + fallen.length,
         memorialFallen,

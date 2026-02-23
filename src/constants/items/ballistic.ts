@@ -29,6 +29,7 @@ export const BallisticItems: ItemsVolume<BallisticWeapon> = {
       damage_type: "ballistic",
       target: "enemy",
       speed_base: 2,
+      restrictRole: "rifleman",
     },
     damaged_war_rifle: {
       id: "damaged_war_rifle",
@@ -43,6 +44,7 @@ export const BallisticItems: ItemsVolume<BallisticWeapon> = {
       damage_type: "ballistic",
       target: "enemy",
       speed_base: 3,
+      restrictRole: "rifleman",
     },
     m240_delta_machine_gun: {
       // MG support
@@ -74,6 +76,7 @@ export const BallisticItems: ItemsVolume<BallisticWeapon> = {
       damage_type: "ballistic",
       target: "enemy",
       speed_base: 7,
+      restrictRole: "rifleman",
     },
     m16_a6_assault_rifle: {
       id: "m16_a6_assault_rifle",
@@ -88,6 +91,7 @@ export const BallisticItems: ItemsVolume<BallisticWeapon> = {
       damage_type: "ballistic",
       target: "enemy",
       speed_base: 6,
+      restrictRole: "rifleman",
     },
     double_barrel_shotgun: {
       id: "double_barrel_shotgun",
@@ -103,6 +107,7 @@ export const BallisticItems: ItemsVolume<BallisticWeapon> = {
       damage_type: "ballistic",
       target: "enemy",
       speed_base: 1,
+      restrictRole: "rifleman",
     },
     m201_automatic_shotgun: {
       id: "m201_automatic_shotgun",
@@ -119,6 +124,7 @@ export const BallisticItems: ItemsVolume<BallisticWeapon> = {
       damage_type: "ballistic",
       target: "enemy",
       speed_base: 4,
+      restrictRole: "rifleman",
     },
     lsaw_guardsman: {
       id: "lsaw_guardsman",
@@ -134,6 +140,7 @@ export const BallisticItems: ItemsVolume<BallisticWeapon> = {
       damage_type: "ballistic",
       target: "enemy",
       speed_base: 2,
+      restrictRole: "rifleman",
     },
     akpd_assault_rifle: {
       id: "akpd_assault_rifle",
@@ -149,6 +156,7 @@ export const BallisticItems: ItemsVolume<BallisticWeapon> = {
       damage_type: "ballistic",
       target: "enemy",
       speed_base: 8,
+      restrictRole: "rifleman",
     },
     m1205_commando: {
       id: "m1205_commando",
@@ -164,6 +172,7 @@ export const BallisticItems: ItemsVolume<BallisticWeapon> = {
       damage_type: "ballistic",
       target: "enemy",
       speed_base: 6,
+      restrictRole: "rifleman",
     },
     fasw_machine_gun: {
       // MG support

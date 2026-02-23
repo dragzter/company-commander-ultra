@@ -11,6 +11,7 @@ import { clrHash } from "../../utils/html-utils.ts";
 import {
   companyActionsTemplate,
   companyHeaderPartial,
+  marketCreditsPartial,
 } from "./game-setup-template.ts";
 import type { Soldier } from "../entities/types.ts";
 import { usePlayerCompanyStore } from "../../store/ui-store.ts";
@@ -22,6 +23,7 @@ import {
 } from "../../constants/equipment-market.ts";
 import { getWeaponsMarketItems, getArmorMarketItems } from "../../constants/gear-market.ts";
 import { getItemIconUrl } from "../../utils/item-utils.ts";
+import { getWeaponRestrictRole } from "../../utils/equip-utils.ts";
 
 export const marketTemplate = () => {
   const { market } = DOM;
@@ -43,12 +45,19 @@ export const marketTemplate = () => {
 
 		<div class="troops-market-footer">
 			<div class="recruit-balance-bar">
-				<span class="recruit-balance-item"><strong>Credits</strong> $${usePlayerCompanyStore.getState().creditBalance}</span>
+				${marketCreditsPartial(usePlayerCompanyStore.getState().creditBalance)}
 			</div>
 			${companyActionsTemplate()}
 		</div>
 	</div>
 	`;
+};
+
+const WEAPON_ROLE_LABELS: Record<string, string> = {
+  rifleman: "Rifleman",
+  support: "Support",
+  medic: "Medic",
+  any: "Any",
 };
 
 function marketItemCard(
@@ -64,9 +73,16 @@ function marketItemCard(
   const rarity = entry.item.rarity ?? "common";
   const rarityClass = rarity !== "common" ? ` market-item-rarity-${rarity} rarity-${rarity}` : "";
   const isSupplies = slotClass.includes("supplies-market-item");
+  const isWeapon = slotClass.includes("gear-market-item") && (entry.item.type === "ballistic_weapon" || entry.item.type === "melee_weapon");
   const usesBadgeHtml = uses != null ? `<span class="market-item-uses-badge">×${uses}</span>` : "";
+  const weaponRole = isWeapon
+    ? (getWeaponRestrictRole(entry.item) ?? (entry.item as { restrictRole?: string }).restrictRole ?? "any")
+    : null;
+  const roleBadgeHtml = weaponRole
+    ? `<span class="market-weapon-role-badge role-${weaponRole}">${WEAPON_ROLE_LABELS[weaponRole] ?? weaponRole}</span>`
+    : "";
   const iconHtml = iconUrl
-    ? `<div class="market-item-icon-wrap"><img class="market-item-icon" src="${iconUrl}" alt="${name}" width="42" height="42"><span class="item-level-badge rarity-${rarity}">Lv${level}</span>${isSupplies && uses != null ? usesBadgeHtml : ""}</div>`
+    ? `<div class="market-item-icon-wrap"><img class="market-item-icon" src="${iconUrl}" alt="${name}" width="42" height="42"><span class="item-level-badge rarity-${rarity}">Lv${level}</span>${isSupplies && uses != null ? usesBadgeHtml : ""}${roleBadgeHtml}</div>`
     : "";
   const slotLevelUsesBadge = !isSupplies && uses != null ? usesBadgeHtml : "";
   return `
@@ -144,8 +160,8 @@ export const weaponsMarketTemplate = () => {
   </div>
   <div class="weapons-market-footer troops-market-footer">
     <div class="recruit-balance-bar">
-      <span class="recruit-balance-item"><strong>Credits</strong> $${creditBalance}</span>
-      <span class="recruit-balance-item"><strong>Slots Free</strong> ${slotsFree}/${totalCapacity}</span>
+      ${marketCreditsPartial(creditBalance)}
+      <span class="recruit-balance-item market-slots-info"><strong>Slots</strong> ${slotsFree}/${totalCapacity}</span>
     </div>
     ${companyActionsTemplate()}
   </div>
@@ -215,8 +231,8 @@ export const armorMarketTemplate = () => {
   </div>
   <div class="armor-market-footer troops-market-footer">
     <div class="recruit-balance-bar">
-      <span class="recruit-balance-item"><strong>Credits</strong> $${creditBalance}</span>
-      <span class="recruit-balance-item"><strong>Slots Free</strong> ${slotsFree}/${totalCapacity}</span>
+      ${marketCreditsPartial(creditBalance)}
+      <span class="recruit-balance-item market-slots-info"><strong>Slots</strong> ${slotsFree}/${totalCapacity}</span>
     </div>
     ${companyActionsTemplate()}
   </div>
@@ -292,8 +308,8 @@ export const suppliesMarketTemplate = () => {
   </div>
   <div class="supplies-market-footer troops-market-footer">
     <div class="recruit-balance-bar">
-      <span class="recruit-balance-item"><strong>Credits</strong> $${creditBalance}</span>
-      <span class="recruit-balance-item"><strong>Slots Free</strong> ${slotsFree}/${totalCapacity}</span>
+      ${marketCreditsPartial(creditBalance)}
+      <span class="recruit-balance-item market-slots-info"><strong>Slots</strong> ${slotsFree}/${totalCapacity}</span>
     </div>
     ${companyActionsTemplate()}
   </div>
@@ -324,16 +340,26 @@ export const troopsMarketTemplate = (
     slotsLeft > recruitStaging.length &&
     remaining >= getRecruitCost(s.trait_profile?.stats);
 
-  const balanceBarItems: string[] = [];
-  if (isFull) {
-    balanceBarItems.push(`<span class="recruit-balance-full">Full (${currentCount}/${maxSize})</span>`);
-  } else {
-    balanceBarItems.push(`<span class="recruit-balance-item"><img src="/images/soldier_count.png" alt="" class="recruit-balance-icon recruit-balance-soldier-icon" width="20" height="24" aria-hidden="true"><strong>Men</strong> ${currentCount}/${maxSize}</span>`);
-    balanceBarItems.push(`<strong>Bal</strong> $${creditBalance}`);
-    balanceBarItems.push(`<strong>Sel</strong> ${recruitStaging.length} · $${totalCost}`);
-    balanceBarItems.push(`<strong>Max</strong> ${maxSize}`);
-  }
+  const soldiers = store.company?.soldiers ?? [];
+  const roleCounts = soldiers.reduce((acc, s) => {
+    const r = (s.designation ?? "rifleman").toLowerCase();
+    acc[r] = (acc[r] ?? 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+  const totalMaxPill = `<span class="troops-role-pill troops-total-max">${currentCount}/${maxSize}</span>`;
+  const rolePills =
+    soldiers.length === 0
+      ? ""
+      : ["rifleman", "support", "medic"]
+          .filter((r) => (roleCounts[r] ?? 0) > 0)
+          .map(
+            (r) =>
+              `<span class="troops-role-pill role-${r}">${r.charAt(0).toUpperCase()} × ${roleCounts[r] ?? 0}</span>`,
+          )
+          .join("");
+  const roleBreakdownHtml = totalMaxPill + rolePills;
 
+  const formattedCredits = creditBalance.toLocaleString();
 
   return `
 <div id="troops-market" class="troops-market-root" data-troops-screen="v2">
@@ -354,7 +380,10 @@ export const troopsMarketTemplate = (
 		</div>
 	</div>
 	<div class="troops-market-footer">
-		<div class="recruit-balance-bar">${balanceBarItems.join(" ")}</div>
+		<div class="troops-metadata-banner">
+			<div class="troops-metadata-row troops-metadata-credits">Credits <span class="troops-credits-amount">$${formattedCredits}</span></div>
+			<div class="troops-metadata-row troops-soldier-breakdown">${roleBreakdownHtml}</div>
+		</div>
 		${companyActionsTemplate()}
 	</div>
 </div>

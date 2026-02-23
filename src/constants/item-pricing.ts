@@ -78,5 +78,5 @@ export function getWeaponPrice(item: Item): number {
   } else {
     price = Math.round(base);
   }
-  return Math.max(120, price);
+  return Math.max(120, Math.round(price * 1.1));
 }

@@ -242,24 +242,32 @@ export const mainMenuTemplate = () => {
 export const companyHeaderPartial = (title = "") => {
   const store = usePlayerCompanyStore.getState();
   const { companyUnitPatchURL, companyName, commanderName } = store;
-  let titleHtml = "";
-
-  if (title) {
-    titleHtml = `<h3>${title}</h3>`;
-  }
+  const titleHtml = title ? `<h3 class="company-header-title">${title}</h3>` : "";
 
   return `
-      <div id="company-meta" class="p-2">
-      <div class="company-name flex justify-between align-center m-0">
-        <img width="42" src="/images/unit-patches/${companyUnitPatchURL}" alt="Company patch"/>
-        ${titleHtml}
-        <div>
-            <span class="ms-2">${companyName}</span>
-            <p class="company-commander text-end">Commander: ${commanderName}</p>
-        </div>
-      </div>
+<div id="company-meta" class="company-header">
+  <div class="company-header-inner">
+    <div class="company-header-patch">
+      <img src="/images/unit-patches/${companyUnitPatchURL}" alt="Company patch" width="44" height="44"/>
     </div>
+    ${titleHtml}
+    <div class="company-header-info">
+      <span class="company-header-name">${companyName}</span>
+      <span class="company-header-commander">${commanderName}</span>
+    </div>
+  </div>
+</div>
   `;
+};
+
+/** Sleek credits display for market screens */
+export const marketCreditsPartial = (creditBalance: number) => {
+  const formatted = creditBalance.toLocaleString();
+  return `
+  <div class="market-credits-display">
+    <span class="market-credits-label">Credits</span>
+    <span class="market-credits-amount">$${formatted}</span>
+  </div>`;
 };
 
 export const companyActionsTemplate = () => {

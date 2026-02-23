@@ -3,8 +3,7 @@ import { Partial } from "./partials/partial.ts";
 import { equipPickerTemplate } from "./equip-picker-template.ts";
 import type { Soldier } from "../entities/types.ts";
 import { usePlayerCompanyStore } from "../../store/ui-store.ts";
-import { getActiveSlots } from "../../constants/company-slots.ts";
-import { getReserveSlotsByLevel } from "../../constants/company-capacity.ts";
+import { getActiveSlots, getReserveSlots, getFormationSlots, getSoldierById } from "../../constants/company-slots.ts";
 
 function rosterSoldierCard(s: Soldier, index: number, isActive: boolean): string {
   return Partial.create.rosterCard(s, index, isActive);
@@ -14,10 +13,22 @@ export function rosterTemplate(): string {
   const store = usePlayerCompanyStore.getState();
   const company = store.company;
   const soldiers = company?.soldiers ?? [];
+  const formationSlots = getFormationSlots(company);
   const activeCount = getActiveSlots(company);
-  const reserveCount = getReserveSlotsByLevel(company?.level ?? 1);
-  const activeSoldiers = soldiers.slice(0, activeCount);
-  const reserveSoldiers = soldiers.slice(activeCount);
+  const reserveCount = getReserveSlots(company);
+  const activeEntries: { soldier: NonNullable<ReturnType<typeof getSoldierById>>; slotIndex: number }[] = [];
+  for (let i = 0; i < activeCount; i++) {
+    const sid = formationSlots[i];
+    const s = sid ? getSoldierById(company, sid) : null;
+    if (s) activeEntries.push({ soldier: s, slotIndex: i });
+  }
+  const reserveEntries: { soldier: NonNullable<ReturnType<typeof getSoldierById>>; slotIndex: number }[] = [];
+  for (let i = 0; i < reserveCount; i++) {
+    const idx = activeCount + i;
+    const sid = formationSlots[idx];
+    const s = sid ? getSoldierById(company, sid) : null;
+    if (s) reserveEntries.push({ soldier: s, slotIndex: idx });
+  }
 
   let equipPickerHtml = "";
   try {
@@ -34,26 +45,28 @@ export function rosterTemplate(): string {
     <div class="roster-section">
       <div class="roster-section-header roster-section-active">
         <span class="roster-section-label">Active</span>
-        <span class="roster-section-count">${activeSoldiers.length} / ${activeCount}</span>
+        <span class="roster-section-count">${activeEntries.length} / ${activeCount}</span>
       </div>
       <div class="roster-grid" id="roster-active-grid">
-        ${activeSoldiers.map((s, i) => rosterSoldierCard(s, i, true)).join("")}
+        ${activeEntries.map((e) => rosterSoldierCard(e.soldier, e.slotIndex, true)).join("")}
       </div>
     </div>
     <div class="roster-section">
       <div class="roster-section-header roster-section-reserve">
         <span class="roster-section-label">Reserve</span>
-        <span class="roster-section-count">${reserveSoldiers.length} / ${reserveCount}</span>
+        <span class="roster-section-count">${reserveEntries.length} / ${reserveCount}</span>
       </div>
       <div class="roster-grid" id="roster-reserve-grid">
-        ${reserveSoldiers.map((s, i) => rosterSoldierCard(s, activeCount + i, false)).join("")}
+        ${reserveEntries.map((e) => rosterSoldierCard(e.soldier, e.slotIndex, false)).join("")}
       </div>
     </div>
   </div>
-  <div class="roster-footer troops-market-footer">
+  <div class="roster-footer troops-market-footer roster-footer-banner">
+    <div class="roster-footer-actions">
+      <button type="button" id="roster-formation-btn" class="equip-troops-btn">Formation</button>
+    </div>
     <div class="recruit-balance-bar">
-      <span class="recruit-balance-item"><strong>Credits</strong> $${store.creditBalance}</span>
-      <span class="recruit-balance-item"><img src="/images/soldier_count.png" alt="" class="recruit-balance-icon recruit-balance-soldier-icon" width="20" height="24" aria-hidden="true"><strong>Soldiers</strong> ${soldiers.length}</span>
+      <span class="recruit-balance-item"><strong>Soldiers</strong> ${soldiers.length}</span>
     </div>
     ${companyActionsTemplate()}
   </div>

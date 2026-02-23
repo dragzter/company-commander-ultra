@@ -6,7 +6,7 @@ import { WEAPON_BASES } from "../constants/items/weapon-bases.ts";
 export type EquipSlotType = "weapon" | "armor" | "equipment";
 
 /** Resolve weapon restrictRole from item or by looking up base by id */
-function getWeaponRestrictRole(weapon: Item): "support" | "rifleman" | "medic" | "any" | undefined {
+export function getWeaponRestrictRole(weapon: Item): "support" | "rifleman" | "medic" | "any" | undefined {
   if (weapon.restrictRole && weapon.restrictRole !== "any") return weapon.restrictRole;
   const id = (weapon.id ?? "") as string;
   for (const base of WEAPON_BASES) {

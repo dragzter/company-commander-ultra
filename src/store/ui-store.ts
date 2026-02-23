@@ -2,6 +2,7 @@ import { createStore } from "zustand/vanilla";
 import { persist } from "zustand/middleware";
 import { URLReader } from "../utils/url-reader.ts";
 import type { Company } from "../game/entities/company/company.ts";
+import { getFormationSlots } from "../constants/company-slots.ts";
 import type { Soldier } from "../game/entities/types.ts";
 import type { MemorialEntry } from "../game/entities/memorial-types.ts";
 import { StoreActions } from "./action.ts";
@@ -101,6 +102,8 @@ export type CompanyStore = {
     destSlotType: "weapon" | "armor" | "equipment";
     destEqIndex?: number;
   }) => { success: boolean; reason?: string };
+  swapSoldierPositions: (indexA: number, indexB: number) => void;
+  moveSoldierToPosition: (fromIndex: number, toIndex: number) => void;
 
   // Booleans
   canProceedToLaunch: () => boolean;
@@ -123,6 +126,10 @@ export const usePlayerCompanyStore = createStore<CompanyStore>()(
             return { name: s?.name ?? "Unknown", level: s?.level ?? 1, missionName: "Unknown", enemiesKilled: 0 };
           });
           if (!Array.isArray(merged.company?.holding_inventory)) merged.company = { ...merged.company, holding_inventory: [] };
+          const fs = getFormationSlots(merged.company);
+          if (fs.length > 0 && (!Array.isArray(merged.company?.formationSlots) || merged.company.formationSlots.length !== fs.length)) {
+            merged.company = { ...merged.company, formationSlots: fs };
+          }
           return merged;
         },
       })

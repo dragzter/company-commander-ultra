@@ -138,6 +138,10 @@ function UiManager() {
     _ScreenManager.generate.createRosterPage();
   }
 
+  function renderFormationScreen() {
+    _ScreenManager.generate.createFormationPage();
+  }
+
   function renderMarketScreen() {
     console.log("rendering market screen");
     _ScreenManager.generate.createMarketPage();
@@ -208,6 +212,7 @@ function UiManager() {
     renderCompanyHomePage,
     renderSetupScreen,
     renderRosterScreen,
+    renderFormationScreen,
     renderMarketScreen,
     renderMarketTroopsScreen,
     showTroopsRecruitError,

@@ -8,6 +8,8 @@ import {
   getItemArmoryCategory,
   countArmoryByCategory,
 } from "../../utils/item-utils.ts";
+import { getActiveSlots, getFormationSlots } from "../../constants/company-slots.ts";
+import { setFormationSwapIndices } from "../html-templates/formation-template.ts";
 import { usePlayerCompanyStore } from "../../store/ui-store.ts";
 import { disableBtn, enableBtn, s_, sa_ } from "../../utils/html-utils.ts";
 import { DOM } from "../../constants/css-selectors.ts";
@@ -1673,6 +1675,39 @@ export function eventConfigs() {
           const slotItemJson = slotEl.dataset.slotItem;
           const eqIndex = slotEl.dataset.eqIndex !== undefined ? parseInt(slotEl.dataset.eqIndex, 10) : 0;
 
+          /* Move between soldiers: check FIRST so empty destination slots work (not open supplies) */
+          const selectedSlot = picker.querySelector(".equip-picker-soldiers-list .equip-slot-selected") as HTMLElement | null;
+          if (selectedSlot && slotEl.classList.contains("equip-slot-highlight")) {
+            const srcSoldierId = selectedSlot.dataset.soldierId!;
+            const srcSlotType = selectedSlot.dataset.slotType as "weapon" | "armor" | "equipment";
+            const srcEqIdx = selectedSlot.dataset.eqIndex != null ? parseInt(selectedSlot.dataset.eqIndex, 10) : undefined;
+            const destSoldierId = slotEl.dataset.soldierId!;
+            const destSlotType = slotEl.dataset.slotType as "weapon" | "armor" | "equipment";
+            const destEqIdx = slotEl.dataset.eqIndex != null ? parseInt(slotEl.dataset.eqIndex, 10) : undefined;
+            selectedSlot.classList.add("equip-slot-swap-source");
+            slotEl.classList.add("equip-slot-swap-dest");
+            document.querySelectorAll(".equip-slot").forEach((el) => el.classList.remove("equip-slot-selected", "equip-slot-highlight"));
+            setTimeout(() => {
+              const result = usePlayerCompanyStore.getState().moveItemBetweenSlots({
+                sourceSoldierId: srcSoldierId,
+                sourceSlotType: srcSlotType,
+                sourceEqIndex: srcSlotType === "equipment" ? srcEqIdx : undefined,
+                destSoldierId,
+                destSlotType,
+                destEqIndex: destSlotType === "equipment" ? destEqIdx : undefined,
+              });
+              if (result.success) UiManager.refreshEquipPickerContent?.();
+            }, 280);
+            return;
+          }
+
+          /* When an item is selected for moving, never open supplies - only accept highlighted dest or deselect */
+          if (selectedSlot) {
+            document.querySelectorAll(".equip-slot").forEach((el) => el.classList.remove("equip-slot-selected", "equip-slot-highlight"));
+            picker.querySelectorAll(".equip-slot-unequip-wrap").forEach((el) => el.remove());
+            return;
+          }
+
           if (!slotItemJson) {
             openAvailableSuppliesPopup(picker as HTMLElement, soldierId, slotType, eqIndex);
             return;
@@ -1706,34 +1741,11 @@ export function eventConfigs() {
             return;
           }
 
-          const selectedSlot = picker.querySelector(".equip-slot-selected") as HTMLElement | null;
-          if (selectedSlot === slotEl) {
+          const selectedSlotForDeselect = picker.querySelector(".equip-slot-selected") as HTMLElement | null;
+          if (selectedSlotForDeselect === slotEl) {
             slotEl.classList.remove("equip-slot-selected");
             document.querySelectorAll(".equip-slot").forEach((el) => el.classList.remove("equip-slot-highlight"));
             picker.querySelectorAll(".equip-slot-unequip-wrap").forEach((el) => el.remove());
-            return;
-          }
-          if (selectedSlot && slotEl.classList.contains("equip-slot-highlight")) {
-            const srcSoldierId = selectedSlot.dataset.soldierId!;
-            const srcSlotType = selectedSlot.dataset.slotType as "weapon" | "armor" | "equipment";
-            const srcEqIdx = selectedSlot.dataset.eqIndex != null ? parseInt(selectedSlot.dataset.eqIndex, 10) : undefined;
-            const destSoldierId = slotEl.dataset.soldierId!;
-            const destSlotType = slotEl.dataset.slotType as "weapon" | "armor" | "equipment";
-            const destEqIdx = slotEl.dataset.eqIndex != null ? parseInt(slotEl.dataset.eqIndex, 10) : undefined;
-            selectedSlot.classList.add("equip-slot-swap-source");
-            slotEl.classList.add("equip-slot-swap-dest");
-            document.querySelectorAll(".equip-slot").forEach((el) => el.classList.remove("equip-slot-selected", "equip-slot-highlight"));
-            setTimeout(() => {
-              const result = usePlayerCompanyStore.getState().moveItemBetweenSlots({
-                sourceSoldierId: srcSoldierId,
-                sourceSlotType: srcSlotType,
-                sourceEqIndex: srcSlotType === "equipment" ? srcEqIdx : undefined,
-                destSoldierId,
-                destSlotType,
-                destEqIndex: destSlotType === "equipment" ? destEqIdx : undefined,
-              });
-              if (result.success) UiManager.refreshEquipPickerContent?.();
-            }, 280);
             return;
           }
           if (slotItemJson) {
@@ -1771,6 +1783,13 @@ export function eventConfigs() {
   ];
 
   const rosterScreenEventConfig: HandlerInitConfig[] = [
+    {
+      selector: "#roster-formation-btn",
+      eventType: "click",
+      callback: () => {
+        UiManager.renderFormationScreen();
+      },
+    },
     {
       selector: DOM.roster.releaseBtn,
       eventType: "click",
@@ -1915,6 +1934,107 @@ export function eventConfigs() {
     },
   ];
 
+  function clearFormationSelection() {
+    const screen = document.getElementById("formation-screen");
+    screen?.setAttribute("data-selected-index", "-1");
+    screen?.querySelectorAll(".formation-slot-selected").forEach((el) => el.classList.remove("formation-slot-selected"));
+    screen?.querySelectorAll(".formation-drop-zone").forEach((el) => el.classList.remove("formation-drop-zone"));
+  }
+
+  function applyFormationDropZones(selectedIndex: number) {
+    const screen = document.getElementById("formation-screen");
+    if (!screen) return;
+    screen.querySelectorAll(".formation-soldier-card").forEach((el) => {
+      const card = el as HTMLElement;
+      const idxStr = card.dataset.slotIndex;
+      if (idxStr == null) return;
+      const idx = parseInt(idxStr, 10);
+      if (idx !== selectedIndex) card.classList.add("formation-drop-zone");
+    });
+  }
+
+  const formationScreenEventConfig: HandlerInitConfig[] = [
+    {
+      selector: "#formation-back-btn",
+      eventType: "click",
+      callback: () => UiManager.renderRosterScreen(),
+    },
+    {
+      selector: "#formation-screen",
+      eventType: "click",
+      callback: (e: Event) => {
+        const card = (e.target as HTMLElement).closest(".formation-soldier-card") as HTMLElement | null;
+        if (!card) return;
+        const slotIndexStr = card.dataset.slotIndex;
+        if (slotIndexStr == null) return;
+        const slotIndex = parseInt(slotIndexStr, 10);
+        const hasSoldier = card.dataset.hasSoldier === "true";
+        const screen = document.getElementById("formation-screen");
+        const selectedStr = screen?.getAttribute("data-selected-index");
+        const selected = selectedStr != null ? parseInt(selectedStr, 10) : -1;
+
+        // Clear previous swap highlight when user interacts again
+        setFormationSwapIndices(null);
+
+        const store = usePlayerCompanyStore.getState();
+        const formationSlots = getFormationSlots(store.company);
+
+        if (selected >= 0 && selected !== slotIndex) {
+          if (selected < 0 || selected >= formationSlots.length) {
+            clearFormationSelection();
+            return;
+          }
+          const targetFilled = hasSoldier;
+          if (targetFilled) {
+            setFormationSwapIndices([selected, slotIndex]);
+            store.swapSoldierPositions(selected, slotIndex);
+            UiManager.renderFormationScreen();
+            setTimeout(() => setFormationSwapIndices(null), 450);
+          } else if (card.classList.contains("formation-drop-zone")) {
+            setFormationSwapIndices([selected, slotIndex]);
+            store.moveSoldierToPosition(selected, slotIndex);
+            UiManager.renderFormationScreen();
+            setTimeout(() => setFormationSwapIndices(null), 450);
+          }
+          clearFormationSelection();
+          return;
+        }
+
+        if (selected === slotIndex) {
+          clearFormationSelection();
+          return;
+        }
+
+        if (!hasSoldier) return;
+
+        // Select this soldier and highlight drop zones
+        clearFormationSelection();
+        card.classList.add("formation-slot-selected");
+        screen?.setAttribute("data-selected-index", String(slotIndex));
+        applyFormationDropZones(slotIndex);
+      },
+    },
+  ];
+
+  function clearReadyRoomSelection() {
+    const screen = document.getElementById("ready-room-screen");
+    screen?.setAttribute("data-selected-index", "-1");
+    screen?.querySelectorAll(".ready-room-slot-selected").forEach((el) => el.classList.remove("ready-room-slot-selected"));
+    screen?.querySelectorAll(".ready-room-drop-zone").forEach((el) => el.classList.remove("ready-room-drop-zone"));
+  }
+
+  function applyReadyRoomDropZones(selectedIndex: number) {
+    const screen = document.getElementById("ready-room-screen");
+    if (!screen) return;
+    screen.querySelectorAll(".ready-room-soldier-card").forEach((el) => {
+      const card = el as HTMLElement;
+      const idxStr = card.dataset.slotIndex;
+      if (idxStr == null) return;
+      const idx = parseInt(idxStr, 10);
+      if (idx !== selectedIndex) card.classList.add("ready-room-drop-zone");
+    });
+  }
+
   const readyRoomScreenEventConfig: HandlerInitConfig[] = [
     {
       selector: DOM.readyRoom.proceedBtn,
@@ -1928,6 +2048,54 @@ export function eventConfigs() {
         if (btn?.classList.contains("disabled")) return;
         console.log("Proceed to combat", mission);
         UiManager.renderCombatScreen(mission);
+      },
+    },
+    {
+      selector: "#ready-room-screen",
+      eventType: "click",
+      callback: (e: Event) => {
+        const card = (e.target as HTMLElement).closest(".ready-room-soldier-card") as HTMLElement | null;
+        if (!card) return;
+        const slotIndexStr = card.dataset.slotIndex;
+        if (slotIndexStr == null) return;
+        const slotIndex = parseInt(slotIndexStr, 10);
+        const hasSoldier = card.dataset.hasSoldier === "true";
+        const screen = document.getElementById("ready-room-screen");
+        const selectedStr = screen?.getAttribute("data-selected-index");
+        const selected = selectedStr != null ? parseInt(selectedStr, 10) : -1;
+
+        const store = usePlayerCompanyStore.getState();
+        const formationSlots = getFormationSlots(store.company);
+
+        if (selected >= 0 && selected !== slotIndex) {
+          if (selected < 0 || selected >= formationSlots.length) {
+            clearReadyRoomSelection();
+            return;
+          }
+          const json = screen?.getAttribute("data-mission-json");
+          const mission = json && json !== "" ? JSON.parse(json) : null;
+          if (hasSoldier) {
+            store.swapSoldierPositions(selected, slotIndex);
+            UiManager.renderReadyRoomScreen(mission);
+          } else if (card.classList.contains("ready-room-drop-zone")) {
+            store.moveSoldierToPosition(selected, slotIndex);
+            UiManager.renderReadyRoomScreen(mission);
+          }
+          clearReadyRoomSelection();
+          return;
+        }
+
+        if (selected === slotIndex) {
+          clearReadyRoomSelection();
+          return;
+        }
+
+        if (!hasSoldier) return;
+
+        clearReadyRoomSelection();
+        card.classList.add("ready-room-slot-selected");
+        screen?.setAttribute("data-selected-index", String(slotIndex));
+        applyReadyRoomDropZones(slotIndex);
       },
     },
   ];
@@ -2300,6 +2468,7 @@ export function eventConfigs() {
     trainingScreen: () => [],
     abilitiesScreen: () => [],
     readyRoomScreen: () => readyRoomScreenEventConfig,
+    formationScreen: () => formationScreenEventConfig,
     combatScreen: combatScreenEventConfig,
   };
 }

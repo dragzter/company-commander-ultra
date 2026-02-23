@@ -13,6 +13,7 @@ import { ITEM_TYPES } from "../../constants/items/types.ts";
 import { computeAttackIntervalMs } from "../../constants/combat.ts";
 import { WEAPON_EFFECTS } from "../../constants/items/weapon-effects.ts";
 import { getItemEffectDescription } from "../../constants/item-effect-descriptions.ts";
+import { getWeaponRestrictRole } from "../../utils/equip-utils.ts";
 
 const STAT_LABELS: Record<string, string> = {
   toughness: "TGH",
@@ -56,8 +57,18 @@ export function getItemPopupBodyHtml(item: Item): string {
         speedMult = mult;
       }
     }
+      rows.push(["Class", `${Math.max(1, Math.min(10, speedBase))} (speed 1–10)`]);
     rows.push(["Speed", `${(intervalMs / 1000).toFixed(1)}s`]);
-    if (speedMult != null) rows.push(["Spd×", String(speedMult)]);
+    if (speedMult != null) {
+      const pct = Math.round((1 / speedMult - 1) * 100);
+      const rateLabel = pct > 0 ? `+${pct}%` : `${pct}%`;
+      rows.push(["Rate", rateLabel]);
+    }
+  }
+  if (item.type === "ballistic_weapon" || item.type === "melee_weapon") {
+    const role = getWeaponRestrictRole(item) ?? (item as Item & { restrictRole?: string }).restrictRole ?? "any";
+    const roleLabel = role === "any" ? "Any" : role.charAt(0).toUpperCase() + role.slice(1) + " only";
+    rows.push(["Role", roleLabel]);
   }
   rows.push(["Rarity", (rarity as string).toUpperCase()]);
   html += '<div class="item-popup-stats">';
@@ -100,28 +111,39 @@ function escapeAttr(s: string): string {
   return s.replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
+const WEAPON_ROLE_LABELS: Record<string, string> = {
+  rifleman: "Rifleman",
+  support: "Support",
+  medic: "Medic",
+  any: "Any",
+};
+
 function inventoryItemCard(item: Item, index: number): string {
   const iconUrl = getItemIconUrl(item);
-  const qty = item.quantity ?? 1;
   const uses = item.uses;
   const level = item.level ?? 1;
   const rarity = item.rarity ?? "common";
+  const qty = item.quantity ?? 1;
   const badgeN = uses ?? (item.quantity != null ? item.quantity : (qty > 1 ? qty : null));
+  const isWeapon = item.type === "ballistic_weapon" || item.type === "melee_weapon";
+  const isSupplies = item.type === "throwable" || item.type === "medical" || item.type === "gear";
+  const weaponRole = isWeapon ? (getWeaponRestrictRole(item) ?? (item as { restrictRole?: string }).restrictRole ?? "any") : null;
+  const roleBadgeHtml = weaponRole ? `<span class="market-weapon-role-badge role-${weaponRole}">${WEAPON_ROLE_LABELS[weaponRole] ?? weaponRole}</span>` : "";
+  const usesBadgeHtml = isSupplies && badgeN != null && badgeN >= 1 ? `<span class="market-item-uses-badge">×${badgeN}</span>` : "";
   const iconHtml = iconUrl
-    ? `<div class="item-icon-wrap"><img class="inventory-item-icon" src="${iconUrl}" alt="${item.name}" width="48" height="48"><span class="item-level-badge rarity-${rarity}">Lv${level}</span></div>`
+    ? `<div class="market-item-icon-wrap"><img class="market-item-icon" src="${iconUrl}" alt="${item.name}" width="42" height="42"><span class="item-level-badge rarity-${rarity}">Lv${level}</span>${usesBadgeHtml}${roleBadgeHtml}</div>`
     : "";
-  const cardRarity = rarity !== "common" ? ` rarity-${rarity}` : "";
+  const cardRarity = rarity !== "common" ? ` market-item-rarity-${rarity} rarity-${rarity}` : "";
   return `
-<div class="inventory-item-card${cardRarity}" data-item-index="${index}" data-item-id="${item.id}" data-item-json="${escapeAttr(JSON.stringify(item))}">
-  <div class="inventory-item-inner">
+<div class="inventory-item-card market-item-slot gear-market-item${cardRarity}" data-item-index="${index}" data-item-id="${item.id}" data-item-json="${escapeAttr(JSON.stringify(item))}" role="button" tabindex="0">
+  <div class="market-item-inner">
     ${iconHtml}
-    <div class="inventory-item-details">
-      <span class="inventory-item-name">${item.name}</span>
-      <span class="inventory-item-rarity rarity-${rarity}">${(rarity as string).toUpperCase()}</span>
-      ${badgeN != null && badgeN >= 1 ? `<span class="inventory-item-qty inventory-uses-badge">×${badgeN}</span>` : ""}
+    <div class="market-item-details">
+      <span class="market-item-name">${item.name}</span>
+      <span class="market-item-rarity-badge rarity-${rarity}">${(rarity as string).toUpperCase()}</span>
     </div>
-    <button type="button" class="mbtn icon-btn inventory-destroy-btn" data-item-index="${index}" title="Destroy">🗑</button>
   </div>
+  <button type="button" class="inventory-destroy-btn" data-item-index="${index}" title="Destroy">🗑</button>
 </div>`;
 }
 
@@ -136,18 +158,22 @@ function holdingItemCard(item: Item): string {
   const level = item.level ?? 1;
   const rarity = item.rarity ?? "common";
   const badgeN = uses ?? (item.quantity != null ? item.quantity : (qty > 1 ? qty : null));
+  const isWeapon = item.type === "ballistic_weapon" || item.type === "melee_weapon";
+  const isSupplies = item.type === "throwable" || item.type === "medical" || item.type === "gear";
+  const weaponRole = isWeapon ? (getWeaponRestrictRole(item) ?? (item as { restrictRole?: string }).restrictRole ?? "any") : null;
+  const roleBadgeHtml = weaponRole ? `<span class="market-weapon-role-badge role-${weaponRole}">${WEAPON_ROLE_LABELS[weaponRole] ?? weaponRole}</span>` : "";
+  const usesBadgeHtml = isSupplies && badgeN != null && badgeN >= 1 ? `<span class="market-item-uses-badge">×${badgeN}</span>` : "";
   const iconHtml = iconUrl
-    ? `<div class="item-icon-wrap"><img class="inventory-item-icon" src="${iconUrl}" alt="${item.name}" width="48" height="48"><span class="item-level-badge rarity-${rarity}">Lv${level}</span></div>`
+    ? `<div class="market-item-icon-wrap"><img class="market-item-icon" src="${iconUrl}" alt="${item.name}" width="42" height="42"><span class="item-level-badge rarity-${rarity}">Lv${level}</span>${usesBadgeHtml}${roleBadgeHtml}</div>`
     : "";
-  const cardRarity = rarity !== "common" ? ` rarity-${rarity}` : "";
+  const cardRarity = rarity !== "common" ? ` market-item-rarity-${rarity} rarity-${rarity}` : "";
   return `
-<div class="inventory-item-card holding-item-card${cardRarity}" data-item-json="${escapeAttr(JSON.stringify(item))}">
-  <div class="inventory-item-inner">
+<div class="inventory-item-card holding-item-card market-item-slot gear-market-item${cardRarity}" data-item-json="${escapeAttr(JSON.stringify(item))}" role="button" tabindex="0">
+  <div class="market-item-inner">
     ${iconHtml}
-    <div class="inventory-item-details">
-      <span class="inventory-item-name">${item.name}</span>
-      <span class="inventory-item-rarity rarity-${rarity}">${(rarity as string).toUpperCase()}</span>
-      ${badgeN != null && badgeN >= 1 ? `<span class="inventory-item-qty inventory-uses-badge">×${badgeN}</span>` : ""}
+    <div class="market-item-details">
+      <span class="market-item-name">${item.name}</span>
+      <span class="market-item-rarity-badge rarity-${rarity}">${(rarity as string).toUpperCase()}</span>
     </div>
   </div>
 </div>`;
@@ -187,23 +213,21 @@ export function inventoryTemplate(): string {
   return `
 <div id="inventory-screen" class="inventory-root troops-market-root">
   ${equipPickerTemplate()}
-  <div id="item-stats-popup" class="item-stats-popup" hidden role="dialog">
-    <div class="item-stats-popup-inner">
-      <h4 id="item-stats-popup-title" class="item-stats-popup-title"></h4>
-      <div id="item-stats-popup-body" class="item-stats-popup-body"></div>
-      <div class="item-stats-popup-actions">
-        <button type="button" id="item-stats-popup-equip" class="mbtn blue mbtn-sm" style="display:none">Equip</button>
+  <div id="item-stats-popup" class="item-stats-popup gear-buy-popup supplies-buy-popup" hidden role="dialog" aria-modal="true">
+    <div class="item-stats-popup-inner gear-buy-popup-inner supplies-buy-popup-inner">
+      <div class="gear-buy-title-wrap">
+        <h4 id="item-stats-popup-title" class="supplies-buy-title"></h4>
         <button type="button" id="item-stats-popup-close" class="popup-close-btn">×</button>
+      </div>
+      <div id="item-stats-popup-body" class="item-stats-popup-body supplies-buy-body"></div>
+      <div class="item-popup-actions item-market-purchase item-popup-equip-only">
+        <button type="button" id="item-stats-popup-equip" class="mbtn blue equipment-buy-btn-full" style="display:none">Equip</button>
       </div>
     </div>
   </div>
   ${companyHeaderPartial("Company Armory")}
-  <div class="inventory-level-banner flex align-center justify-center p-2">
+  <div class="inventory-level-banner">
     <span class="inventory-level-label">Armory Level ${store.company?.level ?? store.companyLevel ?? 1}</span>
-  </div>
-  <div class="inventory-banner flex justify-between align-center p-2">
-    <span></span>
-    <button type="button" id="equip-troops-btn" class="mbtn blue mbtn-sm">Equip Troops</button>
   </div>
   <div class="inventory-main">
     <div class="inventory-section">
@@ -230,8 +254,10 @@ export function inventoryTemplate(): string {
     ${holdingSection}
   </div>
   <div class="inventory-footer troops-market-footer">
+    <div class="inventory-footer-actions">
+      <button type="button" id="equip-troops-btn" class="equip-troops-btn">Equip Troops</button>
+    </div>
     <div class="recruit-balance-bar">
-      <span class="recruit-balance-item"><strong>Credits</strong> $${store.creditBalance}</span>
       <span class="recruit-balance-item"><strong>Armory</strong> ${items.length}/${getTotalArmorySlots(store.company?.level ?? store.companyLevel ?? 1)}</span>
     </div>
     ${companyActionsTemplate()}

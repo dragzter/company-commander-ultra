@@ -4,6 +4,8 @@ import type { EffectResult, EffectType } from "../effects/effect.ts";
 
 export interface Company {
   soldiers: Soldier[];
+  /** Slot index -> soldier ID. Length = activeSlots + reserveSlots. Enables placing soldiers in any slot. */
+  formationSlots?: (string | null)[];
   name: string;
   level: number;
   experience: number;

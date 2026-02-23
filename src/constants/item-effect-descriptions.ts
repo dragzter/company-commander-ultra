@@ -4,7 +4,7 @@ export const ITEM_EFFECT_DESCRIPTIONS: Record<string, string> = {
   m84_flashbang:
     "Primary target stunned for 4 seconds. Adjacent targets stunned for 2 seconds.",
   mk18_smoke:
-    "Primary target: −40% accuracy, +5% evasion for 5 seconds. Adjacent targets: −10% accuracy for 5 seconds if evade fails.",
+    "Primary target: −40% accuracy, +5% evasion for 5 seconds. Adjacent targets: −10% accuracy for 5 seconds.",
   incendiary_grenade:
     "Primary target: 8 damage per tick, every 1 second, for 4 seconds. Burns ignore armor. Adjacent targets suffer half duration and half damage per tick.",
   nbc_neutralizer: "Cleanses Nuclear, Biological, and Chemical debuffs from allies in the area.",
@@ -13,7 +13,7 @@ export const ITEM_EFFECT_DESCRIPTIONS: Record<string, string> = {
   rad_emitter:
     "Primary target: 5 radiation damage per tick for 4 ticks. Adjacent: half duration and damage.",
   psychic_shredder:
-    "Primary target: Panic for 6 seconds. Adjacent targets: Panic for 3 seconds if evade fails.",
+    "Primary target: Panic for 6 seconds. Adjacent targets: Panic for 3 seconds.",
   m99_sticky_grenade:
     "Sticks to target. 80 explosive damage to a single enemy. No splash.",
   /* Medical */
