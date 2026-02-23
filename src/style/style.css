@@ -582,8 +582,8 @@ button.mbtn {
 	overflow: hidden;
 }
 
-#troops-market #company-meta {
-	padding: 0;
+#troops-market .company-header-inner {
+	padding: 10px 14px;
 }
 
 .troops-market-main {
@@ -603,6 +603,7 @@ button.mbtn {
 	overflow-y: auto;
 	overflow-x: hidden;
 	padding-inline: 0;
+	padding-top: 12px;
 	display: flex;
 	flex-direction: column;
 	gap: 8px;
@@ -832,6 +833,75 @@ button.mbtn {
 	padding-inline: var(--page-padding-x-reduced);
 }
 
+/* Troops market: 2-row metadata banner (credits + soldier breakdown) - sleek, centered, poppy */
+.troops-metadata-banner {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 8px;
+	padding: 10px 16px;
+	margin-inline: var(--page-padding-x-reduced);
+	background: linear-gradient(145deg, rgba(25, 35, 25, 0.92) 0%, rgba(12, 18, 14, 0.97) 100%);
+	border: 1px solid rgba(100, 150, 100, 0.25);
+	border-radius: 10px;
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+.troops-metadata-row {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 10px;
+	font-size: 0.9rem;
+}
+.troops-metadata-credits {
+	color: rgba(200, 220, 200, 0.9);
+	letter-spacing: 0.04em;
+}
+.troops-credits-amount {
+	font-weight: 800;
+	font-variant-numeric: tabular-nums;
+	color: #7cff7c;
+	text-shadow: 0 0 8px rgba(124, 255, 124, 0.5);
+	letter-spacing: 0.05em;
+}
+.troops-soldier-breakdown {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+	gap: 8px;
+	font-variant-numeric: tabular-nums;
+}
+.troops-role-pill {
+	display: inline-flex;
+	align-items: center;
+	padding: 3px 10px;
+	border-radius: 4px;
+	font-size: 0.8rem;
+	font-weight: 700;
+	letter-spacing: 0.03em;
+	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+}
+.troops-role-pill.role-rifleman {
+	background: linear-gradient(135deg, rgba(75, 130, 55, 0.95) 0%, rgba(45, 85, 35, 0.95) 100%);
+	color: #c8f088;
+	border: 1px solid rgba(140, 200, 90, 0.5);
+}
+.troops-role-pill.role-support {
+	background: linear-gradient(135deg, rgba(150, 110, 45, 0.95) 0%, rgba(90, 65, 25, 0.95) 100%);
+	color: #ffe8a0;
+	border: 1px solid rgba(230, 190, 100, 0.5);
+}
+.troops-role-pill.role-medic {
+	background: linear-gradient(135deg, rgba(130, 45, 45, 0.95) 0%, rgba(80, 25, 25, 0.95) 100%);
+	color: #ffc8c0;
+	border: 1px solid rgba(220, 100, 95, 0.5);
+}
+.troops-role-pill.troops-total-max {
+	background: linear-gradient(135deg, rgba(50, 90, 120, 0.95) 0%, rgba(30, 55, 80, 0.95) 100%);
+	color: #b0e0ff;
+	border: 1px solid rgba(100, 160, 210, 0.5);
+}
+
 #troops-market .troops-market-footer .recruit-balance-bar {
 	padding-inline: var(--page-padding-x);
 }
@@ -840,8 +910,41 @@ button.mbtn {
 	display: flex;
 	align-items: center;
 	flex-wrap: wrap;
-	gap: 6px 10px;
+	gap: 8px 14px;
 	font-size: 0.85rem;
+}
+
+/* Sleek credits display on market screens - compact */
+.market-credits-display {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 4px 10px;
+	background: linear-gradient(135deg, rgba(34, 197, 94, 0.14) 0%, rgba(22, 163, 74, 0.08) 100%);
+	border: 1px solid rgba(34, 197, 94, 0.3);
+	border-radius: 6px;
+	box-shadow: 0 1px 4px rgba(34, 197, 94, 0.1);
+}
+.market-credits-label {
+	font-size: 0.6rem;
+	text-transform: uppercase;
+	letter-spacing: 0.1em;
+	font-weight: 700;
+	color: rgba(134, 239, 172, 0.85);
+}
+.market-credits-amount {
+	font-size: 0.9rem;
+	font-weight: 700;
+	font-variant-numeric: tabular-nums;
+	color: #86efac;
+	letter-spacing: 0.02em;
+}
+.market-slots-info {
+	padding: 3px 8px;
+	background: rgba(255, 255, 255, 0.05);
+	border-radius: 4px;
+	border: 1px solid rgba(255, 255, 255, 0.08);
+	font-size: 0.78rem;
 }
 
 .recruit-balance-full {
@@ -882,14 +985,25 @@ button.mbtn {
 	margin-top: 32px;
 }
 
-.missions-section-epic .missions-section-title {
-	color: var(--accent-magenta-2);
-}
-
 .missions-section-title {
 	margin: 0 0 8px 0;
-	font-size: 1rem;
+	padding: 4px 0 4px 12px;
+	font-size: 0.9rem;
+	font-weight: 700;
+	letter-spacing: 0.1em;
+	text-transform: uppercase;
 	color: var(--camo-tan-1);
+	border-left: 3px solid rgba(120, 200, 140, 0.5);
+	background: linear-gradient(90deg, rgba(60, 90, 60, 0.12) 0%, transparent 100%);
+	border-radius: 0 4px 4px 0;
+	text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+.missions-section-epic .missions-section-title {
+	border-left-color: rgba(234, 62, 101, 0.6);
+	background: linear-gradient(90deg, rgba(120, 40, 60, 0.14) 0%, transparent 100%);
+	color: var(--accent-magenta-2);
+	text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5), 0 0 12px rgba(234, 62, 101, 0.2);
 }
 
 .missions-grid {
@@ -1275,67 +1389,493 @@ button.mbtn {
 
 .ready-room-section-title {
 	margin: 0 0 8px 0;
-	font-size: 1rem;
+	padding: 4px 0 4px 12px;
+	font-size: 0.9rem;
+	font-weight: 700;
+	letter-spacing: 0.1em;
+	text-transform: uppercase;
 	color: var(--camo-tan-1);
+	border-left: 3px solid rgba(120, 200, 140, 0.5);
+	background: linear-gradient(90deg, rgba(60, 90, 60, 0.12) 0%, transparent 100%);
+	border-radius: 0 4px 4px 0;
+	text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
 }
 
 .ready-room-grid {
 	display: grid;
-	grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-	gap: 12px;
+	gap: 10px;
+}
+
+.ready-room-grid-2col {
+	grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .ready-room-soldier-card {
 	display: flex;
 	flex-direction: column;
-	background: rgba(0, 0, 0, 0.5);
-	border: 2px solid var(--camo-green-3);
-	border-radius: var(--std-border-radius);
-	padding: 8px;
-	overflow: hidden;
+	background: linear-gradient(165deg, rgba(28, 36, 28, 0.72) 0%, rgba(18, 26, 18, 0.78) 100%);
+	border: 1px solid rgba(80, 110, 60, 0.45);
+	border-radius: 5px;
+	padding: 6px 8px;
+	cursor: pointer;
+	transition: border-color 0.15s, box-shadow 0.15s;
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
-
+.ready-room-soldier-card:hover:not(.ready-room-empty-slot) {
+	border-color: rgba(100, 160, 80, 0.5);
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(120, 180, 90, 0.2);
+}
+.ready-room-soldier-card.ready-room-slot-selected {
+	border-color: rgba(255, 210, 80, 0.9);
+	box-shadow: 0 0 0 3px rgba(255, 200, 50, 0.6), 0 0 16px rgba(255, 220, 100, 0.35), inset 0 0 16px rgba(255, 230, 150, 0.1);
+}
+.ready-room-soldier-card.ready-room-drop-zone {
+	cursor: pointer;
+	border-color: rgba(100, 180, 255, 0.7);
+	box-shadow: 0 0 0 2px rgba(70, 150, 255, 0.5), 0 0 12px rgba(80, 170, 255, 0.25), inset 0 0 20px rgba(100, 180, 255, 0.08);
+	animation: formation-drop-pulse 1.2s ease-in-out infinite;
+}
+.ready-room-soldier-card.designation-rifleman {
+	background: linear-gradient(165deg, rgba(45, 58, 32, 0.75) 0%, rgba(38, 52, 26, 0.8) 100%);
+	border-color: rgba(100, 140, 70, 0.5);
+}
+.ready-room-soldier-card.designation-support {
+	background: linear-gradient(165deg, rgba(50, 45, 32, 0.75) 0%, rgba(40, 35, 24, 0.8) 100%);
+	border-color: rgba(220, 200, 130, 0.4);
+}
+.ready-room-soldier-card.designation-medic {
+	background: linear-gradient(165deg, rgba(58, 28, 25, 0.75) 0%, rgba(48, 22, 20, 0.8) 100%);
+	border-color: rgba(220, 85, 80, 0.45);
+}
+.ready-room-active-slot {
+	border-left: 4px solid rgba(120, 220, 130, 0.75);
+}
 .ready-room-reserve-slot {
-	border-color: var(--gray-5);
+	border-left: 4px solid rgba(120, 120, 120, 0.55);
 }
-
+.ready-room-card-inner {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+.ready-room-avatar-wrap {
+	--ready-room-avatar-size: 56px;
+	position: relative;
+	display: inline-block;
+	width: var(--ready-room-avatar-size);
+	height: var(--ready-room-avatar-size);
+	flex-shrink: 0;
+	align-self: center;
+}
 .ready-room-avatar {
-	width: 48px;
-	height: 48px;
+	width: var(--ready-room-avatar-size);
+	height: var(--ready-room-avatar-size);
 	object-fit: cover;
-	border-radius: 4px;
-	margin-bottom: 6px;
+	border-radius: 5px;
+	display: block;
+	box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
-
+.ready-room-avatar-wrap .ready-room-role-badge {
+	position: absolute;
+	left: 50%;
+	bottom: -2px;
+	transform: translateX(-50%);
+	font-size: 0.5rem;
+	font-weight: 700;
+	padding: 1px 3px;
+	border-radius: 2px;
+	line-height: 1;
+}
+.ready-room-avatar-wrap .ready-room-role-badge.role-rifleman {
+	background: linear-gradient(135deg, rgba(75, 110, 45, 0.95) 0%, rgba(35, 65, 18, 0.95) 100%);
+	color: #c8f088;
+	border: 1px solid rgba(140, 200, 90, 0.5);
+}
+.ready-room-avatar-wrap .ready-room-role-badge.role-support {
+	background: linear-gradient(135deg, rgba(90, 78, 45, 0.95) 0%, rgba(48, 38, 18, 0.95) 100%);
+	color: #beaa60;
+	border: 1px solid rgba(230, 210, 130, 0.5);
+}
+.ready-room-avatar-wrap .ready-room-role-badge.role-medic {
+	background: linear-gradient(135deg, rgba(90, 35, 32, 0.95) 0%, rgba(48, 15, 12, 0.95) 100%);
+	color: #ffc0b8;
+	border: 1px solid rgba(220, 100, 95, 0.5);
+}
 .ready-room-details {
-	font-size: 0.85rem;
+	flex: 1;
+	min-width: 0;
 }
-
 .ready-room-name-block {
 	display: flex;
 	flex-direction: column;
 	gap: 2px;
-	margin-bottom: 4px;
+	margin-bottom: 3px;
 }
-
 .ready-room-name-block .ready-room-name {
-	font-weight: 600;
+	font-weight: 700;
+	font-size: 0.7rem;
+	color: var(--camo-tan-1);
+	text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
-
-.ready-room-role-badge {
-	background: var(--camo-brown-1);
-	color: #fff;
-	font-size: 0.65rem;
-	padding: 2px 4px;
-	border-radius: 2px;
-	align-self: flex-start;
+.ready-room-hp-wrap {
+	position: relative;
+	width: 100%;
+	height: 12px;
+	background: rgba(0, 0, 0, 0.6);
+	border-radius: 4px;
+	overflow: hidden;
+	border: 1px solid rgba(60, 90, 50, 0.5);
+	box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.2);
 }
-
-.ready-room-stats-row {
+.ready-room-hp-bar {
+	height: 100%;
+	background: linear-gradient(180deg, #3da85a 0%, #2a8a42 50%, #1e6b32 100%);
+	border-radius: 3px;
+	transition: width 0.2s;
+	box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 0 8px rgba(60, 180, 90, 0.3);
+}
+.ready-room-hp-value {
+	position: absolute;
+	inset: 0;
 	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 0.7rem;
+	font-weight: 800;
+	color: #fff;
+	text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9), 0 0 4px rgba(0, 0, 0, 0.5);
+	pointer-events: none;
+	letter-spacing: 0.02em;
+}
+.ready-room-equip-row {
+	display: flex;
+	gap: 6px;
+	align-items: center;
+	margin-top: 4px;
+}
+.ready-room-equip-slot {
+	position: relative;
+	width: 32px;
+	height: 32px;
+	flex-shrink: 0;
+}
+.ready-room-equip-slot.item-icon-wrap .ready-room-equip-icon {
+	width: 32px;
+	height: 32px;
+	object-fit: contain;
+	border-radius: 3px;
+	display: block;
+}
+.ready-room-equip-slot .ready-room-equip-level {
+	font-size: 0.5rem;
+	padding: 1px 2px;
+	top: -2px;
+	right: -2px;
+}
+.ready-room-equip-slot.ready-room-equip-empty {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: rgba(0, 0, 0, 0.3);
+	border-radius: 3px;
+}
+.ready-room-equip-placeholder {
+	font-size: 0.65rem;
+	color: rgba(140, 140, 130, 0.6);
+}
+.ready-room-empty-slot {
+	cursor: pointer;
+	min-height: 60px;
+	background: linear-gradient(165deg, rgba(35, 50, 35, 0.5) 0%, rgba(25, 40, 25, 0.55) 100%);
+	border-style: dashed;
+	border-color: rgba(90, 140, 70, 0.5);
+}
+.ready-room-empty-slot:hover {
+	border-color: rgba(110, 170, 90, 0.65);
+	background: linear-gradient(165deg, rgba(40, 58, 40, 0.55) 0%, rgba(30, 48, 30, 0.6) 100%);
+	box-shadow: inset 0 0 20px rgba(80, 140, 60, 0.08);
+}
+.ready-room-empty-slot .ready-room-card-inner {
+	justify-content: center;
+	flex-direction: column;
+	gap: 4px;
+}
+.ready-room-empty-label {
+	font-size: 0.7rem;
+	color: rgba(140, 180, 120, 0.9);
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+}
+
+/* Formation screen: 2-col layout, Active/Reserve, select-then-swap */
+.formation-root .formation-main {
+	flex: 1;
+	overflow-y: auto;
+	padding: 16px var(--page-padding-x-reduced);
+}
+.formation-section {
+	margin-bottom: 20px;
+}
+.formation-section-title {
+	margin: 0 0 8px 0;
+	padding: 4px 0 4px 12px;
+	font-size: 0.9rem;
+	font-weight: 700;
+	letter-spacing: 0.1em;
+	text-transform: uppercase;
+	color: var(--camo-tan-1);
+	border-left: 3px solid rgba(120, 200, 140, 0.5);
+	background: linear-gradient(90deg, rgba(60, 90, 60, 0.12) 0%, transparent 100%);
+	border-radius: 0 4px 4px 0;
+	text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+.formation-grid {
+	display: grid;
+	gap: 10px;
+}
+.formation-grid-2col {
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.formation-soldier-card {
+	display: flex;
+	flex-direction: column;
+	background: linear-gradient(165deg, rgba(28, 36, 28, 0.72) 0%, rgba(18, 26, 18, 0.78) 100%);
+	border: 1px solid rgba(80, 110, 60, 0.45);
+	border-radius: 5px;
+	padding: 6px 8px;
+	cursor: pointer;
+	transition: border-color 0.15s, box-shadow 0.15s;
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+.formation-soldier-card:hover:not(.formation-empty-slot) {
+	border-color: rgba(120, 180, 90, 0.6);
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(120, 180, 90, 0.2);
+}
+.formation-soldier-card.formation-slot-selected {
+	border-color: rgba(255, 210, 80, 0.9);
+	box-shadow: 0 0 0 3px rgba(255, 200, 50, 0.6), 0 0 16px rgba(255, 220, 100, 0.35), inset 0 0 16px rgba(255, 230, 150, 0.1);
+}
+.formation-soldier-card.formation-drop-zone {
+	cursor: pointer;
+	border-color: rgba(100, 180, 255, 0.7);
+	box-shadow: 0 0 0 2px rgba(70, 150, 255, 0.5), 0 0 12px rgba(80, 170, 255, 0.25), inset 0 0 20px rgba(100, 180, 255, 0.08);
+	animation: formation-drop-pulse 1.2s ease-in-out infinite;
+}
+@keyframes formation-drop-pulse {
+	0%, 100% { box-shadow: 0 0 0 2px rgba(70, 150, 255, 0.5), 0 0 12px rgba(80, 170, 255, 0.25), inset 0 0 20px rgba(100, 180, 255, 0.08); }
+	50% { box-shadow: 0 0 0 3px rgba(100, 190, 255, 0.7), 0 0 18px rgba(100, 200, 255, 0.4), inset 0 0 24px rgba(120, 200, 255, 0.12); }
+}
+.formation-soldier-card.designation-rifleman {
+	background: linear-gradient(165deg, rgba(45, 58, 32, 0.75) 0%, rgba(38, 52, 26, 0.8) 100%);
+	border-color: rgba(100, 140, 70, 0.5);
+}
+.formation-soldier-card.designation-support {
+	background: linear-gradient(165deg, rgba(50, 45, 32, 0.75) 0%, rgba(40, 35, 24, 0.8) 100%);
+	border-color: rgba(220, 200, 130, 0.4);
+}
+.formation-soldier-card.designation-medic {
+	background: linear-gradient(165deg, rgba(58, 28, 25, 0.75) 0%, rgba(48, 22, 20, 0.8) 100%);
+	border-color: rgba(220, 85, 80, 0.45);
+}
+.formation-soldier-card.formation-just-swapped {
+	animation: formation-swap-in 0.4s ease-out;
+}
+@keyframes formation-swap-in {
+	0% {
+		transform: scale(0.92);
+		opacity: 0.5;
+	}
+	60% {
+		transform: scale(1.02);
+		opacity: 1;
+	}
+	100% {
+		transform: scale(1);
+		opacity: 1;
+	}
+}
+.formation-active-slot {
+	border-left: 4px solid rgba(120, 220, 130, 0.75);
+}
+.formation-reserve-slot {
+	border-left: 4px solid rgba(120, 120, 120, 0.55);
+}
+.formation-card-inner {
+	display: flex;
+	align-items: center;
 	gap: 8px;
-	color: var(--gray-2);
-	font-size: 0.8rem;
+}
+.formation-avatar-wrap {
+	--formation-avatar-size: 56px;
+	position: relative;
+	display: inline-block;
+	width: var(--formation-avatar-size);
+	height: var(--formation-avatar-size);
+	flex-shrink: 0;
+	align-self: center;
+}
+.formation-avatar {
+	width: var(--formation-avatar-size);
+	height: var(--formation-avatar-size);
+	object-fit: cover;
+	border-radius: 5px;
+	display: block;
+	box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+.formation-level-badge,
+.ready-room-level-badge {
+	top: -2px;
+	right: -2px;
+	bottom: auto;
+	left: auto;
+	display: inline-block;
+	width: fit-content;
+	height: fit-content;
+	white-space: nowrap;
+}
+.formation-details {
+	flex: 1;
+	min-width: 0;
+}
+.formation-name-block {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	margin-bottom: 3px;
+}
+.formation-name {
+	font-weight: 700;
+	font-size: 0.7rem;
+	color: var(--camo-tan-1);
+	text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+.formation-avatar-wrap .formation-role-badge {
+	position: absolute;
+	left: 50%;
+	bottom: -2px;
+	transform: translateX(-50%);
+	font-size: 0.5rem;
+	font-weight: 700;
+	padding: 1px 3px;
+	border-radius: 2px;
+	line-height: 1;
+}
+.formation-avatar-wrap .formation-role-badge.role-rifleman {
+	background: linear-gradient(135deg, rgba(75, 110, 45, 0.95) 0%, rgba(35, 65, 18, 0.95) 100%);
+	color: #c8f088;
+	border: 1px solid rgba(140, 200, 90, 0.5);
+}
+.formation-avatar-wrap .formation-role-badge.role-support {
+	background: linear-gradient(135deg, rgba(90, 78, 45, 0.95) 0%, rgba(48, 38, 18, 0.95) 100%);
+	color: #beaa60;
+	border: 1px solid rgba(230, 210, 130, 0.5);
+}
+.formation-avatar-wrap .formation-role-badge.role-medic {
+	background: linear-gradient(135deg, rgba(90, 35, 32, 0.95) 0%, rgba(48, 15, 12, 0.95) 100%);
+	color: #ffc0b8;
+	border: 1px solid rgba(220, 100, 95, 0.5);
+}
+.formation-stats-row {
+	display: flex;
+	gap: 6px;
+	color: rgba(200, 190, 160, 0.95);
+	font-size: 0.72rem;
+	text-shadow: 0 1px 1px rgba(0, 0, 0, 0.3);
+}
+.formation-hp-wrap {
+	position: relative;
+	width: 100%;
+	height: 12px;
+	background: rgba(0, 0, 0, 0.6);
+	border-radius: 4px;
+	overflow: hidden;
+	border: 1px solid rgba(60, 90, 50, 0.5);
+	box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+.formation-hp-bar {
+	height: 100%;
+	background: linear-gradient(180deg, #3da85a 0%, #2a8a42 50%, #1e6b32 100%);
+	border-radius: 3px;
+	transition: width 0.2s;
+	box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 0 8px rgba(60, 180, 90, 0.3);
+}
+.formation-hp-value {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 0.7rem;
+	font-weight: 800;
+	color: #fff;
+	text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9), 0 0 4px rgba(0, 0, 0, 0.5);
+	pointer-events: none;
+	letter-spacing: 0.02em;
+}
+.formation-equip-row {
+	display: flex;
+	gap: 6px;
+	align-items: center;
+	margin-top: 4px;
+}
+.formation-equip-slot {
+	position: relative;
+	width: 32px;
+	height: 32px;
+	flex-shrink: 0;
+}
+.formation-equip-slot.item-icon-wrap .formation-equip-icon {
+	width: 32px;
+	height: 32px;
+	object-fit: contain;
+	border-radius: 3px;
+	display: block;
+}
+.formation-equip-slot .formation-equip-level {
+	font-size: 0.5rem;
+	padding: 1px 2px;
+	top: -2px;
+	right: -2px;
+}
+.formation-equip-slot.formation-equip-empty {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: rgba(0, 0, 0, 0.3);
+	border-radius: 3px;
+}
+.formation-equip-placeholder {
+	font-size: 0.65rem;
+	color: rgba(140, 140, 130, 0.6);
+}
+.formation-empty-slot {
+	cursor: pointer;
+	min-height: 60px;
+	background: linear-gradient(165deg, rgba(35, 50, 35, 0.5) 0%, rgba(25, 40, 25, 0.55) 100%);
+	border-style: dashed;
+	border-color: rgba(90, 140, 70, 0.5);
+}
+.formation-empty-slot:hover {
+	border-color: rgba(110, 170, 90, 0.65);
+	background: linear-gradient(165deg, rgba(40, 58, 40, 0.55) 0%, rgba(30, 48, 30, 0.6) 100%);
+	box-shadow: inset 0 0 20px rgba(80, 140, 60, 0.08);
+}
+.formation-empty-slot .formation-card-inner {
+	justify-content: center;
+	flex-direction: column;
+	gap: 4px;
+}
+.formation-empty-label {
+	font-size: 0.7rem;
+	color: rgba(140, 180, 120, 0.9);
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
 }
 
 .ready-room-footer {
@@ -1437,8 +1977,16 @@ button.mbtn {
 
 .roster-section-title {
 	margin: 0 0 8px 0;
-	font-size: 1rem;
+	padding: 4px 0 4px 12px;
+	font-size: 0.9rem;
+	font-weight: 700;
+	letter-spacing: 0.1em;
+	text-transform: uppercase;
 	color: var(--camo-tan-1);
+	border-left: 3px solid rgba(120, 200, 140, 0.5);
+	background: linear-gradient(90deg, rgba(60, 90, 60, 0.12) 0%, transparent 100%);
+	border-radius: 0 4px 4px 0;
+	text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
 }
 
 .roster-grid {
@@ -1624,18 +2172,78 @@ button.mbtn {
 
 /* Inventory screen */
 .inventory-level-banner {
-	padding: 6px var(--page-padding-x-reduced);
-	background: rgba(0, 0, 0, 0.25);
-	text-align: center;
-	border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 8px 16px;
+	margin-inline: var(--page-padding-x-reduced);
+	background: linear-gradient(145deg, rgba(25, 38, 30, 0.92) 0%, rgba(14, 22, 18, 0.96) 100%);
+	border: 1px solid rgba(90, 150, 100, 0.3);
+	border-radius: 6px;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 .inventory-level-label {
-	font-size: 0.9rem;
-	color: var(--camo-tan-1);
+	font-size: 0.82rem;
+	font-weight: 700;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: #b8d4a8;
+	text-shadow: 0 0 8px rgba(120, 200, 130, 0.2);
 }
-.inventory-root .inventory-banner,
 .inventory-root .inventory-main {
 	padding-inline: var(--page-padding-x-reduced);
+}
+/* Inventory/Roster footer: centered, reduced padding, sleek (like armory) */
+.inventory-footer.troops-market-footer,
+.roster-footer.troops-market-footer,
+.formation-footer.troops-market-footer {
+	padding: 4px 0 8px 0;
+	gap: 4px;
+	align-items: center;
+}
+.inventory-footer .company-actions,
+.roster-footer .company-actions,
+.formation-footer .company-actions {
+	align-self: stretch;
+	width: 100%;
+}
+.inventory-footer .recruit-balance-bar,
+.roster-footer .recruit-balance-bar,
+.formation-footer .recruit-balance-bar {
+	justify-content: center;
+	padding-inline: 0;
+}
+.inventory-footer-actions,
+.roster-footer-actions {
+	display: flex;
+	justify-content: center;
+	padding: 2px 0 2px 0;
+}
+.equip-troops-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: 6px 20px;
+	font-size: 0.78rem;
+	font-weight: 600;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	color: #fff;
+	background: linear-gradient(135deg, rgba(60, 100, 140, 0.95) 0%, rgba(40, 70, 110, 0.95) 100%);
+	border: 1px solid rgba(100, 160, 220, 0.5);
+	border-radius: 4px;
+	box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+	cursor: pointer;
+	transition: background 0.2s, box-shadow 0.2s, transform 0.15s;
+}
+.equip-troops-btn:hover {
+	background: linear-gradient(135deg, rgba(75, 120, 165, 0.98) 0%, rgba(50, 85, 130, 0.98) 100%);
+	box-shadow: 0 2px 8px rgba(60, 120, 180, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+	transform: translateY(-1px);
+}
+.equip-troops-btn:active {
+	transform: translateY(0);
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
 }
 
 .inventory-root .inventory-main {
@@ -1650,19 +2258,28 @@ button.mbtn {
 
 .inventory-section-title {
 	margin: 0 0 8px 0;
-	font-size: 1rem;
+	padding: 4px 0 4px 12px;
+	font-size: 0.9rem;
+	font-weight: 700;
+	letter-spacing: 0.1em;
+	text-transform: uppercase;
 	color: var(--camo-tan-1);
+	border-left: 3px solid rgba(180, 160, 100, 0.5);
+	background: linear-gradient(90deg, rgba(80, 70, 50, 0.15) 0%, transparent 100%);
+	border-radius: 0 4px 4px 0;
+	text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
 }
 .inventory-section-cap {
-	font-weight: normal;
-	color: var(--gray-3);
-	font-size: 0.9em;
+	font-weight: 500;
+	color: rgba(160, 170, 150, 0.9);
+	font-size: 0.85em;
+	letter-spacing: 0.02em;
 }
 
 .inventory-grid {
 	display: grid;
-	grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-	gap: 12px;
+	grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+	gap: 6px;
 }
 
 .inventory-empty {
@@ -1716,18 +2333,53 @@ button.mbtn {
 	display: none;
 }
 
-.inventory-item-card {
+/* Armory items: inherit market-item-slot styling when both classes present */
+.inventory-item-card.market-item-slot {
 	position: relative;
-	background: linear-gradient(150deg, rgba(25, 28, 25, 0.6) 0%, rgba(12, 14, 12, 0.7) 100%);
-	border: 2px solid var(--gray-5);
-	border-radius: var(--std-border-radius);
-	padding: 8px;
+	cursor: pointer;
 }
 
-.inventory-item-inner {
-	display: flex;
-	align-items: center;
-	gap: 8px;
+.inventory-item-card .inventory-destroy-btn {
+	position: absolute;
+	top: 4px;
+	right: 4px;
+	width: 22px;
+	height: 22px;
+	min-width: 0;
+	padding: 0;
+	font-size: 0.7rem;
+	line-height: 1;
+	background: rgba(80, 30, 30, 0.9);
+	border: 1px solid rgba(180, 60, 60, 0.5);
+	border-radius: 4px;
+	color: #ffb0a0;
+	cursor: pointer;
+	opacity: 0.85;
+	transition: opacity 0.2s;
+}
+.inventory-item-card .inventory-destroy-btn:hover {
+	opacity: 1;
+	background: rgba(100, 40, 40, 0.95);
+}
+
+/* Armory: rarity badge styled like market price - same position/size in market-item-details */
+.market-item-rarity-badge {
+	font-weight: 800;
+	font-size: 0.82rem;
+	line-height: 1.2;
+	letter-spacing: 0.05em;
+}
+.gear-market-item .market-item-rarity-badge.rarity-common {
+	color: #b0b0b0;
+	text-shadow: 0 0 4px rgba(180, 180, 180, 0.3);
+}
+.gear-market-item .market-item-rarity-badge.rarity-rare {
+	color: #6eb5e6;
+	text-shadow: 0 0 4px rgba(94, 184, 255, 0.4);
+}
+.gear-market-item .market-item-rarity-badge.rarity-epic {
+	color: #c9a227;
+	text-shadow: 0 0 4px rgba(201, 162, 39, 0.4);
 }
 
 .inventory-item-icon {
@@ -1765,18 +2417,6 @@ button.mbtn {
 	border-radius: 2px;
 	font-size: 0.6rem;
 	font-weight: 700;
-}
-
-.inventory-item-rarity.rarity-common {
-	color: var(--gray-2);
-}
-
-.inventory-item-rarity.rarity-rare {
-	color: #6eb5e6;
-}
-
-.inventory-item-rarity.rarity-epic {
-	color: #c9a227;
 }
 
 /* Rare = blue bg, Epic = purple bg – clearly distinct (market, inventory, equip slots) */
@@ -1838,23 +2478,31 @@ button.mbtn {
 }
 
 .market-section-title {
-	margin: 0 0 6px 0;
-	font-size: 0.88rem;
-	font-weight: 800;
+	margin: 0 0 8px 0;
+	padding: 4px 0 4px 12px;
+	font-size: 0.8rem;
+	font-weight: 700;
 	text-transform: uppercase;
-	letter-spacing: 0.1em;
+	letter-spacing: 0.14em;
 	color: var(--white-2);
-	text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+	border-left: 3px solid rgba(120, 200, 140, 0.6);
+	background: linear-gradient(90deg, rgba(80, 120, 90, 0.12) 0%, transparent 100%);
+	border-radius: 0 4px 4px 0;
+	text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 }
 
 .market-section-rare .market-section-title {
-	color: #7a9bb5;
-	text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+	border-left-color: rgba(94, 184, 255, 0.6);
+	background: linear-gradient(90deg, rgba(50, 90, 130, 0.14) 0%, transparent 100%);
+	color: #9ed4ff;
+	text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5), 0 0 12px rgba(94, 184, 255, 0.15);
 }
 
 .market-section-epic .market-section-title {
-	color: #a08fb8;
-	text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+	border-left-color: rgba(199, 125, 255, 0.6);
+	background: linear-gradient(90deg, rgba(100, 60, 130, 0.14) 0%, transparent 100%);
+	color: #e0b8ff;
+	text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5), 0 0 12px rgba(199, 125, 255, 0.15);
 }
 
 .market-grid {
@@ -1923,6 +2571,57 @@ button.mbtn {
 .market-item-slot .item-level-badge {
 	font-size: 0.52rem;
 	padding: 1px 3px;
+}
+
+/* Weapon role badge (Rifleman/Support/Medic/Any) on gear market items */
+.market-weapon-role-badge {
+	position: absolute;
+	left: 50%;
+	bottom: -2px;
+	transform: translateX(-50%);
+	font-size: 0.5rem;
+	font-weight: 700;
+	padding: 1px 3px;
+	border-radius: 2px;
+	line-height: 1;
+	background: rgba(0, 0, 0, 0.75);
+	color: var(--white-2);
+}
+.gear-market-item .market-item-icon-wrap .market-weapon-role-badge.role-rifleman {
+	background: linear-gradient(135deg, rgba(75, 110, 45, 0.95) 0%, rgba(35, 65, 18, 0.95) 100%);
+	color: #c8f088;
+	border: 1px solid rgba(140, 200, 90, 0.5);
+}
+.gear-market-item .market-item-icon-wrap .market-weapon-role-badge.role-support {
+	background: linear-gradient(135deg, rgba(90, 78, 45, 0.95) 0%, rgba(48, 38, 18, 0.95) 100%);
+	color: #beaa60;
+	border: 1px solid rgba(230, 210, 130, 0.5);
+}
+.gear-market-item .market-item-icon-wrap .market-weapon-role-badge.role-medic {
+	background: linear-gradient(135deg, rgba(90, 35, 32, 0.95) 0%, rgba(48, 15, 12, 0.95) 100%);
+	color: #ffc0b8;
+	border: 1px solid rgba(220, 100, 95, 0.5);
+}
+.gear-market-item .market-item-icon-wrap .market-weapon-role-badge.role-any,
+.inventory-item-card .market-item-icon-wrap .market-weapon-role-badge.role-any {
+	background: rgba(60, 60, 70, 0.9);
+	color: #aaa;
+	border: 1px solid rgba(140, 140, 150, 0.5);
+}
+.inventory-item-card .market-item-icon-wrap .market-weapon-role-badge.role-rifleman {
+	background: linear-gradient(135deg, rgba(75, 110, 45, 0.95) 0%, rgba(35, 65, 18, 0.95) 100%);
+	color: #c8f088;
+	border: 1px solid rgba(140, 200, 90, 0.5);
+}
+.inventory-item-card .market-item-icon-wrap .market-weapon-role-badge.role-support {
+	background: linear-gradient(135deg, rgba(90, 78, 45, 0.95) 0%, rgba(48, 38, 18, 0.95) 100%);
+	color: #beaa60;
+	border: 1px solid rgba(230, 210, 130, 0.5);
+}
+.inventory-item-card .market-item-icon-wrap .market-weapon-role-badge.role-medic {
+	background: linear-gradient(135deg, rgba(90, 35, 32, 0.95) 0%, rgba(48, 15, 12, 0.95) 100%);
+	color: #ffc0b8;
+	border: 1px solid rgba(220, 100, 95, 0.5);
 }
 
 .market-item-icon {
@@ -2035,14 +2734,18 @@ button.mbtn {
 }
 .gear-buy-popup[data-rarity="rare"] .gear-buy-popup-inner,
 .gear-buy-popup[data-rarity="rare"] .supplies-buy-popup-inner,
-.supplies-buy-popup[data-rarity="rare"] .supplies-buy-popup-inner {
+.supplies-buy-popup[data-rarity="rare"] .supplies-buy-popup-inner,
+.item-stats-popup[data-rarity="rare"] .item-stats-popup-inner,
+.item-stats-popup[data-rarity="rare"] .gear-buy-popup-inner {
 	background: linear-gradient(165deg, #0e141a 0%, #121c28 50%, #0f1824 100%);
 	border-color: rgba(94, 184, 255, 0.5);
 	box-shadow: 0 0 50px rgba(94, 184, 255, 0.18), 0 0 0 1px rgba(94, 184, 255, 0.15);
 }
 .gear-buy-popup[data-rarity="epic"] .gear-buy-popup-inner,
 .gear-buy-popup[data-rarity="epic"] .supplies-buy-popup-inner,
-.supplies-buy-popup[data-rarity="epic"] .supplies-buy-popup-inner {
+.supplies-buy-popup[data-rarity="epic"] .supplies-buy-popup-inner,
+.item-stats-popup[data-rarity="epic"] .item-stats-popup-inner,
+.item-stats-popup[data-rarity="epic"] .gear-buy-popup-inner {
 	background: linear-gradient(165deg, #140e18 0%, #1a1422 50%, #160f1c 100%);
 	border-color: rgba(199, 125, 255, 0.55);
 	box-shadow: 0 0 60px rgba(199, 125, 255, 0.2), 0 0 0 1px rgba(199, 125, 255, 0.2);
@@ -2065,7 +2768,8 @@ button.mbtn {
 	display: none !important;
 }
 .supplies-buy-popup-inner,
-.gear-buy-popup-inner {
+.gear-buy-popup-inner,
+.item-stats-popup-inner {
 	position: relative;
 	background: linear-gradient(165deg, #0e0f14 0%, #16181f 50%, #12141a 100%);
 	border: 1px solid rgba(120, 255, 255, 0.25);
@@ -2121,10 +2825,11 @@ button.mbtn {
 	padding: 8px 10px;
 	margin-top: 10px;
 }
-/* Buy button in item popup quantity box - overrides mbtn green */
+/* Buy/Equip button in item popup - full width, overrides mbtn */
 .item-market-purchase .equipment-buy-btn-full,
 .gear-buy-popup .equipment-buy-btn-full,
-.supplies-buy-popup .equipment-buy-btn-full {
+.supplies-buy-popup .equipment-buy-btn-full,
+.item-stats-popup .equipment-buy-btn-full {
 	align-self: stretch;
 	width: 100%;
 	height: auto;
@@ -2149,14 +2854,16 @@ button.mbtn {
 }
 .item-market-purchase .equipment-buy-btn-full .buy-btn-price,
 .gear-buy-popup .equipment-buy-btn-full .buy-btn-price,
-.supplies-buy-popup .equipment-buy-btn-full .buy-btn-price {
+.supplies-buy-popup .equipment-buy-btn-full .buy-btn-price,
+.item-stats-popup .equipment-buy-btn-full .buy-btn-price {
 	font-variant-numeric: tabular-nums;
 	color: #c7d2fe;
 	font-weight: 700;
 }
 .item-market-purchase .equipment-buy-btn-full:hover,
 .gear-buy-popup .equipment-buy-btn-full:hover,
-.supplies-buy-popup .equipment-buy-btn-full:hover {
+.supplies-buy-popup .equipment-buy-btn-full:hover,
+.item-stats-popup .equipment-buy-btn-full:hover {
 	background: linear-gradient(135deg, #818cf8 0%, #6366f1 50%, #4f46e5 100%) !important;
 	background-color: #6366f1 !important;
 	background-image: none !important;
@@ -2166,7 +2873,8 @@ button.mbtn {
 }
 .item-market-purchase .equipment-buy-btn-full:active,
 .gear-buy-popup .equipment-buy-btn-full:active,
-.supplies-buy-popup .equipment-buy-btn-full:active {
+.supplies-buy-popup .equipment-buy-btn-full:active,
+.item-stats-popup .equipment-buy-btn-full:active {
 	background: linear-gradient(135deg, #5b21b6 0%, #4f46e5 100%) !important;
 	background-color: #4f46e5 !important;
 	background-image: none !important;
@@ -2368,16 +3076,17 @@ button.mbtn {
 	margin: 0;
 	font-size: 0.88rem;
 	line-height: 1.45;
-	font-weight: 600;
-	color: rgba(74, 222, 128, 0.95);
-	text-shadow: 0 0 8px rgba(34, 197, 94, 0.2);
+	font-weight: 700;
+	color: #86efac;
+	text-shadow: 0 0 10px rgba(34, 197, 94, 0.35), 0 1px 2px rgba(0, 0, 0, 0.4);
 }
 .item-popup-body[data-rarity="rare"] .item-popup-effect {
 	background: rgba(59, 184, 120, 0.1);
 	border-color: rgba(59, 184, 120, 0.4);
 }
 .item-popup-body[data-rarity="rare"] .item-popup-effect-text {
-	color: rgba(72, 187, 120, 0.95);
+	color: #5eead4;
+	text-shadow: 0 0 10px rgba(45, 212, 191, 0.35), 0 1px 2px rgba(0, 0, 0, 0.4);
 }
 .item-popup-body[data-rarity="rare"] .item-popup-effect-hint {
 	color: rgba(72, 187, 120, 0.7);
@@ -2387,7 +3096,8 @@ button.mbtn {
 	border-color: rgba(168, 85, 247, 0.4);
 }
 .item-popup-body[data-rarity="epic"] .item-popup-effect-text {
-	color: rgba(192, 132, 252, 0.95);
+	color: #e9d5ff;
+	text-shadow: 0 0 10px rgba(168, 85, 247, 0.4), 0 1px 2px rgba(0, 0, 0, 0.4);
 }
 .item-popup-body[data-rarity="epic"] .item-popup-effect-hint {
 	color: rgba(192, 132, 252, 0.7);
@@ -2507,28 +3217,6 @@ button.mbtn {
 	display: none !important;
 }
 
-.item-stats-popup-inner {
-	position: relative;
-	background: linear-gradient(165deg, #0e0f14 0%, #16181f 50%, #12141a 100%);
-	border: 1px solid rgba(120, 255, 255, 0.25);
-	border-radius: 12px;
-	padding: 10px 14px 14px;
-	width: 100%;
-	max-width: 380px;
-	box-sizing: border-box;
-	box-shadow: 0 0 40px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.03);
-}
-.item-stats-popup[data-rarity="rare"] .item-stats-popup-inner {
-	background: linear-gradient(165deg, #0e141a 0%, #121c28 50%, #0f1824 100%);
-	border-color: rgba(94, 184, 255, 0.5);
-	box-shadow: 0 0 50px rgba(94, 184, 255, 0.18), 0 0 0 1px rgba(94, 184, 255, 0.15);
-}
-.item-stats-popup[data-rarity="epic"] .item-stats-popup-inner {
-	background: linear-gradient(165deg, #140e18 0%, #1a1422 50%, #160f1c 100%);
-	border-color: rgba(199, 125, 255, 0.55);
-	box-shadow: 0 0 60px rgba(199, 125, 255, 0.2), 0 0 0 1px rgba(199, 125, 255, 0.2);
-}
-
 .item-stats-popup-title {
 	margin: 0 0 14px 0;
 	font-size: 1.15rem;
@@ -2545,11 +3233,10 @@ button.mbtn {
 	margin-bottom: 16px;
 	font-size: 0.9rem;
 }
-.item-stats-popup-actions {
-	display: flex;
-	gap: 10px;
-	justify-content: flex-end;
-	margin-top: 4px;
+/* Armory popup: Equip button full width, no quantity row */
+.item-popup-equip-only .equipment-buy-btn-full {
+	width: 100%;
+	margin-top: 0;
 }
 
 /* Equip picker - contained within #game */
@@ -3115,10 +3802,10 @@ button.mbtn {
 	display: inline-block;
 }
 .item-level-badge,
-.equip-slot-level {
+.equip-slot-level,
+.formation-level-badge,
+.ready-room-level-badge {
 	position: absolute;
-	top: -2px;
-	right: -2px;
 	font-size: 0.6rem;
 	font-weight: 700;
 	padding: 2px 4px;
@@ -3126,11 +3813,24 @@ button.mbtn {
 	line-height: 1;
 	letter-spacing: 0.02em;
 }
+.item-level-badge,
+.equip-slot-level {
+	top: -2px;
+	right: -2px;
+}
+.formation-level-badge {
+	bottom: -2px;
+	right: -2px;
+}
 /* Common: white bg, black text */
 .item-level-badge.rarity-common,
 .equip-slot-level.rarity-common,
+.formation-level-badge.rarity-common,
+.ready-room-level-badge.rarity-common,
 .item-level-badge:not([class*="rarity-"]),
-.equip-slot-level:not([class*="rarity-"]) {
+.equip-slot-level:not([class*="rarity-"]),
+.formation-level-badge:not([class*="rarity-"]),
+.ready-room-level-badge:not([class*="rarity-"]) {
 	background: #fff;
 	color: #111;
 	text-shadow: none;
@@ -3138,7 +3838,9 @@ button.mbtn {
 }
 /* Rare: blue bg, white text */
 .item-level-badge.rarity-rare,
-.equip-slot-level.rarity-rare {
+.equip-slot-level.rarity-rare,
+.formation-level-badge.rarity-rare,
+.ready-room-level-badge.rarity-rare {
 	background: linear-gradient(135deg, #3a8fd4 0%, #2568a8 100%);
 	color: #fff;
 	text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
@@ -3146,7 +3848,9 @@ button.mbtn {
 }
 /* Epic: purple bg, white text */
 .item-level-badge.rarity-epic,
-.equip-slot-level.rarity-epic {
+.equip-slot-level.rarity-epic,
+.formation-level-badge.rarity-epic,
+.ready-room-level-badge.rarity-epic {
 	background: linear-gradient(135deg, #9b6dd4 0%, #7b4dbb 100%);
 	color: #fff;
 	text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
@@ -4922,33 +5626,80 @@ button.mbtn {
 	overflow-y: auto;
 }
 
-#company-meta {
-	background: linear-gradient(180deg, rgba(20, 25, 18, 0.98) 0%, rgba(10, 12, 8, 0.99) 100%);
+/* Company header: patch | title | company name + commander - sleek, polished */
+#company-meta.company-header,
+.company-header {
 	flex-shrink: 0;
-	border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-
-	.company-name {
-		img {
-			width: 42px;
-			height: auto;
-		}
-
-		h3 {
-			font-size: 0.95rem;
-			margin: 0;
-		}
-
-		span {
-			font-size: 0.9rem;
-			letter-spacing: 0.02em;
-		}
-	}
-
-	.company-commander {
-		margin: 0;
-		font-size: 0.7rem;
-		color: var(--gray-2);
-	}
+	background: linear-gradient(165deg, rgba(18, 28, 22, 0.98) 0%, rgba(10, 18, 14, 0.99) 45%, rgba(6, 12, 10, 1) 100%);
+	border-bottom: 1px solid rgba(80, 140, 95, 0.28);
+	box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(200, 220, 205, 0.04);
+}
+.company-header-inner {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 16px;
+	padding: 10px 20px;
+	min-height: 56px;
+}
+.company-header-patch {
+	flex-shrink: 0;
+	width: 44px;
+	height: 44px;
+	border-radius: 4px;
+	overflow: hidden;
+	background: transparent;
+	border: none;
+	box-shadow: none;
+}
+.company-header-patch img {
+	width: 100%;
+	height: 100%;
+	object-fit: contain;
+	display: block;
+}
+.company-header-title {
+	flex: 1;
+	margin: 0;
+	font-size: 1rem;
+	font-weight: 700;
+	color: #f4f8f2;
+	letter-spacing: 0.06em;
+	text-align: center;
+	text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6), 0 0 24px rgba(100, 200, 120, 0.1);
+}
+.company-header-info {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-end;
+	gap: 1px;
+	flex-shrink: 0;
+	min-width: 0;
+	padding: 0;
+	background: transparent;
+	border: none;
+	border-radius: 0;
+	box-shadow: none;
+}
+.company-header-name {
+	font-size: 0.82rem;
+	font-weight: 700;
+	color: #e8e4c8;
+	letter-spacing: 0.05em;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	max-width: 140px;
+	text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+.company-header-commander {
+	font-size: 0.68rem;
+	font-weight: 600;
+	color: rgba(140, 220, 155, 0.95);
+	letter-spacing: 0.12em;
+	text-transform: uppercase;
+	opacity: 0.95;
+	text-shadow: 0 0 8px rgba(100, 200, 120, 0.2);
 }
 
 .company-actions {
