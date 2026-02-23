@@ -1,5 +1,6 @@
 import type { Soldier, SoldierTraitProfile } from "../../entities/types.ts";
 import { getRecruitCost } from "../../../constants/economy.ts";
+import { formatPctOneDecimal, getSoldierAttackIntervalMs } from "../../../utils/soldier-stats-utils.ts";
 import { UiServiceManager } from "../../../services/ui/ui-service.ts";
 import { formatDisplayName } from "../../../utils/name-utils.ts";
 
@@ -20,13 +21,15 @@ function Partial() {
     const disabledClass = canRecruit ? "" : " recruit-disabled";
     const recruitDisabledAttr = canRecruit ? "" : ' aria-disabled="true"';
     const hp = trooper.attributes.hit_points;
-    const mit = Math.floor(trooper.combatProfile.mitigateDamage * 100);
-    const avd = Math.floor(trooper.combatProfile.chanceToEvade * 100);
-    const cth = Math.floor(trooper.combatProfile.chanceToHit * 100);
+    const mit = formatPctOneDecimal(trooper.combatProfile.mitigateDamage);
+    const avd = formatPctOneDecimal(trooper.combatProfile.chanceToEvade);
+    const cth = formatPctOneDecimal(trooper.combatProfile.chanceToHit);
     const mor = trooper.attributes.morale;
     const tgh = trooper.attributes.toughness;
     const awr = trooper.attributes.awareness;
     const dex = trooper.attributes.dexterity;
+    const spdMs = getSoldierAttackIntervalMs(trooper);
+    const spdRow = spdMs != null ? `<div class="detail-item"><span class="stat-label">Spd</span><span class="stat-value">${(spdMs / 1000).toFixed(1)}s</span></div>` : "";
     return `
 			<div data-troopercard="${trooper.id}" class="entity-card designation-${trooper.designation}${disabledClass}" >
 				<div class="card-body">
@@ -34,7 +37,7 @@ function Partial() {
 						<img class="card-image" src="/images/green-portrait/${trooper.avatar}" alt="Trooper Image">
 						<div class="card-title-block">
 							<span class="card-name">${formatDisplayName(trooper.name)}</span>
-							<span class="card-role">${trooper.designation.toUpperCase()}</span>
+							<span class="equip-picker-role equip-picker-role-${(trooper.designation ?? "rifleman").toLowerCase()}" data-role="${trooper.designation ?? "rifleman"}"><span class="equip-picker-role-initial">${((trooper.designation ?? "Rifleman")[0] ?? "R").toUpperCase()}</span><span class="equip-picker-role-text">${trooper.designation ?? "Rifleman"}</span></span>
 						</div>
 					</div>
 					<div class="card-row card-row-2">
@@ -43,6 +46,7 @@ function Partial() {
 							<div class="detail-item"><span class="stat-label">MIT</span><span class="stat-value">${mit}%</span></div>
 							<div class="detail-item"><span class="stat-label">AVD</span><span class="stat-value">${avd}%</span></div>
 							<div class="detail-item"><span class="stat-label">CTH</span><span class="stat-value">${cth}%</span></div>
+							${spdRow}
 							<div class="detail-item"><span class="stat-label">MOR</span><span class="stat-value">${mor}</span></div>
 							<div class="detail-item"><span class="stat-label">TGH</span><span class="stat-value">${tgh}</span></div>
 							<div class="detail-item"><span class="stat-label">AWR</span><span class="stat-value">${awr}</span></div>
@@ -50,9 +54,9 @@ function Partial() {
 						</div>
 					</div>
 					<div class="card-row card-row-3">
-						<div class="card-actions card-actions-50">
-							<button data-trooperid="${trooper.id}" class="game-btn game-btn-md game-btn-red reroll-soldier" title="Reroll">Reroll</button>
-							<button data-trooper-id="${trooper.id}" data-can-recruit="${canRecruit}" title="Recruit" class="game-btn game-btn-md game-btn-green recruit-soldier"${recruitDisabledAttr}>Recruit $${getRecruitCost(trooper.trait_profile?.stats)}</button>
+						<div class="card-actions card-actions-recruit">
+							<button data-trooperid="${trooper.id}" class="troop-recruit-btn troop-recruit-reroll reroll-soldier" title="Reroll">Reroll</button>
+							<button data-trooper-id="${trooper.id}" data-can-recruit="${canRecruit}" title="Recruit" class="troop-recruit-btn troop-recruit-buy recruit-soldier"${recruitDisabledAttr}><span class="recruit-btn-label">Recruit</span> <span class="recruit-btn-price">$${getRecruitCost(trooper.trait_profile?.stats)}</span></button>
 						</div>
 					</div>
 				</div>
@@ -80,15 +84,16 @@ function Partial() {
     const attrs = soldier.attributes ?? {};
     const combat = soldier.combatProfile ?? {};
     const hp = attrs.hit_points ?? 0;
-    const mit = Math.floor((combat.mitigateDamage ?? 0) * 100);
-    const avd = Math.floor((combat.chanceToEvade ?? 0) * 100);
-    const cth = Math.floor((combat.chanceToHit ?? 0) * 100);
+    const mit = formatPctOneDecimal(combat.mitigateDamage ?? 0);
+    const avd = formatPctOneDecimal(combat.chanceToEvade ?? 0);
+    const cth = formatPctOneDecimal(combat.chanceToHit ?? 0);
     const mor = attrs.morale ?? 0;
     const tgh = attrs.toughness ?? 0;
     const awr = attrs.awareness ?? 0;
     const dex = attrs.dexterity ?? 0;
-    const designation = (soldier.designation ?? "rifleman").toUpperCase();
     const avatar = soldier.avatar ?? "default.png";
+    const spdMs = getSoldierAttackIntervalMs(soldier);
+    const spdRow = spdMs != null ? `<div class="detail-item"><span class="stat-label">Spd</span><span class="stat-value">${(spdMs / 1000).toFixed(1)}s</span></div>` : "";
     return `
 <div data-soldier-id="${soldier.id}" data-soldier-index="${index}" class="entity-card roster-card designation-${soldier.designation ?? "rifleman"} ${slotClass}">
   <div class="card-body">
@@ -96,7 +101,7 @@ function Partial() {
       <img class="card-image" src="/images/green-portrait/${avatar}" alt="">
       <div class="card-title-block">
         <span class="card-name">${formatDisplayName(soldier.name)}</span>
-        <span class="card-role">${designation}</span>
+        <span class="equip-picker-role equip-picker-role-${(soldier.designation ?? "rifleman").toLowerCase()}" data-role="${soldier.designation ?? "rifleman"}"><span class="equip-picker-role-initial">${((soldier.designation ?? "Rifleman")[0] ?? "R").toUpperCase()}</span><span class="equip-picker-role-text">${soldier.designation ?? "Rifleman"}</span></span>
       </div>
     </div>
     <div class="card-row card-row-2">
@@ -105,6 +110,7 @@ function Partial() {
         <div class="detail-item"><span class="stat-label">MIT</span><span class="stat-value">${mit}%</span></div>
         <div class="detail-item"><span class="stat-label">AVD</span><span class="stat-value">${avd}%</span></div>
         <div class="detail-item"><span class="stat-label">CTH</span><span class="stat-value">${cth}%</span></div>
+        ${spdRow}
         <div class="detail-item"><span class="stat-label">MOR</span><span class="stat-value">${mor}</span></div>
         <div class="detail-item"><span class="stat-label">TGH</span><span class="stat-value">${tgh}</span></div>
         <div class="detail-item"><span class="stat-label">AWR</span><span class="stat-value">${awr}</span></div>
@@ -113,8 +119,8 @@ function Partial() {
     </div>
     <div class="card-row card-row-3">
       <div class="card-actions card-actions-50">
-        <button type="button" data-soldier-id="${soldier.id}" class="game-btn game-btn-sm game-btn-green roster-inventory-btn" title="Equipment">Inventory</button>
-        <button type="button" data-soldier-id="${soldier.id}" class="game-btn game-btn-sm game-btn-red roster-release-btn" title="Release">Release</button>
+        <button type="button" data-soldier-id="${soldier.id}" class="game-btn game-btn-md game-btn-green roster-inventory-btn" title="Equipment">Inventory</button>
+        <button type="button" data-soldier-id="${soldier.id}" class="game-btn game-btn-md game-btn-red roster-release-btn" title="Release">Release</button>
       </div>
     </div>
   </div>

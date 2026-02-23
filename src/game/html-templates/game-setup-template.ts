@@ -1,21 +1,31 @@
 import { DOM } from "../../constants/css-selectors.ts";
-import { getArmorySlots } from "../../constants/economy.ts";
+import { getTotalArmorySlots } from "../../constants/economy.ts";
+import type { MemorialEntry } from "../entities/memorial-types.ts";
 import { clrHash } from "../../utils/html-utils.ts";
 import { Images } from "../../constants/images.ts";
 import { usePlayerCompanyStore } from "../../store/ui-store.ts";
 import { TRAIT_CODEX } from "../../constants/trait-codex.ts";
 import { TraitProfileStats } from "../entities/soldier/soldier-traits.ts";
 
-/** Stat explanations for the codex Stats tab. */
-const STAT_HELP_ITEMS: { stat: string; desc: string }[] = [
-  { stat: "Hit Points", desc: "Health. When reduced to 0 the soldier is incapacitated." },
-  { stat: "Dexterity", desc: "Affects accuracy, evasion, and attack speed." },
-  { stat: "Awareness", desc: "Improves hit chance and evade chance." },
-  { stat: "Toughness", desc: "Reduces incoming damage (mitigation)." },
-  { stat: "Morale", desc: "Affects suppression resistance and mental stability." },
-  { stat: "Mitigation", desc: "Percentage of damage reduced by armor and toughness." },
-  { stat: "Evade Chance", desc: "Chance to dodge an incoming attack." },
-  { stat: "Hit Chance", desc: "Chance to land a successful shot." },
+const TRAIT_STAT_ABBR: Record<string, string> = {
+  hit_points: "HP",
+  dexterity: "DEX",
+  morale: "MOR",
+  toughness: "TGH",
+  awareness: "AWR",
+};
+
+/** Stat explanations for the codex Stats tab. Abbreviations match display (HP, MIT, AVD, CTH, etc.). */
+const STAT_HELP_ITEMS: { stat: string; abbr: string; desc: string; isBaseStat?: boolean }[] = [
+  { stat: "Hit Points", abbr: "HP", desc: "Health. Damage capacity before incapacitation. Styled distinctly as a resource stat." },
+  { stat: "Mitigation", abbr: "MIT", desc: "Damage reduction. Lowers incoming damage. Capped at 60%. From TGH and armor." },
+  { stat: "Avoidance", abbr: "AVD", desc: "Chance to evade or dodge incoming attacks. Capped at 30%. 16 AWR or 20 DEX per 1%.", isBaseStat: false },
+  { stat: "Chance to Hit", abbr: "CTH", desc: "Accuracy. Likelihood your attacks land. Capped at 98%. 12 DEX or 18 AWR per 1%.", isBaseStat: false },
+  { stat: "Morale", abbr: "MOR", desc: "Resistance to suppression, psychic effects, and panic. Affects duration of mental debuffs.", isBaseStat: true },
+  { stat: "Toughness", abbr: "TGH", desc: "Contributes to mitigation. Reduces damage taken. From level, traits, and armor.", isBaseStat: true },
+  { stat: "Awareness", abbr: "AWR", desc: "Spotting and reflexes. Boosts hit chance and avoidance.", isBaseStat: true },
+  { stat: "Dexterity", abbr: "DEX", desc: "Aiming and reflexes. Boosts hit chance and avoidance. Also increases attack speed.", isBaseStat: true },
+  { stat: "Attack Speed", abbr: "SPD", desc: "Time between attacks in seconds. From weapon speed_base and dexterity." },
 ];
 
 /** Builds trait cards for the codex Traits tab. */
@@ -30,7 +40,8 @@ function codexTraitsHTML(): string {
       const badges = Object.entries(stats)
         .map(([k, v]) => {
           const cls = v > 0 ? "codex-badge-positive" : v < 0 ? "codex-badge-negative" : "codex-badge-neutral";
-          return `<span class="codex-stat-badge ${cls}">${k.replace(/_/g, " ")} ${v > 0 ? "+" : ""}${v}</span>`;
+          const abbr = TRAIT_STAT_ABBR[k] ?? k.replace(/_/g, " ").slice(0, 3).toUpperCase();
+          return `<span class="codex-stat-badge ${cls}">${abbr} ${v > 0 ? "+" : ""}${v}</span>`;
         })
         .join("");
       return `
@@ -44,44 +55,114 @@ function codexTraitsHTML(): string {
     .join("");
 }
 
-/** Game Codex popup template with Stats, Traits, Combat tabs. */
+/** Game Codex popup template with Stats, Traits, Effects tabs. */
 export function codexPopupTemplate(): string {
-  const statsRows = STAT_HELP_ITEMS.map(
-    (s) => `<div class="codex-stat-row"><span class="codex-stat-label">${s.stat}</span><span class="codex-stat-desc">${s.desc}</span></div>`,
-  ).join("");
-  const combatText = `
-    <p>Combat is turn-based. Soldiers attack based on attack speed (dex + weapon).</p>
-    <p>Take Cover removes a soldier from the fight for 3 seconds; enemies targeting them must retarget.</p>
-    <p>Grenades deal area damage. Smoke grenades reduce enemy accuracy and grant evasion.</p>
-    <p>Medics can heal allies with stim packs (50 HP) or themselves (20 HP).</p>
-  `;
+  const statsRows = STAT_HELP_ITEMS.map((s) => {
+    const baseBadge = s.isBaseStat ? '<span class="codex-stat-base-badge">base</span>' : "";
+    return `<div class="codex-stat-item"><div class="codex-stat-header">${s.abbr} (${s.stat})${baseBadge}</div><div class="codex-stat-desc">${s.desc}</div></div>`;
+  }).join("");
+  const combatStats = [
+    { abbr: "CTH", desc: "12 DEX or 18 AWR per 1%", badges: [{ cls: "codex-badge-cap", text: "cap 98%" }] },
+    { abbr: "AVD", desc: "16 AWR or 20 DEX per 1%", badges: [{ cls: "codex-badge-cap", text: "cap 30%" }] },
+    { abbr: "MIT", desc: "TGH ÷ 9 ÷ 100", badges: [{ cls: "codex-badge-cap", text: "cap 60%" }, { cls: "codex-badge-neutral", text: "stun halves" }] },
+    { abbr: "SPD", desc: "Spd 1 ≈ 5.5s", badges: [{ cls: "codex-badge-neutral", text: "Spd 10 ≈ 1s" }], extra: "DEX up to 20% faster at 500" },
+    {
+      abbr: "MOR",
+      desc: "Panic/Suppression: 1% per 10 MOR",
+      badges: [{ cls: "codex-badge-cap", text: "cap 80%" }, { cls: "codex-badge-neutral", text: "0.1s precision" }],
+    },
+  ];
+  const combatEffects = [
+    { name: "Stun", desc: "Cannot act.", badges: [{ cls: "codex-badge-negative", text: "MIT halved" }] },
+    { name: "Panic", desc: "50% slower.", badges: [], remediedBy: "MOR" },
+    { name: "Suppressed", desc: "Cannot attack.", badges: [{ cls: "codex-badge-neutral", text: "+10% AVD" }], remediedBy: "MOR" },
+    { name: "Burning", desc: "Damage over time.", badges: [{ cls: "codex-badge-negative", text: "DoT" }] },
+    { name: "Smoked", desc: "Direct hit -40% CTH, adjacent -10%. +5% AVD.", badges: [{ cls: "codex-badge-negative", text: "–40% CTH" }, { cls: "codex-badge-positive", text: "+5% AVD" }] },
+    { name: "Blinded", desc: "50% CTH reduction.", badges: [{ cls: "codex-badge-negative", text: "–50% CTH" }] },
+  ];
+  const combatStatCards = combatStats
+    .map(
+      (s) =>
+        `<div class="codex-combat-card"><div class="codex-combat-header"><span class="codex-combat-abbr">${s.abbr}</span>${s.badges.map((b) => `<span class="codex-stat-badge ${b.cls}">${b.text}</span>`).join("")}</div><div class="codex-combat-desc">${s.desc}</div>${s.extra ? `<div class="codex-combat-extra">${s.extra}</div>` : ""}</div>`,
+    )
+    .join("");
+  const combatEffectCards = combatEffects
+    .map((e) => {
+      const remedied =
+        "remediedBy" in e && e.remediedBy
+          ? `<div class="codex-combat-remedied">Shortened by <span class="codex-stat-badge codex-badge-positive">${e.remediedBy}</span></div>`
+          : "";
+      return `<div class="codex-combat-card codex-combat-effect"><div class="codex-combat-header"><span class="codex-combat-name">${e.name}</span>${(e.badges ?? []).map((b) => `<span class="codex-stat-badge ${b.cls}">${b.text}</span>`).join("")}</div><div class="codex-combat-desc">${e.desc}</div>${remedied}</div>`;
+    })
+    .join("");
+  const combatSection = `
+<section class="codex-section codex-section-combat">
+  <h5 class="codex-section-title">Combat</h5>
+  <p class="codex-section-intro">Turn-based. Attack speed from weapon + DEX.</p>
+  <div class="codex-section-mechanics">
+    <span class="codex-stat-badge codex-badge-positive">Take Cover 3s</span>
+    <span class="codex-stat-badge codex-badge-neutral">grenades area</span>
+    <span class="codex-stat-badge codex-badge-positive">medics heal</span>
+    <span class="codex-stat-badge codex-badge-positive">stim +50% SPD 10s</span>
+  </div>
+  <div class="codex-combat-stats-grid">${combatStatCards}</div>
+  <h5 class="codex-section-title codex-section-subtitle">Status Effects</h5>
+  <div class="codex-combat-effects-grid">${combatEffectCards}</div>
+</section>`;
   const effectsRows = [
     { name: "Stun", desc: "Cannot act. Toughness mitigation reduced by 50%." },
-    { name: "Panic", desc: "Attack speed slowed by 50%. Duration reduced by morale/2% (cap 50%)." },
+    { name: "Panic", desc: "Attack speed slowed by 50%. Duration reduced by 1% per 10 morale (rounded up, cap 80%)." },
     { name: "Smoked", desc: "Reduces chance to hit and be hit." },
     { name: "Burning", desc: "Damage over time. Incendiary grenades apply this effect." },
     { name: "Blinded", desc: "Chance to hit reduced by 50%." },
-    { name: "Suppressed", desc: "+10% avoidance but cannot attack. Duration reduced by morale (cap 50%)." },
+    { name: "Suppressed", desc: "+10% avoidance but cannot attack. Duration reduced by 1% per 10 morale (rounded up, cap 80%)." },
   ]
-    .map((e) => `<div class="codex-stat-row"><span class="codex-stat-label">${e.name}</span><span class="codex-stat-desc">${e.desc}</span></div>`)
+    .map((e) => `<div class="codex-stat-item"><div class="codex-stat-header">${e.name}</div><div class="codex-stat-desc">${e.desc}</div></div>`)
     .join("");
   return `
   <div id="codex-popup" class="codex-popup" role="dialog" aria-modal="true" hidden>
     <div class="codex-popup-inner codex-popup-tall">
-      <button type="button" class="codex-popup-close" id="codex-popup-close" aria-label="Close">×</button>
+      <button type="button" class="popup-close-btn codex-popup-close" id="codex-popup-close" aria-label="Close">×</button>
       <h4 class="codex-popup-title">Game Codex</h4>
       <div class="codex-tabs">
         <button type="button" class="codex-tab active" data-tab="stats">Stats</button>
         <button type="button" class="codex-tab" data-tab="traits">Traits</button>
         <button type="button" class="codex-tab" data-tab="effects">Effects</button>
-        <button type="button" class="codex-tab" data-tab="combat">Combat</button>
       </div>
       <div class="codex-tab-panels">
-        <div class="codex-tab-panel active" data-panel="stats">${statsRows}</div>
-        <div class="codex-tab-panel" data-panel="traits"><div class="codex-traits-grid">${codexTraitsHTML()}</div></div>
-        <div class="codex-tab-panel" data-panel="effects"><div class="codex-effects-content">${effectsRows}</div></div>
-        <div class="codex-tab-panel" data-panel="combat">${combatText}</div>
+        <div class="codex-tab-panel active" data-panel="stats"><div class="codex-stats-content"><section class="codex-section"><h5 class="codex-section-title">Base Stats</h5><div class="codex-stat-table">${statsRows}</div></section>${combatSection}</div></div>
+        <div class="codex-tab-panel" data-panel="traits"><p class="codex-traits-intro">Traits add a little flavor to your soldiers—each modifies base stats as shown below.</p><div class="codex-traits-grid">${codexTraitsHTML()}</div></div>
+        <div class="codex-tab-panel" data-panel="effects"><div class="codex-effects-content"><section class="codex-section"><h5 class="codex-section-title">Status Effects</h5><div class="codex-stat-table">${effectsRows}</div></section></div></div>
       </div>
+    </div>
+  </div>`;
+}
+
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+/** Memorial popup for fallen soldiers (name, level, mission, enemies killed). */
+export function memorialPopupTemplate(): string {
+  const store = usePlayerCompanyStore.getState();
+  const fallen = (store.memorialFallen ?? []) as MemorialEntry[];
+  const menLost = store.totalMenLostAllTime ?? 0;
+  const fallenList =
+    fallen.length === 0
+      ? '<p class="memorial-note">No recorded casualties yet.</p>'
+      : fallen
+          .map(
+            (e) =>
+              `<div class="memorial-fallen-row"><span class="memorial-fallen-name">${escapeHtml(e.name)}</span><span class="memorial-fallen-meta">Lv${e.level} · ${escapeHtml(e.missionName)} · ${e.enemiesKilled} kills</span></div>`,
+          )
+          .join("");
+  return `
+  <div id="memorial-popup" class="codex-popup memorial-popup" role="dialog" aria-modal="true" hidden>
+    <div class="codex-popup-inner">
+      <button type="button" class="popup-close-btn codex-popup-close" id="memorial-popup-close" aria-label="Close">×</button>
+      <h4 class="codex-popup-title">Memorial Wall</h4>
+      <p class="memorial-count">Total lost in combat: <strong>${menLost}</strong></p>
+      <div class="memorial-fallen-list">${fallenList}</div>
     </div>
   </div>`;
 }
@@ -170,7 +251,7 @@ export const companyHeaderPartial = (title = "") => {
   return `
       <div id="company-meta" class="p-2">
       <div class="company-name flex justify-between align-center m-0">
-        <img width="56" src="/images/unit-patches/${companyUnitPatchURL}" alt="Company patch"/>
+        <img width="42" src="/images/unit-patches/${companyUnitPatchURL}" alt="Company patch"/>
         ${titleHtml}
         <div>
             <span class="ms-2">${companyName}</span>
@@ -226,7 +307,7 @@ export const companyHomePageTemplate = () => {
   } = store;
   const totalMenInCompany = company?.soldiers?.length ?? storeMen ?? 0;
   const companyLvl = company?.level ?? companyLevel ?? 1;
-  const totalInventoryCapacity = getArmorySlots(companyLvl);
+  const totalInventoryCapacity = getTotalArmorySlots(companyLvl);
   const totalItemsInInventory = company?.inventory?.length ?? storeItems ?? 0;
 
   const statsBlock = totalMenInCompany > 0
@@ -256,8 +337,8 @@ export const companyHomePageTemplate = () => {
 
   const memorialCodexRow = `
     <div class="company-home-buttons-row flex align-center justify-center gap-2">
-      <button id="company-stats-memorial" class="game-btn game-btn-lg game-btn-blue codex-memorial-btn">Memorial Wall</button>
-      <button id="company-go-codex" class="game-btn game-btn-lg game-btn-blue codex-memorial-btn">Game Codex</button>
+      <button id="company-stats-memorial" class="game-btn game-btn-md game-btn-blue codex-memorial-btn">Memorial Wall</button>
+      <button id="company-go-codex" class="game-btn game-btn-md game-btn-blue codex-memorial-btn">Game Codex</button>
     </div>
   `;
 
@@ -287,6 +368,7 @@ export const companyHomePageTemplate = () => {
     </div>
 
     ${codexPopupTemplate()}
+    ${memorialPopupTemplate()}
   </div>
 `;
 };

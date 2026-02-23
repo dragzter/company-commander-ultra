@@ -51,8 +51,35 @@ export type ArmorBonus =
   | { type: "flat"; stat: "toughness" | "hp" | "dex" | "awareness" | "morale"; value: number }
   | { type: "percent"; stat: "mitigation" | "avoidance"; value: number };
 
+/** Weapon stat bonus (rare/epic). Flat stats only. Maps to attributes: dex→dexterity, hp→hit_points. */
+export type WeaponBonus = {
+  type: "flat";
+  stat: "toughness" | "hp" | "dex" | "awareness" | "morale";
+  value: number;
+};
+
+/** Epic weapon effect: passive combat modifiers. Values are additive (e.g. 0.02 = +2%). */
+export type WeaponEffectModifiers = {
+  chanceToHit?: number;
+  chanceToEvade?: number;
+  mitigateDamage?: number;
+  damagePercent?: number;
+  /** Multiplier for attack interval (0.95 = 5% faster). */
+  attackIntervalMultiplier?: number;
+};
+
+export type WeaponEffectId =
+  | "calibrated"
+  | "balanced"
+  | "lethal"
+  | "heavy_caliber"
+  | "steady_grip"
+  | "quick_cycle";
+
 export interface Item {
   damage?: number;
+  damage_min?: number;
+  damage_max?: number;
   damage_type?: DamageType;
   description?: string;
   effect?: ItemEffect;
@@ -73,6 +100,8 @@ export interface Item {
   type: ItemType;
   usable?: boolean;
   passiveEffect?: string; // Epic armor: display-only passive description
+  bonuses?: WeaponBonus[]; // Rare/epic weapons: flat stat bonuses
+  weaponEffect?: WeaponEffectId; // Epic weapons: passive combat trait
 }
 
 export type ThrowableItem = Pick<

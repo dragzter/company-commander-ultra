@@ -1,5 +1,5 @@
 /**
- * 5 rare armors. Blue color, 10 tiers each. Mix of bonuses: TGH, HP, % MIT, % AVD.
+ * 5 rare armors (plan names). Purple/amethyst color. Mix of bonuses: TGH, HP, % MIT, % AVD.
  * Percent bonuses don't scale with tier; flat bonuses scale.
  */
 import type { ArmorBonus, GearLevel } from "./types.ts";
@@ -12,15 +12,15 @@ export interface RareArmorBase {
   icon: string;
   toughnessBase: number;
   toughnessPerLevel: number;
-  bonuses: ArmorBonus[]; // Flat bonuses scale with level for TGH; percent don't
+  bonuses: ArmorBonus[];
 }
 
 export const RARE_ARMOR_BASES: RareArmorBase[] = [
-  { baseId: "phantom_weave", name: "Phantom Weave", description: "Elite stealth armor.", icon: "armor_3.png", toughnessBase: 18, toughnessPerLevel: 2, bonuses: [{ type: "percent", stat: "avoidance", value: 5 }, { type: "flat", stat: "dex", value: 2 }] },
-  { baseId: "iron_bastion", name: "Iron Bastion", description: "Heavy rare plate.", icon: "armor_5.png", toughnessBase: 35, toughnessPerLevel: 4, bonuses: [{ type: "flat", stat: "toughness", value: 5 }, { type: "percent", stat: "mitigation", value: 3 }] },
-  { baseId: "vanguard_plate", name: "Vanguard Plate", description: "Front-line specialist.", icon: "armor_4.png", toughnessBase: 30, toughnessPerLevel: 3, bonuses: [{ type: "flat", stat: "hp", value: 10 }] },
-  { baseId: "sentinel_guard", name: "Sentinel Guard", description: "Defensive awareness boost.", icon: "armor_9.png", toughnessBase: 28, toughnessPerLevel: 3, bonuses: [{ type: "flat", stat: "awareness", value: 3 }, { type: "percent", stat: "mitigation", value: 2 }] },
-  { baseId: "berserker_rig", name: "Berserker Rig", description: "Morale-focused assault.", icon: "armor_7.png", toughnessBase: 22, toughnessPerLevel: 2, bonuses: [{ type: "flat", stat: "morale", value: 15 }, { type: "percent", stat: "avoidance", value: 2 }] },
+  { baseId: "phantom_carapace", name: "Phantom Carapace", description: "Elite stealth armor.", icon: "armor_12.png", toughnessBase: 22, toughnessPerLevel: 2, bonuses: [{ type: "percent", stat: "mitigation", value: 3 }, { type: "flat", stat: "awareness", value: 3 }, { type: "flat", stat: "dex", value: 2 }] },
+  { baseId: "bastion_plate", name: "Bastion Plate", description: "Heavy tank plate.", icon: "armor_8.png", toughnessBase: 40, toughnessPerLevel: 4, bonuses: [{ type: "flat", stat: "toughness", value: 10 }, { type: "percent", stat: "mitigation", value: 2 }] },
+  { baseId: "vipers_embrace", name: "Viper's Embrace", description: "Light and agile.", icon: "armor_0.png", toughnessBase: 16, toughnessPerLevel: 2, bonuses: [{ type: "percent", stat: "mitigation", value: 2 }, { type: "flat", stat: "dex", value: 4 }, { type: "flat", stat: "awareness", value: 2 }] },
+  { baseId: "ironclad_resolve", name: "Ironclad Resolve", description: "Defensive with morale boost.", icon: "armor_19.png", toughnessBase: 32, toughnessPerLevel: 3, bonuses: [{ type: "percent", stat: "mitigation", value: 6 }, { type: "flat", stat: "toughness", value: 8 }, { type: "flat", stat: "morale", value: 5 }] },
+  { baseId: "revenant_shell", name: "Revenant Shell", description: "Survivor's armor.", icon: "armor_5.png", toughnessBase: 26, toughnessPerLevel: 3, bonuses: [{ type: "percent", stat: "mitigation", value: 5 }, { type: "flat", stat: "hp", value: 15 }] },
 ];
 
 export function createRareArmor(base: RareArmorBase, level: GearLevel) {

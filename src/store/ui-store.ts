@@ -3,6 +3,7 @@ import { persist } from "zustand/middleware";
 import { URLReader } from "../utils/url-reader.ts";
 import type { Company } from "../game/entities/company/company.ts";
 import type { Soldier } from "../game/entities/types.ts";
+import type { MemorialEntry } from "../game/entities/memorial-types.ts";
 import { StoreActions } from "./action.ts";
 import { STARTING_CREDITS } from "../constants/economy.ts";
 
@@ -30,6 +31,8 @@ export type CompanyStore = {
   gameStep: GameStep;
   totalMenInCompany: number;
   totalMenLostAllTime: number;
+  /** Fallen soldiers for memorial display */
+  memorialFallen: MemorialEntry[];
   totalEnemiesKilledAllTime: number;
   totalMissionsCompleted: number;
   totalMissionsFailed: number;
@@ -60,9 +63,11 @@ export type CompanyStore = {
 
   initializeCompany: () => void;
   addInitialTroopsIfEmpty: () => void;
+  addInitialArmoryIfEmpty: () => void;
   onCompanyLevelUp: () => void;
   releaseSoldier: (soldierId: string) => void;
   destroyCompanyItem: (index: number) => void;
+  consumeSoldierMedical: (soldierId: string, inventoryIndex: number) => boolean;
   addItemsToCompanyInventory: (
     items: import("../constants/items/types.ts").Item[],
     totalCost: number,
@@ -80,6 +85,14 @@ export type CompanyStore = {
     equipmentIndex?: number,
   ) => { success: boolean; reason?: string };
   emptySoldierToCompanyInventory: (soldierId: string) => { success: boolean; reason?: string };
+  grantMissionRewards: (mission: import("../constants/missions.ts").Mission | null, victory: boolean) => void;
+  processCombatKIA: (
+    kiaSoldierIds: string[],
+    missionName?: string,
+    playerKills?: Map<string, number>,
+  ) => void;
+  syncCombatHpToSoldiers: (playerCombatants: { id: string; hp: number }[]) => void;
+  claimHoldingInventory: () => void;
   moveItemBetweenSlots: (op: {
     sourceSoldierId: string;
     sourceSlotType: "weapon" | "armor" | "equipment";
@@ -103,6 +116,13 @@ export const usePlayerCompanyStore = createStore<CompanyStore>()(
           if (bal === 1000 || String(bal) === "1000") {
             merged.creditBalance = STARTING_CREDITS;
           }
+          if (!Array.isArray(merged.memorialFallen)) merged.memorialFallen = [];
+          merged.memorialFallen = merged.memorialFallen.map((item: unknown) => {
+            if (item && typeof item === "object" && "missionName" in item) return item as MemorialEntry;
+            const s = item as { name?: string; level?: number };
+            return { name: s?.name ?? "Unknown", level: s?.level ?? 1, missionName: "Unknown", enemiesKilled: 0 };
+          });
+          if (!Array.isArray(merged.company?.holding_inventory)) merged.company = { ...merged.company, holding_inventory: [] };
           return merged;
         },
       })

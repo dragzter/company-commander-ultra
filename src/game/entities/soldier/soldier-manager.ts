@@ -10,16 +10,20 @@ import { v4 as uuidv4 } from "uuid";
 
 import {
   ATTRIBUTES_INCREASES_BY_LEVEL,
+  getEquipmentLoadoutForLevel,
   getStatsForLevel,
   SOLDIER_BASE,
-  StandardEquipmentLoadouts,
 } from "../levels.ts";
 import { generateName } from "../../../utils/name-utils.ts";
 import type {
   Armor,
+  ArmorBonus,
   BallisticWeapon,
   Item,
+  WeaponBonus,
+  WeaponEffectId,
 } from "../../../constants/items/types.ts";
+import { WEAPON_EFFECTS } from "../../../constants/items/weapon-effects.ts";
 import {
   getRandomPortraitImage,
   getRandomValueFromStringArray,
@@ -61,7 +65,9 @@ function SoldierManager() {
       };
     }
 
-    soldier.attributes.toughness += armor.toughness as number;
+    soldier.attributes.toughness += armor.toughness ?? 0;
+
+    applyEquipmentBonuses(soldier, armor, weapon);
 
     soldier.name = generateName();
     soldier.avatar = getSoldierAvatar();
@@ -74,6 +80,8 @@ function SoldierManager() {
 
     applyTraitProfileStats(soldier);
     initializeCombatProfile(soldier);
+    applyArmorPercentToCombatProfile(soldier, armor);
+    applyWeaponEffectToCombatProfile(soldier, weapon);
 
     return soldier;
   }
@@ -96,8 +104,66 @@ function SoldierManager() {
   }
 
   function getNewSoldier(level = 1, designation: Designation, traitOverride?: TraitDict) {
-    const { weapon, armor, inventory } = StandardEquipmentLoadouts[designation];
+    const { weapon, armor, inventory } = getEquipmentLoadoutForLevel(level, designation);
     return gs(level, designation, armor, weapon, inventory, traitOverride);
+  }
+
+  const BONUS_STAT_TO_ATTR: Record<string, keyof Attributes> = {
+    dex: "dexterity",
+    hp: "hit_points",
+    awareness: "awareness",
+    morale: "morale",
+    toughness: "toughness",
+  };
+
+  function applyEquipmentBonuses(
+    soldier: Soldier,
+    armor: Armor,
+    weapon: BallisticWeapon,
+  ) {
+    const atts = soldier.attributes;
+    const flatBonus = (b: ArmorBonus | WeaponBonus, attr: keyof Attributes) => {
+      atts[attr] = (atts[attr] ?? 0) + b.value;
+    };
+    const armorBonuses = (armor as Armor & { bonuses?: ArmorBonus[] }).bonuses ?? [];
+    const weaponBonuses = (weapon as BallisticWeapon & { bonuses?: WeaponBonus[] }).bonuses ?? [];
+    for (const b of armorBonuses) {
+      if (b.type === "flat") {
+        const attr = BONUS_STAT_TO_ATTR[b.stat];
+        if (attr) flatBonus(b, attr);
+      }
+    }
+    for (const b of weaponBonuses) {
+      const attr = BONUS_STAT_TO_ATTR[b.stat];
+      if (attr) flatBonus(b, attr);
+    }
+    // Armor percent bonuses (mitigation, avoidance) applied in initializeCombatProfile via attributes
+    // — actually they're not; toughness/dex/awareness feed into the formula. Percent bonuses
+    // are direct combat profile modifiers. Apply them after initializeCombatProfile.
+  }
+
+  function applyArmorPercentToCombatProfile(soldier: Soldier, armor: Armor) {
+    const bonuses = (armor as Armor & { bonuses?: ArmorBonus[] }).bonuses ?? [];
+    const cp = soldier.combatProfile;
+    for (const b of bonuses) {
+      if (b.type === "percent") {
+        const v = b.value / 100;
+        if (b.stat === "mitigation") cp.mitigateDamage = toFNum(Math.min(MAX_MITIGATION, cp.mitigateDamage + v), PRECISION);
+        if (b.stat === "avoidance") cp.chanceToEvade = toFNum(Math.min(MAX_AVOIDANCE, cp.chanceToEvade + v), PRECISION);
+      }
+    }
+  }
+
+  function applyWeaponEffectToCombatProfile(soldier: Soldier, weapon: BallisticWeapon) {
+    const effectId = (weapon as BallisticWeapon & { weaponEffect?: WeaponEffectId }).weaponEffect;
+    if (!effectId) return;
+    const effect = WEAPON_EFFECTS[effectId];
+    if (!effect?.modifiers) return;
+    const cp = soldier.combatProfile;
+    const m = effect.modifiers;
+    if (m.chanceToHit != null) cp.chanceToHit = toFNum(Math.min(MAX_HIT_CHANCE, cp.chanceToHit + m.chanceToHit), PRECISION);
+    if (m.chanceToEvade != null) cp.chanceToEvade = toFNum(Math.min(MAX_AVOIDANCE, cp.chanceToEvade + m.chanceToEvade), PRECISION);
+    if (m.mitigateDamage != null) cp.mitigateDamage = toFNum(Math.min(MAX_MITIGATION, cp.mitigateDamage + m.mitigateDamage), PRECISION);
   }
 
   function applyTraitProfileStats(soldier: Soldier) {
@@ -115,32 +181,43 @@ function SoldierManager() {
     return Images.portrait[key];
   }
 
+  const MAX_MITIGATION = 0.6;
+  const MAX_HIT_CHANCE = 0.98;
+  const MAX_AVOIDANCE = 0.3;
+  const PRECISION = 3;
+
   function initializeCombatProfile(soldier: Soldier) {
     const atts = soldier.attributes;
     const cp = soldier.combatProfile;
-    const calculator = attrToCombatProfileValue();
+    const calc = attrToCombatProfileValue();
+    const precision = (n: number) => toFNum(n, PRECISION);
 
-    const fromDex = calculator.dexterity(atts.dexterity);
-    const fromTough = calculator.toughness(atts.toughness);
-    const fromAware = calculator.awareness(atts.awareness);
-    //const fromMorale = calculator.morale(atts.morale)
+    const fromTough = calc.toughness(atts.toughness);
+    const fromDexHit = calc.dexterityHit(atts.dexterity);
+    const fromAwareHit = calc.awarenessHit(atts.awareness);
+    const fromDexAvd = calc.dexterityAvd(atts.dexterity);
+    const fromAwareAvd = calc.awarenessAvd(atts.awareness);
 
-    cp.mitigateDamage = toFNum(cp.mitigateDamage + fromTough);
-    cp.chanceToHit = toFNum(cp.chanceToHit + fromAware + fromDex);
-    cp.chanceToEvade = toFNum(cp.chanceToEvade + fromAware + fromDex);
+    cp.mitigateDamage = precision(Math.min(MAX_MITIGATION, cp.mitigateDamage + fromTough));
+    cp.chanceToHit = precision(Math.min(MAX_HIT_CHANCE, cp.chanceToHit + fromAwareHit + fromDexHit));
+    cp.chanceToEvade = precision(Math.min(MAX_AVOIDANCE, cp.chanceToEvade + fromAwareAvd + fromDexAvd));
   }
 
   function attrToCombatProfileValue() {
-    const dexterityDivisor = 10;
     const toughnessDivisor = 9;
     const moraleDivisor = 8;
-    const awarenessDivisor = 15;
+    const dexHitDivisor = 12;  // 12 DEX per 1% CTH
+    const awareHitDivisor = 18; // 18 AWR per 1% CTH
+    const dexAvdDivisor = 20;   // 20 DEX per 1% AVD
+    const awareAvdDivisor = 16; // 16 AWR per 1% AVD
 
     return {
-      morale: (m: number) => toFNum(m / moraleDivisor / 100),
-      dexterity: (m: number) => toFNum(m / dexterityDivisor / 100),
-      awareness: (m: number) => toFNum(m / awarenessDivisor / 100),
-      toughness: (m: number) => toFNum(m / toughnessDivisor / 100),
+      morale: (m: number) => toFNum(m / moraleDivisor / 100, PRECISION),
+      toughness: (m: number) => toFNum(m / toughnessDivisor / 100, PRECISION),
+      dexterityHit: (m: number) => toFNum(m / dexHitDivisor / 100, PRECISION),
+      awarenessHit: (m: number) => toFNum(m / awareHitDivisor / 100, PRECISION),
+      dexterityAvd: (m: number) => toFNum(m / dexAvdDivisor / 100, PRECISION),
+      awarenessAvd: (m: number) => toFNum(m / awareAvdDivisor / 100, PRECISION),
     };
   }
 

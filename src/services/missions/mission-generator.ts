@@ -64,6 +64,10 @@ export function generateMissions(_seed?: number): Mission[] {
   const regularCount = 10;
   const epicCount = 4;
 
+  const rareIndices = new Set<number>();
+  while (rareIndices.size < 3) {
+    rareIndices.add(Math.floor(Math.random() * regularCount));
+  }
   for (let i = 0; i < regularCount; i++) {
     const kind = pick(MISSION_KIND_LIST);
     const difficulty = randomInt(1, 4);
@@ -72,8 +76,9 @@ export function generateMissions(_seed?: number): Mission[] {
       8,
       Math.max(2, difficulty * 2 + randomInt(-1, 1)),
     );
+    const isRare = rareIndices.has(i);
     const creditReward =
-      CREDIT_BASE + difficulty * CREDIT_SCALE + randomInt(0, 80);
+      CREDIT_BASE + difficulty * CREDIT_SCALE + randomInt(0, 80) + (isRare ? 80 : 0);
     missions.push({
       id: `mission-${i}-${Date.now()}`,
       kind,
@@ -83,6 +88,7 @@ export function generateMissions(_seed?: number): Mission[] {
       creditReward,
       flavorText: generateFlavorText(kind),
       isEpic: false,
+      rarity: isRare ? "rare" : "normal",
     });
   }
 
@@ -107,7 +113,8 @@ export function generateMissions(_seed?: number): Mission[] {
       creditReward,
       flavorText: generateFlavorText(kind),
       isEpic: true,
-      rewardItems: ["m84_flashbang", "he7_incendiary", "stim_pack"],
+      rarity: "epic",
+      rewardItems: ["m84_flashbang", "incendiary_grenade", "stim_pack"],
     });
   }
 

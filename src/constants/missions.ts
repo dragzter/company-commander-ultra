@@ -42,6 +42,8 @@ export const DIFFICULTY_LABELS: Record<number, string> = {
   5: "Extreme",
 };
 
+export type MissionRarity = "normal" | "rare" | "epic";
+
 export type Mission = {
   id: string;
   kind: MissionKind;
@@ -51,5 +53,6 @@ export type Mission = {
   creditReward: number;
   flavorText?: string;
   isEpic?: boolean;
+  rarity?: MissionRarity;
   rewardItems?: string[];
 };

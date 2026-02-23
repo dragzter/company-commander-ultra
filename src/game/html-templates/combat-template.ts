@@ -25,17 +25,21 @@ function combatCard(c: Combatant, portraitDir: "player" | "enemy"): string {
   const isDown = c.hp <= 0 || c.downState;
   const downClass = isDown ? " combat-card-down" : "";
   const weaponHtml = weaponIcon
-    ? `<img class="combat-card-weapon" src="${weaponIcon}" alt="" width="14" height="14">`
+    ? `<img class="combat-card-weapon" src="${weaponIcon}" alt="" width="18" height="18">`
     : '<span class="combat-card-weapon combat-card-weapon-placeholder"></span>';
   const rb = roleBadge(c.designation);
   const spdMs = c.attackIntervalMs;
   const spdText =
     spdMs != null && spdMs > 0 ? `SPD: ${(spdMs / 1000).toFixed(1)}s` : "";
 
+  const lvl = c.level ?? 1;
+  const des = (c.designation ?? "rifleman").toLowerCase();
+  const epicEliteClass = c.isEpicElite ? " combat-card-epic-elite" : "";
   return `
-<div class="combat-card${downClass}" data-combatant-id="${c.id}" data-side="${c.side}">
+<div class="combat-card designation-${des}${downClass}${epicEliteClass}" data-combatant-id="${c.id}" data-side="${c.side}">
   <div class="combat-card-inner">
     <div class="combat-card-avatar-wrap">
+      <span class="combat-card-level-badge">${lvl}</span>
       <img class="combat-card-avatar" src="${imgSrc}" alt="">
       ${weaponHtml}
       ${rb ? `<span class="combat-card-role-badge">${rb}</span>` : ""}
@@ -76,11 +80,11 @@ export function combatTemplate(
     <div id="combat-battle-area" class="combat-battle-area">
       <svg id="combat-attack-lines-svg" class="combat-attack-lines-svg" aria-hidden="true">
         <defs>
-          <marker id="combat-arrow-player" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
-            <path d="M0,0 L8,4 L0,8 Z" fill="rgba(100, 200, 100, 0.8)" />
+          <marker id="combat-arrow-player" markerWidth="6" markerHeight="6" refX="5.5" refY="3" orient="auto">
+            <path d="M0,0 L6,3 L0,6 Z" fill="rgba(100, 200, 100, 0.8)" />
           </marker>
-          <marker id="combat-arrow-enemy" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
-            <path d="M0,0 L8,4 L0,8 Z" fill="rgba(220, 80, 80, 0.8)" />
+          <marker id="combat-arrow-enemy" markerWidth="6" markerHeight="6" refX="5.5" refY="3" orient="auto">
+            <path d="M0,0 L6,3 L0,6 Z" fill="rgba(220, 80, 80, 0.8)" />
           </marker>
         </defs>
         <g id="combat-attack-lines-g"></g>

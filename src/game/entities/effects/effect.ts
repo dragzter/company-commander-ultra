@@ -16,6 +16,7 @@ export const EFFECT_RESULTS = {
   confusion: "confusion",
   adrenaline_boost: "adrenaline_boost",
   healing: "healing",
+  attack_speed: "attack_speed",
   recovery: "recovery",
   focus: "focus",
   fatigue: "fatigue",

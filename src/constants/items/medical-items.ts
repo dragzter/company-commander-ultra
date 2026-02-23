@@ -8,8 +8,9 @@ export const MedicalItems: ItemsVolume<MedItem> = {
       type: ITEM_TYPES.medical,
       rarity: "common",
       description:
-        "Standard-issue Combat MedKit.  Used for treating battlefield injuries",
+        "Field medical kit for treating combat injuries.",
       usable: true,
+      icon: "med_kit.png",
       uses: 5,
       target: "friendly",
       tags: ["medical"],
@@ -28,18 +29,18 @@ export const MedicalItems: ItemsVolume<MedItem> = {
       type: ITEM_TYPES.medical,
       rarity: "common",
       description:
-        "Standard-issue Stim Pack.  No addictive properties whatsoever.",
+        "Combat stimulant that temporarily heightens reflexes and reaction speed.",
       usable: true,
+      icon: "stim_pack.png",
       uses: 2,
       target: "friendly",
       tags: ["medical"],
       effect: {
-        type: "heal",
-        description: "Increases Awareness and Toughness",
-        effectiveness: 3,
-        effect_value: 20,
-        duration: 1,
-        result: "healing",
+        type: "buff",
+        description: "+50% attack speed for 10 seconds",
+        duration: 10,
+        result: "attack_speed",
+        effect_value: 2 / 3,
       },
     },
   },
@@ -49,7 +50,7 @@ export const MedicalItems: ItemsVolume<MedItem> = {
       name: "Stim Pack Orange MQ2",
       type: ITEM_TYPES.medical,
       rarity: "common",
-      description: "A Highly potent stimulant manufactured in former Colombia.",
+      description: "Concentrated healing serum. Single-use, high potency.",
       usable: true,
       uses: 1,
       target: "friendly",
@@ -69,8 +70,7 @@ export const MedicalItems: ItemsVolume<MedItem> = {
       type: ITEM_TYPES.medical,
       rarity: "common",
       description:
-        "A hormonal stimulant that acts on the pain receptors as well as increasing aggression" +
-        " and response time.",
+        "Hormonal stimulant that suppresses pain and boosts reaction time at the cost of accuracy.",
       usable: true,
       uses: 1,
       target: "friendly",
@@ -94,10 +94,7 @@ export const MedicalItems: ItemsVolume<MedItem> = {
       type: ITEM_TYPES.medical,
       rarity: RARITY.epic,
       description:
-        "A chemical substance capable of clotting severe open wounds and stimulating the heart to" +
-        " keep beating beyond what should be medically possible. As the knowledge to manufacture" +
-        " this substance has been lost in time, all existing units can be traced to a hidden" +
-        " Iron Corps facility in what used to be New Mexico.",
+        "Lost pre-war compound. Can revive the incapacitated and grant superhuman resilience. Extremely dangerous.",
       usable: true,
       uses: 1,
       target: "friendly",

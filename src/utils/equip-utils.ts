@@ -1,12 +1,26 @@
 import type { Item } from "../constants/items/types.ts";
 import { ITEM_TYPES } from "../constants/items/types.ts";
 import type { Soldier } from "../game/entities/types.ts";
+import { WEAPON_BASES } from "../constants/items/weapon-bases.ts";
 
 export type EquipSlotType = "weapon" | "armor" | "equipment";
 
+/** Resolve weapon restrictRole from item or by looking up base by id */
+function getWeaponRestrictRole(weapon: Item): "support" | "rifleman" | "medic" | "any" | undefined {
+  if (weapon.restrictRole && weapon.restrictRole !== "any") return weapon.restrictRole;
+  const id = (weapon.id ?? "") as string;
+  for (const base of WEAPON_BASES) {
+    if (id === base.baseId || id.startsWith(base.baseId + "_")) {
+      if (base.restrictRole !== "any") return base.restrictRole;
+      return undefined;
+    }
+  }
+  return undefined;
+}
+
 /** Check if a weapon can be wielded by a soldier (restrictRole vs designation) */
 export function weaponWieldOk(weapon: Item, soldier: Soldier): boolean {
-  const role = weapon.restrictRole;
+  const role = getWeaponRestrictRole(weapon);
   if (!role || role === "any") return true;
   const des = (soldier.designation ?? "").toLowerCase();
   if (role === "support") return des === "support";

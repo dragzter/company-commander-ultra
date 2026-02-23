@@ -1,6 +1,7 @@
 import {
   type Attributes,
   type CombatProfile,
+  type Designation,
   type Soldier,
   SOLDIER_DESIGNATION,
   SOLDIER_STATUS,
@@ -11,18 +12,18 @@ import { BallisticItems } from "../../constants/items/ballistic.ts";
 import { ArmorItems } from "../../constants/items/armor.ts";
 import { MedicalItems } from "../../constants/items/medical-items.ts";
 import { ThrowableItems } from "../../constants/items/throwable.ts";
+import { ARMOR_BASES, createArmor } from "../../constants/items/armor-bases.ts";
+import { WEAPON_BASES, createWeapon } from "../../constants/items/weapon-bases.ts";
 
 /**
- * Starting gear for new recruits (Level Agnostic equipment)
+ * Starting gear for new recruits (used as fallback / higher-level reference).
+ * Level 1 recruits use getEquipmentLoadoutForLevel instead (tier 1 basic gear).
  */
 const StandardEquipmentLoadouts: StandardLoadout = {
   rifleman: {
     weapon: BallisticItems.common.m5_assault_rifle,
     armor: ArmorItems.common.s3_flak_jacket,
-    inventory: [
-      ThrowableItems.common.m3_frag_grenade,
-      ThrowableItems.common.m3_frag_grenade,
-    ],
+    inventory: [ThrowableItems.common.m3_frag_grenade],
   },
   support: {
     weapon: BallisticItems.common.fasw_machine_gun,
@@ -32,13 +33,42 @@ const StandardEquipmentLoadouts: StandardLoadout = {
   medic: {
     weapon: BallisticItems.common.m5_assault_rifle,
     armor: ArmorItems.common.s3_flak_jacket,
-    inventory: [
-      MedicalItems.common.standard_medkit,
-      MedicalItems.common.standard_medkit,
-      MedicalItems.common.stim_pack,
-    ],
+    inventory: [MedicalItems.common.standard_medkit],
   },
 };
+
+/** Weapon base IDs per designation for tier-scaled loadouts. */
+const LOADOUT_WEAPON_BASES: Record<Designation, string> = {
+  rifleman: "m5_assault_rifle",
+  support: "m240_delta", // Lighter than fasw; tier 1 = 26 dmg vs 35
+  medic: "compact_smg",
+};
+
+/** Armor base IDs per designation for tier-scaled loadouts. */
+const LOADOUT_ARMOR_BASES: Record<Designation, string> = {
+  rifleman: "s3_flak",
+  support: "m108_flak",
+  medic: "s3_flak",
+};
+
+/** Level-based loadout: tier 1 = basic gear for recruits, tier scales with level. */
+export function getEquipmentLoadoutForLevel(level: number, designation: Designation) {
+  const tier = Math.max(1, Math.min(10, level)) as 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
+  const weaponBase = WEAPON_BASES.find((b) => b.baseId === LOADOUT_WEAPON_BASES[designation]);
+  const armorBase = ARMOR_BASES.find((b) => b.baseId === LOADOUT_ARMOR_BASES[designation]);
+  if (!weaponBase || !armorBase) {
+    return StandardEquipmentLoadouts[designation];
+  }
+  const weapon = createWeapon(weaponBase, tier);
+  const armor = createArmor(armorBase, tier);
+  const inventory =
+    designation === "medic"
+      ? [MedicalItems.common.standard_medkit]
+      : designation === "support"
+        ? [ThrowableItems.common.mk18_smoke]
+        : [ThrowableItems.common.m3_frag_grenade];
+  return { weapon, armor, inventory };
+}
 
 const ATTRIBUTES_INCREASES_BY_LEVEL: Attributes[] = [
   {

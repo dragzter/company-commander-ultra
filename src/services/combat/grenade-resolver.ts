@@ -1,3 +1,4 @@
+import { computeFinalDamage } from "../../game/combat/combat-damage.ts";
 import type { Combatant } from "../../game/combat/types.ts";
 import type { Item } from "../../constants/items/types.ts";
 
@@ -5,7 +6,12 @@ const SPLASH_DAMAGE_PCT = 0.5;
 const SPLASH_EFFECT_PCT = 0.5;
 const MAX_TARGETS = 3;
 const TURN_MS = 1000;
-const GRENADE_EVADE_FACTOR = 0.4;
+/** Morale: 1% duration reduction per 10 morale (panic/suppression). Reduction rounded up to 1 decimal. Capped at 80%. */
+const MORALE_PER_PCT_REDUCTION = 10;
+const MORALE_REDUCTION_CAP_PCT = 80;
+const MIN_EFFECT_DURATION_MS = 500;
+const GRENADE_HIT_CHANCE = 0.9;
+const GRENADE_EVADE_CHANCE = 0.05;
 const INCAPACITATED_CHANCE = 0.3;
 const SMOKE_DURATION_MS = 5000;
 const SMOKE_PRIMARY_ACCURACY_DEBUFF = 0.4;
@@ -16,6 +22,17 @@ function isSmokeGrenade(grenade: Item): boolean {
   const tags = grenade.tags as string[] | undefined;
   return (tags?.includes("smoke")) || grenade.id === "mk18_smoke";
 }
+
+function isIncendiaryGrenade(grenade: Item): boolean {
+  const tags = grenade.tags as string[] | undefined;
+  return grenade.id === "incendiary_grenade" || (tags?.includes("thermal") && (grenade.effect?.result === "burn"));
+}
+
+function isThrowingKnife(grenade: Item): boolean {
+  return grenade.id === "tk21_throwing_knife";
+}
+
+const THROWING_KNIFE_DAMAGE = 20;
 
 export interface GrenadeHitResult {
   targetId: string;
@@ -58,7 +75,11 @@ export function resolveGrenadeThrow(
   const baseDamage = grenade.damage ?? 0;
   const splashBase = Math.max(1, Math.floor(baseDamage * SPLASH_DAMAGE_PCT));
 
-  const rollHit = Math.random() < (thrower.chanceToHit ?? 0.6);
+  const isKnife = isThrowingKnife(grenade);
+  const hitChance = isKnife ? (thrower.chanceToHit ?? 0.6) : GRENADE_HIT_CHANCE;
+  const evadeChance = isKnife ? (primaryTarget.chanceToEvade ?? 0.05) : GRENADE_EVADE_CHANCE;
+
+  const rollHit = Math.random() < hitChance;
   if (!rollHit) {
     return {
       throwerId: thrower.id,
@@ -77,7 +98,6 @@ export function resolveGrenadeThrow(
     };
   }
 
-  const evadeChance = (primaryTarget.chanceToEvade ?? 0) * GRENADE_EVADE_FACTOR;
   const rollEvade = Math.random() < evadeChance;
   if (rollEvade) {
     return {
@@ -121,8 +141,7 @@ export function resolveGrenadeThrow(
       if (enemy.id === primaryTarget.id || enemy.hp <= 0 || enemy.downState) continue;
       const isAdjacent = primaryIdx >= 0 && Math.abs(i - primaryIdx) === 1;
       if (!isAdjacent) continue;
-      const evadeSplash = (enemy.chanceToEvade ?? 0) * GRENADE_EVADE_FACTOR;
-      const rollEvadeSplash = Math.random() < evadeSplash;
+      const rollEvadeSplash = Math.random() < GRENADE_EVADE_CHANCE;
       if (rollEvadeSplash) {
         splash.push({ targetId: enemy.id, hit: true, evaded: true, damageDealt: 0, targetNewHp: enemy.hp, targetDown: false, targetIncapacitated: null });
         continue;
@@ -136,8 +155,70 @@ export function resolveGrenadeThrow(
     return { throwerId: thrower.id, primaryTargetId: primaryTarget.id, grenadeDamage: 0, primary, splash };
   }
 
-  const mitigated = baseDamage * (1 - (primaryTarget.mitigateDamage ?? 0));
-  const damageDealt = Math.max(1, Math.floor(mitigated));
+  /* Throwing knife: single-target 20 dmg, mitigated, no splash. */
+  if (isThrowingKnife(grenade)) {
+    const damageDealt = computeFinalDamage(THROWING_KNIFE_DAMAGE, primaryTarget);
+    const newHp = Math.max(0, Math.floor(primaryTarget.hp - damageDealt));
+    primaryTarget.hp = newHp;
+    const targetIncap = applyDownState(primaryTarget, newHp);
+    return {
+      throwerId: thrower.id,
+      primaryTargetId: primaryTarget.id,
+      grenadeDamage: THROWING_KNIFE_DAMAGE,
+      primary: {
+        targetId: primaryTarget.id,
+        hit: true,
+        evaded: false,
+        damageDealt,
+        targetNewHp: newHp,
+        targetDown: newHp === 0,
+        targetIncapacitated: targetIncap,
+      },
+      splash: [],
+    };
+  }
+
+  /* Incendiary: DoT only, unmitigated. Primary 4×8 dmg, adjacent 2×4 dmg. Last tick at t=3s (1s before expiry). */
+  if (isIncendiaryGrenade(grenade)) {
+    primaryTarget.burnTickDamage = 8;
+    primaryTarget.burnTicksRemaining = 4;
+    primaryTarget.burnIgnoresMitigation = true;
+    primaryTarget.burningUntil = now + 4 * TURN_MS;
+
+    const primary: GrenadeHitResult = {
+      targetId: primaryTarget.id,
+      hit: true,
+      evaded: false,
+      damageDealt: 0,
+      targetNewHp: primaryTarget.hp,
+      targetDown: false,
+      targetIncapacitated: null,
+    };
+
+    const primaryIdx = allEnemies.findIndex((e) => e.id === primaryTarget.id);
+    const splash: GrenadeHitResult[] = [];
+    const adjacent = primaryIdx >= 0
+      ? allEnemies
+          .map((e, i) => ({ enemy: e, i }))
+          .filter(({ enemy, i }) => enemy.id !== primaryTarget.id && enemy.hp > 0 && !enemy.downState && Math.abs(i - primaryIdx) === 1)
+          .slice(0, MAX_TARGETS - 1)
+      : [];
+    for (const { enemy } of adjacent) {
+      const rollEvadeSplash = Math.random() < GRENADE_EVADE_CHANCE;
+      if (rollEvadeSplash) {
+        splash.push({ targetId: enemy.id, hit: true, evaded: true, damageDealt: 0, targetNewHp: enemy.hp, targetDown: false, targetIncapacitated: null });
+        continue;
+      }
+      enemy.burnTickDamage = 4;
+      enemy.burnTicksRemaining = 2;
+      enemy.burnIgnoresMitigation = true;
+      enemy.burningUntil = now + 2 * TURN_MS;
+      splash.push({ targetId: enemy.id, hit: true, evaded: false, damageDealt: 0, targetNewHp: enemy.hp, targetDown: false, targetIncapacitated: null });
+    }
+    return { throwerId: thrower.id, primaryTargetId: primaryTarget.id, grenadeDamage: 0, primary, splash };
+  }
+
+  const damageDealt = computeFinalDamage(baseDamage, primaryTarget);
   const newHp = Math.max(0, Math.floor(primaryTarget.hp - damageDealt));
   primaryTarget.hp = newHp;
   const targetIncap = applyDownState(primaryTarget, newHp);
@@ -147,8 +228,9 @@ export function resolveGrenadeThrow(
     let durMs = eff.duration * TURN_MS;
     if (eff.result === "panic" || eff.result === "suppression") {
       const morale = (primaryTarget as Combatant & { soldierRef?: { attributes?: { morale?: number } } }).soldierRef?.attributes?.morale ?? 50;
-      const reduction = Math.min(50, morale / 2) / 100;
-      durMs = Math.max(500, Math.floor(durMs * (1 - reduction)));
+      const reductionPct = morale / MORALE_PER_PCT_REDUCTION;
+      const reduction = Math.min(MORALE_REDUCTION_CAP_PCT / 100, Math.ceil(reductionPct * 10) / 10 / 100);
+      durMs = Math.max(MIN_EFFECT_DURATION_MS, Math.round(durMs * (1 - reduction) / 100) * 100);
     }
     if (eff.result === "stun") primaryTarget.stunUntil = now + durMs;
     else if (eff.result === "panic") primaryTarget.panicUntil = now + durMs;
@@ -174,8 +256,7 @@ export function resolveGrenadeThrow(
         .slice(0, MAX_TARGETS - 1)
     : [];
   for (const { enemy } of adjacent) {
-    const evadeSplash = (enemy.chanceToEvade ?? 0) * GRENADE_EVADE_FACTOR;
-    const rollEvadeSplash = Math.random() < evadeSplash;
+    const rollEvadeSplash = Math.random() < GRENADE_EVADE_CHANCE;
     if (rollEvadeSplash) {
       splash.push({
         targetId: enemy.id,
@@ -188,8 +269,7 @@ export function resolveGrenadeThrow(
       });
       continue;
     }
-    const mitigatedSplash = splashBase * (1 - (enemy.mitigateDamage ?? 0));
-    const splashDmg = Math.max(1, Math.floor(mitigatedSplash));
+    const splashDmg = computeFinalDamage(splashBase, enemy);
     const splashNewHp = Math.max(0, Math.floor(enemy.hp - splashDmg));
     enemy.hp = splashNewHp;
     const splashIncap = applyDownState(enemy, splashNewHp);
@@ -198,10 +278,11 @@ export function resolveGrenadeThrow(
       let adjDurMs = Math.floor(eff.duration * TURN_MS * SPLASH_EFFECT_PCT);
       if (eff.result === "panic" || eff.result === "suppression") {
         const morale = (enemy as Combatant & { soldierRef?: { attributes?: { morale?: number } } }).soldierRef?.attributes?.morale ?? 50;
-        const reduction = Math.min(50, morale / 2) / 100;
-        adjDurMs = Math.max(500, Math.floor(adjDurMs * (1 - reduction)));
+        const reductionPct = morale / MORALE_PER_PCT_REDUCTION;
+        const reduction = Math.min(MORALE_REDUCTION_CAP_PCT / 100, Math.ceil(reductionPct * 10) / 10 / 100);
+        adjDurMs = Math.max(MIN_EFFECT_DURATION_MS, Math.round(adjDurMs * (1 - reduction) / 100) * 100);
       } else {
-        adjDurMs = Math.max(500, adjDurMs);
+        adjDurMs = Math.max(MIN_EFFECT_DURATION_MS, adjDurMs);
       }
       if (eff.result === "stun") enemy.stunUntil = now + adjDurMs;
       else if (eff.result === "panic") enemy.panicUntil = now + adjDurMs;

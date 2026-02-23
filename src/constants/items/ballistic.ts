@@ -58,6 +58,7 @@ export const BallisticItems: ItemsVolume<BallisticWeapon> = {
       damage_type: "ballistic",
       target: "enemy",
       speed_base: 7,
+      restrictRole: "support",
     },
     s44_galt: {
       id: "s44_galt",
@@ -180,6 +181,7 @@ export const BallisticItems: ItemsVolume<BallisticWeapon> = {
       damage_type: "ballistic",
       target: "enemy",
       speed_base: 5,
+      restrictRole: "support",
     },
   },
   rare: {},

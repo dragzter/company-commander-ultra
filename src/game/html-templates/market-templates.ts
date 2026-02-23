@@ -1,5 +1,11 @@
 import { DOM } from "../../constants/css-selectors.ts";
-import { getRecruitCost, getArmorySlots } from "../../constants/economy.ts";
+import {
+  getRecruitCost,
+  getWeaponArmorySlots,
+  getArmorArmorySlots,
+  getEquipmentArmorySlots,
+} from "../../constants/economy.ts";
+import { countArmoryByCategory } from "../../utils/item-utils.ts";
 import { getMaxCompanySize } from "../entities/company/company.ts";
 import { clrHash } from "../../utils/html-utils.ts";
 import {
@@ -45,24 +51,34 @@ export const marketTemplate = () => {
 	`;
 };
 
-function gearMarketItemCard(
+function marketItemCard(
   entry: { item: import("../../constants/items/types.ts").Item; price: number },
-  index: number,
-  context: "weapons" | "armor",
+  dataAttrs: string,
+  slotClass: string,
+  nameOverride?: string,
 ): string {
   const iconUrl = getItemIconUrl(entry.item);
-  const name = entry.item.name;
+  const name = nameOverride ?? entry.item.name;
   const level = entry.item.level ?? 1;
+  const uses = entry.item.uses;
   const rarity = entry.item.rarity ?? "common";
-  const rarityClass = rarity !== "common" ? ` rarity-${rarity}` : "";
+  const rarityClass = rarity !== "common" ? ` market-item-rarity-${rarity} rarity-${rarity}` : "";
+  const isSupplies = slotClass.includes("supplies-market-item");
+  const usesBadgeHtml = uses != null ? `<span class="market-item-uses-badge">×${uses}</span>` : "";
+  const iconHtml = iconUrl
+    ? `<div class="market-item-icon-wrap"><img class="market-item-icon" src="${iconUrl}" alt="${name}" width="42" height="42"><span class="item-level-badge rarity-${rarity}">Lv${level}</span>${isSupplies && uses != null ? usesBadgeHtml : ""}</div>`
+    : "";
+  const slotLevelUsesBadge = !isSupplies && uses != null ? usesBadgeHtml : "";
   return `
-<div class="gear-market-item company-inv-slot company-inv-slot-filled${rarityClass}" data-gear-index="${index}" data-gear-context="${context}" data-gear-price="${entry.price}" data-gear-item="${escapeAttr(JSON.stringify(entry.item))}" role="button" tabindex="0">
-  <div class="gear-market-item-inner">
-    <span class="gear-market-level-badge">Lv${level}</span>
-    ${iconUrl ? `<img class="gear-market-icon" src="${iconUrl}" alt="${name}" width="48" height="48">` : ""}
-    <span class="company-inv-slot-name">${name}</span>
-    <span class="gear-market-price-badge">$${entry.price}</span>
+<div class="market-item-slot ${slotClass}${rarityClass}" ${dataAttrs} role="button" tabindex="0">
+  <div class="market-item-inner">
+    ${iconHtml}
+    <div class="market-item-details">
+      <span class="market-item-name">${name}</span>
+      <span class="market-item-price">$${entry.price}</span>
+    </div>
   </div>
+  ${slotLevelUsesBadge}
 </div>`;
 }
 
@@ -70,56 +86,61 @@ export const weaponsMarketTemplate = () => {
   const store = usePlayerCompanyStore.getState();
   const companyLvl = store.company?.level ?? store.companyLevel ?? 1;
   const creditBalance = store.creditBalance;
-  const totalCapacity = getArmorySlots(companyLvl);
-  const currentItems = store.company?.inventory?.length ?? 0;
-  const slotsFree = totalCapacity - currentItems;
+  const inv = store.company?.inventory ?? [];
+  const counts = countArmoryByCategory(inv);
+  const totalCapacity = getWeaponArmorySlots(companyLvl);
+  const slotsFree = Math.max(0, totalCapacity - counts.weapon);
 
   const allWeapons = getWeaponsMarketItems(companyLvl);
-  const support = allWeapons.filter((e) => e.item.restrictRole === "support");
-  const rifleman = allWeapons.filter((e) => e.item.restrictRole === "rifleman");
-  const anyUser = allWeapons.filter((e) => e.item.restrictRole === "any" || e.item.restrictRole === "medic");
+  const commonWeapons = allWeapons.filter((e) => (e.item.rarity ?? "common") === "common");
+  const rareWeapons = allWeapons.filter((e) => e.item.rarity === "rare");
+  const epicWeapons = allWeapons.filter((e) => e.item.rarity === "epic");
+
+  const gearData = (e: { item: import("../../constants/items/types.ts").Item; price: number }, i: number) =>
+    `data-gear-index="${i}" data-gear-context="weapons" data-gear-price="${e.price}" data-gear-item="${escapeAttr(JSON.stringify(e.item))}"`;
+
+  const section = (title: string, items: typeof allWeapons, offset: number, rarityClass: string) =>
+    items.length > 0
+      ? `
+    <div class="market-section ${rarityClass}">
+      <h4 class="market-section-title">${title}</h4>
+      <div class="market-grid market-grid-2col">
+        ${items.map((e, i) => marketItemCard(e, gearData(e, offset + i), "gear-market-item")).join("")}
+      </div>
+    </div>`
+      : "";
+
+  const sections =
+    section("Common", commonWeapons, 0, "market-section-common") +
+    section("Rare", rareWeapons, commonWeapons.length, "market-section-rare") +
+    section("Epic", epicWeapons, commonWeapons.length + rareWeapons.length, "market-section-epic");
 
   return `
 <div id="weapons-market" class="weapons-market-root troops-market-root">
   <div id="weapons-buy-popup" class="gear-buy-popup supplies-buy-popup" role="dialog" aria-modal="true" hidden>
     <div class="gear-buy-popup-inner supplies-buy-popup-inner">
-      <h4 id="weapons-buy-title" class="supplies-buy-title"></h4>
-      <div id="weapons-buy-body" class="supplies-buy-body"></div>
-      <div class="supplies-buy-qty-row">
-        <label>Quantity:</label>
-        <div class="supplies-buy-qty-controls">
-          <button type="button" id="weapons-qty-minus" class="mbtn icon-btn">−</button>
-          <input type="number" id="weapons-qty-input" min="1" value="1" readonly>
-          <button type="button" id="weapons-qty-plus" class="mbtn icon-btn">+</button>
-        </div>
+      <div class="gear-buy-title-wrap">
+        <h4 id="weapons-buy-title" class="supplies-buy-title"></h4>
+        <button type="button" id="weapons-buy-close" class="popup-close-btn">×</button>
       </div>
-      <p id="weapons-buy-error" class="supplies-buy-error" role="alert"></p>
-      <div class="supplies-buy-actions">
-        <button type="button" id="weapons-buy-btn" class="mbtn green">Buy</button>
-        <button type="button" id="weapons-buy-close" class="mbtn red mbtn-sm">Close</button>
+      <div id="weapons-buy-body" class="supplies-buy-body"></div>
+      <div class="item-market-purchase">
+        <div class="supplies-buy-qty-row">
+          <label>Quantity:</label>
+          <div class="supplies-buy-qty-controls">
+            <button type="button" id="weapons-qty-minus" class="mbtn icon-btn">−</button>
+            <input type="number" id="weapons-qty-input" min="1" value="1" readonly>
+            <button type="button" id="weapons-qty-plus" class="mbtn icon-btn">+</button>
+          </div>
+        </div>
+        <p id="weapons-buy-error" class="supplies-buy-error" role="alert"></p>
+        <button type="button" id="weapons-buy-btn" class="mbtn green equipment-buy-btn-full">Buy</button>
       </div>
     </div>
   </div>
   ${companyHeaderPartial("Weapons Market")}
-  <div class="weapons-market-main company-inv-body">
-    <div class="company-inv-section">
-      <h4 class="company-inv-section-title">Support</h4>
-      <div class="gear-market-grid company-inv-slot-grid inventory-grid">
-        ${support.map((e, i) => gearMarketItemCard(e, i, "weapons")).join("")}
-      </div>
-    </div>
-    <div class="company-inv-section">
-      <h4 class="company-inv-section-title">Rifleman</h4>
-      <div class="gear-market-grid company-inv-slot-grid inventory-grid">
-        ${rifleman.map((e, i) => gearMarketItemCard(e, support.length + i, "weapons")).join("")}
-      </div>
-    </div>
-    <div class="company-inv-section">
-      <h4 class="company-inv-section-title">Any User</h4>
-      <div class="gear-market-grid company-inv-slot-grid inventory-grid">
-        ${anyUser.map((e, i) => gearMarketItemCard(e, support.length + rifleman.length + i, "weapons")).join("")}
-      </div>
-    </div>
+  <div class="weapons-market-main market-main-2col">
+    ${sections}
   </div>
   <div class="weapons-market-footer troops-market-footer">
     <div class="recruit-balance-bar">
@@ -136,56 +157,61 @@ export const armorMarketTemplate = () => {
   const store = usePlayerCompanyStore.getState();
   const companyLvl = store.company?.level ?? store.companyLevel ?? 1;
   const creditBalance = store.creditBalance;
-  const totalCapacity = getArmorySlots(companyLvl);
-  const currentItems = store.company?.inventory?.length ?? 0;
-  const slotsFree = totalCapacity - currentItems;
+  const inv = store.company?.inventory ?? [];
+  const counts = countArmoryByCategory(inv);
+  const totalCapacity = getArmorArmorySlots(companyLvl);
+  const slotsFree = Math.max(0, totalCapacity - counts.armor);
 
   const allArmor = getArmorMarketItems(companyLvl);
-  const bodyArmor = allArmor.filter((e) => (e.item.rarity ?? "common") === "common");
+  const commonArmor = allArmor.filter((e) => (e.item.rarity ?? "common") === "common");
   const rareArmor = allArmor.filter((e) => e.item.rarity === "rare");
   const epicArmor = allArmor.filter((e) => e.item.rarity === "epic");
+
+  const gearData = (e: { item: import("../../constants/items/types.ts").Item; price: number }, i: number) =>
+    `data-gear-index="${i}" data-gear-context="armor" data-gear-price="${e.price}" data-gear-item="${escapeAttr(JSON.stringify(e.item))}"`;
+
+  const section = (title: string, items: typeof allArmor, offset: number, rarityClass: string) =>
+    items.length > 0
+      ? `
+    <div class="market-section ${rarityClass}">
+      <h4 class="market-section-title">${title}</h4>
+      <div class="market-grid market-grid-2col">
+        ${items.map((e, i) => marketItemCard(e, gearData(e, offset + i), "gear-market-item")).join("")}
+      </div>
+    </div>`
+      : "";
+
+  const sections =
+    section("Common", commonArmor, 0, "market-section-common") +
+    section("Rare", rareArmor, commonArmor.length, "market-section-rare") +
+    section("Epic", epicArmor, commonArmor.length + rareArmor.length, "market-section-epic");
 
   return `
 <div id="armor-market" class="armor-market-root troops-market-root">
   <div id="armor-buy-popup" class="gear-buy-popup supplies-buy-popup" role="dialog" aria-modal="true" hidden>
     <div class="gear-buy-popup-inner supplies-buy-popup-inner">
-      <h4 id="armor-buy-title" class="supplies-buy-title"></h4>
-      <div id="armor-buy-body" class="supplies-buy-body"></div>
-      <div class="supplies-buy-qty-row">
-        <label>Quantity:</label>
-        <div class="supplies-buy-qty-controls">
-          <button type="button" id="armor-qty-minus" class="mbtn icon-btn">−</button>
-          <input type="number" id="armor-qty-input" min="1" value="1" readonly>
-          <button type="button" id="armor-qty-plus" class="mbtn icon-btn">+</button>
-        </div>
+      <div class="gear-buy-title-wrap">
+        <h4 id="armor-buy-title" class="supplies-buy-title"></h4>
+        <button type="button" id="armor-buy-close" class="popup-close-btn">×</button>
       </div>
-      <p id="armor-buy-error" class="supplies-buy-error" role="alert"></p>
-      <div class="supplies-buy-actions">
-        <button type="button" id="armor-buy-btn" class="mbtn green">Buy</button>
-        <button type="button" id="armor-buy-close" class="mbtn red mbtn-sm">Close</button>
+      <div id="armor-buy-body" class="supplies-buy-body"></div>
+      <div class="item-market-purchase">
+        <div class="supplies-buy-qty-row">
+          <label>Quantity:</label>
+          <div class="supplies-buy-qty-controls">
+            <button type="button" id="armor-qty-minus" class="mbtn icon-btn">−</button>
+            <input type="number" id="armor-qty-input" min="1" value="1" readonly>
+            <button type="button" id="armor-qty-plus" class="mbtn icon-btn">+</button>
+          </div>
+        </div>
+        <p id="armor-buy-error" class="supplies-buy-error" role="alert"></p>
+        <button type="button" id="armor-buy-btn" class="mbtn green equipment-buy-btn-full">Buy</button>
       </div>
     </div>
   </div>
   ${companyHeaderPartial("Body Armor Market")}
-  <div class="armor-market-main company-inv-body">
-    <div class="company-inv-section">
-      <h4 class="company-inv-section-title">Body Armor</h4>
-      <div class="gear-market-grid company-inv-slot-grid inventory-grid">
-        ${bodyArmor.map((e, i) => gearMarketItemCard(e, i, "armor")).join("")}
-      </div>
-    </div>
-    <div class="company-inv-section">
-      <h4 class="company-inv-section-title">Rare Armor</h4>
-      <div class="gear-market-grid company-inv-slot-grid inventory-grid">
-        ${rareArmor.map((e, i) => gearMarketItemCard(e, bodyArmor.length + i, "armor")).join("")}
-      </div>
-    </div>
-    <div class="company-inv-section">
-      <h4 class="company-inv-section-title">Epic Armor</h4>
-      <div class="gear-market-grid company-inv-slot-grid inventory-grid">
-        ${epicArmor.map((e, i) => gearMarketItemCard(e, bodyArmor.length + rareArmor.length + i, "armor")).join("")}
-      </div>
-    </div>
+  <div class="armor-market-main market-main-2col">
+    ${sections}
   </div>
   <div class="armor-market-footer troops-market-footer">
     <div class="recruit-balance-bar">
@@ -206,29 +232,38 @@ function abbreviateItemName(name: string): string {
   return name.replace(/Incendiary/g, "Incend.");
 }
 
-function suppliesMarketItemCard(
-  entry: { item: import("../../constants/items/types.ts").Item; price: number },
-  index: number,
-): string {
-  const iconUrl = getItemIconUrl(entry.item);
-  const name = abbreviateItemName(entry.item.name);
-  return `
-<div class="supplies-market-item company-inv-slot company-inv-slot-filled" data-supplies-index="${index}" data-supplies-price="${entry.price}" data-supplies-item="${escapeAttr(JSON.stringify(entry.item))}" role="button" tabindex="0">
-  <div class="supplies-market-item-inner">
-    ${iconUrl ? `<img class="supplies-market-item-icon" src="${iconUrl}" alt="${name}" width="48" height="48">` : ""}
-    <span class="company-inv-slot-name">${name}</span>
-    <span class="supplies-market-price">$${entry.price}</span>
-  </div>
-</div>`;
-}
-
 export const suppliesMarketTemplate = () => {
   const store = usePlayerCompanyStore.getState();
   const creditBalance = store.creditBalance;
   const companyLvl = store.company?.level ?? store.companyLevel ?? 1;
-  const totalCapacity = getArmorySlots(companyLvl);
-  const currentItems = store.company?.inventory?.length ?? 0;
-  const slotsFree = totalCapacity - currentItems;
+  const inv = store.company?.inventory ?? [];
+  const counts = countArmoryByCategory(inv);
+  const totalCapacity = getEquipmentArmorySlots(companyLvl);
+  const slotsFree = Math.max(0, totalCapacity - counts.equipment);
+
+  const suppliesData = (e: { item: import("../../constants/items/types.ts").Item; price: number }, i: number) =>
+    `data-supplies-index="${i}" data-supplies-price="${e.price}" data-supplies-item="${escapeAttr(JSON.stringify(e.item))}"`;
+
+  const section = (
+    title: string,
+    items: { item: import("../../constants/items/types.ts").Item; price: number }[],
+    offset: number,
+    rarityClass: string,
+  ) =>
+    items.length > 0
+      ? `
+    <div class="market-section ${rarityClass}">
+      <h4 class="market-section-title">${title}</h4>
+      <div class="market-grid market-grid-2col">
+        ${items.map((e, i) => marketItemCard(e, suppliesData(e, offset + i), "supplies-market-item", abbreviateItemName(e.item.name))).join("")}
+      </div>
+    </div>`
+      : "";
+
+  const sections =
+    section("Common", EQUIPMENT_MARKET_COMMON, 0, "market-section-common") +
+    section("Rare", EQUIPMENT_MARKET_RARE, EQUIPMENT_MARKET_COMMON.length, "market-section-rare") +
+    section("Epic", EQUIPMENT_MARKET_EPIC, EQUIPMENT_MARKET_COMMON.length + EQUIPMENT_MARKET_RARE.length, "market-section-epic");
 
   return `
 <div id="supplies-market" class="supplies-market-root troops-market-root">
@@ -246,32 +281,14 @@ export const suppliesMarketTemplate = () => {
       </div>
       <p id="supplies-buy-error" class="supplies-buy-error" role="alert"></p>
       <div class="supplies-buy-actions">
-        <button type="button" id="supplies-buy-btn" class="mbtn green">Buy</button>
-        <button type="button" id="supplies-buy-close" class="mbtn red">Close</button>
+        <button type="button" id="supplies-buy-btn" class="mbtn green equipment-buy-btn-full">Buy</button>
+        <button type="button" id="supplies-buy-close" class="popup-close-btn">×</button>
       </div>
     </div>
   </div>
   ${companyHeaderPartial("Supplies Market")}
-  <div class="supplies-market-main company-inv-body">
-    <div class="company-inv-section">
-      <h4 class="company-inv-section-title">Common Supplies</h4>
-      <div class="supplies-market-grid company-inv-slot-grid inventory-grid">
-        ${EQUIPMENT_MARKET_COMMON.map((e, i) => suppliesMarketItemCard(e, i)).join("")}
-      </div>
-    </div>
-    ${EQUIPMENT_MARKET_RARE.length > 0 ? `
-    <div class="company-inv-section">
-      <h4 class="company-inv-section-title">Rare Supplies</h4>
-      <div class="supplies-market-grid company-inv-slot-grid inventory-grid">
-        ${EQUIPMENT_MARKET_RARE.map((e, i) => suppliesMarketItemCard(e, EQUIPMENT_MARKET_COMMON.length + i)).join("")}
-      </div>
-    </div>` : ""}
-    <div class="company-inv-section">
-      <h4 class="company-inv-section-title">Epic Supplies</h4>
-      <div class="supplies-market-grid company-inv-slot-grid inventory-grid">
-        ${EQUIPMENT_MARKET_EPIC.map((e, i) => suppliesMarketItemCard(e, EQUIPMENT_MARKET_COMMON.length + EQUIPMENT_MARKET_RARE.length + i)).join("")}
-      </div>
-    </div>
+  <div class="supplies-market-main market-main-2col">
+    ${sections}
   </div>
   <div class="supplies-market-footer troops-market-footer">
     <div class="recruit-balance-bar">
@@ -311,7 +328,7 @@ export const troopsMarketTemplate = (
   if (isFull) {
     balanceBarItems.push(`<span class="recruit-balance-full">Full (${currentCount}/${maxSize})</span>`);
   } else {
-    balanceBarItems.push(`<strong>Men</strong> ${currentCount}/${maxSize}`);
+    balanceBarItems.push(`<span class="recruit-balance-item"><img src="/images/soldier_count.png" alt="" class="recruit-balance-icon recruit-balance-soldier-icon" width="20" height="24" aria-hidden="true"><strong>Men</strong> ${currentCount}/${maxSize}</span>`);
     balanceBarItems.push(`<strong>Bal</strong> $${creditBalance}`);
     balanceBarItems.push(`<strong>Sel</strong> ${recruitStaging.length} · $${totalCost}`);
     balanceBarItems.push(`<strong>Max</strong> ${maxSize}`);

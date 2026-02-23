@@ -19,9 +19,16 @@ export function rosterTemplate(): string {
   const activeSoldiers = soldiers.slice(0, activeCount);
   const reserveSoldiers = soldiers.slice(activeCount);
 
+  let equipPickerHtml = "";
+  try {
+    equipPickerHtml = equipPickerTemplate();
+  } catch (e) {
+    console.warn("[Roster] equipPickerTemplate failed:", e);
+  }
+
   return `
 <div id="roster-screen" class="roster-root troops-market-root">
-  ${equipPickerTemplate()}
+  ${equipPickerHtml}
   ${companyHeaderPartial("Company Roster")}
   <div class="roster-main">
     <div class="roster-section">
@@ -46,7 +53,7 @@ export function rosterTemplate(): string {
   <div class="roster-footer troops-market-footer">
     <div class="recruit-balance-bar">
       <span class="recruit-balance-item"><strong>Credits</strong> $${store.creditBalance}</span>
-      <span class="recruit-balance-item"><strong>Soldiers</strong> ${soldiers.length}</span>
+      <span class="recruit-balance-item"><img src="/images/soldier_count.png" alt="" class="recruit-balance-icon recruit-balance-soldier-icon" width="20" height="24" aria-hidden="true"><strong>Soldiers</strong> ${soldiers.length}</span>
     </div>
     ${companyActionsTemplate()}
   </div>

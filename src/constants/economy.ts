@@ -1,4 +1,4 @@
-/** Starting credits when beginning a new game (TODO: revert to 5000 before release) */
+/** Starting credits when beginning a new game (100k for testing) */
 export const STARTING_CREDITS = 100_000;
 
 /** Base cost to recruit one soldier from the market */
@@ -14,6 +14,37 @@ export const DEFAULT_INVENTORY_CAPACITY = 20;
 export function getArmorySlots(level: number): number {
   if (level < 1) return DEFAULT_INVENTORY_CAPACITY;
   return 20 + Math.floor(level / 2) * 4;
+}
+
+/**
+ * Per-category armory caps: L1→5/5/10, L10→20/20/40 (weapons/armor/equipment).
+ */
+export function getWeaponArmorySlots(level: number): number {
+  if (level < 1) return 5;
+  return 5 + Math.floor(((level - 1) * 15) / 9);
+}
+export function getArmorArmorySlots(level: number): number {
+  if (level < 1) return 5;
+  return 5 + Math.floor(((level - 1) * 15) / 9);
+}
+export function getEquipmentArmorySlots(level: number): number {
+  if (level < 1) return 10;
+  return 10 + Math.floor(((level - 1) * 30) / 9);
+}
+
+/** Cap for a category (used by external modules that need category string). */
+export function getArmorySlotsForCategory(
+  level: number,
+  category: "weapon" | "armor" | "equipment",
+): number {
+  if (category === "weapon") return getWeaponArmorySlots(level);
+  if (category === "armor") return getArmorArmorySlots(level);
+  return getEquipmentArmorySlots(level);
+}
+
+/** Total armory slots (weapons + armor + equipment) for display. L1=20, L10=80. */
+export function getTotalArmorySlots(level: number): number {
+  return getWeaponArmorySlots(level) + getArmorArmorySlots(level) + getEquipmentArmorySlots(level);
 }
 
 /** Re-export gear pricing from item-pricing for use in gear market. */

@@ -174,11 +174,9 @@ function UiManager() {
   function refreshEquipPickerContent() {
     const picker = document.getElementById("equip-picker-popup");
     if (!picker || picker.hasAttribute("hidden")) return;
-    const { soldiers, armory } = getEquipPickerBodyHtml();
+    const { soldiers } = getEquipPickerBodyHtml();
     const soldiersEl = picker.querySelector(".equip-picker-soldiers-list");
-    const armoryEl = picker.querySelector(".equip-picker-armory-grid");
-    if (soldiersEl) soldiersEl.innerHTML = soldiers;
-    if (armoryEl) armoryEl.innerHTML = armory;
+    if (soldiersEl) (soldiersEl as HTMLElement).innerHTML = soldiers;
   }
 
   function renderAbilitiesScreen() {

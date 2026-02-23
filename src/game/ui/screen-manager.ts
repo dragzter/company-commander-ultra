@@ -1,4 +1,6 @@
 import {
+  companyActionsTemplate,
+  companyHeaderPartial,
   companyHomePageTemplate,
   gameSetupTemplate,
   mainMenuTemplate,
@@ -151,8 +153,9 @@ function ScreenManager() {
     const players = activeSoldiers.map((s) => soldierToCombatant(s));
     const enemyCount = mission?.enemyCount ?? 3;
     const companyLevel = store.companyLevel ?? 1;
+    const isEpicMission = !!(mission?.isEpic ?? mission?.rarity === "epic");
     const enemies = Array.from({ length: enemyCount }, (_, i) =>
-      createEnemyCombatant(i, enemyCount, companyLevel),
+      createEnemyCombatant(i, enemyCount, companyLevel, isEpicMission),
     );
     const content = parseHTML(combatTemplate(mission ?? null, players, enemies));
     center.appendChild(content as Element);
@@ -215,9 +218,32 @@ function ScreenManager() {
   }
 
   function createRosterPage() {
-    UiManager.clear.center();
-    const content = parseHTML(rosterTemplate());
-    center.appendChild(content as Element);
+    const target = document.getElementById("g-center");
+    if (!target) {
+      console.error("[Roster] #g-center not found");
+      return;
+    }
+    target.innerHTML = "";
+    let html: string;
+    try {
+      html = rosterTemplate();
+    } catch (err) {
+      console.error("[Roster] rosterTemplate() threw:", err);
+      try {
+        html = `<div id="roster-screen" class="roster-root troops-market-root">
+          ${companyHeaderPartial("Company Roster")}
+          <div class="roster-main"><p>Roster failed to load.</p></div>
+          <div class="roster-footer troops-market-footer">${companyActionsTemplate()}</div>
+        </div>`;
+      } catch (innerErr) {
+        console.error("[Roster] Fallback also threw:", innerErr);
+        html = '<div id="roster-screen" style="padding:20px;color:white;"><p>Roster error.</p></div>';
+      }
+    }
+    if (!html || !html.trim()) {
+      html = '<div id="roster-screen" style="padding:20px;color:white;"><p>Roster empty.</p></div>';
+    }
+    target.innerHTML = html;
     DomEventManager.initEventArray(ec().companyHome().concat(ec().rosterScreen()));
     UiManager.selectCompanyHomeButton(DOM.company.roster);
     Styler.setCenterBG("bg_81.jpg", true);

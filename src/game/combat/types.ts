@@ -16,6 +16,7 @@ export interface Combatant {
   damageMax: number;
   attackIntervalMs: number;
   toughness: number;
+  level?: number;
   side: "player" | "enemy";
   downState?: "kia" | "incapacitated";
   soldierRef?: import("../entities/types.ts").Soldier;
@@ -33,6 +34,12 @@ export interface Combatant {
   panicUntil?: number;
   /** Timestamp (ms) when burning ends (DoT) */
   burningUntil?: number;
+  /** Damage per burn tick (from incendiary etc.) */
+  burnTickDamage?: number;
+  /** Ticks of burn remaining */
+  burnTicksRemaining?: number;
+  /** True if burn bypasses armor (incendiary) */
+  burnIgnoresMitigation?: boolean;
   /** Timestamp (ms) when blinded ends */
   blindedUntil?: number;
   /** Timestamp (ms) when suppressed ends */
@@ -41,6 +48,8 @@ export interface Combatant {
   attackSpeedBuffUntil?: number;
   /** Attack interval multiplier (e.g. 2/3 = 50% faster) */
   attackSpeedBuffMultiplier?: number;
+  /** Epic mission elite: no HP handicap, gold frame */
+  isEpicElite?: boolean;
 }
 
 /** Map of attacker id -> target id */

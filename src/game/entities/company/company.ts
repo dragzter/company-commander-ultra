@@ -10,6 +10,8 @@ export interface Company {
   companyName: string;
   commander: string;
   inventory: Item[];
+  /** Items that didn't fit in armory (e.g. mission rewards when full). Player can claim later. */
+  holding_inventory?: Item[];
   resourceProfile: CompanyResourcesProfile;
 }
 

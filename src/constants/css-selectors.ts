@@ -20,6 +20,8 @@ export const DOM = {
     heroes: "#company-go-memorial",
     codex: "#company-go-codex",
     statsMemorial: "#company-stats-memorial",
+    memorialPopup: "#memorial-popup",
+    memorialPopupClose: "#memorial-popup-close",
     codexPopup: "#codex-popup",
     codexPopupClose: "#codex-popup-close",
     abilities: "#company-go-abilities",

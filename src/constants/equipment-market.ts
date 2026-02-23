@@ -7,16 +7,16 @@ export interface EquipmentMarketEntry {
   price: number;
 }
 
-/** Per-use pricing from transcript. Bundles: uses × perUse = total price. */
+/** Per-use pricing. Common < rare < epic. Bundles: uses × perUse = total price. */
 const SUPPLIES_PRICES = {
-  smoke: 55 * 5,
-  flashbang: 70 * 5,
-  frag: 60 * 5,
-  incendiary: 80 * 5,
-  throwing_knife: 20 * 10,
-  psychic_shredder: 240 * 5,
-  stim_pack: 250 * 2,
-  medkit: 75 * 5,
+  smoke: 95 * 5,
+  flashbang: 120 * 5,
+  frag: 105 * 5,
+  incendiary: 140 * 5,
+  throwing_knife: 35 * 10,
+  psychic_shredder: 500 * 5,
+  stim_pack: 1950,
+  medkit: 130 * 5,
 } as const;
 
 /** Common supplies: smoke, flashbang, frag, incendiary, throwing knife, stim pack, medkit */
