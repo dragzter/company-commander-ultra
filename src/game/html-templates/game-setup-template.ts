@@ -368,12 +368,7 @@ export const companyHomePageTemplate = () => {
       </div>
     </div>
 
-    <div class="troops-market-footer">
-      <div class="recruit-balance-bar">
-        <span class="recruit-balance-item"><strong>Credits</strong> $${creditBalance}</span>
-      </div>
-      ${companyActionsTemplate()}
-    </div>
+    ${companyActionsTemplate()}
 
     ${codexPopupTemplate()}
     ${memorialPopupTemplate()}

@@ -1,7 +1,6 @@
 import { companyHeaderPartial, companyActionsTemplate } from "./game-setup-template.ts";
 import type { Mission } from "../../constants/missions.ts";
 import { DIFFICULTY_LABELS, MISSION_KIND_META } from "../../constants/missions.ts";
-import { usePlayerCompanyStore } from "../../store/ui-store.ts";
 
 const READ_MORE_THRESHOLD = 55;
 
@@ -56,8 +55,6 @@ function sortMissionsByDifficulty(ms: Mission[]): Mission[] {
 export function missionsTemplate(missions: Mission[]): string {
   const regular = sortMissionsByDifficulty(missions.filter((m) => (m.rarity ?? (m.isEpic ? "epic" : "normal")) !== "epic"));
   const epic = sortMissionsByDifficulty(missions.filter((m) => (m.rarity ?? (m.isEpic ? "epic" : "normal")) === "epic"));
-  const { creditBalance } = usePlayerCompanyStore.getState();
-
   return `
 <div id="missions-screen" class="missions-root troops-market-root">
   ${companyHeaderPartial("Missions")}
@@ -75,12 +72,7 @@ export function missionsTemplate(missions: Mission[]): string {
       </div>
     </div>
   </div>
-  <div class="troops-market-footer">
-    <div class="recruit-balance-bar">
-      <span class="recruit-balance-item"><strong>Credits</strong> $${creditBalance}</span>
-    </div>
-    ${companyActionsTemplate()}
-  </div>
+  ${companyActionsTemplate()}
   <div id="mission-flavor-popup" class="mission-flavor-popup" role="dialog" aria-modal="true" aria-labelledby="mission-flavor-popup-title" hidden>
     <div class="mission-flavor-popup-inner">
       <button type="button" class="popup-close-btn mission-flavor-popup-close" id="mission-flavor-popup-close" aria-label="Close">×</button>

@@ -10,7 +10,7 @@ import {
 } from "../../utils/item-utils.ts";
 import { getActiveSlots, getFormationSlots } from "../../constants/company-slots.ts";
 import { setFormationSwapIndices } from "../html-templates/formation-template.ts";
-import { setLastEquipMoveSoldierIds } from "../html-templates/ready-room-template.ts";
+import { setLastEquipMoveSoldierIds, setLastReadyRoomMoveSlotIndices } from "../html-templates/ready-room-template.ts";
 import { usePlayerCompanyStore } from "../../store/ui-store.ts";
 import { disableBtn, enableBtn, s_, sa_ } from "../../utils/html-utils.ts";
 import { DOM } from "../../constants/css-selectors.ts";
@@ -2218,11 +2218,15 @@ export function eventConfigs() {
           const json = screen?.getAttribute("data-mission-json");
           const mission = json && json !== "" ? JSON.parse(json) : null;
           if (hasSoldier) {
+            setLastReadyRoomMoveSlotIndices([selected, slotIndex]);
             store.swapSoldierPositions(selected, slotIndex);
             UiManager.renderReadyRoomScreen(mission);
+            setTimeout(() => setLastReadyRoomMoveSlotIndices([]), 450);
           } else if (card.classList.contains("ready-room-drop-zone")) {
+            setLastReadyRoomMoveSlotIndices([selected, slotIndex]);
             store.moveSoldierToPosition(selected, slotIndex);
             UiManager.renderReadyRoomScreen(mission);
+            setTimeout(() => setLastReadyRoomMoveSlotIndices([]), 450);
           }
           clearReadyRoomSelection();
           return;

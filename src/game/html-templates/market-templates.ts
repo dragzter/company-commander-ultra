@@ -41,14 +41,10 @@ export const marketTemplate = () => {
 				<button id="${c(market.marketWeaponsLink)}" class="red mbtn mb-3">Weapons</button>
 				<button id="${c(market.marketSuppliesLink)}" class="blue mbtn">Supplies</button>
 			</div>
+			<div class="market-credits-inline">${marketCreditsPartial(usePlayerCompanyStore.getState().creditBalance)}</div>
 		</div>
 
-		<div class="troops-market-footer">
-			<div class="recruit-balance-bar">
-				${marketCreditsPartial(usePlayerCompanyStore.getState().creditBalance)}
-			</div>
-			${companyActionsTemplate()}
-		</div>
+		${companyActionsTemplate()}
 	</div>
 	`;
 };
@@ -159,9 +155,11 @@ export const weaponsMarketTemplate = () => {
     ${sections}
   </div>
   <div class="weapons-market-footer troops-market-footer">
-    <div class="recruit-balance-bar">
-      ${marketCreditsPartial(creditBalance)}
-      <span class="recruit-balance-item market-slots-info"><strong>Slots</strong> ${slotsFree}/${totalCapacity}</span>
+    <div class="footer-banner">
+      <div class="recruit-balance-bar">
+        ${marketCreditsPartial(creditBalance)}
+        <span class="recruit-balance-item market-slots-info"><strong>Slots</strong> ${slotsFree}/${totalCapacity}</span>
+      </div>
     </div>
     ${companyActionsTemplate()}
   </div>
@@ -230,9 +228,11 @@ export const armorMarketTemplate = () => {
     ${sections}
   </div>
   <div class="armor-market-footer troops-market-footer">
-    <div class="recruit-balance-bar">
-      ${marketCreditsPartial(creditBalance)}
-      <span class="recruit-balance-item market-slots-info"><strong>Slots</strong> ${slotsFree}/${totalCapacity}</span>
+    <div class="footer-banner">
+      <div class="recruit-balance-bar">
+        ${marketCreditsPartial(creditBalance)}
+        <span class="recruit-balance-item market-slots-info"><strong>Slots</strong> ${slotsFree}/${totalCapacity}</span>
+      </div>
     </div>
     ${companyActionsTemplate()}
   </div>
@@ -307,9 +307,11 @@ export const suppliesMarketTemplate = () => {
     ${sections}
   </div>
   <div class="supplies-market-footer troops-market-footer">
-    <div class="recruit-balance-bar">
-      ${marketCreditsPartial(creditBalance)}
-      <span class="recruit-balance-item market-slots-info"><strong>Slots</strong> ${slotsFree}/${totalCapacity}</span>
+    <div class="footer-banner">
+      <div class="recruit-balance-bar">
+        ${marketCreditsPartial(creditBalance)}
+        <span class="recruit-balance-item market-slots-info"><strong>Slots</strong> ${slotsFree}/${totalCapacity}</span>
+      </div>
     </div>
     ${companyActionsTemplate()}
   </div>
@@ -380,9 +382,11 @@ export const troopsMarketTemplate = (
 		</div>
 	</div>
 	<div class="troops-market-footer">
-		<div class="troops-metadata-banner">
-			<div class="troops-metadata-row troops-metadata-credits">Credits <span class="troops-credits-amount">$${formattedCredits}</span></div>
-			<div class="troops-metadata-row troops-soldier-breakdown">${roleBreakdownHtml}</div>
+		<div class="footer-banner">
+			<div class="troops-metadata-banner">
+				<div class="troops-metadata-row troops-metadata-credits">Credits <span class="troops-credits-amount">$${formattedCredits}</span></div>
+				<div class="troops-metadata-row troops-soldier-breakdown">${roleBreakdownHtml}</div>
+			</div>
 		</div>
 		${companyActionsTemplate()}
 	</div>

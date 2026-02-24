@@ -135,12 +135,14 @@ export function formationTemplate(): string {
       </div>
     </div>
   </div>
-  <div class="formation-footer troops-market-footer roster-footer-banner">
-    <div class="roster-footer-actions">
-      <button type="button" id="formation-back-btn" class="equip-troops-btn">Back to Roster</button>
-    </div>
-    <div class="recruit-balance-bar">
-      <span class="recruit-balance-item"><strong>Soldiers</strong> ${company?.soldiers?.length ?? 0}</span>
+  <div class="formation-footer troops-market-footer">
+    <div class="footer-banner">
+      <div class="roster-footer-actions">
+        <button type="button" id="formation-back-btn" class="equip-troops-btn">Back to Roster</button>
+      </div>
+      <div class="recruit-balance-bar">
+        <span class="recruit-balance-item"><strong>Soldiers</strong> ${company?.soldiers?.length ?? 0}</span>
+      </div>
     </div>
     ${companyActionsTemplate()}
   </div>

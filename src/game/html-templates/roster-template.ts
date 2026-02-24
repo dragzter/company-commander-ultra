@@ -42,6 +42,9 @@ export function rosterTemplate(): string {
   ${equipPickerHtml}
   ${companyHeaderPartial("Company Roster")}
   <div class="roster-main">
+    <div class="roster-toolbar">
+      <button type="button" id="roster-formation-btn" class="equip-troops-btn">Formation</button>
+    </div>
     <div class="roster-section">
       <div class="roster-section-header roster-section-active">
         <span class="roster-section-label">Active</span>
@@ -61,14 +64,6 @@ export function rosterTemplate(): string {
       </div>
     </div>
   </div>
-  <div class="roster-footer troops-market-footer roster-footer-banner">
-    <div class="roster-footer-actions">
-      <button type="button" id="roster-formation-btn" class="equip-troops-btn">Formation</button>
-    </div>
-    <div class="recruit-balance-bar">
-      <span class="recruit-balance-item"><strong>Soldiers</strong> ${soldiers.length}</span>
-    </div>
-    ${companyActionsTemplate()}
-  </div>
+  ${companyActionsTemplate()}
 </div>`;
 }

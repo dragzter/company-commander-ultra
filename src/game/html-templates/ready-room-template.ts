@@ -15,6 +15,14 @@ export function clearLastEquipMoveSoldierIds() {
   _lastEquipMoveSoldierIds = [];
 }
 
+let _lastReadyRoomMoveSlotIndices: number[] = [];
+export function setLastReadyRoomMoveSlotIndices(indices: number[]) {
+  _lastReadyRoomMoveSlotIndices = indices;
+}
+export function clearLastReadyRoomMoveSlotIndices() {
+  _lastReadyRoomMoveSlotIndices = [];
+}
+
 function escapeAttr(s: string): string {
   return s.replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
@@ -42,7 +50,7 @@ function readyRoomEquipSlot(
 function readyRoomSoldierCard(s: Soldier, slotIndex: number, isActive: boolean): string {
   const des = (s.designation ?? "rifleman").toLowerCase();
   const slotClass = isActive ? "ready-room-active-slot" : "ready-room-reserve-slot";
-  const justMoved = _lastEquipMoveSoldierIds.includes(s.id);
+  const justMoved = _lastEquipMoveSoldierIds.includes(s.id) || _lastReadyRoomMoveSlotIndices.includes(slotIndex);
   const animateClass = justMoved ? " ready-room-card-just-moved" : "";
   const lvl = s.level ?? 1;
   const levelRarity = lvl >= 6 ? "epic" : lvl >= 3 ? "rare" : "common";
@@ -149,9 +157,10 @@ export function readyRoomTemplate(mission: Mission | null): string {
     </div>
   </div>
   <div class="ready-room-footer troops-market-footer">
-    <button type="button" id="ready-room-proceed" class="mbtn green ${soldiers.length === 0 ? "disabled" : ""}">Proceed to Mission</button>
-    <div class="recruit-balance-bar">
-      <span class="recruit-balance-item"><strong>Credits</strong> $${store.creditBalance}</span>
+    <div class="footer-banner">
+      <div class="roster-footer-actions">
+        <button type="button" id="ready-room-proceed" class="equip-troops-btn ${soldiers.length === 0 ? "disabled" : ""}">Proceed to Mission</button>
+      </div>
     </div>
     ${companyActionsTemplate()}
   </div>

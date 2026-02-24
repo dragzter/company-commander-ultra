@@ -13,8 +13,10 @@ export function abilitiesTemplate(): string {
     </div>
   </div>
   <div class="abilities-footer troops-market-footer">
-    <div class="recruit-balance-bar">
-      <span class="recruit-balance-item"><strong>Credits</strong> $${creditBalance}</span>
+    <div class="footer-banner">
+      <div class="recruit-balance-bar">
+        <span class="recruit-balance-item"><strong>Credits</strong> $${creditBalance}</span>
+      </div>
     </div>
     ${companyActionsTemplate()}
   </div>

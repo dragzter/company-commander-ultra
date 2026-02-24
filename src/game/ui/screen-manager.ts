@@ -254,7 +254,7 @@ function ScreenManager() {
         html = `<div id="roster-screen" class="roster-root troops-market-root">
           ${companyHeaderPartial("Company Roster")}
           <div class="roster-main"><p>Roster failed to load.</p></div>
-          <div class="roster-footer troops-market-footer">${companyActionsTemplate()}</div>
+          ${companyActionsTemplate()}
         </div>`;
       } catch (innerErr) {
         console.error("[Roster] Fallback also threw:", innerErr);
