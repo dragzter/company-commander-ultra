@@ -112,10 +112,10 @@ export function equipPickerTemplate(): string {
         ${soldiers}
       </div>
     </div>
-    <div id="equip-supplies-popup" class="equip-supplies-popup" hidden role="dialog" aria-label="Available supplies">
+    <div id="equip-supplies-popup" class="equip-supplies-popup" hidden role="dialog" aria-label="Armory">
       <div class="equip-supplies-header">
-        <span class="equip-supplies-title">Available Supplies</span>
-        <button type="button" class="game-btn game-btn-md game-btn-red" id="equip-supplies-close" aria-label="Close">Close</button>
+        <span id="equip-supplies-title" class="equip-supplies-title">Armory</span>
+        <button type="button" class="game-btn game-btn-sm game-btn-red" id="equip-supplies-close" aria-label="Close">Close</button>
       </div>
       <div class="equip-supplies-grid" id="equip-supplies-grid"></div>
     </div>

@@ -103,6 +103,19 @@ body {
 	font-family: "Roboto Mono", sans-serif !important;
 }
 
+/* Prevent mobile browsers from showing blue link styling on buttons */
+button,
+[role="button"],
+input[type="button"],
+input[type="submit"],
+a.button {
+	-webkit-tap-highlight-color: transparent;
+	tap-highlight-color: transparent;
+	text-decoration: none;
+	-webkit-appearance: none;
+	appearance: none;
+}
+
 /* Global scrollbars - camo-accented, pill-shaped */
 * {
 	scrollbar-width: thin;
@@ -831,6 +844,12 @@ button.mbtn {
 
 .troops-market-footer .recruit-balance-bar {
 	padding-inline: var(--page-padding-x-reduced);
+}
+#cc-market .troops-market-footer .recruit-balance-bar,
+.weapons-market-footer .recruit-balance-bar,
+.armor-market-footer .recruit-balance-bar,
+.supplies-market-footer .recruit-balance-bar {
+	justify-content: center;
 }
 
 /* Troops market: 2-row metadata banner (credits + soldier breakdown) - sleek, centered, poppy */
@@ -1594,6 +1613,7 @@ button.mbtn {
 	align-items: center;
 	justify-content: center;
 	background: rgba(0, 0, 0, 0.3);
+	border: 1px dashed rgba(103, 86, 69, 0.45);
 	border-radius: 3px;
 }
 .ready-room-equip-placeholder {
@@ -1906,6 +1926,7 @@ button.mbtn {
 	align-items: center;
 	justify-content: center;
 	background: rgba(0, 0, 0, 0.3);
+	border: 1px dashed rgba(103, 86, 69, 0.45);
 	border-radius: 3px;
 }
 .formation-equip-slot.formation-equip-droppable {
@@ -2455,6 +2476,7 @@ button.mbtn {
 .inventory-item-card.market-item-slot {
 	position: relative;
 	cursor: pointer;
+	border-radius: 4px;
 }
 
 .inventory-item-card .inventory-destroy-btn {
@@ -3752,6 +3774,7 @@ button.mbtn {
 }
 .equip-slot-empty {
 	background: linear-gradient(145deg, rgba(30, 30, 32, 0.35) 0%, rgba(15, 15, 18, 0.45) 100%);
+	border-style: dashed;
 	border-color: rgba(103, 86, 69, 0.4);
 	opacity: 0.85;
 }
@@ -4064,6 +4087,11 @@ button.mbtn {
 	align-items: center;
 	margin-bottom: 6px;
 	flex-shrink: 0;
+}
+.equip-supplies-actions {
+	display: flex;
+	gap: 8px;
+	align-items: center;
 }
 .equip-supplies-title {
 	font-size: 0.9rem;

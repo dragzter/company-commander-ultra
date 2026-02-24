@@ -586,7 +586,7 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
         if (slotType === "armor") return { ...sol, armor: undefined };
         const inv = (sol.inventory ?? []).slice();
         if (equipmentIndex != null && equipmentIndex >= 0 && equipmentIndex < inv.length) {
-          inv.splice(equipmentIndex, 1);
+          inv[equipmentIndex] = undefined as any; /* Leave hole, don't shift slot 4 → 3 */
         }
         return { ...sol, inventory: inv };
       });
@@ -644,10 +644,11 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
       op.sourceSoldierId === op.destSoldierId &&
       op.sourceSlotType === "equipment" &&
       op.destSlotType === "equipment";
+    const destEquipCount = destInv.filter(Boolean).length;
     if (
       op.destSlotType === "equipment" &&
       !destItem &&
-      destInv.length >= MAX_EQUIPMENT_SLOTS &&
+      destEquipCount >= MAX_EQUIPMENT_SLOTS &&
       !isSameSoldierReorder
     ) {
       return { success: false, reason: "equipment slots full" };
@@ -683,9 +684,9 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
           const inv = (sol.inventory ?? []).slice();
           if (op.sourceEqIndex != null && op.sourceEqIndex < inv.length) {
             if (destWithTarget) inv[op.sourceEqIndex] = destWithTarget as any;
-            else inv.splice(op.sourceEqIndex, 1);
+            else inv[op.sourceEqIndex] = undefined as any; /* Leave hole, don't shift slot 4 → 3 */
           }
-          return { ...sol, inventory: inv.filter(Boolean).slice(0, MAX_EQUIPMENT_SLOTS) };
+          return { ...sol, inventory: inv.slice(0, MAX_EQUIPMENT_SLOTS) };
         }
         if (sol.id === op.destSoldierId) {
           const srcWithTarget = { ...srcItem, target: (srcItem as any).target ?? TARGET_TYPES.none };
@@ -697,10 +698,8 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
           }
           const inv = (sol.inventory ?? []).slice();
           const idx = op.destEqIndex ?? inv.length;
-          if (idx < inv.length && destItem) {
-            inv[idx] = srcWithTarget as any;
-          } else if (idx < inv.length) {
-            inv.splice(idx, 0, srcWithTarget as any);
+          if (idx < inv.length) {
+            inv[idx] = srcWithTarget as any; /* Replace slot (swap or fill empty), never splice/insert */
           } else if (op.destEqIndex != null && op.destEqIndex >= inv.length && op.destEqIndex < MAX_EQUIPMENT_SLOTS) {
             /* Place in the selected slot index even when inv is empty or shorter */
             while (inv.length <= op.destEqIndex) inv.push(undefined as any);
