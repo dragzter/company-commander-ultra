@@ -15,15 +15,21 @@ export function setFormationSwapIndices(indices: [number, number] | null) {
   _lastFormationSwap = indices;
 }
 
-function formationEquipSlot(item: Item | undefined): string {
-  if (!item) return `<div class="formation-equip-slot formation-equip-empty" title="Empty"><span class="formation-equip-placeholder">—</span></div>`;
+function formationEquipSlot(
+  item: Item | undefined,
+  soldierId: string,
+  slotType: "weapon" | "armor" | "equipment",
+  eqIndex: number,
+): string {
+  const dataAttrs = `data-soldier-id="${soldierId}" data-slot-type="${slotType}" data-eq-index="${eqIndex}" data-slot-item="${item ? escapeAttr(JSON.stringify(item)) : ""}" role="button" tabindex="0"`;
+  if (!item) return `<div class="formation-equip-slot formation-equip-empty formation-equip-droppable" title="Empty" ${dataAttrs}><span class="formation-equip-placeholder">—</span></div>`;
   const iconUrl = getItemIconUrl(item);
   const level = item.level ?? 1;
   const rarity = (item.rarity ?? "common") as string;
   const name = item.name ?? "?";
-  if (!iconUrl) return `<div class="formation-equip-slot formation-equip-empty" title="${name}"><span class="formation-equip-placeholder">—</span></div>`;
+  if (!iconUrl) return `<div class="formation-equip-slot formation-equip-empty formation-equip-droppable" title="${name}" ${dataAttrs}><span class="formation-equip-placeholder">—</span></div>`;
   return `
-<div class="formation-equip-slot item-icon-wrap" title="${name}">
+<div class="formation-equip-slot item-icon-wrap formation-equip-droppable" title="${name}" ${dataAttrs}>
   <img class="formation-equip-icon" src="${iconUrl}" alt="" width="32" height="32">
   <span class="item-level-badge formation-equip-level rarity-${rarity}">Lv${level}</span>
 </div>`;
@@ -43,22 +49,28 @@ function formationSoldierCard(
   return `
 <div class="formation-soldier-card designation-${des} ${slotClass}${swapClass}" data-soldier-id="${s.id}" data-slot-index="${slotIndex}" data-soldier-json="${escapeAttr(JSON.stringify(s))}" data-has-soldier="true">
   <div class="formation-card-inner">
-    <div class="formation-avatar-wrap">
-      <img class="formation-avatar" src="/images/green-portrait/${s.avatar}" alt="">
-      <span class="formation-level-badge item-level-badge rarity-${levelRarity}">Lv${lvl}</span>
-      <span class="formation-role-badge market-weapon-role-badge role-${des}">${s.designation ?? "Rifleman"}</span>
-    </div>
-    <div class="formation-details">
-      <div class="formation-name-block">
-        <span class="formation-name">${formatDisplayName(s.name)}</span>
+    <div class="formation-left">
+      <div class="formation-avatar-wrap">
+        <img class="formation-avatar" src="/images/green-portrait/${s.avatar}" alt="">
+        <span class="formation-level-badge item-level-badge rarity-${levelRarity}">Lv${lvl}</span>
+        <span class="formation-role-badge market-weapon-role-badge role-${des}">${s.designation ?? "Rifleman"}</span>
       </div>
       <div class="formation-hp-wrap">
         <div class="formation-hp-bar" style="width: 100%"></div>
         <span class="formation-hp-value">HP ${s.attributes.hit_points}</span>
       </div>
+    </div>
+    <div class="formation-details">
+      <div class="formation-name-block">
+        <span class="formation-name">${formatDisplayName(s.name)}</span>
+      </div>
       <div class="formation-equip-row">
-        ${formationEquipSlot(s.weapon as Item | undefined)}
-        ${formationEquipSlot(s.armor as Item | undefined)}
+        ${formationEquipSlot(s.weapon as Item | undefined, s.id, "weapon", 0)}
+        ${formationEquipSlot(s.armor as Item | undefined, s.id, "armor", 0)}
+      </div>
+      <div class="formation-equip-row">
+        ${formationEquipSlot((s.inventory ?? [])[0] as Item | undefined, s.id, "equipment", 0)}
+        ${formationEquipSlot((s.inventory ?? [])[1] as Item | undefined, s.id, "equipment", 1)}
       </div>
     </div>
   </div>

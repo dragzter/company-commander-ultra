@@ -10,6 +10,7 @@ import {
 } from "../../utils/item-utils.ts";
 import { getActiveSlots, getFormationSlots } from "../../constants/company-slots.ts";
 import { setFormationSwapIndices } from "../html-templates/formation-template.ts";
+import { setLastEquipMoveSoldierIds } from "../html-templates/ready-room-template.ts";
 import { usePlayerCompanyStore } from "../../store/ui-store.ts";
 import { disableBtn, enableBtn, s_, sa_ } from "../../utils/html-utils.ts";
 import { DOM } from "../../constants/css-selectors.ts";
@@ -1525,6 +1526,7 @@ export function eventConfigs() {
       callback: () => {
         const supplies = document.getElementById("equip-supplies-popup");
         if (supplies) supplies.setAttribute("hidden", "");
+        document.querySelectorAll(".equip-slot").forEach((el) => el.classList.remove("equip-slot-selected", "equip-slot-highlight"));
       },
     },
     {
@@ -1709,6 +1711,8 @@ export function eventConfigs() {
           }
 
           if (!slotItemJson) {
+            document.querySelectorAll(".equip-slot").forEach((el) => el.classList.remove("equip-slot-selected", "equip-slot-highlight"));
+            slotEl.classList.add("equip-slot-selected");
             openAvailableSuppliesPopup(picker as HTMLElement, soldierId, slotType, eqIndex);
             return;
           }
@@ -1941,6 +1945,21 @@ export function eventConfigs() {
     screen?.querySelectorAll(".formation-drop-zone").forEach((el) => el.classList.remove("formation-drop-zone"));
   }
 
+  function clearFormationEquipSelection() {
+    const screen = document.getElementById("formation-screen");
+    screen?.querySelectorAll(".formation-equip-slot-selected").forEach((el) => el.classList.remove("formation-equip-slot-selected"));
+    screen?.querySelectorAll(".formation-equip-slot-highlight").forEach((el) => el.classList.remove("formation-equip-slot-highlight"));
+  }
+
+  function applyFormationEquipDropZones(selectedSlot: HTMLElement) {
+    const slotType = selectedSlot.dataset.slotType as "weapon" | "armor" | "equipment";
+    const screen = document.getElementById("formation-screen");
+    if (!screen || !slotType) return;
+    screen.querySelectorAll(`.formation-equip-slot[data-slot-type="${slotType}"]`).forEach((el) => {
+      if (el !== selectedSlot) (el as HTMLElement).classList.add("formation-equip-slot-highlight");
+    });
+  }
+
   function applyFormationDropZones(selectedIndex: number) {
     const screen = document.getElementById("formation-screen");
     if (!screen) return;
@@ -1963,8 +1982,56 @@ export function eventConfigs() {
       selector: "#formation-screen",
       eventType: "click",
       callback: (e: Event) => {
+        const equipSlot = (e.target as HTMLElement).closest(".formation-equip-slot") as HTMLElement | null;
+        if (equipSlot) {
+          e.stopPropagation();
+          clearFormationSelection();
+          const screen = document.getElementById("formation-screen");
+          const selectedSlot = screen?.querySelector(".formation-equip-slot-selected") as HTMLElement | null;
+          const soldierId = equipSlot.dataset.soldierId;
+          const slotType = equipSlot.dataset.slotType as "weapon" | "armor" | "equipment";
+          const eqIndexStr = equipSlot.dataset.eqIndex;
+
+          if (selectedSlot) {
+            if (selectedSlot === equipSlot) {
+              clearFormationEquipSelection();
+              return;
+            }
+            const srcSoldierId = selectedSlot.dataset.soldierId!;
+            const srcSlotType = selectedSlot.dataset.slotType as "weapon" | "armor" | "equipment";
+            const srcEqIdx = selectedSlot.dataset.eqIndex != null ? parseInt(selectedSlot.dataset.eqIndex, 10) : undefined;
+            if (equipSlot.classList.contains("formation-equip-slot-highlight") && soldierId && slotType) {
+              const destEqIdx = slotType === "equipment" ? (eqIndexStr != null ? parseInt(eqIndexStr, 10) : undefined) : undefined;
+              const result = usePlayerCompanyStore.getState().moveItemBetweenSlots({
+                sourceSoldierId: srcSoldierId,
+                sourceSlotType: srcSlotType,
+                sourceEqIndex: srcSlotType === "equipment" ? srcEqIdx : undefined,
+                destSoldierId: soldierId,
+                destSlotType: slotType,
+                destEqIndex: slotType === "equipment" ? destEqIdx : undefined,
+              });
+              if (result.success) {
+                UiManager.renderFormationScreen();
+              }
+            }
+            clearFormationEquipSelection();
+            return;
+          }
+
+          if (equipSlot.dataset.slotItem) {
+            clearFormationEquipSelection();
+            equipSlot.classList.add("formation-equip-slot-selected");
+            applyFormationEquipDropZones(equipSlot);
+          }
+          return;
+        }
+
         const card = (e.target as HTMLElement).closest(".formation-soldier-card") as HTMLElement | null;
-        if (!card) return;
+        if (!card) {
+          clearFormationEquipSelection();
+          return;
+        }
+        clearFormationEquipSelection();
         const slotIndexStr = card.dataset.slotIndex;
         if (slotIndexStr == null) return;
         const slotIndex = parseInt(slotIndexStr, 10);
@@ -2023,6 +2090,21 @@ export function eventConfigs() {
     screen?.querySelectorAll(".ready-room-drop-zone").forEach((el) => el.classList.remove("ready-room-drop-zone"));
   }
 
+  function clearReadyRoomEquipSelection() {
+    const screen = document.getElementById("ready-room-screen");
+    screen?.querySelectorAll(".ready-room-equip-slot-selected").forEach((el) => el.classList.remove("ready-room-equip-slot-selected"));
+    screen?.querySelectorAll(".ready-room-equip-slot-highlight").forEach((el) => el.classList.remove("ready-room-equip-slot-highlight"));
+  }
+
+  function applyReadyRoomEquipDropZones(selectedSlot: HTMLElement) {
+    const slotType = selectedSlot.dataset.slotType as "weapon" | "armor" | "equipment";
+    const screen = document.getElementById("ready-room-screen");
+    if (!screen || !slotType) return;
+    screen.querySelectorAll(`.ready-room-equip-slot[data-slot-type="${slotType}"]`).forEach((el) => {
+      if (el !== selectedSlot) (el as HTMLElement).classList.add("ready-room-equip-slot-highlight");
+    });
+  }
+
   function applyReadyRoomDropZones(selectedIndex: number) {
     const screen = document.getElementById("ready-room-screen");
     if (!screen) return;
@@ -2054,8 +2136,62 @@ export function eventConfigs() {
       selector: "#ready-room-screen",
       eventType: "click",
       callback: (e: Event) => {
+        const equipSlot = (e.target as HTMLElement).closest(".ready-room-equip-slot") as HTMLElement | null;
+        if (equipSlot) {
+          e.stopPropagation();
+          clearReadyRoomSelection();
+          const screen = document.getElementById("ready-room-screen");
+          const selectedSlot = screen?.querySelector(".ready-room-equip-slot-selected") as HTMLElement | null;
+          const soldierId = equipSlot.dataset.soldierId;
+          const slotType = equipSlot.dataset.slotType as "weapon" | "armor" | "equipment";
+          const eqIndexStr = equipSlot.dataset.eqIndex;
+          const eqIndex = eqIndexStr != null ? parseInt(eqIndexStr, 10) : undefined;
+
+          if (selectedSlot) {
+            if (selectedSlot === equipSlot) {
+              clearReadyRoomEquipSelection();
+              return;
+            }
+            const srcSoldierId = selectedSlot.dataset.soldierId!;
+            const srcSlotType = selectedSlot.dataset.slotType as "weapon" | "armor" | "equipment";
+            const srcEqIdx = selectedSlot.dataset.eqIndex != null ? parseInt(selectedSlot.dataset.eqIndex, 10) : undefined;
+            if (equipSlot.classList.contains("ready-room-equip-slot-highlight") && soldierId && slotType) {
+              const destEqIdx = slotType === "equipment" ? (eqIndexStr != null ? parseInt(eqIndexStr, 10) : undefined) : undefined;
+              const result = usePlayerCompanyStore.getState().moveItemBetweenSlots({
+                sourceSoldierId: srcSoldierId,
+                sourceSlotType: srcSlotType,
+                sourceEqIndex: srcSlotType === "equipment" ? srcEqIdx : undefined,
+                destSoldierId: soldierId,
+                destSlotType: slotType,
+                destEqIndex: slotType === "equipment" ? destEqIdx : undefined,
+              });
+              if (result.success) {
+                setLastEquipMoveSoldierIds(
+                  [srcSoldierId, soldierId].filter((v, i, a) => a.indexOf(v) === i),
+                );
+                const json = screen?.getAttribute("data-mission-json");
+                const mission = json && json !== "" ? JSON.parse(json) : null;
+                UiManager.renderReadyRoomScreen(mission);
+              }
+            }
+            clearReadyRoomEquipSelection();
+            return;
+          }
+
+          if (equipSlot.dataset.slotItem) {
+            clearReadyRoomEquipSelection();
+            equipSlot.classList.add("ready-room-equip-slot-selected");
+            applyReadyRoomEquipDropZones(equipSlot);
+          }
+          return;
+        }
+
         const card = (e.target as HTMLElement).closest(".ready-room-soldier-card") as HTMLElement | null;
-        if (!card) return;
+        if (!card) {
+          clearReadyRoomEquipSelection();
+          return;
+        }
+        clearReadyRoomEquipSelection();
         const slotIndexStr = card.dataset.slotIndex;
         if (slotIndexStr == null) return;
         const slotIndex = parseInt(slotIndexStr, 10);

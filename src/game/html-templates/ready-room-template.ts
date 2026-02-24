@@ -7,20 +7,34 @@ import { usePlayerCompanyStore } from "../../store/ui-store.ts";
 import { formatDisplayName } from "../../utils/name-utils.ts";
 import { getItemIconUrl } from "../../utils/item-utils.ts";
 
+let _lastEquipMoveSoldierIds: string[] = [];
+export function setLastEquipMoveSoldierIds(ids: string[]) {
+  _lastEquipMoveSoldierIds = ids;
+}
+export function clearLastEquipMoveSoldierIds() {
+  _lastEquipMoveSoldierIds = [];
+}
+
 function escapeAttr(s: string): string {
   return s.replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
-function readyRoomEquipSlot(item: Item | undefined): string {
-  if (!item) return `<div class="ready-room-equip-slot ready-room-equip-empty" title="Empty"><span class="ready-room-equip-placeholder">—</span></div>`;
+function readyRoomEquipSlot(
+  item: Item | undefined,
+  soldierId: string,
+  slotType: "weapon" | "armor" | "equipment",
+  eqIndex: number,
+): string {
+  const dataAttrs = `data-soldier-id="${soldierId}" data-slot-type="${slotType}" data-eq-index="${eqIndex}" data-slot-item="${item ? escapeAttr(JSON.stringify(item)) : ""}" role="button" tabindex="0"`;
+  if (!item) return `<div class="ready-room-equip-slot ready-room-equip-empty ready-room-equip-droppable" title="Empty" ${dataAttrs}><span class="ready-room-equip-placeholder">—</span></div>`;
   const iconUrl = getItemIconUrl(item);
   const level = item.level ?? 1;
   const rarity = (item.rarity ?? "common") as string;
   const name = item.name ?? "?";
-  if (!iconUrl) return `<div class="ready-room-equip-slot ready-room-equip-empty" title="${name}"><span class="ready-room-equip-placeholder">—</span></div>`;
+  if (!iconUrl) return `<div class="ready-room-equip-slot ready-room-equip-empty ready-room-equip-droppable" title="${name}" ${dataAttrs}><span class="ready-room-equip-placeholder">—</span></div>`;
   return `
-<div class="ready-room-equip-slot item-icon-wrap" title="${name}">
-  <img class="ready-room-equip-icon" src="${iconUrl}" alt="" width="32" height="32">
+<div class="ready-room-equip-slot item-icon-wrap ready-room-equip-droppable" title="${name}" ${dataAttrs}>
+  <img class="ready-room-equip-icon" src="${iconUrl}" alt="" width="38" height="38">
   <span class="item-level-badge ready-room-equip-level rarity-${rarity}">Lv${level}</span>
 </div>`;
 }
@@ -28,27 +42,35 @@ function readyRoomEquipSlot(item: Item | undefined): string {
 function readyRoomSoldierCard(s: Soldier, slotIndex: number, isActive: boolean): string {
   const des = (s.designation ?? "rifleman").toLowerCase();
   const slotClass = isActive ? "ready-room-active-slot" : "ready-room-reserve-slot";
+  const justMoved = _lastEquipMoveSoldierIds.includes(s.id);
+  const animateClass = justMoved ? " ready-room-card-just-moved" : "";
   const lvl = s.level ?? 1;
   const levelRarity = lvl >= 6 ? "epic" : lvl >= 3 ? "rare" : "common";
   return `
-<div class="ready-room-soldier-card designation-${des} ${slotClass}" data-soldier-id="${s.id}" data-slot-index="${slotIndex}" data-soldier-json="${escapeAttr(JSON.stringify(s))}" data-has-soldier="true">
+<div class="ready-room-soldier-card designation-${des} ${slotClass}${animateClass}" data-soldier-id="${s.id}" data-slot-index="${slotIndex}" data-soldier-json="${escapeAttr(JSON.stringify(s))}" data-has-soldier="true">
   <div class="ready-room-card-inner">
-    <div class="ready-room-avatar-wrap">
-      <img class="ready-room-avatar" src="/images/green-portrait/${s.avatar}" alt="">
-      <span class="ready-room-level-badge item-level-badge rarity-${levelRarity}">Lv${lvl}</span>
-      <span class="ready-room-role-badge market-weapon-role-badge role-${des}">${s.designation ?? "Rifleman"}</span>
-    </div>
-    <div class="ready-room-details">
-      <div class="ready-room-name-block">
-        <span class="ready-room-name">${formatDisplayName(s.name)}</span>
+    <div class="ready-room-left">
+      <div class="ready-room-avatar-wrap">
+        <img class="ready-room-avatar" src="/images/green-portrait/${s.avatar}" alt="">
+        <span class="ready-room-level-badge item-level-badge rarity-${levelRarity}">Lv${lvl}</span>
+        <span class="ready-room-role-badge market-weapon-role-badge role-${des}">${s.designation ?? "Rifleman"}</span>
       </div>
       <div class="ready-room-hp-wrap">
         <div class="ready-room-hp-bar" style="width: 100%"></div>
         <span class="ready-room-hp-value">HP ${s.attributes.hit_points}</span>
       </div>
+    </div>
+    <div class="ready-room-details">
+      <div class="ready-room-name-block">
+        <span class="ready-room-name">${formatDisplayName(s.name)}</span>
+      </div>
       <div class="ready-room-equip-row">
-        ${readyRoomEquipSlot(s.weapon as Item | undefined)}
-        ${readyRoomEquipSlot(s.armor as Item | undefined)}
+        ${readyRoomEquipSlot(s.weapon as Item | undefined, s.id, "weapon", 0)}
+        ${readyRoomEquipSlot(s.armor as Item | undefined, s.id, "armor", 0)}
+      </div>
+      <div class="ready-room-equip-row">
+        ${readyRoomEquipSlot((s.inventory ?? [])[0] as Item | undefined, s.id, "equipment", 0)}
+        ${readyRoomEquipSlot((s.inventory ?? [])[1] as Item | undefined, s.id, "equipment", 1)}
       </div>
     </div>
   </div>

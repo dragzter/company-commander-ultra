@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "build:skip-types": "vite build",
+    "deploy": "npm run build:skip-types && vercel --prod",
     "preview": "vite preview",
     "cap:sync": "npm run build && npx cap sync",
     "cap:open": "npx cap open ios"

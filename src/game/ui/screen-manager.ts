@@ -22,7 +22,10 @@ import {
   suppliesMarketTemplate,
 } from "../html-templates/market-templates.ts";
 import { missionsTemplate } from "../html-templates/missions-template.ts";
-import { readyRoomTemplate } from "../html-templates/ready-room-template.ts";
+import {
+  readyRoomTemplate,
+  clearLastEquipMoveSoldierIds,
+} from "../html-templates/ready-room-template.ts";
 import { rosterTemplate } from "../html-templates/roster-template.ts";
 import { formationTemplate } from "../html-templates/formation-template.ts";
 import { inventoryTemplate } from "../html-templates/inventory-template.ts";
@@ -138,6 +141,7 @@ function ScreenManager() {
     UiManager.clear.center();
     const content = parseHTML(readyRoomTemplate(mission ?? null));
     center.appendChild(content as Element);
+    setTimeout(clearLastEquipMoveSoldierIds, 450);
     DomEventManager.initEventArray(ec().companyHome().concat(ec().readyRoomScreen()));
     UiManager.selectCompanyHomeButton(DOM.company.missions);
     Styler.setCenterBG("bg_81.jpg", true);

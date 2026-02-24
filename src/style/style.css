@@ -1413,10 +1413,11 @@ button.mbtn {
 .ready-room-soldier-card {
 	display: flex;
 	flex-direction: column;
-	background: linear-gradient(165deg, rgba(28, 36, 28, 0.72) 0%, rgba(18, 26, 18, 0.78) 100%);
-	border: 1px solid rgba(80, 110, 60, 0.45);
-	border-radius: 5px;
+	background: linear-gradient(165deg, rgba(32, 42, 32, 0.88) 0%, rgba(22, 32, 22, 0.92) 100%);
+	border: 1px solid rgba(100, 140, 80, 0.6);
+	border-radius: 6px;
 	padding: 6px 8px;
+	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.06);
 	cursor: pointer;
 	transition: border-color 0.15s, box-shadow 0.15s;
 	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
@@ -1436,16 +1437,19 @@ button.mbtn {
 	animation: formation-drop-pulse 1.2s ease-in-out infinite;
 }
 .ready-room-soldier-card.designation-rifleman {
-	background: linear-gradient(165deg, rgba(45, 58, 32, 0.75) 0%, rgba(38, 52, 26, 0.8) 100%);
-	border-color: rgba(100, 140, 70, 0.5);
+	background: linear-gradient(165deg, rgba(50, 68, 38, 0.9) 0%, rgba(38, 56, 28, 0.94) 100%);
+	border-color: rgba(120, 170, 90, 0.65);
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(160, 220, 120, 0.12);
 }
 .ready-room-soldier-card.designation-support {
-	background: linear-gradient(165deg, rgba(50, 45, 32, 0.75) 0%, rgba(40, 35, 24, 0.8) 100%);
-	border-color: rgba(220, 200, 130, 0.4);
+	background: linear-gradient(165deg, rgba(55, 50, 38, 0.9) 0%, rgba(42, 38, 26, 0.94) 100%);
+	border-color: rgba(200, 180, 110, 0.55);
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(220, 200, 140, 0.1);
 }
 .ready-room-soldier-card.designation-medic {
-	background: linear-gradient(165deg, rgba(58, 28, 25, 0.75) 0%, rgba(48, 22, 20, 0.8) 100%);
-	border-color: rgba(220, 85, 80, 0.45);
+	background: linear-gradient(165deg, rgba(62, 32, 28, 0.9) 0%, rgba(50, 24, 20, 0.94) 100%);
+	border-color: rgba(220, 100, 95, 0.6);
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 160, 150, 0.1);
 }
 .ready-room-active-slot {
 	border-left: 4px solid rgba(120, 220, 130, 0.75);
@@ -1458,14 +1462,20 @@ button.mbtn {
 	align-items: center;
 	gap: 8px;
 }
-.ready-room-avatar-wrap {
+.ready-room-left {
 	--ready-room-avatar-size: 56px;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 4px;
+	flex-shrink: 0;
+}
+.ready-room-avatar-wrap {
 	position: relative;
 	display: inline-block;
 	width: var(--ready-room-avatar-size);
 	height: var(--ready-room-avatar-size);
 	flex-shrink: 0;
-	align-self: center;
 }
 .ready-room-avatar {
 	width: var(--ready-room-avatar-size);
@@ -1520,6 +1530,9 @@ button.mbtn {
 	overflow: hidden;
 	text-overflow: ellipsis;
 }
+.ready-room-left .ready-room-hp-wrap {
+	width: var(--ready-room-avatar-size);
+}
 .ready-room-hp-wrap {
 	position: relative;
 	width: 100%;
@@ -1558,13 +1571,14 @@ button.mbtn {
 }
 .ready-room-equip-slot {
 	position: relative;
-	width: 32px;
-	height: 32px;
+	width: 38px;
+	height: 38px;
 	flex-shrink: 0;
+	cursor: pointer;
 }
 .ready-room-equip-slot.item-icon-wrap .ready-room-equip-icon {
-	width: 32px;
-	height: 32px;
+	width: 38px;
+	height: 38px;
 	object-fit: contain;
 	border-radius: 3px;
 	display: block;
@@ -1585,6 +1599,37 @@ button.mbtn {
 .ready-room-equip-placeholder {
 	font-size: 0.65rem;
 	color: rgba(140, 140, 130, 0.6);
+}
+.ready-room-equip-slot-selected {
+	outline: 2px solid #e8c040;
+	outline-offset: 2px;
+	box-shadow: 0 0 10px rgba(232, 192, 64, 0.5);
+}
+.ready-room-equip-slot-highlight {
+	outline: 2px solid #4a9eff;
+	outline-offset: 2px;
+	animation: ready-room-equip-pulse 1s ease-in-out infinite;
+}
+.ready-room-soldier-card.ready-room-card-just-moved {
+	animation: ready-room-equip-moved 0.4s ease-out;
+}
+@keyframes ready-room-equip-moved {
+	0% {
+		transform: scale(0.95);
+		opacity: 0.7;
+	}
+	60% {
+		transform: scale(1.02);
+		opacity: 1;
+	}
+	100% {
+		transform: scale(1);
+		opacity: 1;
+	}
+}
+@keyframes ready-room-equip-pulse {
+	0%, 100% { box-shadow: 0 0 6px rgba(74, 158, 255, 0.4); }
+	50% { box-shadow: 0 0 12px rgba(74, 158, 255, 0.7); }
 }
 .ready-room-empty-slot {
 	cursor: pointer;
@@ -1642,10 +1687,11 @@ button.mbtn {
 .formation-soldier-card {
 	display: flex;
 	flex-direction: column;
-	background: linear-gradient(165deg, rgba(28, 36, 28, 0.72) 0%, rgba(18, 26, 18, 0.78) 100%);
-	border: 1px solid rgba(80, 110, 60, 0.45);
-	border-radius: 5px;
+	background: linear-gradient(165deg, rgba(32, 42, 32, 0.88) 0%, rgba(22, 32, 22, 0.92) 100%);
+	border: 1px solid rgba(100, 140, 80, 0.6);
+	border-radius: 6px;
 	padding: 6px 8px;
+	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.06);
 	cursor: pointer;
 	transition: border-color 0.15s, box-shadow 0.15s;
 	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
@@ -1669,16 +1715,19 @@ button.mbtn {
 	50% { box-shadow: 0 0 0 3px rgba(100, 190, 255, 0.7), 0 0 18px rgba(100, 200, 255, 0.4), inset 0 0 24px rgba(120, 200, 255, 0.12); }
 }
 .formation-soldier-card.designation-rifleman {
-	background: linear-gradient(165deg, rgba(45, 58, 32, 0.75) 0%, rgba(38, 52, 26, 0.8) 100%);
-	border-color: rgba(100, 140, 70, 0.5);
+	background: linear-gradient(165deg, rgba(50, 68, 38, 0.9) 0%, rgba(38, 56, 28, 0.94) 100%);
+	border-color: rgba(120, 170, 90, 0.65);
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(160, 220, 120, 0.12);
 }
 .formation-soldier-card.designation-support {
-	background: linear-gradient(165deg, rgba(50, 45, 32, 0.75) 0%, rgba(40, 35, 24, 0.8) 100%);
-	border-color: rgba(220, 200, 130, 0.4);
+	background: linear-gradient(165deg, rgba(55, 50, 38, 0.9) 0%, rgba(42, 38, 26, 0.94) 100%);
+	border-color: rgba(200, 180, 110, 0.55);
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(220, 200, 140, 0.1);
 }
 .formation-soldier-card.designation-medic {
-	background: linear-gradient(165deg, rgba(58, 28, 25, 0.75) 0%, rgba(48, 22, 20, 0.8) 100%);
-	border-color: rgba(220, 85, 80, 0.45);
+	background: linear-gradient(165deg, rgba(62, 32, 28, 0.9) 0%, rgba(50, 24, 20, 0.94) 100%);
+	border-color: rgba(220, 100, 95, 0.6);
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 160, 150, 0.1);
 }
 .formation-soldier-card.formation-just-swapped {
 	animation: formation-swap-in 0.4s ease-out;
@@ -1708,14 +1757,20 @@ button.mbtn {
 	align-items: center;
 	gap: 8px;
 }
-.formation-avatar-wrap {
+.formation-left {
 	--formation-avatar-size: 56px;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 4px;
+	flex-shrink: 0;
+}
+.formation-avatar-wrap {
 	position: relative;
 	display: inline-block;
 	width: var(--formation-avatar-size);
 	height: var(--formation-avatar-size);
 	flex-shrink: 0;
-	align-self: center;
 }
 .formation-avatar {
 	width: var(--formation-avatar-size);
@@ -1788,6 +1843,9 @@ button.mbtn {
 	font-size: 0.72rem;
 	text-shadow: 0 1px 1px rgba(0, 0, 0, 0.3);
 }
+.formation-left .formation-hp-wrap {
+	width: var(--formation-avatar-size);
+}
 .formation-hp-wrap {
 	position: relative;
 	width: 100%;
@@ -1849,6 +1907,23 @@ button.mbtn {
 	justify-content: center;
 	background: rgba(0, 0, 0, 0.3);
 	border-radius: 3px;
+}
+.formation-equip-slot.formation-equip-droppable {
+	cursor: pointer;
+}
+.formation-equip-slot-selected {
+	outline: 2px solid #e8c040;
+	outline-offset: 2px;
+	box-shadow: 0 0 10px rgba(232, 192, 64, 0.5);
+}
+.formation-equip-slot-highlight {
+	outline: 2px solid #4a9eff;
+	outline-offset: 2px;
+	animation: formation-equip-pulse 1s ease-in-out infinite;
+}
+@keyframes formation-equip-pulse {
+	0%, 100% { box-shadow: 0 0 6px rgba(74, 158, 255, 0.4); }
+	50% { box-shadow: 0 0 12px rgba(74, 158, 255, 0.7); }
 }
 .formation-equip-placeholder {
 	font-size: 0.65rem;
@@ -1998,11 +2073,11 @@ button.mbtn {
 .roster-soldier-card {
 	display: flex;
 	flex-direction: column;
-	background: linear-gradient(180deg, rgba(28, 35, 25, 0.95) 0%, rgba(18, 22, 15, 0.98) 100%);
-	border: 1px solid var(--camo-green-3);
+	background: linear-gradient(180deg, rgba(32, 42, 30, 0.95) 0%, rgba(22, 30, 20, 0.98) 100%);
+	border: 1px solid rgba(100, 160, 80, 0.6);
 	border-radius: 6px;
 	overflow: hidden;
-	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.06);
 	min-width: 0;
 }
 
@@ -2066,6 +2141,49 @@ button.mbtn {
 	align-items: center;
 	flex: 1;
 	min-height: 0;
+}
+
+.entity-card.roster-card .roster-left {
+	--roster-avatar-size: 52px;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 4px;
+	flex-shrink: 0;
+}
+.entity-card.roster-card .roster-left .roster-hp-wrap {
+	width: var(--roster-avatar-size);
+}
+.entity-card.roster-card .roster-hp-wrap {
+	position: relative;
+	width: 100%;
+	height: 10px;
+	background: rgba(0, 0, 0, 0.6);
+	border-radius: 3px;
+	overflow: hidden;
+	border: 1px solid rgba(60, 90, 50, 0.5);
+}
+.entity-card.roster-card .roster-hp-bar {
+	height: 100%;
+	background: linear-gradient(180deg, #3da85a 0%, #2a8a42 50%, #1e6b32 100%);
+	border-radius: 2px;
+	transition: width 0.2s;
+}
+.entity-card.roster-card .roster-hp-value {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 0.6rem;
+	font-weight: 800;
+	color: #fff;
+	text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
+	pointer-events: none;
+}
+.entity-card.roster-card .roster-left .card-image {
+	width: var(--roster-avatar-size);
+	height: var(--roster-avatar-size);
 }
 
 .roster-avatar-wrap {
@@ -2649,6 +2767,9 @@ button.mbtn {
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
+}
+.inventory-item-card .market-item-name {
+	font-size: 0.82rem;
 }
 
 .market-item-price {
@@ -5552,6 +5673,26 @@ button.mbtn {
 }
 
 /* Roster cards - use entity-card; reserve gets subdued outline */
+.entity-card.roster-card {
+	background: linear-gradient(180deg, rgba(32, 42, 30, 0.95) 0%, rgba(22, 30, 20, 0.98) 100%);
+	outline: 2px solid rgba(100, 160, 80, 0.65);
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+.entity-card.roster-card.designation-rifleman {
+	background: linear-gradient(180deg, rgba(38, 52, 32, 0.95) 0%, rgba(28, 40, 24, 0.98) 100%);
+	outline-color: rgba(120, 180, 95, 0.7);
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(160, 220, 120, 0.1);
+}
+.entity-card.roster-card.designation-support {
+	background: linear-gradient(180deg, rgba(42, 38, 30, 0.95) 0%, rgba(30, 28, 22, 0.98) 100%);
+	outline-color: rgba(200, 180, 110, 0.6);
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(220, 200, 140, 0.08);
+}
+.entity-card.roster-card.designation-medic {
+	background: linear-gradient(180deg, rgba(52, 30, 28, 0.95) 0%, rgba(40, 22, 20, 0.98) 100%);
+	outline-color: rgba(220, 100, 95, 0.65);
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 160, 150, 0.08);
+}
 .entity-card.roster-card .card-actions {
 	display: flex;
 	flex-direction: column;

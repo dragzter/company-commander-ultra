@@ -98,7 +98,13 @@ function Partial() {
 <div data-soldier-id="${soldier.id}" data-soldier-index="${index}" class="entity-card roster-card designation-${soldier.designation ?? "rifleman"} ${slotClass}">
   <div class="card-body">
     <div class="card-row card-row-1">
-      <img class="card-image" src="/images/green-portrait/${avatar}" alt="">
+      <div class="roster-left">
+        <img class="card-image" src="/images/green-portrait/${avatar}" alt="">
+        <div class="roster-hp-wrap">
+          <div class="roster-hp-bar" style="width: 100%"></div>
+          <span class="roster-hp-value">HP ${hp}</span>
+        </div>
+      </div>
       <div class="card-title-block">
         <span class="card-name">${formatDisplayName(soldier.name)}</span>
         <span class="equip-picker-role equip-picker-role-${(soldier.designation ?? "rifleman").toLowerCase()}" data-role="${soldier.designation ?? "rifleman"}"><span class="equip-picker-role-initial">${((soldier.designation ?? "Rifleman")[0] ?? "R").toUpperCase()}</span><span class="equip-picker-role-text">${soldier.designation ?? "Rifleman"}</span></span>
@@ -106,7 +112,6 @@ function Partial() {
     </div>
     <div class="card-row card-row-2">
       <div class="card-stats-grid">
-        <div class="detail-item stat-hp"><span class="stat-label">HP</span><span class="stat-value">${hp}</span></div>
         <div class="detail-item"><span class="stat-label">MIT</span><span class="stat-value">${mit}%</span></div>
         <div class="detail-item"><span class="stat-label">AVD</span><span class="stat-value">${avd}%</span></div>
         <div class="detail-item"><span class="stat-label">CTH</span><span class="stat-value">${cth}%</span></div>

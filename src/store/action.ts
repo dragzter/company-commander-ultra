@@ -523,10 +523,13 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
         const newInv = inv.slice();
         if (eqIdx < newInv.length) {
           newInv[eqIdx] = { ...item };
+        } else if (eqIdx < MAX_EQUIPMENT_SLOTS) {
+          while (newInv.length <= eqIdx) newInv.push(undefined as any);
+          newInv[eqIdx] = { ...item };
         } else if (newInv.length < MAX_EQUIPMENT_SLOTS) {
           newInv.push({ ...item });
         }
-        return { ...sol, inventory: newInv };
+        return { ...sol, inventory: newInv.slice(0, MAX_EQUIPMENT_SLOTS) };
       }) ?? [];
       return {
         company: {
@@ -637,10 +640,15 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
 
     const destInv = dest.inventory ?? [];
     const destItem = getItem(dest, op.destSlotType, op.destEqIndex);
+    const isSameSoldierReorder =
+      op.sourceSoldierId === op.destSoldierId &&
+      op.sourceSlotType === "equipment" &&
+      op.destSlotType === "equipment";
     if (
       op.destSlotType === "equipment" &&
       !destItem &&
-      destInv.length >= MAX_EQUIPMENT_SLOTS
+      destInv.length >= MAX_EQUIPMENT_SLOTS &&
+      !isSameSoldierReorder
     ) {
       return { success: false, reason: "equipment slots full" };
     }
@@ -656,6 +664,15 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
       const ensureTarget = (i: any) => i ? { ...i, target: i.target ?? TARGET_TYPES.none } : undefined;
       const destWithTarget = destItem ? ensureTarget(destItem) : undefined;
       const newSoldiers = ss.map((sol) => {
+        const isSameSoldier = op.sourceSoldierId === op.destSoldierId;
+        if (isSameSoldier && op.sourceSlotType === "equipment" && op.destSlotType === "equipment" && op.sourceEqIndex != null && op.destEqIndex != null && sol.id === op.sourceSoldierId) {
+          const inv = (sol.inventory ?? []).slice();
+          const srcIdx = op.sourceEqIndex;
+          const destIdx = op.destEqIndex;
+          while (inv.length <= Math.max(srcIdx, destIdx)) inv.push(undefined as any);
+          [inv[srcIdx], inv[destIdx]] = [inv[destIdx], inv[srcIdx]];
+          return { ...sol, inventory: inv.slice(0, MAX_EQUIPMENT_SLOTS) };
+        }
         if (sol.id === op.sourceSoldierId) {
           if (op.sourceSlotType === "weapon") {
             return { ...sol, weapon: destWithTarget };
@@ -684,6 +701,10 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
             inv[idx] = srcWithTarget as any;
           } else if (idx < inv.length) {
             inv.splice(idx, 0, srcWithTarget as any);
+          } else if (op.destEqIndex != null && op.destEqIndex >= inv.length && op.destEqIndex < MAX_EQUIPMENT_SLOTS) {
+            /* Place in the selected slot index even when inv is empty or shorter */
+            while (inv.length <= op.destEqIndex) inv.push(undefined as any);
+            inv[op.destEqIndex] = srcWithTarget as any;
           } else if (inv.length < MAX_EQUIPMENT_SLOTS) {
             inv.push(srcWithTarget as any);
           }
