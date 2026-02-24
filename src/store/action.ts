@@ -6,6 +6,7 @@ import { eventConfigs } from "../game/ui/event-configs.ts";
 import { type CompanyStore, GAME_STEPS, type GameStep } from "./ui-store.ts";
 import {
   type Company,
+  getMaxCompanySize,
   COMPANY_RESOURCES_BY_LEVEL,
 } from "../game/entities/company/company.ts";
 import type { Soldier } from "../game/entities/types.ts";
@@ -16,15 +17,13 @@ import {
   getWeaponArmorySlots,
   getArmorArmorySlots,
   getEquipmentArmorySlots,
+  getXpRequiredForLevel,
 } from "../constants/economy.ts";
 import {
   getItemArmoryCategory,
   countArmoryByCategory,
   canItemStackInArmory,
 } from "../utils/item-utils.ts";
-import {
-  getMaxCompanySize,
-} from "../game/entities/company/company.ts";
 import { getFormationSlots, getActiveSlots, getReserveSlots } from "../constants/company-slots.ts";
 import { TARGET_TYPES } from "../constants/items/types.ts";
 import { MAX_EQUIPMENT_SLOTS } from "../constants/inventory-slots.ts";
@@ -59,6 +58,8 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
 
   // Actions
   rerollSoldier: async (id: string) => {
+    if ((get().rerollCounter ?? 0) <= 0) return;
+
     const rerollIndex = get().marketAvailableTroops.findIndex(
       (soldier) => soldier.id === id,
     );
@@ -103,9 +104,10 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
 
     get().useRerollCounter();
 
+    const canRerollAfter = (get().rerollCounter ?? 0) > 0;
     await animateHTMLReplace(
       trooperCard,
-      Partial.render.parsedTrooper(newSoldier, canAddOneMore),
+      Partial.render.parsedTrooper(newSoldier, canAddOneMore, canRerollAfter),
     ).then(() => {
       DomEventManager.initEventArray(eventConfigs().troopsScreen());
 
@@ -114,6 +116,13 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
         rerollCounterDiv.replaceWith(
           Partial.render.parsedRerollCounter(get().rerollCounter) as HTMLElement,
         );
+      }
+      const rc = get().rerollCounter ?? 0;
+      if (rc <= 0) {
+        document.querySelectorAll(".reroll-soldier").forEach((btn) => {
+          (btn as HTMLButtonElement).disabled = true;
+          btn.classList.add("reroll-disabled");
+        });
       }
     });
   },
@@ -278,6 +287,7 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
       };
     }),
   onCompanyLevelUp: () => {
+    set((s: CompanyStore) => ({ rerollCounter: 6 }));
     const soldiers = SoldierManager.generateTroopList(
       get().companyLevel ?? 1,
     );
@@ -741,7 +751,7 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
     });
   },
 
-  /** Grant mission rewards: credits on victory, items (armory or holding if full). Respects per-category caps. Updates mission stats. */
+  /** Grant mission rewards: credits on victory, XP/level-up, items (armory or holding if full). Respects per-category caps. Updates mission stats. */
   grantMissionRewards: (mission: Mission | null, victory: boolean) => {
     set((s: CompanyStore) => ({
       totalMissionsCompleted: (s.totalMissionsCompleted ?? 0) + (victory ? 1 : 0),
@@ -751,6 +761,32 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
     const state = get();
     const credits = mission.creditReward ?? 0;
     set((s: CompanyStore) => ({ creditBalance: s.creditBalance + credits }));
+
+    /* Add XP and level up */
+    const xpGain = mission.xpReward ?? 20 * (mission.difficulty ?? 1);
+    const stateAfterCredits = get();
+    const oldLevel = stateAfterCredits.company?.level ?? stateAfterCredits.companyLevel ?? 1;
+    let exp = (stateAfterCredits.company?.experience ?? stateAfterCredits.companyExperience ?? 0) + xpGain;
+    let lvl = oldLevel;
+    const maxLevel = 10;
+    while (lvl < maxLevel && exp >= getXpRequiredForLevel(lvl + 1)) {
+      lvl += 1;
+    }
+    const profile = COMPANY_RESOURCES_BY_LEVEL[Math.min(lvl, 10) - 1] ?? COMPANY_RESOURCES_BY_LEVEL[0];
+    set((s: CompanyStore) => ({
+      company: {
+        ...s.company,
+        level: lvl,
+        experience: exp,
+        resourceProfile: profile,
+      },
+      companyLevel: lvl,
+      companyExperience: exp,
+    }));
+    if (lvl > oldLevel) {
+      get().onCompanyLevelUp();
+    }
+
     const rewardIds = mission.rewardItems ?? [];
     if (rewardIds.length === 0) return;
     const level = state.company?.level ?? state.companyLevel ?? 1;

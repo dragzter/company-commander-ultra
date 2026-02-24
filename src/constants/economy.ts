@@ -47,6 +47,14 @@ export function getTotalArmorySlots(level: number): number {
   return getWeaponArmorySlots(level) + getArmorArmorySlots(level) + getEquipmentArmorySlots(level);
 }
 
+/** XP required to reach level L (total). L1=0, L2=100, L3=250, L4=450, ..., L10=3250. Max level 10. */
+const XP_FOR_LEVEL = [0, 100, 250, 450, 700, 1000, 1350, 1750, 2200, 2700, 3250];
+
+export function getXpRequiredForLevel(level: number): number {
+  if (level < 1 || level > 10) return level <= 1 ? 0 : XP_FOR_LEVEL[10];
+  return XP_FOR_LEVEL[level] ?? 0;
+}
+
 /** Re-export gear pricing from item-pricing for use in gear market. */
 export { getWeaponPrice, getArmorPrice } from "./item-pricing.ts";
 

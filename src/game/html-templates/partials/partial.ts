@@ -16,10 +16,13 @@ function Partial() {
    * Stat labels: HP, MIT, AVD, CTH, MOR, TGH, AWR, DEX
    * @param trooper: Soldier
    * @param canRecruit: whether the player can add one more to staging (afford + cap)
+   * @param canReroll: whether reroll is available (counter > 0)
    */
-  function _t(trooper: Soldier, canRecruit = true) {
+  function _t(trooper: Soldier, canRecruit = true, canReroll = true) {
     const disabledClass = canRecruit ? "" : " recruit-disabled";
     const recruitDisabledAttr = canRecruit ? "" : ' aria-disabled="true"';
+    const rerollDisabledAttr = canReroll ? "" : ' disabled aria-disabled="true"';
+    const rerollDisabledClass = canReroll ? "" : " reroll-disabled";
     const hp = trooper.attributes.hit_points;
     const mit = formatPctOneDecimal(trooper.combatProfile.mitigateDamage);
     const avd = formatPctOneDecimal(trooper.combatProfile.chanceToEvade);
@@ -55,7 +58,7 @@ function Partial() {
 					</div>
 					<div class="card-row card-row-3">
 						<div class="card-actions card-actions-recruit">
-							<button data-trooperid="${trooper.id}" class="troop-recruit-btn troop-recruit-reroll reroll-soldier" title="Reroll">Reroll</button>
+							<button data-trooperid="${trooper.id}" class="troop-recruit-btn troop-recruit-reroll reroll-soldier${rerollDisabledClass}" title="Reroll"${rerollDisabledAttr}>Reroll</button>
 							<button data-trooper-id="${trooper.id}" data-can-recruit="${canRecruit}" title="Recruit" class="troop-recruit-btn troop-recruit-buy recruit-soldier"${recruitDisabledAttr}><span class="recruit-btn-label">Recruit</span> <span class="recruit-btn-price">$${getRecruitCost(trooper.trait_profile?.stats)}</span></button>
 						</div>
 					</div>
@@ -71,9 +74,10 @@ function Partial() {
    * Pass the HTML string through the HTML parser
    * @param trooper: Soldier
    * @param canRecruit: whether the player can add one more to staging
+   * @param canReroll: whether reroll is available (counter > 0)
    */
-  function _pt(trooper: Soldier, canRecruit = true): HTMLElement {
-    return parseHTML(_t(trooper, canRecruit)) as HTMLElement;
+  function _pt(trooper: Soldier, canRecruit = true, canReroll = true): HTMLElement {
+    return parseHTML(_t(trooper, canRecruit, canReroll)) as HTMLElement;
   }
 
   /**
@@ -142,16 +146,17 @@ function Partial() {
    * @param soldier
    */
   function _stc(soldier: Soldier) {
+    const des = (soldier.designation ?? "rifleman").toLowerCase();
     return `
-    <div data-staged-soldier-id="${soldier.id}" class="staged-trooper-card">
+    <div data-staged-soldier-id="${soldier.id}" class="staged-trooper-card designation-${des}">
+        <button type="button" data-soldier-id="${soldier.id}" class="staged-trooper-remove remove-from-staging" title="Remove from selection" aria-label="Remove from selection">&times;</button>
         <div class="staged-trooper-avatar-wrap">
             <img src="/images/green-portrait/${soldier.avatar}" alt="Staged Trooper" class="staged-trooper-avatar">
-            <button type="button" data-soldier-id="${soldier.id}" class="staged-trooper-remove remove-from-staging" title="Remove from selection">&times;</button>
+            <span class="staged-trooper-role">${(soldier.designation ?? "Rifleman").toUpperCase()}</span>
         </div>
+        <span class="staged-trooper-level">${soldier.level}</span>
         <div class="staged-trooper-metadata">
             <p class="staged-trooper-name">${formatDisplayName(soldier.name)}</p>
-            <p class="staged-trooper-role">${soldier.designation.toUpperCase()}</p>
-            <p class="staged-trooper-level">Lv ${soldier.level}</p>
         </div>
     </div>`;
   }
@@ -167,7 +172,8 @@ function Partial() {
    * Reroll counter div
    */
   function _rc(counter: number) {
-    return parseHTML(`<div class="recruit-staging-reroll reroll-counter">Rerolls: ${counter}</div>`);
+    const emptyClass = counter <= 0 ? " reroll-empty" : "";
+    return parseHTML(`<div class="recruit-staging-reroll reroll-counter${emptyClass}">Rerolls: ${counter}</div>`);
   }
 
   const STAT_KEYS: Record<string, string> = {

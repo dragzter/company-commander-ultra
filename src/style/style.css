@@ -626,39 +626,81 @@ button.mbtn {
 	gap: 8px;
 	-webkit-overflow-scrolling: touch;
 }
+#troops-market .troops-list .entity-card img.card-image {
+	width: 77px;
+	height: 77px;
+	border-radius: 6px;
+}
+#troops-market .troops-list .entity-card .card-name {
+	font-size: 0.88rem;
+}
+#troops-market .troops-list .entity-card .equip-picker-role {
+	padding: 3px 7px 3px 6px;
+	font-size: 0.58rem;
+}
+#troops-market .troops-list .entity-card .equip-picker-role-initial {
+	width: 12px;
+	height: 12px;
+	font-size: 0.5rem;
+}
 
 .troops-market-main .recruit-staging-area {
-	width: 20%;
-	min-width: 88px;
-	max-width: 108px;
+	width: 22%;
+	min-width: 108px;
+	max-width: 128px;
 	flex-shrink: 0;
+	min-height: 0;
 	display: flex;
 	flex-direction: column;
 	gap: 6px;
 	padding: 8px;
 	background: rgba(0, 0, 0, 0.5);
 	border-left: 1px solid var(--gray-5);
+	overflow: hidden;
 }
 
 .recruit-staging-label {
 	margin: 0;
-	font-size: 0.9rem;
+	font-size: 0.7rem;
 	font-weight: 600;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
-.recruit-staging-reroll {
-	font-size: 0.65rem;
+.recruit-staging-reroll.reroll-counter {
+	font-size: 0.7rem;
+	font-weight: 600;
+	letter-spacing: 0.02em;
 	white-space: nowrap;
+	color: var(--camo-tan-1);
+	background: transparent;
+	border: 1px solid rgba(212, 165, 116, 0.45);
+	padding: 4px 10px;
+	margin-bottom: 8px;
+	border-radius: 999px;
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+}
+.recruit-staging-reroll.reroll-counter.reroll-empty {
+	opacity: 0.6;
 	color: var(--gray-2);
+	border-color: rgba(128, 128, 128, 0.35);
 }
 
 #recruit-staging {
 	flex: 1;
-	min-height: 60px;
+	min-height: 0;
 	overflow-y: auto;
+	overflow-x: hidden;
 	display: flex;
 	flex-direction: column;
 	gap: 8px;
+	-webkit-overflow-scrolling: touch;
+}
+#recruit-staging .staged-trooper-card {
+	flex-shrink: 0;
 }
 
 .staging-total-banner {
@@ -689,16 +731,6 @@ button.mbtn {
 	cursor: not-allowed;
 }
 
-.reroll-counter {
-	padding: 3px 8px;
-	background: var(--camo-brown-1);
-	margin-bottom: 9px;
-	color: #fff;
-	width: fit-content;
-	display: inline-block;
-	border-radius: 6px;
-	text-align: center;
-}
 
 
 
@@ -725,22 +757,58 @@ button.mbtn {
 	cursor: pointer;
 }
 
-/* Staged trooper card: avatar full width, metadata with camo, X top-right of avatar */
+/* Staged trooper card: sleek avatar + compact metadata */
 .staged-trooper-card {
+	position: relative;
 	display: flex;
 	flex-direction: column;
 	overflow: hidden;
+	background: linear-gradient(180deg, rgba(18, 24, 18, 0.97) 0%, rgba(10, 14, 10, 0.99) 100%);
+	border: 1px solid rgba(255, 255, 255, 0.08);
+	border-radius: var(--std-border-radius);
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+.staged-trooper-card.designation-rifleman {
+	background: linear-gradient(180deg, rgba(32, 48, 28, 0.97) 0%, rgba(18, 30, 14, 0.99) 100%);
+	border-color: rgba(100, 180, 80, 0.5);
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), 0 0 12px rgba(80, 160, 70, 0.15), inset 0 1px 0 rgba(160, 220, 120, 0.08);
+}
+.staged-trooper-card.designation-support {
+	background: linear-gradient(180deg, rgba(48, 42, 28, 0.97) 0%, rgba(28, 24, 14, 0.99) 100%);
+	border-color: rgba(200, 180, 100, 0.45);
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), 0 0 12px rgba(180, 160, 60, 0.12), inset 0 1px 0 rgba(220, 200, 130, 0.08);
+}
+.staged-trooper-card.designation-medic {
+	background: linear-gradient(180deg, rgba(52, 28, 26, 0.97) 0%, rgba(32, 16, 14, 0.99) 100%);
+	border-color: rgba(220, 90, 85, 0.5);
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), 0 0 12px rgba(200, 70, 65, 0.15), inset 0 1px 0 rgba(255, 150, 140, 0.08);
 }
 
 .staged-trooper-avatar-wrap {
 	position: relative;
-	width: 100%;
-	margin-bottom: -18px;
+	width: 82%;
+	margin: 6px auto 0;
+	aspect-ratio: 1;
+	overflow: hidden;
+	border-radius: 18px;
+	border: 2px solid rgba(255, 255, 255, 0.12);
+}
+.staged-trooper-card.designation-rifleman .staged-trooper-avatar-wrap {
+	border-color: rgba(120, 200, 90, 0.6);
+	box-shadow: 0 0 10px rgba(80, 180, 70, 0.25);
+}
+.staged-trooper-card.designation-support .staged-trooper-avatar-wrap {
+	border-color: rgba(220, 200, 120, 0.55);
+	box-shadow: 0 0 10px rgba(200, 170, 80, 0.2);
+}
+.staged-trooper-card.designation-medic .staged-trooper-avatar-wrap {
+	border-color: rgba(220, 100, 95, 0.6);
+	box-shadow: 0 0 10px rgba(200, 70, 65, 0.25);
 }
 
 .staged-trooper-avatar {
 	width: 100%;
-	height: auto;
+	height: 100%;
 	display: block;
 	object-fit: cover;
 }
@@ -749,53 +817,124 @@ button.mbtn {
 	position: absolute;
 	top: 4px;
 	right: 4px;
-	width: 24px;
-	height: 24px;
+	width: 26px;
+	height: 26px;
+	min-width: 26px;
+	min-height: 26px;
 	padding: 0;
+	flex-shrink: 0;
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	font-size: 1.2rem;
-	line-height: 1;
+	font-size: 0;
 	border: none;
 	border-radius: 50%;
-	background: #c41b1b;
+	background: linear-gradient(180deg, #c53030 0%, #9b2020 100%);
 	color: #fff;
 	cursor: pointer;
-	transition: filter 0.2s;
+	opacity: 0.9;
+	transition: opacity 0.2s, transform 0.2s, box-shadow 0.2s;
+	box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+	z-index: 2;
+}
+.staged-trooper-remove::before,
+.staged-trooper-remove::after {
+	content: "";
+	position: absolute;
+	width: 11px;
+	height: 2px;
+	background: currentColor;
+	border-radius: 1px;
+}
+.staged-trooper-remove::before {
+	transform: rotate(45deg);
+}
+.staged-trooper-remove::after {
+	transform: rotate(-45deg);
 }
 
 .staged-trooper-remove:hover {
-	filter: brightness(1.2);
+	opacity: 1;
+	transform: scale(1.08);
+	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
 .staged-trooper-metadata {
 	position: relative;
-	padding: 18px 8px 8px;
-	background: url("../images/bg/camo_4_800x800.jpg") no-repeat center / cover;
-	border: 1px solid var(--camo-tan-2);
-	border-top: none;
-	border-radius: 0 0 var(--std-border-radius) var(--std-border-radius);
+	padding: 6px 4px 4px;
+	display: flex;
+	flex-direction: column;
+	gap: 1px;
 }
 
 .staged-trooper-name {
-	margin: 0 0 2px 0;
-	font-size: 0.8rem;
-	font-weight: 600;
+	margin: 0;
+	font-size: 0.72rem;
+	font-weight: 700;
 	text-transform: capitalize;
+	letter-spacing: 0.02em;
+	color: #e8e4d8;
+	line-height: 1.2;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
 .staged-trooper-role {
-	margin: 0 0 2px 0;
-	font-size: 0.65rem;
-	color: var(--camo-tan-1);
+	position: absolute;
+	bottom: 0;
+	left: 50%;
+	transform: translateX(-50%);
+	width: 100%;
+	margin: 0;
+	padding: 3px 4px;
+	font-size: 0.55rem;
+	font-weight: 700;
 	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	text-align: center;
+	background: linear-gradient(0deg, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.6) 70%, transparent 100%);
+}
+.staged-trooper-card.designation-rifleman .staged-trooper-role {
+	color: #b8e898;
+	text-shadow: 0 0 8px rgba(130, 255, 100, 0.4), 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+.staged-trooper-card.designation-support .staged-trooper-role {
+	color: #fff0b0;
+	text-shadow: 0 0 8px rgba(255, 230, 150, 0.35), 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+.staged-trooper-card.designation-medic .staged-trooper-role {
+	color: #ffc0b8;
+	text-shadow: 0 0 8px rgba(255, 120, 110, 0.4), 0 1px 2px rgba(0, 0, 0, 0.8);
 }
 
 .staged-trooper-level {
+	position: absolute;
+	top: 3px;
+	left: calc(9% - 3px);
 	margin: 0;
-	font-size: 0.7rem;
-	color: var(--gray-2);
+	padding: 3px 7px;
+	font-size: 0.72rem;
+	font-weight: 800;
+	font-variant-numeric: tabular-nums;
+	letter-spacing: 0.06em;
+	background: linear-gradient(180deg, rgba(0, 0, 0, 0.9) 0%, rgba(0, 0, 0, 0.75) 100%);
+	border-radius: 6px;
+	border: 1px solid rgba(255, 255, 255, 0.18);
+	box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5), 0 0 10px rgba(0, 0, 0, 0.3);
+	z-index: 2;
+}
+.staged-trooper-card.designation-rifleman .staged-trooper-level {
+	color: #c8f8a0;
+	text-shadow: 0 0 10px rgba(140, 255, 100, 0.6), 0 1px 2px rgba(0, 0, 0, 0.9);
+}
+.staged-trooper-card.designation-support .staged-trooper-level {
+	color: #fff8d8;
+	text-shadow: 0 0 10px rgba(255, 235, 150, 0.5), 0 1px 2px rgba(0, 0, 0, 0.9);
+}
+.staged-trooper-card.designation-medic .staged-trooper-level {
+	color: #ffd0c8;
+	text-shadow: 0 0 10px rgba(255, 140, 120, 0.5), 0 1px 2px rgba(0, 0, 0, 0.9);
 }
 
 /* Shared layout for market-style screens (missions, ready room, troops, etc.) */
@@ -2358,19 +2497,29 @@ button.mbtn {
 .inventory-root .inventory-main {
 	padding-inline: var(--page-padding-x-reduced);
 }
-/* Formation footer: compact */
-.formation-footer.troops-market-footer {
-	padding: 4px 0 8px 0;
+/* Formation & Roster footer: compact banner above company-actions */
+.formation-footer.troops-market-footer,
+.roster-footer.troops-market-footer,
+.inventory-footer.troops-market-footer {
+	padding: 4px 0 0 0;
 	gap: 4px;
 	align-items: center;
 }
-.formation-footer .company-actions {
+.formation-footer .company-actions,
+.roster-footer .company-actions,
+.inventory-footer .company-actions {
 	align-self: stretch;
 	width: 100%;
 }
-.formation-footer .recruit-balance-bar {
+.formation-footer .recruit-balance-bar,
+.roster-footer .recruit-balance-bar,
+.inventory-footer .recruit-balance-bar {
 	justify-content: center;
 	padding-inline: 0;
+}
+.roster-soldier-count-icon {
+	flex-shrink: 0;
+	opacity: 0.95;
 }
 .inventory-footer-actions,
 .roster-footer-actions {
@@ -5020,6 +5169,13 @@ button.mbtn {
 	display: block;
 }
 
+.combat-abilities-popup-hint-only {
+	padding: 4px 10px;
+}
+.combat-abilities-popup-hint-only .combat-abilities-popup-hint {
+	font-size: 0.75rem;
+}
+
 .combat-abilities-list {
 	list-style: none;
 	margin: 0;
@@ -5557,13 +5713,13 @@ button.mbtn {
 	.stat-label {
 		color: var(--accent-cyan-1);
 		font-weight: 700;
-		font-size: 0.7rem;
+		font-size: 0.825rem;
 	}
 	
 	.stat-value {
 		color: var(--white-2);
 		font-weight: 700;
-		font-size: 0.7rem;
+		font-size: 0.825rem;
 	}
 	
 .card-stats-grid .stat-hp .stat-label,
@@ -5622,6 +5778,12 @@ button.mbtn {
 	.card-actions-recruit .troop-recruit-reroll:hover {
 		filter: brightness(1.15);
 		box-shadow: 0 2px 6px rgba(140, 50, 50, 0.5);
+	}
+	.card-actions-recruit .troop-recruit-reroll.reroll-disabled,
+	.card-actions-recruit .troop-recruit-reroll:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
+		pointer-events: none;
 	}
 	.card-actions-recruit .troop-recruit-buy {
 		background: linear-gradient(180deg, #3d7a2e 0%, #2a5a1f 100%);
@@ -5690,15 +5852,27 @@ button.mbtn {
 	}
 	
 	.trait-profile {
-		padding: 2px 6px;
+		padding: 4px 8px;
 		border-radius: var(--std-border-radius);
 		background: url("/images/ui/info_panel_600.png") no-repeat center / 100% 100%;
 		cursor: pointer;
-		font-size: calc(0.9rem - 4px);
+		font-size: 0.8rem;
+		font-weight: 700;
+		letter-spacing: 0.03em;
+		border: 1px solid transparent;
+		transition: filter 0.2s, border-color 0.2s, box-shadow 0.2s;
 	}
 	
-	.trait-profile:hover {
+	.trait-profile:hover,
+	.trait-profile:focus,
+	.tooltip-wrapper:hover .trait-profile {
 		filter: brightness(1.2);
+		border-color: rgba(180, 220, 140, 0.6);
+		box-shadow: 0 0 0 1px rgba(180, 220, 140, 0.4), 0 0 8px rgba(120, 200, 100, 0.25);
+	}
+	
+	.trait-profile:focus {
+		outline: none;
 	}
 	
 	&.designation-support {
@@ -7141,15 +7315,26 @@ input[type="text"] {
 
 /* Trait badge + tooltip - same in market and roster cards */
 .trait-tooltip-wrap .trait-profile {
-	padding: 2px 6px;
+	padding: 4px 8px;
 	border-radius: var(--std-border-radius);
 	background: url("/images/ui/info_panel_600.png") no-repeat center / 100% 100%;
 	cursor: pointer;
 	display: inline-block;
-	font-size: calc(0.9rem - 4px);
+	font-size: 0.8rem;
+	font-weight: 700;
+	letter-spacing: 0.03em;
+	border: 1px solid transparent;
+	transition: filter 0.2s, border-color 0.2s, box-shadow 0.2s;
 }
-.trait-tooltip-wrap .trait-profile:hover {
+.trait-tooltip-wrap .trait-profile:hover,
+.trait-tooltip-wrap .trait-profile:focus,
+.tooltip-wrapper:hover .trait-tooltip-wrap .trait-profile {
 	filter: brightness(1.2);
+	border-color: rgba(180, 220, 140, 0.6);
+	box-shadow: 0 0 0 1px rgba(180, 220, 140, 0.4), 0 0 8px rgba(120, 200, 100, 0.25);
+}
+.trait-tooltip-wrap .trait-profile:focus {
+	outline: none;
 }
 
 .tooltip-wrapper .tooltip-body.trait-profile-tooltip {

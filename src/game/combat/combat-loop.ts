@@ -14,26 +14,39 @@ export function isStunned(c: Combatant, now: number): boolean {
   return c.stunUntil != null && now < c.stunUntil;
 }
 
-function isValidTarget(c: Combatant | undefined, now: number): boolean {
+/** Can this combatant perform attacks? (Excludes stunned, in cover, dead.) */
+function canAttack(c: Combatant | undefined, now: number): boolean {
   return c != null && c.hp > 0 && !c.downState && !isInCover(c, now) && !isStunned(c, now);
 }
 
-/** Assign targets: enemies target players, players target enemies. Preserves existing targets until dead/cover; only reassigns when needed. */
+/** Can this combatant be targeted by attacks? (Stunned and in-cover units can still be shot at.) */
+function canBeTargeted(c: Combatant | undefined): boolean {
+  return c != null && c.hp > 0 && !c.downState;
+}
+
+/** @deprecated Use canAttack/canBeTargeted. Kept for any external callers. */
+export function isValidTarget(c: Combatant | undefined, now: number): boolean {
+  return canAttack(c, now);
+}
+
+/** Assign targets: enemies target players, players target enemies. Preserves existing targets until dead; only reassigns when needed. Stunned/in-cover units can be targeted but cannot attack. */
 export function assignTargets(
   players: Combatant[],
   enemies: Combatant[],
   targets: TargetMap,
   now: number,
 ): void {
-  const alivePlayers = players.filter((p) => isValidTarget(p, now));
-  const aliveEnemies = enemies.filter((e) => isValidTarget(e, now));
+  const attackingPlayers = players.filter((p) => canAttack(p, now));
+  const attackingEnemies = enemies.filter((e) => canAttack(e, now));
+  const targetablePlayers = players.filter((p) => canBeTargeted(p));
+  const targetableEnemies = enemies.filter((e) => canBeTargeted(e));
 
-  // Remove invalid assignments (target dead, in cover, stunned, or attacker no longer active)
+  // Remove invalid assignments (target dead/down, or attacker can no longer attack)
   const toDelete: string[] = [];
   for (const [attackerId, targetId] of targets) {
     const attacker = [...players, ...enemies].find((c) => c.id === attackerId);
     const target = [...players, ...enemies].find((c) => c.id === targetId);
-    if (!isValidTarget(attacker, now) || !isValidTarget(target, now)) toDelete.push(attackerId);
+    if (!canAttack(attacker, now) || !canBeTargeted(target)) toDelete.push(attackerId);
   }
   for (const id of toDelete) targets.delete(id);
 
@@ -47,7 +60,7 @@ export function assignTargets(
       if (targets.has(attacker.id)) continue;
       const current = targets.get(attacker.id);
       const t = pool.find((p) => p.id === current);
-      if (t && isValidTarget(t, now)) continue;
+      if (t && canBeTargeted(t)) continue;
 
       if (pool.length === 0) continue;
       const sorted = [...pool].sort((a, b) => (targetCount.get(a.id) ?? 0) - (targetCount.get(b.id) ?? 0));
@@ -59,8 +72,8 @@ export function assignTargets(
     }
   };
 
-  assignFor(aliveEnemies, alivePlayers);
-  assignFor(alivePlayers, aliveEnemies);
+  assignFor(attackingEnemies, targetablePlayers);
+  assignFor(attackingPlayers, targetableEnemies);
 }
 
 const BURN_TICK_INTERVAL_MS = 1000;

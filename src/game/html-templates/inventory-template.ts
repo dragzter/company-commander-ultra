@@ -226,10 +226,6 @@ export function inventoryTemplate(): string {
     </div>
   </div>
   ${companyHeaderPartial("Company Armory")}
-  <div class="inventory-toolbar">
-    <span class="inventory-level-label">Armory Level ${store.company?.level ?? store.companyLevel ?? 1}</span>
-    <button type="button" id="equip-troops-btn" class="equip-troops-btn">Equip Soldiers</button>
-  </div>
   <div class="inventory-main">
     <div class="inventory-section">
       <h4 class="inventory-section-title">Weapons <span class="inventory-section-cap">${weapons.length} / ${getWeaponArmorySlots(store.company?.level ?? store.companyLevel ?? 1)}</span></h4>
@@ -254,6 +250,20 @@ export function inventoryTemplate(): string {
     </div>
     ${holdingSection}
   </div>
-  ${companyActionsTemplate()}
+  <div class="inventory-footer troops-market-footer">
+    <div class="footer-banner">
+      <div class="inventory-footer-actions">
+        <button type="button" id="equip-troops-btn" class="equip-troops-btn">Equip Soldiers</button>
+      </div>
+      <div class="recruit-balance-bar">
+        <span class="recruit-balance-item">
+          <img src="/images/soldier_count.png" alt="" class="roster-soldier-count-icon" width="14" height="18" aria-hidden="true">
+          <strong>Soldiers</strong> ${company?.soldiers?.length ?? 0}
+        </span>
+        <span class="recruit-balance-item inventory-level-label">Armory Level ${store.company?.level ?? store.companyLevel ?? 1}</span>
+      </div>
+    </div>
+    ${companyActionsTemplate()}
+  </div>
 </div>`;
 }

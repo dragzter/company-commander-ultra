@@ -51,6 +51,8 @@ export type Mission = {
   difficulty: number;
   enemyCount: number;
   creditReward: number;
+  /** XP awarded on victory. Defaults to 20 * difficulty if absent. */
+  xpReward?: number;
   flavorText?: string;
   isEpic?: boolean;
   rarity?: MissionRarity;

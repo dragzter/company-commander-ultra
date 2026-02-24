@@ -369,11 +369,11 @@ export const troopsMarketTemplate = (
 	${companyHeaderPartial("Available Troops")}
 	<div class="troops-market-main">
 		<div class="troops-list">
-			${troops.map((t) => Partial.create.trooper(t, canAffordSoldier(t))).join("")}
+			${troops.map((t) => Partial.create.trooper(t, canAffordSoldier(t), rerolls > 0)).join("")}
 		</div>
 		<div id="recruit-staging-area" class="recruit-staging-area">
 			<p class="recruit-staging-label">Selected ${slotsLeft > 0 ? `(${recruitStaging.length}/${slotsLeft})` : ""}</p>
-			<div class="recruit-staging-reroll reroll-counter">Rerolls: ${rerolls}</div>
+			<div class="recruit-staging-reroll reroll-counter${rerolls <= 0 ? " reroll-empty" : ""}">Rerolls: ${rerolls}</div>
 			<div id="recruit-staging">
 				${recruitStaging.map((s) => Partial.create.stagedTrooperCard(s)).join("")}
 			</div>
