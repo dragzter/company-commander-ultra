@@ -5942,7 +5942,7 @@ button.mbtn {
 	border: 1px solid rgba(255, 255, 255, 0.2);
 	border-radius: 6px;
 	box-shadow: 0 4px 24px rgba(0, 0, 0, 0.6);
-	z-index: 25;
+	z-index: 150;
 	padding: 6px;
 	gap: 4px;
 	display: flex;
@@ -6117,6 +6117,48 @@ button.mbtn {
 	font-weight: 700;
 	letter-spacing: 0.06em;
 	margin-top: 2px;
+}
+
+.combat-summary-leveled-up {
+	outline: 2px solid #4ade80;
+	outline-offset: 2px;
+	animation: combat-summary-levelup-pulse 1.2s ease-in-out infinite;
+	box-shadow: 0 0 12px rgba(74, 222, 128, 0.4);
+}
+@keyframes combat-summary-levelup-pulse {
+	0%, 100% {
+		box-shadow: 0 0 12px rgba(74, 222, 128, 0.4);
+		outline-color: #4ade80;
+	}
+	50% {
+		box-shadow: 0 0 20px rgba(74, 222, 128, 0.7);
+		outline-color: #86efac;
+	}
+}
+
+.combat-summary-leveled-up .combat-card-level-badge-leveled-up {
+	font-size: 0.85rem;
+	font-weight: 800;
+	min-width: 26px;
+	height: 24px;
+	padding: 2px 6px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
+	color: #0a0a0a;
+	animation: combat-summary-level-badge-pulse 0.8s ease-in-out infinite;
+	box-shadow: 0 0 8px rgba(74, 222, 128, 0.6);
+}
+@keyframes combat-summary-level-badge-pulse {
+	0%, 100% {
+		transform: scale(1);
+		box-shadow: 0 0 8px rgba(74, 222, 128, 0.6);
+	}
+	50% {
+		transform: scale(1.15);
+		box-shadow: 0 0 14px rgba(74, 222, 128, 0.9);
+	}
 }
 
 .combat-summary-participants-none {

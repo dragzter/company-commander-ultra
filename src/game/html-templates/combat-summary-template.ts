@@ -17,6 +17,8 @@ export interface CombatSummaryData {
   mission: Mission | null;
   participants: Combatant[];
   playerKills: Map<string, number>;
+  leveledUpIds: Set<string>;
+  newLevels: Map<string, number>;
   creditReward: number;
   rewardItems: Item[];
   lootItems: Item[];
@@ -30,22 +32,7 @@ function escapeAttr(s: string): string {
   return s.replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
-/** Group items by id, count occurrences. Returns { item, quantity }[]. */
-function groupItemsWithQuantity(items: Item[]): { item: Item; quantity: number }[] {
-  const byKey = new Map<string, { item: Item; quantity: number }>();
-  for (const it of items) {
-    const key = it.id ?? "";
-    const existing = byKey.get(key);
-    if (existing) {
-      existing.quantity += 1;
-    } else {
-      byKey.set(key, { item: it, quantity: 1 });
-    }
-  }
-  return Array.from(byKey.values());
-}
-
-function itemCard(item: Item, quantity: number): string {
+function itemCard(item: Item): string {
   const iconUrl = getItemIconUrl(item);
   const name = item.name ?? item.id ?? "Unknown";
   const level = item.level ?? 1;
@@ -54,9 +41,10 @@ function itemCard(item: Item, quantity: number): string {
   const isWeapon = item.type === "ballistic_weapon" || item.type === "melee_weapon";
   const weaponRole = isWeapon ? (getWeaponRestrictRole(item) ?? (item as { restrictRole?: string }).restrictRole ?? "any") : null;
   const roleBadgeHtml = weaponRole ? `<span class="market-weapon-role-badge role-${weaponRole}">${WEAPON_ROLE_LABELS[weaponRole] ?? weaponRole}</span>` : "";
-  const qtyBadge = `<span class="market-item-uses-badge">×${quantity}</span>`;
+  const uses = item.uses ?? item.quantity;
+  const usesBadge = uses != null ? `<span class="market-item-uses-badge">×${uses}</span>` : "";
   const iconHtml = iconUrl
-    ? `<div class="market-item-icon-wrap"><img class="market-item-icon" src="${escapeAttr(iconUrl)}" alt="${escapeAttr(name)}" width="42" height="42"><span class="item-level-badge rarity-${rarity}">Lv${level}</span>${qtyBadge}${roleBadgeHtml}</div>`
+    ? `<div class="market-item-icon-wrap"><img class="market-item-icon" src="${escapeAttr(iconUrl)}" alt="${escapeAttr(name)}" width="42" height="42"><span class="item-level-badge rarity-${rarity}">Lv${level}</span>${usesBadge}${roleBadgeHtml}</div>`
     : "";
   return `
 <div class="market-item-slot combat-summary-item-slot${rarityClass}">
@@ -78,23 +66,25 @@ function roleBadge(designation: string | undefined): string {
   return d[0] ?? "";
 }
 
-function summaryCombatCard(c: Combatant, kills: number): string {
+function summaryCombatCard(c: Combatant, kills: number, leveledUpIds: Set<string>, newLevels: Map<string, number>): string {
   const imgSrc = `/images/green-portrait/${c.avatar ?? "default.png"}`;
   const weaponIcon = c.weaponIconUrl ?? "";
   const pct = Math.max(0, Math.min(100, (c.hp / (c.maxHp || 1)) * 100));
   const isDown = c.hp <= 0 || c.downState;
   const downClass = isDown ? " combat-card-down" : "";
+  const levelUpClass = leveledUpIds.has(c.id) ? " combat-summary-leveled-up" : "";
   const weaponHtml = weaponIcon
     ? `<img class="combat-card-weapon" src="${escapeAttr(weaponIcon)}" alt="" width="18" height="18">`
     : '<span class="combat-card-weapon combat-card-weapon-placeholder"></span>';
   const rb = roleBadge(c.designation);
-  const lvl = c.level ?? 1;
+  const lvl = newLevels.get(c.id) ?? c.level ?? 1;
   const des = (c.designation ?? "rifleman").toLowerCase();
+  const levelBadgeClass = leveledUpIds.has(c.id) ? " combat-card-level-badge-leveled-up" : "";
   return `
-<div class="combat-card combat-summary-card designation-${des}${downClass}" data-combatant-id="${c.id}">
+<div class="combat-card combat-summary-card designation-${des}${downClass}${levelUpClass}" data-combatant-id="${c.id}">
   <div class="combat-card-inner">
     <div class="combat-card-avatar-wrap">
-      <span class="combat-card-level-badge">${lvl}</span>
+      <span class="combat-card-level-badge${levelBadgeClass}">${lvl}</span>
       <img class="combat-card-avatar" src="${imgSrc}" alt="">
       ${weaponHtml}
       ${rb ? `<span class="combat-card-role-badge">${rb}</span>` : ""}
@@ -111,7 +101,7 @@ function summaryCombatCard(c: Combatant, kills: number): string {
 }
 
 export function combatSummaryTemplate(data: CombatSummaryData): string {
-  const { victory, mission, participants, playerKills, creditReward, rewardItems, lootItems, leveledUpCount } = data;
+  const { victory, mission, participants, playerKills, leveledUpIds, newLevels, creditReward, rewardItems, lootItems, leveledUpCount } = data;
   const title = victory ? "Victory!" : "Defeat";
   const titleClass = victory ? "combat-summary-victory" : "combat-summary-defeat";
   const levelUpHtml =
@@ -122,43 +112,40 @@ export function combatSummaryTemplate(data: CombatSummaryData): string {
   const participantsHtml =
     participants.length === 0
       ? "<p class=\"combat-summary-participants-none\">No soldiers.</p>"
-      : participants.map((p) => summaryCombatCard(p, playerKills.get(p.id) ?? 0)).join("");
+      : participants.map((p) => summaryCombatCard(p, playerKills.get(p.id) ?? 0, leveledUpIds, newLevels)).join("");
 
   const creditsHtml =
     victory && creditReward > 0
       ? `<div class="combat-summary-reward-row"><span class="combat-summary-reward-icon">$</span><span class="combat-summary-reward-amount">${creditReward}</span></div>`
       : "";
 
-  const groupedRewards = groupItemsWithQuantity(rewardItems);
-  const groupedLoot = groupItemsWithQuantity(lootItems);
-
   const rewardsSection =
-    victory && (creditReward > 0 || groupedRewards.length > 0)
+    victory && (creditReward > 0 || rewardItems.length > 0)
       ? `
     <div class="combat-summary-section combat-summary-rewards-section">
       <h4>Rewards</h4>
       <div class="combat-summary-rewards">
         ${creditsHtml}
-        <div class="combat-summary-items-grid">${groupedRewards.map(({ item, quantity }) => itemCard(item, quantity)).join("")}</div>
+        <div class="combat-summary-items-grid">${rewardItems.map((item) => itemCard(item)).join("")}</div>
       </div>
     </div>
     `
       : "";
 
   const lootSection =
-    victory && groupedLoot.length > 0
+    victory && lootItems.length > 0
       ? `
     <div class="combat-summary-section combat-summary-loot-section">
       <h4>LOOT</h4>
       <div class="combat-summary-items-grid">
-        ${groupedLoot.map(({ item, quantity }) => itemCard(item, quantity)).join("")}
+        ${lootItems.map((item) => itemCard(item)).join("")}
       </div>
     </div>
     `
       : "";
 
   const holdingNote =
-    (groupedRewards.length > 0 || groupedLoot.length > 0)
+    (rewardItems.length > 0 || lootItems.length > 0)
       ? '<p class="combat-summary-holding-note">Some items may be in Holding (armory full). Claim from armory.</p>'
       : "";
 
@@ -189,6 +176,8 @@ export function buildCombatSummaryData(
   leveledUpCount = 0,
   rewardItems: Item[] = [],
   lootItems: Item[] = [],
+  leveledUpIds: Set<string> = new Set(),
+  newLevels: Map<string, number> = new Map(),
 ): CombatSummaryData {
   const creditReward = mission?.creditReward ?? 0;
 
@@ -197,6 +186,8 @@ export function buildCombatSummaryData(
     mission,
     participants: players,
     playerKills: playerKills ?? new Map(),
+    leveledUpIds,
+    newLevels,
     creditReward,
     rewardItems,
     lootItems,

@@ -1431,11 +1431,11 @@ export function eventConfigs() {
               ? store.grantMissionRewards(mission, true, kiaCount)
               : { rewardItems: [] as import("../../constants/items/types.ts").Item[], lootItems: [] as import("../../constants/items/types.ts").Item[] };
             const newLevels = new Map(usePlayerCompanyStore.getState().company?.soldiers?.filter((s) => survivorIds.includes(s.id)).map((s) => [s.id, s.level ?? 1]) ?? []);
-            let leveledUpCount = 0;
+            const leveledUpIds = new Set<string>();
             for (const id of survivorIds) {
-              if ((newLevels.get(id) ?? 1) > (oldLevels.get(id) ?? 1)) leveledUpCount++;
+              if ((newLevels.get(id) ?? 1) > (oldLevels.get(id) ?? 1)) leveledUpIds.add(id);
             }
-            const summaryData = buildCombatSummaryData(victory, mission, players, playerKills, leveledUpCount, rewardItems, lootItems);
+            const summaryData = buildCombatSummaryData(victory, mission, players, playerKills, leveledUpIds.size, rewardItems, lootItems, leveledUpIds, newLevels);
             const container = document.getElementById("combat-summary-container");
             if (container) {
               container.innerHTML = combatSummaryTemplate(summaryData);
@@ -1521,13 +1521,16 @@ export function eventConfigs() {
     return [
       {
         selector: DOM.combat.abilitiesPopup,
-        eventType: "click",
+        eventType: "pointerdown",
         callback: (e: Event) => {
+          const ev = e as PointerEvent;
+          if (ev.button !== 0) return;
           const t = e.target as HTMLElement;
           const grenadeBtn = t.closest(".combat-grenade-item");
           const medBtn = t.closest(".combat-med-item");
           const abilityBtn = t.closest(".combat-ability-icon-slot");
           if (medBtn && !(medBtn as HTMLButtonElement).disabled) {
+            e.preventDefault();
             e.stopPropagation();
             const soldierId = (medBtn as HTMLElement).dataset.soldierId;
             const idxStr = (medBtn as HTMLElement).dataset.inventoryIndex;
@@ -1553,6 +1556,7 @@ export function eventConfigs() {
             return;
           }
           if (grenadeBtn && !(grenadeBtn as HTMLButtonElement).disabled) {
+            e.preventDefault();
             e.stopPropagation();
             const soldierId = (grenadeBtn as HTMLElement).dataset.soldierId;
             const idxStr = (grenadeBtn as HTMLElement).dataset.inventoryIndex;
@@ -1575,6 +1579,7 @@ export function eventConfigs() {
             return;
           }
           if (abilityBtn?.classList.contains("combat-ability-take-cover-wrap") && !(abilityBtn as HTMLButtonElement).disabled) {
+            e.preventDefault();
             e.stopPropagation();
             const soldierId = (abilityBtn as HTMLElement).dataset.soldierId;
             if (!soldierId) return;
@@ -1590,6 +1595,7 @@ export function eventConfigs() {
             return;
           }
           if (abilityBtn?.classList.contains("combat-ability-suppress-wrap") && !(abilityBtn as HTMLButtonElement).disabled) {
+            e.preventDefault();
             e.stopPropagation();
             const soldierId = (abilityBtn as HTMLElement).dataset.soldierId;
             if (!soldierId) return;
@@ -1852,7 +1858,7 @@ export function eventConfigs() {
   const equipPickerEventConfig: HandlerInitConfig[] = [
     {
       selector: "#equip-picker-close",
-      eventType: "click",
+      eventType: "pointerdown",
       callback: () => {
         const picker = document.getElementById("equip-picker-popup");
         if (!picker) return;
@@ -1875,8 +1881,10 @@ export function eventConfigs() {
     },
     {
       selector: "#equip-picker-popup",
-      eventType: "click",
+      eventType: "pointerdown",
       callback: (e: Event) => {
+        const ev = e as PointerEvent;
+        if (ev.button !== 0) return;
         const target = e.target as HTMLElement;
         const picker = document.getElementById("equip-picker-popup");
         if (!picker || picker.hasAttribute("hidden")) return;
@@ -1885,6 +1893,7 @@ export function eventConfigs() {
 
         const unequipPopBtn = target.closest(".equip-slot-unequip-btn");
         if (unequipPopBtn) {
+          e.preventDefault();
           const btn = unequipPopBtn as HTMLElement;
           const soldierId = btn.dataset.unequipSoldierId;
           const slotType = btn.dataset.unequipSlotType as "weapon" | "armor" | "equipment";
@@ -1911,6 +1920,7 @@ export function eventConfigs() {
 
         const suppliesItem = target.closest(".equip-supplies-item") as HTMLElement | null;
         if (suppliesItem) {
+          e.preventDefault();
           const soldierId = (picker as HTMLElement).dataset.suppliesTargetSoldierId;
           const slotType = (picker as HTMLElement).dataset.suppliesTargetSlotType as "weapon" | "armor" | "equipment";
           const eqIdxStr = (picker as HTMLElement).dataset.suppliesTargetEqIndex;
@@ -2029,6 +2039,7 @@ export function eventConfigs() {
         const soldiers = usePlayerCompanyStore.getState().company?.soldiers ?? [];
 
         if (slotEl) {
+          e.preventDefault();
           const soldierId = slotEl.dataset.soldierId;
           if (!soldierId) return;
           const slotType = slotEl.dataset.slotType as "weapon" | "armor" | "equipment";
@@ -2178,7 +2189,7 @@ export function eventConfigs() {
   const inventoryScreenEventConfig: HandlerInitConfig[] = [
     {
       selector: "#claim-holding-inventory-btn",
-      eventType: "click",
+      eventType: "pointerdown",
       callback: () => {
         usePlayerCompanyStore.getState().claimHoldingInventory();
         UiManager.renderInventoryScreen();
@@ -2212,10 +2223,13 @@ export function eventConfigs() {
     },
     {
       selector: DOM.inventory.itemCard,
-      eventType: "click",
+      eventType: "pointerdown",
       callback: (e: Event) => {
+        const ev = e as PointerEvent;
+        if (ev.button !== 0) return;
         const card = (e.target as HTMLElement).closest(".inventory-item-card");
         if (!card || (e.target as HTMLElement).closest(".inventory-destroy-btn")) return;
+        e.preventDefault();
         const json = (card as HTMLElement).getAttribute("data-item-json");
         const indexStr = (card as HTMLElement).dataset.itemIndex;
         if (!json) return;
