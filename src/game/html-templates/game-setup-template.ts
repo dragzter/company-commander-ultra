@@ -7,6 +7,7 @@ import { usePlayerCompanyStore } from "../../store/ui-store.ts";
 import { TRAIT_CODEX } from "../../constants/trait-codex.ts";
 import { TraitProfileStats } from "../entities/soldier/soldier-traits.ts";
 import { getLevelBenefitsForCodex } from "../entities/levels.ts";
+import { APP_VERSION } from "../../constants/version.ts";
 
 const TRAIT_STAT_ABBR: Record<string, string> = {
   hit_points: "HP",
@@ -311,6 +312,7 @@ export const companyHeaderPartial = (title = "") => {
     <div class="company-header-info">
       <span class="company-header-name">${companyName}</span>
       <span class="company-header-commander">${commanderName}</span>
+      <span class="company-header-version" aria-hidden="true">v${APP_VERSION}</span>
     </div>
   </div>
 </div>
