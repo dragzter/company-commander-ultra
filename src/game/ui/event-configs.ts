@@ -411,6 +411,7 @@ export function eventConfigs() {
   ): HandlerInitConfig[] {
     let grenadeTargetingMode: { thrower: Combatant; grenade: SoldierGrenade } | null = null;
     let medTargetingMode: { user: Combatant; medItem: SoldierMedItem } | null = null;
+    let suppressTargetingMode: { user: Combatant } | null = null;
     let combatStarted = false;
     let combatWinner: "player" | "enemy" | null = null;
     let popupCombatantId: string | null = null;
@@ -484,55 +485,122 @@ export function eventConfigs() {
       ].slice(0, 2);
 
       const used = combatant.takeCoverUsed;
-      const takeCoverAbility = getSoldierAbilities().find((a) => a.id === "take_cover");
-      const abilityHtml = takeCoverAbility
-        ? `<button type="button" class="combat-ability-icon-slot combat-ability-take-cover-wrap ${used ? "combat-ability-used" : ""}" data-ability-id="take_cover" data-soldier-id="${combatant.id}" ${used || !canUse ? "disabled" : ""} title="Take Cover" aria-label="Take Cover">
-            <img src="${takeCoverAbility.icon}" alt="" width="48" height="48">
-            <span class="combat-ability-take-cover-label">Take Cover</span>
-          </button>`
-        : "";
+      const now = Date.now();
+      const suppressOnCooldown = (combatant.suppressCooldownUntil ?? 0) > now;
+      const suppressRemainingSec = suppressOnCooldown ? Math.ceil((combatant.suppressCooldownUntil! - now) / 1000) : 0;
+      const designation = (combatant.designation ?? "").toLowerCase();
+      const abilities = getSoldierAbilities().filter((a) => {
+        if (a.designationRestrict) return designation === a.designationRestrict;
+        return true;
+      });
+      const abilityButtons = abilities.map((a) => {
+        const isTakeCover = a.id === "take_cover";
+        const isSuppress = a.id === "suppress";
+        const suppressDisabled = isSuppress && suppressOnCooldown;
+        const disabled = isTakeCover ? (used || !canUse) : isSuppress ? (!canUse || suppressOnCooldown) : !canUse;
+        const usedClass = isTakeCover && used ? " combat-ability-used" : "";
+        const cooldownClass = suppressOnCooldown ? " combat-ability-cooldown" : "";
+        const wrapClass = isTakeCover ? "combat-ability-take-cover-wrap" : isSuppress ? "combat-ability-suppress-wrap" : "";
+        const timerHtml = isSuppress && suppressOnCooldown
+          ? `<span class="combat-ability-cooldown-timer" data-ability-cooldown="suppress">${suppressRemainingSec}</span>`
+          : "";
+        return `<button type="button" class="combat-ability-icon-slot ${wrapClass}${usedClass}${cooldownClass}" data-ability-id="${a.id}" data-soldier-id="${combatant.id}" ${disabled ? "disabled" : ""} title="${a.name}" aria-label="${a.name}">
+            <img src="${a.icon}" alt="" width="48" height="48">
+            ${timerHtml}
+            <span class="combat-ability-label">${a.name}</span>
+          </button>`;
+      }).join("");
 
-      const equipmentHtml = equipmentSlots.map((slot) => {
-        if (slot.type === "grenade") {
-          const g = slot.data;
-          const qty = g.item.uses ?? g.item.quantity ?? 1;
-          const level = g.item.level ?? 1;
-          const rarity = g.item.rarity ?? "common";
-          const iconUrl = getItemIconUrl(g.item);
-          const hasUses = g.item.uses != null || g.item.quantity != null;
-          const btnRarity = rarity !== "common" ? ` rarity-${rarity}` : "";
-          return `<button type="button" class="combat-grenade-item${btnRarity}" data-inventory-index="${g.inventoryIndex}" data-soldier-id="${combatant.id}" title="${g.item.name}" aria-label="${g.item.name}" ${!canUse ? "disabled" : ""}>
+      function buildEquipmentHtml(c: Combatant) {
+        const eqNow = Date.now();
+        const grenadeOnCooldown = (c.grenadeCooldownUntil ?? 0) > eqNow;
+        const grenadeRemainingSec = grenadeOnCooldown ? Math.ceil((c.grenadeCooldownUntil! - eqNow) / 1000) : 0;
+        return equipmentSlots.map((slot) => {
+          if (slot.type === "grenade") {
+            const g = slot.data;
+            const qty = g.item.uses ?? g.item.quantity ?? 1;
+            const level = g.item.level ?? 1;
+            const rarity = g.item.rarity ?? "common";
+            const iconUrl = getItemIconUrl(g.item);
+            const hasUses = g.item.uses != null || g.item.quantity != null;
+            const btnRarity = rarity !== "common" ? ` rarity-${rarity}` : "";
+            const grenadeDisabled = !canUse || grenadeOnCooldown;
+            const cooldownClass = grenadeOnCooldown ? " combat-grenade-cooldown" : "";
+            const timerHtml = grenadeOnCooldown
+              ? `<span class="combat-grenade-cooldown-timer">${grenadeRemainingSec}</span>`
+              : "";
+            return `<button type="button" class="combat-grenade-item${btnRarity}${cooldownClass}" data-inventory-index="${g.inventoryIndex}" data-soldier-id="${c.id}" title="${g.item.name}" aria-label="${g.item.name}" ${grenadeDisabled ? "disabled" : ""}>
             <div class="combat-grenade-icon-wrap item-icon-wrap">
               <img class="combat-grenade-icon" src="${iconUrl}" alt="" width="48" height="48">
               <span class="item-level-badge rarity-${rarity}">Lv${level}</span>
               ${hasUses ? `<span class="inventory-item-qty inventory-uses-badge">×${qty}</span>` : ""}
             </div>
+            ${timerHtml}
           </button>`;
-        } else {
-          const m = slot.data;
-          const qty = m.item.uses ?? m.item.quantity ?? 1;
-          const rarity = m.item.rarity ?? "common";
-          const iconUrl = getItemIconUrl(m.item);
-          const hasUses = m.item.uses != null || m.item.quantity != null;
-          const btnRarity = rarity !== "common" ? ` rarity-${rarity}` : "";
-          return `<button type="button" class="combat-med-item${btnRarity}" data-inventory-index="${m.inventoryIndex}" data-soldier-id="${combatant.id}" title="${m.item.name}" aria-label="${m.item.name}" ${!canUse ? "disabled" : ""}>
+          } else {
+            const m = slot.data;
+            const qty = m.item.uses ?? m.item.quantity ?? 1;
+            const rarity = m.item.rarity ?? "common";
+            const iconUrl = getItemIconUrl(m.item);
+            const hasUses = m.item.uses != null || m.item.quantity != null;
+            const btnRarity = rarity !== "common" ? ` rarity-${rarity}` : "";
+            return `<button type="button" class="combat-med-item${btnRarity}" data-inventory-index="${m.inventoryIndex}" data-soldier-id="${c.id}" title="${m.item.name}" aria-label="${m.item.name}" ${!canUse ? "disabled" : ""}>
             <div class="combat-grenade-icon-wrap item-icon-wrap">
               <img class="combat-grenade-icon" src="${iconUrl}" alt="" width="48" height="48">
               ${hasUses ? `<span class="inventory-item-qty inventory-uses-badge">×${qty}</span>` : ""}
             </div>
           </button>`;
-        }
-      }).join("");
+          }
+        }).join("");
+      }
+
+      listEl.innerHTML = abilityButtons + buildEquipmentHtml(combatant);
+
+      function refreshAbilitiesList() {
+        const c = players.find((p) => p.id === combatant.id);
+        if (!c || popup.getAttribute("aria-hidden") === "true") return;
+        const now = Date.now();
+        const suppressOnCooldown = (c.suppressCooldownUntil ?? 0) > now;
+        const suppressRemainingSec = suppressOnCooldown ? Math.ceil((c.suppressCooldownUntil! - now) / 1000) : 0;
+        const used = c.takeCoverUsed;
+        const des = (c.designation ?? "").toLowerCase();
+        const abils = getSoldierAbilities().filter((a) => {
+          if (a.designationRestrict) return des === a.designationRestrict;
+          return true;
+        });
+        const btns = abils.map((a) => {
+          const isTakeCover = a.id === "take_cover";
+          const isSuppress = a.id === "suppress";
+          const disabled = isTakeCover ? (used || !canUse) : isSuppress ? (!canUse || suppressOnCooldown) : !canUse;
+          const usedClass = isTakeCover && used ? " combat-ability-used" : "";
+          const cooldownClass = suppressOnCooldown ? " combat-ability-cooldown" : "";
+          const wrapClass = isTakeCover ? "combat-ability-take-cover-wrap" : isSuppress ? "combat-ability-suppress-wrap" : "";
+          const timerHtml = isSuppress && suppressOnCooldown
+            ? `<span class="combat-ability-cooldown-timer" data-ability-cooldown="suppress">${suppressRemainingSec}</span>`
+            : "";
+          return `<button type="button" class="combat-ability-icon-slot ${wrapClass}${usedClass}${cooldownClass}" data-ability-id="${a.id}" data-soldier-id="${c.id}" ${disabled ? "disabled" : ""} title="${a.name}" aria-label="${a.name}">
+            <img src="${a.icon}" alt="" width="48" height="48">
+            ${timerHtml}
+            <span class="combat-ability-label">${a.name}</span>
+          </button>`;
+        }).join("");
+        listEl.innerHTML = btns + buildEquipmentHtml(c);
+      }
 
       titleEl.textContent = "Abilities";
-      listEl.innerHTML = abilityHtml + equipmentHtml;
       contentEl.style.display = "";
       hintEl.classList.remove("visible");
       hintEl.textContent = "";
       popup.classList.remove("combat-abilities-popup-hint-only");
       popupCombatantId = combatant.id;
       popup.setAttribute("aria-hidden", "false");
+      refreshAbilitiesList();
       positionPopupUnderCard(popup, card ?? document.querySelector(`[data-combatant-id="${combatant.id}"]`) as HTMLElement);
+
+      void popup.offsetHeight;
+
+      if (abilitiesPopupRefreshIntervalId != null) clearInterval(abilitiesPopupRefreshIntervalId);
+      abilitiesPopupRefreshIntervalId = setInterval(refreshAbilitiesList, 1000);
     }
 
     function positionPopupCentered(popup: HTMLElement) {
@@ -576,6 +644,18 @@ export function eventConfigs() {
       requestAnimationFrame(() => positionPopupAtTop(popup));
     }
 
+    function showSuppressTargetingHint(_user: Combatant) {
+      const popup = document.getElementById("combat-abilities-popup");
+      const contentEl = document.getElementById("combat-abilities-popup-content");
+      const hintEl = document.getElementById("combat-abilities-popup-hint");
+      if (!popup || !contentEl || !hintEl) return;
+      contentEl.style.display = "none";
+      hintEl.textContent = "Click an enemy to suppress";
+      hintEl.classList.add("visible");
+      popup.classList.add("combat-abilities-popup-hint-only");
+      requestAnimationFrame(() => positionPopupAtTop(popup));
+    }
+
     function showMedTargetingHint(_user: Combatant, medItem: SoldierMedItem) {
       const popup = document.getElementById("combat-abilities-popup");
       const contentEl = document.getElementById("combat-abilities-popup-content");
@@ -588,9 +668,16 @@ export function eventConfigs() {
       requestAnimationFrame(() => positionPopupAtTop(popup));
     }
 
+    let abilitiesPopupRefreshIntervalId: ReturnType<typeof setInterval> | null = null;
+
     function closeAbilitiesPopup() {
+      if (abilitiesPopupRefreshIntervalId != null) {
+        clearInterval(abilitiesPopupRefreshIntervalId);
+        abilitiesPopupRefreshIntervalId = null;
+      }
       grenadeTargetingMode = null;
       medTargetingMode = null;
+      suppressTargetingMode = null;
       popupCombatantId = null;
       document.querySelectorAll(".combat-card-grenade-target").forEach((el) => el.classList.remove("combat-card-grenade-target"));
       document.querySelectorAll(".combat-card-heal-target").forEach((el) => el.classList.remove("combat-card-heal-target"));
@@ -713,7 +800,81 @@ export function eventConfigs() {
       }
     }
 
+    const SUPPRESS_DURATION_MS = 8000;
+    const SUPPRESS_BURST_COUNT = 3;
+    const SUPPRESS_BURST_INTERVAL_MS = 500;
+    const ATTACK_PROJECTILE_MS = 220;
+
+    const SUPPRESS_COOLDOWN_MS = 60_000;
+
+    function executeSuppress(user: Combatant, target: Combatant) {
+      playerAbilitiesUsed.set(user.id, (playerAbilitiesUsed.get(user.id) ?? 0) + 1);
+      user.suppressCooldownUntil = Date.now() + SUPPRESS_COOLDOWN_MS;
+      suppressTargetingMode = null;
+      document.querySelectorAll("#combat-enemies-grid .combat-card-grenade-target").forEach((el) => el.classList.remove("combat-card-grenade-target"));
+      closeAbilitiesPopup();
+
+      const attackerCard = document.querySelector(`[data-combatant-id="${user.id}"]`);
+      const targetCard = document.querySelector(`[data-combatant-id="${target.id}"]`);
+      if (!attackerCard || !targetCard) return;
+
+      let anyHit = false;
+      const now = Date.now();
+
+      const doBurst = (burstIndex: number) => {
+        if (target.hp <= 0 || target.downState) return;
+        const result = resolveAttack(user, target, now);
+        if (result.hit && !result.evaded) anyHit = true;
+        animateProjectile(attackerCard, targetCard, BULLET_ICON, ATTACK_PROJECTILE_MS, 10);
+        if (result.damage > 0) {
+          const popup = document.createElement("span");
+          popup.className = "combat-damage-popup";
+          popup.textContent = String(result.damage);
+          targetCard.appendChild(popup);
+          setTimeout(() => popup.remove(), 1500);
+          targetCard.classList.add("combat-card-shake");
+          setTimeout(() => targetCard.classList.remove("combat-card-shake"), 350);
+        } else if (result.hit && result.evaded) {
+          const popup = document.createElement("span");
+          popup.className = "combat-evade-popup";
+          popup.textContent = "Evade";
+          targetCard.appendChild(popup);
+          setTimeout(() => popup.remove(), 1500);
+        } else if (!result.hit) {
+          const popup = document.createElement("span");
+          popup.className = "combat-miss-popup";
+          popup.textContent = "MISS";
+          targetCard.appendChild(popup);
+          setTimeout(() => popup.remove(), 2200);
+        }
+        if (target.hp <= 0) {
+          target.downState = target.side === "player" && Math.random() < 0.3 ? "incapacitated" : "kia";
+        }
+      };
+
+      doBurst(0);
+      setTimeout(() => doBurst(1), SUPPRESS_BURST_INTERVAL_MS);
+      setTimeout(() => {
+        doBurst(2);
+        if (anyHit && target.hp > 0 && !target.downState) {
+          const applyNow = Date.now();
+          target.suppressedUntil = applyNow + SUPPRESS_DURATION_MS;
+          const popup = document.createElement("span");
+          popup.className = "combat-suppress-popup";
+          popup.textContent = "Suppressed";
+          targetCard.appendChild(popup);
+          setTimeout(() => popup.remove(), 1500);
+        }
+        updateHpBarsAll();
+        updateCombatUI();
+      }, SUPPRESS_BURST_INTERVAL_MS * 2);
+    }
+
+    const GRENADE_COOLDOWN_MS = 5000;
+
     function executeGrenadeThrow(thrower: Combatant, target: Combatant, grenade: SoldierGrenade) {
+      const isThrowingKnife = grenade.item.id === "tk21_throwing_knife";
+      if (!isThrowingKnife) thrower.grenadeCooldownUntil = Date.now() + GRENADE_COOLDOWN_MS;
       const aliveEnemies = enemies.filter((e) => e.hp > 0 && !e.downState);
       const result = resolveGrenadeThrow(thrower, target, grenade.item, aliveEnemies);
 
@@ -1007,12 +1168,16 @@ export function eventConfigs() {
         const panicked = c.panicUntil != null && now < c.panicUntil;
         const burning = c.burningUntil != null && now < c.burningUntil;
         const stimmed = c.attackSpeedBuffUntil != null && now < c.attackSpeedBuffUntil;
+        const blinded = c.blindedUntil != null && now < c.blindedUntil;
+        const suppressed = c.suppressedUntil != null && now < c.suppressedUntil;
         card.classList.toggle("combat-card-in-cover", inCover);
         card.classList.toggle("combat-card-smoked", smoked);
         card.classList.toggle("combat-card-stunned", stunned);
         card.classList.toggle("combat-card-panicked", panicked);
         card.classList.toggle("combat-card-burning", burning);
         card.classList.toggle("combat-card-stimmed", stimmed);
+        card.classList.toggle("combat-card-blinded", blinded);
+        card.classList.toggle("combat-card-suppressed", suppressed);
         if (smoked) {
           let timerEl = card.querySelector(".combat-card-smoke-timer") as HTMLElement;
           if (!timerEl) {
@@ -1074,6 +1239,42 @@ export function eventConfigs() {
           }
         } else {
           card.querySelector(".combat-card-stim-timer")?.remove();
+        }
+        if (blinded) {
+          let timerEl = card.querySelector(".combat-card-blind-timer") as HTMLElement;
+          if (!timerEl) {
+            timerEl = document.createElement("span");
+            timerEl.className = "combat-card-blind-timer";
+            card.appendChild(timerEl);
+          }
+          const remaining = (c.blindedUntil ?? 0) - now;
+          timerEl.textContent = (remaining / 1000).toFixed(1);
+        } else {
+          card.querySelector(".combat-card-blind-timer")?.remove();
+        }
+        if (suppressed) {
+          let arrowWrap = card.querySelector(".combat-card-suppress-arrow-wrap") as HTMLElement;
+          const avatarWrap = card.querySelector(".combat-card-avatar-wrap");
+          if (!arrowWrap && avatarWrap) {
+            arrowWrap = document.createElement("div");
+            arrowWrap.className = "combat-card-suppress-arrow-wrap";
+            const arrow = document.createElement("div");
+            arrow.className = "combat-card-suppress-arrow";
+            arrow.innerHTML = "▼";
+            arrowWrap.appendChild(arrow);
+            card.insertBefore(arrowWrap, card.firstChild);
+          }
+          let timerEl = card.querySelector(".combat-card-suppress-timer") as HTMLElement;
+          if (!timerEl) {
+            timerEl = document.createElement("span");
+            timerEl.className = "combat-card-suppress-timer";
+            card.appendChild(timerEl);
+          }
+          const remaining = (c.suppressedUntil ?? 0) - now;
+          timerEl.textContent = (remaining / 1000).toFixed(1);
+        } else {
+          card.querySelector(".combat-card-suppress-arrow-wrap")?.remove();
+          card.querySelector(".combat-card-suppress-timer")?.remove();
         }
         const baseInterval = c.attackIntervalMs ?? 1500;
         let speedMult = 1;
@@ -1174,7 +1375,7 @@ export function eventConfigs() {
             const targetId = targets.get(c.id);
             const target = all.find((x) => x.id === targetId);
             if (target && target.hp > 0 && !target.downState) {
-              const result = resolveAttack(c, target);
+              const result = resolveAttack(c, target, now);
               if (c.side === "player") {
                 if (target.side === "enemy" && (target.hp <= 0 || target.downState === "kia")) {
                   playerKills.set(c.id, (playerKills.get(c.id) ?? 0) + 1);
@@ -1274,6 +1475,8 @@ export function eventConfigs() {
             const inventoryIndex = parseInt(idxStr, 10);
             const thrower = players.find((p) => p.id === soldierId);
             if (!thrower || thrower.hp <= 0 || thrower.downState) return;
+            const grenadeOnCooldown = (thrower.grenadeCooldownUntil ?? 0) > Date.now();
+            if (grenadeOnCooldown) return;
             const soldier = getSoldierFromStore(soldierId);
             const grenades = soldier ? getSoldierGrenades(soldier.inventory) : [];
             const g = grenades.find((gr) => gr.inventoryIndex === inventoryIndex);
@@ -1298,6 +1501,21 @@ export function eventConfigs() {
             removeTargetsForCombatantInCover(targets, combatant.id);
             closeAbilitiesPopup();
             updateCombatUI();
+            return;
+          }
+          if (abilityBtn?.classList.contains("combat-ability-suppress-wrap") && !(abilityBtn as HTMLButtonElement).disabled) {
+            e.stopPropagation();
+            const soldierId = (abilityBtn as HTMLElement).dataset.soldierId;
+            if (!soldierId) return;
+            const combatant = players.find((p) => p.id === soldierId);
+            const onCooldown = combatant && (combatant.suppressCooldownUntil ?? 0) > Date.now();
+            if (!combatant || combatant.hp <= 0 || combatant.downState || onCooldown) return;
+            suppressTargetingMode = { user: combatant };
+            showSuppressTargetingHint(combatant);
+            document.querySelectorAll("#combat-enemies-grid .combat-card:not(.combat-card-down)").forEach((card) => {
+              card.classList.add("combat-card-grenade-target");
+            });
+            return;
           }
         },
       },
@@ -1337,6 +1555,16 @@ export function eventConfigs() {
             const target = players.find((c) => c.id === targetId);
             if (!target || target.hp <= 0 || target.downState) return;
             executeMedicalUse(medTargetingMode.user, target, medTargetingMode.medItem);
+            return;
+          }
+          if (suppressTargetingMode) {
+            const card = (e.currentTarget as HTMLElement).closest(".combat-card") as HTMLElement | null;
+            if (!card || card.dataset.side !== "enemy" || card.classList.contains("combat-card-down")) return;
+            const targetId = card.dataset.combatantId;
+            if (!targetId) return;
+            const target = enemies.find((c) => c.id === targetId);
+            if (!target || target.hp <= 0 || target.downState) return;
+            executeSuppress(suppressTargetingMode.user, target);
             return;
           }
           if (grenadeTargetingMode) {

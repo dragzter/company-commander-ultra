@@ -6,6 +6,7 @@ import { Images } from "../../constants/images.ts";
 import { usePlayerCompanyStore } from "../../store/ui-store.ts";
 import { TRAIT_CODEX } from "../../constants/trait-codex.ts";
 import { TraitProfileStats } from "../entities/soldier/soldier-traits.ts";
+import { getLevelBenefitsForCodex } from "../entities/levels.ts";
 
 const TRAIT_STAT_ABBR: Record<string, string> = {
   hit_points: "HP",
@@ -27,6 +28,28 @@ const STAT_HELP_ITEMS: { stat: string; abbr: string; desc: string; isBaseStat?: 
   { stat: "Dexterity", abbr: "DEX", desc: "Aiming and reflexes. Boosts hit chance and avoidance. Also increases attack speed.", isBaseStat: true },
   { stat: "Attack Speed", abbr: "SPD", desc: "Time between attacks in seconds. From weapon speed_base and dexterity." },
 ];
+
+/** Builds level rows for the codex Levels tab. */
+function codexLevelsHTML(): string {
+	const rows = getLevelBenefitsForCodex();
+	return rows
+		.map((r) => {
+			const gainsHtml =
+				r.gainsBadges.length > 0
+					? r.gainsBadges.map((b) => `<span class="codex-stat-badge codex-badge-positive">${b}</span>`).join("")
+					: '<span class="codex-stat-badge codex-badge-neutral">Base</span>';
+			const specialHtml = r.special
+				? `<span class="codex-level-special">${r.special}</span>`
+				: "";
+			return `
+		<div class="codex-level-row">
+			<span class="codex-level-num">Lv ${r.level}</span>
+			<div class="codex-level-gains">${gainsHtml}</div>
+			<div class="codex-level-special-wrap">${specialHtml}</div>
+		</div>`;
+		})
+		.join("");
+}
 
 /** Builds trait cards for the codex Traits tab. */
 function codexTraitsHTML(): string {
@@ -128,11 +151,13 @@ export function codexPopupTemplate(): string {
         <button type="button" class="codex-tab active" data-tab="stats">Stats</button>
         <button type="button" class="codex-tab" data-tab="traits">Traits</button>
         <button type="button" class="codex-tab" data-tab="effects">Effects</button>
+        <button type="button" class="codex-tab" data-tab="levels">Levels</button>
       </div>
       <div class="codex-tab-panels">
         <div class="codex-tab-panel active" data-panel="stats"><div class="codex-stats-content"><section class="codex-section"><h5 class="codex-section-title">Base Stats</h5><div class="codex-stat-table">${statsRows}</div></section>${combatSection}</div></div>
         <div class="codex-tab-panel" data-panel="traits"><p class="codex-traits-intro">Traits add a little flavor to your soldiers—each modifies base stats as shown below.</p><div class="codex-traits-grid">${codexTraitsHTML()}</div></div>
         <div class="codex-tab-panel" data-panel="effects"><div class="codex-effects-content"><section class="codex-section"><h5 class="codex-section-title">Status Effects</h5><div class="codex-stat-table">${effectsRows}</div></section></div></div>
+        <div class="codex-tab-panel" data-panel="levels"><div class="codex-levels-content"><section class="codex-section"><h5 class="codex-section-title">Level Benefits</h5><p class="codex-levels-intro">Soldiers gain stats and bonuses at each level. Every 4th level (4, 8, 12, 16) grants +1% Chance to Hit; level 20 grants +2%.</p><div class="codex-level-rows">${codexLevelsHTML()}</div></section></div></div>
       </div>
     </div>
   </div>`;
@@ -168,73 +193,105 @@ export function memorialPopupTemplate(): string {
 }
 
 export const gameSetupTemplate = `<div class="setup-game-wrapper">
-                    <div class="step flex column justify-between h-100">
-                        <div class="step-content">
-                            <h3 class="font-h2">Create Your Company</h3>
-
-                            <div class="input-wrapper">
-                                <label for="commander-name">Your Name</label>
-                                <input id="commander-name" type="text" placeholder="Your Name" data-min="3">
-                                <p class="helper-text">3 - 15 characters.</p>
-                            </div>
-
-                            <div class="input-wrapper">
-                                <label for="company-name">Company Name</label>
-                                <input id="company-name" type="text" placeholder="e.g. The Tiger Hawks" data-min="5">
-                                <p class="helper-text">5 - 15 characters.</p>
-                            </div>
-
-                            <div class="setup-patch-section">
-                                <h3>Choose Your Unit Patch</h3>
-                                <div class="grid grid-4-col setup-patch-grid">
-                                    <img class="setup-patch-img" src="/images/unit-patches/patch_1.png" data-img="patch_1.png" alt="Unit Patch">
-                                    <img class="setup-patch-img" src="/images/unit-patches/patch_2.png" data-img="patch_2.png" alt="Unit Patch">
-                                    <img class="setup-patch-img" src="/images/unit-patches/patch_3.png" data-img="patch_3.png" alt="Unit Patch">
-                                    <img class="setup-patch-img" src="/images/unit-patches/patch_4.png" data-img="patch_4.png" alt="Unit Patch">
-                                    <img class="setup-patch-img" src="/images/unit-patches/patch_5.png" data-img="patch_5.png" alt="Unit Patch">
-                                    <img class="setup-patch-img" src="/images/unit-patches/patch_6.png" data-img="patch_6.png" alt="Unit Patch">
-                                    <img class="setup-patch-img" src="/images/unit-patches/patch_7.png" data-img="patch_7.png" alt="Unit Patch">
-                                    <img class="setup-patch-img" src="/images/unit-patches/patch_8.png" data-img="patch_8.png" alt="Unit Patch">
-                                </div>
-                            </div>
+                    <div class="setup-game-content">
+                        <h3 class="setup-title">Create Your Company</h3>
+                        <div class="setup-input-wrapper">
+                            <label for="commander-name">Your Name</label>
+                            <input id="commander-name" type="text" placeholder="Your Name" data-min="3">
+                            <p class="helper-text">3 - 15 characters.</p>
                         </div>
-
-                        <div class="setup-footer flex justify-between">
-                            <button id="cancel-game-setup" class="mbtn red">&#10005; Cancel</button>
-                            <button id="finish-game-setup" class="mbtn green disabled" disabled>Next &#10140;</button>
+                        <div class="setup-input-wrapper">
+                            <label for="company-name">Company Name</label>
+                            <input id="company-name" type="text" placeholder="e.g. The Tiger Hawks" data-min="5">
+                            <p class="helper-text">5 - 15 characters.</p>
+                        </div>
+                        <div class="setup-patch-section">
+                            <h3 class="setup-patch-title">Choose Your Unit Patch</h3>
+                            <div class="setup-patch-grid">
+                                <img class="setup-patch-img" src="/images/unit-patches/patch_1.png" data-img="patch_1.png" alt="Unit Patch">
+                                <img class="setup-patch-img" src="/images/unit-patches/patch_2.png" data-img="patch_2.png" alt="Unit Patch">
+                                <img class="setup-patch-img" src="/images/unit-patches/patch_3.png" data-img="patch_3.png" alt="Unit Patch">
+                                <img class="setup-patch-img" src="/images/unit-patches/patch_4.png" data-img="patch_4.png" alt="Unit Patch">
+                                <img class="setup-patch-img" src="/images/unit-patches/patch_5.png" data-img="patch_5.png" alt="Unit Patch">
+                                <img class="setup-patch-img" src="/images/unit-patches/patch_6.png" data-img="patch_6.png" alt="Unit Patch">
+                                <img class="setup-patch-img" src="/images/unit-patches/patch_7.png" data-img="patch_7.png" alt="Unit Patch">
+                                <img class="setup-patch-img" src="/images/unit-patches/patch_8.png" data-img="patch_8.png" alt="Unit Patch">
+                            </div>
                         </div>
                     </div>
+                    <div class="setup-footer">
+                        <button id="cancel-game-setup" class="game-btn game-btn-md game-btn-red">&#10005; Cancel</button>
+                        <button id="finish-game-setup" class="game-btn game-btn-md game-btn-green disabled" disabled>Next &#10140;</button>
+                    </div>
                 </div>`;
+
+const LEADERSHIP_QUOTES: { quote: string; author: string }[] = [
+	{ quote: "Leadership is the art of getting someone else to do something you want done because he wants to do it.", author: "Dwight D. Eisenhower" },
+	{ quote: "The supreme quality of leadership is integrity.", author: "Dwight D. Eisenhower" },
+	{ quote: "Plans are nothing; planning is everything.", author: "Dwight D. Eisenhower" },
+	{ quote: "Accept the challenges so that you can feel the exhilaration of victory.", author: "George S. Patton" },
+	{ quote: "Lead me, follow me, or get out of my way.", author: "George S. Patton" },
+	{ quote: "A pint of sweat saves a gallon of blood.", author: "George S. Patton" },
+	{ quote: "No man is entitled to the blessings of freedom unless he be vigilant in its preservation.", author: "Douglas MacArthur" },
+	{ quote: "The soldier above all others prays for peace, for it is the soldier who must suffer and bear the deepest wounds and scars of war.", author: "Douglas MacArthur" },
+	{ quote: "In war there is no substitute for victory.", author: "Douglas MacArthur" },
+	{ quote: "We shall fight on the beaches, we shall fight on the landing grounds. We shall never surrender.", author: "Winston Churchill" },
+	{ quote: "Success is not final, failure is not fatal: it is the courage to continue that counts.", author: "Winston Churchill" },
+	{ quote: "The best executive is the one who has sense enough to pick good men to do what he wants done.", author: "Theodore Roosevelt" },
+	{ quote: "The art of war is simple enough. Find out where your enemy is. Get at him as soon as you can. Strike him as hard as you can.", author: "Ulysses S. Grant" },
+	{ quote: "In the midst of chaos, there is also opportunity.", author: "Sun Tzu" },
+	{ quote: "Victory belongs to the most persevering.", author: "Napoleon Bonaparte" },
+	{ quote: "If everyone is thinking alike, then somebody isn't thinking.", author: "George S. Patton" },
+	{ quote: "Courage is fear holding on a minute longer.", author: "George S. Patton" },
+	{ quote: "Duty, Honor, Country. Those three hallowed words reverently dictate what you ought to be.", author: "Douglas MacArthur" },
+	{ quote: "I came, I saw, I conquered.", author: "Julius Caesar" },
+	{ quote: "In war, events of importance are the result of trivial causes.", author: "Julius Caesar" },
+	{ quote: "Experience is the teacher of all things.", author: "Julius Caesar" },
+	{ quote: "Let him who desires peace prepare for war.", author: "Vegetius" },
+	{ quote: "It is the nature of war that what is beneficial to you is detrimental to the enemy.", author: "Vegetius" },
+	{ quote: "Waste no more time arguing what a good man should be. Be one.", author: "Marcus Aurelius" },
+	{ quote: "You have power over your mind — not outside events. Realize this, and you will find strength.", author: "Marcus Aurelius" },
+	{ quote: "They make a desert and call it peace.", author: "Tacitus" },
+	{ quote: "The sinews of war are infinite money.", author: "Cicero" },
+	{ quote: "Few men have the virtue to withstand the highest bidder.", author: "Sallust" },
+	{ quote: "A city's best defense is the courage of its citizens.", author: "Lycurgus" },
+	{ quote: "The walls of Sparta are its young men, and their borders the points of their spears.", author: "Lycurgus" },
+];
+
+function pickRandomQuote(): { quote: string; author: string } {
+	return LEADERSHIP_QUOTES[Math.floor(Math.random() * LEADERSHIP_QUOTES.length)];
+}
 
 export const setupConfirmationTemplate = (
   name: string,
   companyName: string,
   unitPatch: string,
-) => `
+) => {
+	const { quote, author } = pickRandomQuote();
+	return `
 <div id="setup-confirmation" class="confirm-screen-root flex column align-center">
 	<h1>CONFIRM SELECTION</h1>
 	<p class="confirm-screen-intro">${name} commanding ${companyName}</p>
 	<div class="confirm-screen-quote">
-		<blockquote>"Leadership is the art of getting someone else to do something you want done because he wants to do it."</blockquote>
-		<p class="helper-text">Dwight D. Eisenhower</p>
+		<blockquote>"${quote}"</blockquote>
+		<p class="helper-text">${author}</p>
 	</div>
 	<img width="120" class="confirm-screen-patch" src="images/unit-patches/${unitPatch}" alt="Company Patch">
 	<div class="confirm-screen-buttons">
-		<button id="launch-game" class="green mbtn">Begin</button>
-		<button id="go-back" class="red mbtn">Go Back</button>
+		<button id="launch-game" class="game-btn game-btn-md game-btn-green">Begin</button>
+		<button id="go-back" class="game-btn game-btn-md game-btn-red">Go Back</button>
 	</div>
 </div>
 `;
+};
 
 export const mainMenuTemplate = () => {
   return `
 		<div id="g-menu-wrapper" class="flex align-center column justify-center h-100">
 				<img width="170" src="images/ui/${Images.logo.cc_logo}" alt="Game Logo">
-				<button id="${clrHash(DOM.mainMenu.newGame)}" class="mbtn green mb-3">New Game</button>
-<!--				<button id="${clrHash(DOM.mainMenu.continue)}" class="mbtn green
-		// mb-3">Continue</button>-->
-				<button id="${clrHash(DOM.mainMenu.credits)}" class="mbtn black mb-3">Credits</button>
-				<button id="${clrHash(DOM.mainMenu.settings)}" class="mbtn blue mb-3">Settings</button>
+				<button id="${clrHash(DOM.mainMenu.newGame)}" class="game-btn game-btn-lg game-btn-green menu-btn">New Game</button>
+				<button id="${clrHash(DOM.mainMenu.credits)}" class="game-btn game-btn-lg game-btn-black menu-btn">Credits</button>
+				<button id="${clrHash(DOM.mainMenu.settings)}" class="game-btn game-btn-lg game-btn-blue menu-btn">Settings</button>
 		</div>
 	`;
 };
@@ -318,35 +375,36 @@ export const companyHomePageTemplate = () => {
   const totalInventoryCapacity = getTotalArmorySlots(companyLvl);
   const totalItemsInInventory = company?.inventory?.length ?? storeItems ?? 0;
 
-  const statsBlock = totalMenInCompany > 0
-    ? `
-	<div class="company-stats p-2">
-			<p class="company-count">Total Men <span>${totalMenInCompany}</span></p>
-			<p class="company-men-lost">Men Lost <span>${totalMenLostAllTime}</span></p>
-			<p class="company-enemies-killed">Enemies Killed <span>${totalEnemiesKilledAllTime}</span></p>
-			<p class="company-missions-completed">Missions Completed <span>${totalMissionsCompleted}</span></p>
-			<p class="company-missions-failed">Missions Failed <span>${totalMissionsFailed}</span></p>
-			<p class="credit-balance">Credit Balance <span>$${creditBalance}</span></p>
-			<p class="company-level">Company Level <span>${companyLevel}</span></p>
-			<p class="company-inventory-status">Armory / Capacity <span>${totalItemsInInventory} / ${totalInventoryCapacity}</span></p>
-		</div>
-	`
-    : `
-    <div class="company-stats p-2">
-			<p class="company-count">Total Men <span>${totalMenInCompany}</span></p>
-			<p class="credit-balance">Credit Balance <span>$${creditBalance}</span></p>
-			<p class="company-level">Company Level <span>${companyLevel}</span></p>
-			<p class="company-inventory-status">Armory / Capacity <span>${totalItemsInInventory} / ${totalInventoryCapacity}</span></p>
-		</div>
-	  <div class="flex align-center justify-center w-100">
-		    <button id="go-to-troops-screen" class="mbtn red">Recruit Men</button>
-	  </div>
-	`;
-
   const memorialCodexRow = `
     <div class="company-home-buttons-row flex align-center justify-center gap-2">
       <button id="company-stats-memorial" class="game-btn game-btn-md game-btn-blue codex-memorial-btn">Memorial Wall</button>
       <button id="company-go-codex" class="game-btn game-btn-md game-btn-blue codex-memorial-btn">Game Codex</button>
+    </div>
+  `;
+
+  const statRow = (label: string, value: string | number, type: "positive" | "neutral" | "accent" = "neutral") =>
+    `<div class="company-stat-row"><span class="company-stat-label">${label}</span><span class="company-stat-value company-stat-${type}">${value}</span></div>`;
+
+  const statsBlockExciting = totalMenInCompany > 0
+    ? `
+    <div class="company-stats-grid">
+      ${statRow("Total Men", totalMenInCompany, "positive")}
+      ${statRow("Enemies Killed", totalEnemiesKilledAllTime, "positive")}
+      ${statRow("Missions Done", totalMissionsCompleted, "positive")}
+      ${statRow("Missions Failed", totalMissionsFailed, "neutral")}
+      ${statRow("Men Lost", totalMenLostAllTime, "neutral")}
+      ${statRow("Credits", `$${creditBalance.toLocaleString()}`, "accent")}
+      ${statRow("Armory", `${totalItemsInInventory} / ${totalInventoryCapacity}`, "neutral")}
+    </div>
+  `
+    : `
+    <div class="company-stats-grid company-stats-minimal">
+      ${statRow("Total Men", totalMenInCompany, "positive")}
+      ${statRow("Credits", `$${creditBalance.toLocaleString()}`, "accent")}
+      ${statRow("Armory", `${totalItemsInInventory} / ${totalInventoryCapacity}`, "neutral")}
+    </div>
+    <div class="flex align-center justify-center w-100">
+      <button id="go-to-troops-screen" class="mbtn red">Recruit Men</button>
     </div>
   `;
 
@@ -356,15 +414,21 @@ export const companyHomePageTemplate = () => {
 
     <div class="campaign-home-scroll">
       <div class="company-home-stats-block">
-        ${statsBlock}
+        ${statsBlockExciting}
         ${memorialCodexRow}
       </div>
+    </div>
 
-      <div class="company-level-bar-wrapper">
-        <p class="ms-2 mb-1">Level ${companyLevel}${companyLvl < 20 ? ` · ${companyExperience} / ${getXpRequiredForLevel(companyLvl + 1)} XP` : ""}</p>
-        <div class="company-level-progress">
-          <div class="progress-bar" style="width: ${companyLvl >= 20 ? 100 : Math.max(0, ((companyExperience - getXpRequiredForLevel(companyLvl)) / Math.max(1, getXpRequiredForLevel(companyLvl + 1) - getXpRequiredForLevel(companyLvl))) * 100)}%"></div>
-        </div>
+    <div class="company-level-bar-wrapper">
+      <div class="company-xp-header">
+        <span class="company-level-badge">Lv ${companyLevel}</span>
+        ${companyLvl < 20
+          ? `<span class="company-xp-text"><span class="company-xp-current">${companyExperience}</span> / <span class="company-xp-required">${getXpRequiredForLevel(companyLvl + 1)}</span> XP</span>`
+          : '<span class="company-xp-max">MAX LEVEL</span>'}
+      </div>
+      <div class="company-level-progress">
+        <div class="company-xp-fill" style="width: ${companyLvl >= 20 ? 100 : Math.max(0, ((companyExperience - getXpRequiredForLevel(companyLvl)) / Math.max(1, getXpRequiredForLevel(companyLvl + 1) - getXpRequiredForLevel(companyLvl))) * 100)}%"></div>
+        ${companyLvl < 20 ? '<div class="company-xp-shine"></div>' : ""}
       </div>
     </div>
 

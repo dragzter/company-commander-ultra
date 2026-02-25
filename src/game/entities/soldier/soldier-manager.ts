@@ -198,20 +198,32 @@ function SoldierManager() {
   const MAX_AVOIDANCE = 0.3;
   const PRECISION = 3;
 
+  /** Level bonus: +1% CTH at 4,8,12,16; +2% at 20. Total 6% at max level. */
+  function getLevelBonusChanceToHit(level: number): number {
+    if (level >= 20) return 0.06;
+    if (level >= 16) return 0.04;
+    if (level >= 12) return 0.03;
+    if (level >= 8) return 0.02;
+    if (level >= 4) return 0.01;
+    return 0;
+  }
+
   function initializeCombatProfile(soldier: Soldier) {
     const atts = soldier.attributes;
     const cp = soldier.combatProfile;
     const calc = attrToCombatProfileValue();
     const precision = (n: number) => toFNum(n, PRECISION);
+    const level = soldier.level ?? 1;
 
     const fromTough = calc.toughness(atts.toughness);
     const fromDexHit = calc.dexterityHit(atts.dexterity);
     const fromAwareHit = calc.awarenessHit(atts.awareness);
     const fromDexAvd = calc.dexterityAvd(atts.dexterity);
     const fromAwareAvd = calc.awarenessAvd(atts.awareness);
+    const fromLevelHit = getLevelBonusChanceToHit(level);
 
     cp.mitigateDamage = precision(Math.min(MAX_MITIGATION, cp.mitigateDamage + fromTough));
-    cp.chanceToHit = precision(Math.min(MAX_HIT_CHANCE, cp.chanceToHit + fromAwareHit + fromDexHit));
+    cp.chanceToHit = precision(Math.min(MAX_HIT_CHANCE, cp.chanceToHit + fromAwareHit + fromDexHit + fromLevelHit));
     cp.chanceToEvade = precision(Math.min(MAX_AVOIDANCE, cp.chanceToEvade + fromAwareAvd + fromDexAvd));
   }
 

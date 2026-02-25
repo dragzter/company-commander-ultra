@@ -310,14 +310,25 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
         SoldierManager.getNewSupportMan(1, modelTrait),
         SoldierManager.getNewMedic(1, modelTrait),
       ];
-      const formationSlots = getFormationSlots({ ...state.company, soldiers: initial });
+      /* Ensure company has required fields (level, resourceProfile) for new-game flow */
+      const companyBase = {
+        level: state.company?.level ?? 1,
+        experience: state.company?.experience ?? 0,
+        inventory: state.company?.inventory ?? [],
+        holding_inventory: state.company?.holding_inventory ?? [],
+        resourceProfile: state.company?.resourceProfile ?? COMPANY_RESOURCES_BY_LEVEL[0],
+        ...state.company,
+      };
+      const companyWithSoldiers = { ...companyBase, soldiers: initial };
+      const formationSlots = getFormationSlots(companyWithSoldiers);
       return {
         company: {
-          ...state.company,
+          ...companyBase,
           soldiers: initial,
           formationSlots,
         },
         totalMenInCompany: initial.length,
+        companyLevel: companyBase.level,
       };
     }),
   /** Add starter armory items when inventory is empty (new game). */

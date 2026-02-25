@@ -181,6 +181,47 @@ const SOLDIER_BASE: Soldier = {
   events: [],
 };
 
+/** Level benefits for codex: stat gains and special bonuses per level. */
+export function getLevelBenefitsForCodex(): { level: number; gains: string; gainsBadges: string[]; special?: string }[] {
+  const rows: { level: number; gains: string; gainsBadges: string[]; special?: string }[] = [];
+  for (let i = 0; i < ATTRIBUTES_INCREASES_BY_LEVEL.length; i++) {
+    const def = ATTRIBUTES_INCREASES_BY_LEVEL[i];
+    const lvl = def.level;
+    const parts: string[] = [];
+    const gainsBadges: string[] = [];
+    if (def.hit_points > 0) {
+      parts.push(`+${def.hit_points} HP`);
+      gainsBadges.push(`+${def.hit_points} HP`);
+    }
+    if (def.dexterity > 0) {
+      parts.push(`+${def.dexterity} DEX`);
+      gainsBadges.push(`+${def.dexterity} DEX`);
+    }
+    if (def.morale > 0) {
+      parts.push(`+${def.morale} MOR`);
+      gainsBadges.push(`+${def.morale} MOR`);
+    }
+    if (def.toughness > 0) {
+      parts.push(`+${def.toughness} TGH`);
+      gainsBadges.push(`+${def.toughness} TGH`);
+    }
+    if (def.awareness > 0) {
+      parts.push(`+${def.awareness} AWR`);
+      gainsBadges.push(`+${def.awareness} AWR`);
+    }
+    let special: string | undefined;
+    if (lvl === 4 || lvl === 8 || lvl === 12 || lvl === 16) special = "+1% CTH";
+    else if (lvl === 20) special = "+2% CTH";
+    rows.push({
+      level: lvl,
+      gains: parts.length > 0 ? parts.join(", ") : "—",
+      gainsBadges,
+      special,
+    });
+  }
+  return rows;
+}
+
 export {
   getStatsForLevel,
   SOLDIER_BASE,

@@ -26,6 +26,10 @@ export interface Combatant {
   takeCoverUntil?: number;
   /** Take Cover used this combat (1x per soldier) */
   takeCoverUsed?: boolean;
+  /** Timestamp (ms) when Suppress cooldown ends */
+  suppressCooldownUntil?: number;
+  /** Timestamp (ms) when grenade cooldown ends (per-soldier, 5s after throwing) */
+  grenadeCooldownUntil?: number;
   /** Timestamp (ms) when smoke effect ends */
   smokedUntil?: number;
   /** Timestamp (ms) when stun ends */
@@ -50,6 +54,8 @@ export interface Combatant {
   attackSpeedBuffMultiplier?: number;
   /** Epic mission elite: no HP handicap, gold frame */
   isEpicElite?: boolean;
+  /** Weapon effect for proc checks (fire, blind, stun) */
+  weaponEffect?: string;
 }
 
 /** Map of attacker id -> target id */

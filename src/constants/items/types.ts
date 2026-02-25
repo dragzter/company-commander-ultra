@@ -74,7 +74,11 @@ export type WeaponEffectId =
   | "lethal"
   | "heavy_caliber"
   | "steady_grip"
-  | "quick_cycle";
+  | "quick_cycle"
+  | "firebreaker"
+  | "eye_for_an_eye"
+  | "stormhammer"
+  | "eagle_eye";
 
 export interface Item {
   damage?: number;

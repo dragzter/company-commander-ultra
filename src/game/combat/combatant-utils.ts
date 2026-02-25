@@ -30,6 +30,7 @@ export function soldierToCombatant(soldier: Soldier): Combatant {
   const intervalMult = effect?.modifiers?.attackIntervalMultiplier ?? 1;
   attackIntervalMs = Math.round(attackIntervalMs * intervalMult);
   const cp = soldier.combatProfile ?? { chanceToHit: 0.6, chanceToEvade: 0.05, mitigateDamage: 0, suppression: 0 };
+  const weaponEffect = (weapon as { weaponEffect?: string })?.weaponEffect;
 
   return {
     id: soldier.id,
@@ -49,6 +50,7 @@ export function soldierToCombatant(soldier: Soldier): Combatant {
     soldierRef: soldier,
     designation: soldier.designation,
     weaponIconUrl: weapon ? getItemIconUrl(weapon as import("../../constants/items/types.ts").Item) : undefined,
+    weaponEffect,
   };
 }
 

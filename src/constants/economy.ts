@@ -78,11 +78,11 @@ export function getLevelFromExperience(totalXp: number): number {
   return lvl;
 }
 
-/** Soldier combat XP: base for surviving mission, + per damage dealt, + per damage taken, + per kill, + per ability use. Tuned for equitable distribution (high base, moderate bonuses). */
-export const SOLDIER_XP_BASE_SURVIVE_VICTORY = 25;
-export const SOLDIER_XP_BASE_SURVIVE_DEFEAT = 12;
-export const SOLDIER_XP_PER_DAMAGE = 0.15;
-export const SOLDIER_XP_PER_DAMAGE_TAKEN = 0.08;
+/** Soldier combat XP: base for surviving mission, + per damage dealt, + per damage taken, + per kill, + per ability use. Base reduced, damage/deal increased to favor combat participation. */
+export const SOLDIER_XP_BASE_SURVIVE_VICTORY = 18;
+export const SOLDIER_XP_BASE_SURVIVE_DEFEAT = 9;
+export const SOLDIER_XP_PER_DAMAGE = 0.22;
+export const SOLDIER_XP_PER_DAMAGE_TAKEN = 0.12;
 export const SOLDIER_XP_PER_KILL = 6;
 export const SOLDIER_XP_PER_ABILITY_USE = 1.5;
 

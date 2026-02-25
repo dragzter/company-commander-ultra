@@ -135,6 +135,11 @@ export const usePlayerCompanyStore = createStore<CompanyStore>()(
             return { name: s?.name ?? "Unknown", level: s?.level ?? 1, missionName: "Unknown", enemiesKilled: 0 };
           });
           if (!Array.isArray(merged.company?.holding_inventory)) merged.company = { ...merged.company, holding_inventory: [] };
+          /* Sync totalMenInCompany with company.soldiers - avoid showing count when soldiers array is missing */
+          const soldierCount = merged.company?.soldiers?.length ?? 0;
+          if ((merged.totalMenInCompany as number) > 0 && soldierCount === 0) {
+            merged.totalMenInCompany = 0;
+          }
           const fs = getFormationSlots(merged.company);
           if (fs.length > 0 && (!Array.isArray(merged.company?.formationSlots) || merged.company.formationSlots.length !== fs.length)) {
             merged.company = { ...merged.company, formationSlots: fs };

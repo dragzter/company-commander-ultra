@@ -6,10 +6,7 @@
 /** Enemy HP multiplier. Enemies have this fraction of their base HP (from gear, level, etc). 0.55 = 55% HP (reduced from 50%). */
 export const ENEMY_HP_MULTIPLIER = 0.55;
 
-/** Global damage multiplier. All damage (both sides) is multiplied by this. 0.6 = 60% of raw damage. */
-export const GLOBAL_DAMAGE_MULTIPLIER = 0.6;
-
-/** Enemy damage multiplier. Enemies deal this fraction of their base damage (applied on top of GLOBAL). 0.7 = enemies do 70% vs players. */
+/** Enemy damage multiplier. Enemies deal this fraction of their base damage vs players. 0.7 = 70%. */
 export const ENEMY_DAMAGE_MULTIPLIER = 0.7;
 
 // ─── Attack interval (weapon speed) ─────────────────────────────────────────

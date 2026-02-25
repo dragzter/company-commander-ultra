@@ -1,6 +1,7 @@
 /**
  * Combat loop: attack scheduling, target assignment, Take Cover, smoke effects.
  */
+import { WEAPON_EFFECTS } from "../../constants/items/weapon-effects.ts";
 import { computeFinalDamage } from "./combat-damage.ts";
 import type { Combatant, TargetMap } from "./types.ts";
 
@@ -14,9 +15,13 @@ export function isStunned(c: Combatant, now: number): boolean {
   return c.stunUntil != null && now < c.stunUntil;
 }
 
-/** Can this combatant perform attacks? (Excludes stunned, in cover, dead.) */
+export function isSuppressed(c: Combatant, now: number): boolean {
+  return c.suppressedUntil != null && now < c.suppressedUntil;
+}
+
+/** Can this combatant perform attacks? (Excludes stunned, in cover, suppressed, dead.) */
 function canAttack(c: Combatant | undefined, now: number): boolean {
-  return c != null && c.hp > 0 && !c.downState && !isInCover(c, now) && !isStunned(c, now);
+  return c != null && c.hp > 0 && !c.downState && !isInCover(c, now) && !isStunned(c, now) && !isSuppressed(c, now);
 }
 
 /** Can this combatant be targeted by attacks? (Stunned and in-cover units can still be shot at.) */
@@ -148,20 +153,32 @@ export function removeTargetsForCombatantInCover(
   for (const id of toDelete) targets.delete(id);
 }
 
+const BLINDED_HIT_REDUCTION = 0.3;
+
 export interface AttackResult {
   attackerId: string;
   targetId: string;
   hit: boolean;
   evaded: boolean;
   damage: number;
+  /** Extra fire damage from proc (unmitigated) */
+  procFireDamage?: number;
+  /** Proc applied: blind or stun */
+  procBlind?: boolean;
+  procStun?: boolean;
 }
 
 /** Resolve a single attack. Returns result for UI feedback. */
 export function resolveAttack(
   attacker: Combatant,
   target: Combatant,
+  now: number = Date.now(),
 ): AttackResult {
-  const hitRoll = Math.random() < (attacker.chanceToHit ?? 0.6);
+  const baseCth = attacker.chanceToHit ?? 0.6;
+  const blinded = attacker.blindedUntil != null && now < attacker.blindedUntil;
+  const effectiveCth = blinded ? baseCth * (1 - BLINDED_HIT_REDUCTION) : baseCth;
+
+  const hitRoll = Math.random() < effectiveCth;
   if (!hitRoll) {
     return { attackerId: attacker.id, targetId: target.id, hit: false, evaded: false, damage: 0 };
   }
@@ -174,12 +191,47 @@ export function resolveAttack(
       Math.random() * ((attacker.damageMax ?? 6) - (attacker.damageMin ?? 4) + 1),
   );
   const mitigated = computeFinalDamage(rawDmg, target);
-  const newHp = Math.max(0, Math.floor(target.hp - mitigated));
-  target.hp = newHp;
-  if (newHp <= 0) {
+  let totalDamage = mitigated;
+  target.hp = Math.max(0, Math.floor(target.hp - mitigated));
+
+  let procFireDamage = 0;
+  let procBlind = false;
+  let procStun = false;
+
+  const effectId = attacker.weaponEffect;
+  const effect = effectId ? WEAPON_EFFECTS[effectId as keyof typeof WEAPON_EFFECTS] : undefined;
+  const proc = effect?.proc;
+  if (proc && target.hp > 0 && !target.downState) {
+    const roll = Math.random();
+    if (roll < proc.chance) {
+      if (proc.type === "fire" && proc.damage != null) {
+        procFireDamage = Math.max(1, Math.floor(proc.damage));
+        target.hp = Math.max(0, Math.floor(target.hp - procFireDamage));
+        totalDamage += procFireDamage;
+      } else if (proc.type === "blind" && proc.durationMs != null) {
+        target.blindedUntil = now + proc.durationMs;
+        procBlind = true;
+      } else if (proc.type === "stun" && proc.durationMs != null) {
+        target.stunUntil = now + proc.durationMs;
+        procStun = true;
+      }
+    }
+  }
+
+  if (target.hp <= 0) {
     target.downState = target.side === "player" && Math.random() < 0.3 ? "incapacitated" : "kia";
   }
-  return { attackerId: attacker.id, targetId: target.id, hit: true, evaded: false, damage: mitigated };
+
+  return {
+    attackerId: attacker.id,
+    targetId: target.id,
+    hit: true,
+    evaded: false,
+    damage: totalDamage,
+    procFireDamage: procFireDamage > 0 ? procFireDamage : undefined,
+    procBlind: procBlind || undefined,
+    procStun: procStun || undefined,
+  };
 }
 
 /** Compute next attack time for attacker (accounts for stim buff, panic 2×) */
