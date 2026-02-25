@@ -9,6 +9,9 @@ export const ENEMY_HP_MULTIPLIER = 0.55;
 /** Enemy damage multiplier. Enemies deal this fraction of their base damage vs players. 0.7 = 70%. */
 export const ENEMY_DAMAGE_MULTIPLIER = 0.7;
 
+/** Global weapon damage multiplier. Applied to all weapon damage. 0.95 = 5% reduction. */
+export const WEAPON_DAMAGE_MULTIPLIER = 0.95;
+
 // ─── Attack interval (weapon speed) ─────────────────────────────────────────
 // Formula: interval = max(MIN, round((BASE - speed*FACTOR) * MULT * dexMult))
 // Targets: speed 1 ≈ 5.5s, speed 10 ≈ 1s (before dex).

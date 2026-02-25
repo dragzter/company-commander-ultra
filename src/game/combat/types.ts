@@ -19,6 +19,8 @@ export interface Combatant {
   level?: number;
   side: "player" | "enemy";
   downState?: "kia" | "incapacitated";
+  /** Who or what killed this combatant (set when downState becomes "kia") */
+  killedBy?: string;
   soldierRef?: import("../entities/types.ts").Soldier;
   designation?: string;
   weaponIconUrl?: string;

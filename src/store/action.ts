@@ -63,6 +63,7 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
   inventory: [],
   companyExperience: 0,
   company: {} as Company,
+  marketTierLevel: 0,
 
   // Actions
   rerollSoldier: async (id: string) => {
@@ -202,6 +203,7 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
       creditBalance: state.creditBalance - creds,
     })),
   setGameStep: (step: GameStep) => set({ gameStep: step }),
+  setMarketTierLevel: (n: number) => set({ marketTierLevel: n }),
   setCompanyUnitPatch: (url: string) => set({ companyUnitPatchURL: url }),
   setCompanyName: (n: string) =>
     set((state: CompanyStore) => ({
@@ -945,6 +947,7 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
     kiaSoldierIds: string[],
     missionName?: string,
     playerKills?: Map<string, number>,
+    kiaKilledBy?: Map<string, string>,
   ) => {
     if (kiaSoldierIds.length === 0) return;
     const mission = missionName ?? "Unknown";
@@ -955,9 +958,11 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
       const remaining = soldiers.filter((s) => !toRemove.has(s.id));
       const entries: MemorialEntry[] = fallen.map((s) => ({
         name: s.name,
-        level: s.level,
+        level: s.level ?? 1,
+        role: (s.designation ?? "Rifleman") as string,
         missionName: mission,
         enemiesKilled: playerKills?.get(s.id) ?? 0,
+        killedBy: kiaKilledBy?.get(s.id),
       }));
       const memorialFallen = [...(state.memorialFallen ?? []), ...entries];
       const formationSlots = getFormationSlots(state.company).map((id) =>

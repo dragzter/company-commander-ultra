@@ -7,6 +7,7 @@ import { getActiveSlots, getReserveSlots, getFormationSlots, getSoldierById } fr
 import { usePlayerCompanyStore } from "../../store/ui-store.ts";
 import { formatDisplayName } from "../../utils/name-utils.ts";
 import { getItemIconUrl } from "../../utils/item-utils.ts";
+import { getBaseAndGearStats } from "../../utils/soldier-stats-utils.ts";
 
 function escapeAttr(s: string): string {
   return s.replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -51,6 +52,7 @@ function formationSoldierCard(
   const swapClass = justSwapped ? " formation-just-swapped" : "";
   const lvl = getLevelFromExperience(s.experience ?? 0);
   const levelRarity = lvl >= 6 ? "epic" : lvl >= 3 ? "rare" : "common";
+  const bg = getBaseAndGearStats(s);
   return `
 <div class="formation-soldier-card entity-card designation-${des} ${slotClass}${swapClass}" data-soldier-id="${s.id}" data-slot-index="${slotIndex}" data-soldier-json="${escapeAttr(JSON.stringify(s))}" data-has-soldier="true">
   <div class="formation-card-inner">
@@ -62,7 +64,7 @@ function formationSoldierCard(
       </div>
       <div class="formation-hp-wrap">
         <div class="formation-hp-bar" style="width: 100%"></div>
-        <span class="formation-hp-value">HP ${s.attributes.hit_points}</span>
+        <span class="formation-hp-value">HP ${bg.hp.base}${bg.hp.gear > 0 ? `+<span class="stat-gear">${bg.hp.gear}</span>` : ""}</span>
       </div>
     </div>
       <div class="formation-details">

@@ -78,3 +78,66 @@ export function getSoldierDisplayStats(soldier: Soldier): SoldierDisplayStats {
     dex: a.dexterity,
   };
 }
+
+const BONUS_STAT_TO_GEAR_KEY: Record<string, "hp" | "tgh" | "dex" | "awr" | "mor"> = {
+  hp: "hp",
+  hit_points: "hp",
+  toughness: "tgh",
+  dexterity: "dex",
+  awareness: "awr",
+  morale: "mor",
+};
+
+export type BaseAndGearStats = {
+  hp: { base: number; gear: number };
+  tgh: { base: number; gear: number };
+  dex: { base: number; gear: number };
+  awr: { base: number; gear: number };
+  mor: { base: number; gear: number };
+};
+
+function addBonusesToGear(
+  accum: { hp: number; tgh: number; dex: number; awr: number; mor: number },
+  bonuses: Array<{ type: string; stat: string; value: number }> | undefined,
+): void {
+  for (const b of bonuses ?? []) {
+    if (b.type !== "flat") continue;
+    const key = BONUS_STAT_TO_GEAR_KEY[b.stat];
+    if (key) accum[key] += b.value;
+  }
+}
+
+/** Compute base (level + traits) vs gear (armor + weapon bonuses) for each base stat. */
+export function getBaseAndGearStats(soldier: Soldier): BaseAndGearStats {
+  const a = soldier.attributes ?? {};
+  const totals = {
+    hp: a.hit_points ?? 0,
+    tgh: a.toughness ?? 0,
+    dex: a.dexterity ?? 0,
+    awr: a.awareness ?? 0,
+    mor: a.morale ?? 0,
+  };
+
+  const gearAccum = { hp: 0, tgh: 0, dex: 0, awr: 0, mor: 0 };
+  gearAccum.tgh = (soldier.armor as { toughness?: number } | undefined)?.toughness ?? 0;
+  addBonusesToGear(gearAccum, (soldier.armor as { bonuses?: Array<{ type: string; stat: string; value: number }> } | undefined)?.bonuses);
+  addBonusesToGear(gearAccum, (soldier.weapon as { bonuses?: Array<{ type: string; stat: string; value: number }> } | undefined)?.bonuses);
+
+  return {
+    hp: { base: Math.max(0, totals.hp - gearAccum.hp), gear: gearAccum.hp },
+    tgh: { base: Math.max(0, totals.tgh - gearAccum.tgh), gear: gearAccum.tgh },
+    dex: { base: Math.max(0, totals.dex - gearAccum.dex), gear: gearAccum.dex },
+    awr: { base: Math.max(0, totals.awr - gearAccum.awr), gear: gearAccum.awr },
+    mor: { base: Math.max(0, totals.mor - gearAccum.mor), gear: gearAccum.mor },
+  };
+}
+
+/** Format stat as "base + gear" with gear in yellow span. Returns HTML string. */
+export function formatStatBaseAndGear(
+  base: number,
+  gear: number,
+  suffix = "",
+): string {
+  if (gear === 0) return `${base}${suffix}`;
+  return `${base}+<span class="stat-gear">${gear}</span>${suffix}`;
+}

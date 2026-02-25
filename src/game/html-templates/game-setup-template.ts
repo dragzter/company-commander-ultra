@@ -178,8 +178,11 @@ export function memorialPopupTemplate(): string {
       ? '<p class="memorial-note">No recorded casualties yet.</p>'
       : fallen
           .map(
-            (e) =>
-              `<div class="memorial-fallen-row"><span class="memorial-fallen-name">${escapeHtml(e.name)}</span><span class="memorial-fallen-meta">Lv${e.level} · ${escapeHtml(e.missionName)} · ${e.enemiesKilled} kills</span></div>`,
+            (e) => {
+              const role = e.role ? escapeHtml(e.role) : "";
+              const killed = e.killedBy ? ` · Killed by ${escapeHtml(e.killedBy)}` : "";
+              return `<div class="memorial-fallen-row"><span class="memorial-fallen-name">${escapeHtml(e.name)}</span><span class="memorial-fallen-meta">Lv${e.level}${role ? ` · ${role}` : ""} · ${escapeHtml(e.missionName)} · ${e.enemiesKilled} kills${killed}</span></div>`;
+            },
           )
           .join("");
   return `

@@ -1,5 +1,6 @@
 /**
- * 4 epic weapons. Best-in-class with stat bonuses + effect traits.
+ * 7 epic weapons. Best-in-class: clearly superior to rare via damage, stats, and special effects.
+ * Only epic weapons have weapon effects. Common < rare (stats+dmg) < epic (stats+dmg+effect).
  */
 import type { GearLevel, WeaponBonus, WeaponEffectId } from "./types.ts";
 import { ITEM_TYPES, RARITY } from "./types.ts";
@@ -19,12 +20,15 @@ export interface EpicWeaponBase {
   weaponEffect: WeaponEffectId;
 }
 
-/** Epic: +4–8 base damage over common, stat bonuses + effect traits. */
+/** Epic: superior damage + stats + unique special effect. Instantly better than rare. */
 export const EPIC_WEAPON_BASES: EpicWeaponBase[] = [
-  { baseId: "titan_slam", name: "Titan Slam", description: "Epic shotgun. Obliterates at close range.", icon: "weapon_43.png", damageMinBase: 22, damageMaxBase: 35, damagePerLevel: 4, speed_base: 2, damage_type: "ballistic", restrictRole: "rifleman", bonuses: [{ type: "flat", stat: "toughness", value: 5 }, { type: "flat", stat: "awareness", value: 4 }], weaponEffect: "heavy_caliber" },
-  { baseId: "phantom_rifle", name: "Phantom Rifle", description: "Elite infiltrator rifle. Fast, precise, deadly.", icon: "weapon_53.png", damageMinBase: 12, damageMaxBase: 17, damagePerLevel: 2, speed_base: 7, damage_type: "ballistic", restrictRole: "rifleman", bonuses: [{ type: "flat", stat: "dex", value: 5 }, { type: "flat", stat: "awareness", value: 4 }], weaponEffect: "eagle_eye" },
-  { baseId: "reaper_hmg", name: "Reaper HMG", description: "Epic heavy machine gun. Unmatched suppression.", icon: "weapon_55.png", damageMinBase: 26, damageMaxBase: 35, damagePerLevel: 4, speed_base: 4, damage_type: "ballistic", restrictRole: "support", bonuses: [{ type: "flat", stat: "toughness", value: 6 }], weaponEffect: "steady_grip" },
-  { baseId: "savior_smg", name: "Savior SMG", description: "Epic medic weapon. Protection through firepower.", icon: "weapon_2.png", damageMinBase: 10, damageMaxBase: 13, damagePerLevel: 2, speed_base: 9, damage_type: "ballistic", restrictRole: "medic", bonuses: [{ type: "flat", stat: "dex", value: 6 }, { type: "flat", stat: "morale", value: 8 }], weaponEffect: "quick_cycle" },
+  { baseId: "titan_slam", name: "Titan Slam", description: "Epic shotgun. Obliterates at close range.", icon: "weapon_43.png", damageMinBase: 24, damageMaxBase: 38, damagePerLevel: 4, speed_base: 2, damage_type: "ballistic", restrictRole: "rifleman", bonuses: [{ type: "flat", stat: "toughness", value: 6 }, { type: "flat", stat: "awareness", value: 5 }], weaponEffect: "heavy_caliber" },
+  { baseId: "phantom_rifle", name: "Phantom Rifle", description: "Elite infiltrator rifle. Fast, precise, deadly.", icon: "weapon_53.png", damageMinBase: 15, damageMaxBase: 21, damagePerLevel: 2, speed_base: 7, damage_type: "ballistic", restrictRole: "rifleman", bonuses: [{ type: "flat", stat: "dex", value: 6 }, { type: "flat", stat: "awareness", value: 5 }], weaponEffect: "eagle_eye" },
+  { baseId: "reaper_hmg", name: "Reaper HMG", description: "Epic heavy machine gun. Unmatched suppression.", icon: "weapon_55.png", damageMinBase: 28, damageMaxBase: 38, damagePerLevel: 4, speed_base: 4, damage_type: "ballistic", restrictRole: "support", bonuses: [{ type: "flat", stat: "toughness", value: 7 }], weaponEffect: "steady_grip" },
+  { baseId: "savior_smg", name: "Savior SMG", description: "Epic medic weapon. Protection through firepower.", icon: "weapon_2.png", damageMinBase: 12, damageMaxBase: 17, damagePerLevel: 2, speed_base: 9, damage_type: "ballistic", restrictRole: "medic", bonuses: [{ type: "flat", stat: "dex", value: 7 }, { type: "flat", stat: "morale", value: 10 }], weaponEffect: "quick_cycle" },
+  { baseId: "wrath_carbine", name: "Wrath Carbine", description: "Epic assault carbine. Burns through armor.", icon: "weapon_29.png", damageMinBase: 14, damageMaxBase: 21, damagePerLevel: 2, speed_base: 7, damage_type: "ballistic", restrictRole: "rifleman", bonuses: [{ type: "flat", stat: "dex", value: 5 }, { type: "flat", stat: "awareness", value: 3 }], weaponEffect: "firebreaker" },
+  { baseId: "executioner_lmg", name: "Executioner LMG", description: "Epic LMG. Devastating sustained fire.", icon: "weapon_45.png", damageMinBase: 24, damageMaxBase: 32, damagePerLevel: 4, speed_base: 5, damage_type: "ballistic", restrictRole: "support", bonuses: [{ type: "flat", stat: "toughness", value: 6 }, { type: "flat", stat: "awareness", value: 4 }], weaponEffect: "stormhammer" },
+  { baseId: "guardian_smg", name: "Guardian SMG", description: "Epic medic SMG. Swift and evasive.", icon: "weapon_14.png", damageMinBase: 11, damageMaxBase: 17, damagePerLevel: 2, speed_base: 8, damage_type: "ballistic", restrictRole: "medic", bonuses: [{ type: "flat", stat: "dex", value: 6 }, { type: "flat", stat: "morale", value: 8 }], weaponEffect: "balanced" },
 ];
 
 export function createEpicWeapon(base: EpicWeaponBase, level: GearLevel) {

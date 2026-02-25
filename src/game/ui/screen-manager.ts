@@ -12,6 +12,7 @@ import { UiServiceManager } from "../../services/ui/ui-service.ts";
 // import { UiAnimationManager } from "../../services/ui/ui-animation-manager.ts";
 import { DomEventManager } from "./event-handlers/dom-event-manager.ts";
 import { usePlayerCompanyStore } from "../../store/ui-store.ts";
+import { getMaxSoldierLevel } from "../../utils/company-utils.ts";
 import { UiManager } from "./ui-manager.ts";
 import { DOM } from "../../constants/css-selectors.ts";
 import {
@@ -195,8 +196,17 @@ function ScreenManager() {
     Styler.setCenterBG("bg_76.jpg", true);
   }
 
+  function ensureMarketTierInitialized() {
+    const store = usePlayerCompanyStore.getState();
+    if (!store.marketTierLevel) {
+      const max = getMaxSoldierLevel(store.company);
+      store.setMarketTierLevel(max);
+    }
+  }
+
   function createWeaponsMarketPage() {
     UiManager.clear.center();
+    ensureMarketTierInitialized();
     const content = parseHTML(weaponsMarketTemplate());
     center.appendChild(content as Element);
     DomEventManager.initEventArray(ec().companyHome().concat(ec().market()));
@@ -208,6 +218,7 @@ function ScreenManager() {
 
   function createArmorMarketPage() {
     UiManager.clear.center();
+    ensureMarketTierInitialized();
     const content = parseHTML(armorMarketTemplate());
     center.appendChild(content as Element);
     DomEventManager.initEventArray(ec().companyHome().concat(ec().market()));
@@ -219,6 +230,7 @@ function ScreenManager() {
 
   function createSuppliesMarketPage() {
     UiManager.clear.center();
+    ensureMarketTierInitialized();
     const content = parseHTML(suppliesMarketTemplate());
     center.appendChild(content as Element);
     DomEventManager.initEventArray(ec().companyHome().concat(ec().market()));

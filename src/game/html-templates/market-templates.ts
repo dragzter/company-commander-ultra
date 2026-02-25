@@ -16,15 +16,11 @@ import {
 import type { Soldier } from "../entities/types.ts";
 import { usePlayerCompanyStore } from "../../store/ui-store.ts";
 import { Partial } from "./partials/partial.ts";
-import {
-  EQUIPMENT_MARKET_COMMON,
-  EQUIPMENT_MARKET_RARE,
-  EQUIPMENT_MARKET_EPIC,
-} from "../../constants/equipment-market.ts";
+import { getSuppliesMarketItems } from "../../constants/equipment-market.ts";
 import { getWeaponsMarketItems, getArmorMarketItems } from "../../constants/gear-market.ts";
 import { getItemIconUrl } from "../../utils/item-utils.ts";
 import { getWeaponRestrictRole } from "../../utils/equip-utils.ts";
-import { getAverageCompanyLevel } from "../../utils/company-utils.ts";
+import { getMaxSoldierLevel } from "../../utils/company-utils.ts";
 
 export const marketTemplate = () => {
   const { market } = DOM;
@@ -49,6 +45,22 @@ export const marketTemplate = () => {
 	</div>
 	`;
 };
+
+/** Level navigator for gear tier browsing: [←] Level N [→] */
+function marketLevelNavigatorPartial(currentLevel: number, maxLevel: number): string {
+  const canDec = currentLevel > 1;
+  const canInc = currentLevel < maxLevel;
+  return `
+<div class="market-level-nav" data-market-level-nav>
+  <button type="button" class="market-level-nav-btn market-level-nav-prev" data-market-tier-prev aria-label="Previous level" ${!canDec ? "disabled" : ""}>
+    <span class="market-level-nav-arrow">←</span>
+  </button>
+  <span class="market-level-nav-label">Level ${currentLevel}</span>
+  <button type="button" class="market-level-nav-btn market-level-nav-next" data-market-tier-next aria-label="Next level" ${!canInc ? "disabled" : ""}>
+    <span class="market-level-nav-arrow">→</span>
+  </button>
+</div>`;
+}
 
 const WEAPON_ROLE_LABELS: Record<string, string> = {
   rifleman: "Rifleman",
@@ -97,7 +109,8 @@ function marketItemCard(
 
 export const weaponsMarketTemplate = () => {
   const store = usePlayerCompanyStore.getState();
-  const avgLevel = getAverageCompanyLevel(store.company);
+  const maxLevel = getMaxSoldierLevel(store.company);
+  const selectedTier = store.marketTierLevel || maxLevel;
   const companyLvl = store.company?.level ?? store.companyLevel ?? 1;
   const creditBalance = store.creditBalance;
   const inv = store.company?.inventory ?? [];
@@ -105,7 +118,7 @@ export const weaponsMarketTemplate = () => {
   const totalCapacity = getWeaponArmorySlots(companyLvl);
   const slotsFree = Math.max(0, totalCapacity - counts.weapon);
 
-  const allWeapons = getWeaponsMarketItems(avgLevel);
+  const allWeapons = getWeaponsMarketItems(selectedTier, companyLvl);
   const commonWeapons = allWeapons.filter((e) => (e.item.rarity ?? "common") === "common");
   const rareWeapons = allWeapons.filter((e) => e.item.rarity === "rare");
   const epicWeapons = allWeapons.filter((e) => e.item.rarity === "epic");
@@ -157,6 +170,7 @@ export const weaponsMarketTemplate = () => {
     ${sections}
   </div>
   <div class="weapons-market-footer troops-market-footer">
+    ${marketLevelNavigatorPartial(selectedTier, maxLevel)}
     <div class="footer-banner">
       <div class="recruit-balance-bar">
         ${marketCreditsPartial(creditBalance)}
@@ -171,7 +185,8 @@ export const weaponsMarketTemplate = () => {
 
 export const armorMarketTemplate = () => {
   const store = usePlayerCompanyStore.getState();
-  const avgLevel = getAverageCompanyLevel(store.company);
+  const maxLevel = getMaxSoldierLevel(store.company);
+  const selectedTier = store.marketTierLevel || maxLevel;
   const companyLvl = store.company?.level ?? store.companyLevel ?? 1;
   const creditBalance = store.creditBalance;
   const inv = store.company?.inventory ?? [];
@@ -179,7 +194,7 @@ export const armorMarketTemplate = () => {
   const totalCapacity = getArmorArmorySlots(companyLvl);
   const slotsFree = Math.max(0, totalCapacity - counts.armor);
 
-  const allArmor = getArmorMarketItems(avgLevel);
+  const allArmor = getArmorMarketItems(selectedTier, companyLvl);
   const commonArmor = allArmor.filter((e) => (e.item.rarity ?? "common") === "common");
   const rareArmor = allArmor.filter((e) => e.item.rarity === "rare");
   const epicArmor = allArmor.filter((e) => e.item.rarity === "epic");
@@ -231,6 +246,7 @@ export const armorMarketTemplate = () => {
     ${sections}
   </div>
   <div class="armor-market-footer troops-market-footer">
+    ${marketLevelNavigatorPartial(selectedTier, maxLevel)}
     <div class="footer-banner">
       <div class="recruit-balance-bar">
         ${marketCreditsPartial(creditBalance)}
@@ -253,6 +269,8 @@ function abbreviateItemName(name: string): string {
 
 export const suppliesMarketTemplate = () => {
   const store = usePlayerCompanyStore.getState();
+  const maxLevel = getMaxSoldierLevel(store.company);
+  const selectedTier = store.marketTierLevel || maxLevel;
   const creditBalance = store.creditBalance;
   const companyLvl = store.company?.level ?? store.companyLevel ?? 1;
   const inv = store.company?.inventory ?? [];
@@ -279,10 +297,11 @@ export const suppliesMarketTemplate = () => {
     </div>`
       : "";
 
+  const { common: commonSupplies, rare: rareSupplies, epic: epicSupplies } = getSuppliesMarketItems(selectedTier, companyLvl);
   const sections =
-    section("Common", EQUIPMENT_MARKET_COMMON, 0, "market-section-common") +
-    section("Rare", EQUIPMENT_MARKET_RARE, EQUIPMENT_MARKET_COMMON.length, "market-section-rare") +
-    section("Epic", EQUIPMENT_MARKET_EPIC, EQUIPMENT_MARKET_COMMON.length + EQUIPMENT_MARKET_RARE.length, "market-section-epic");
+    section("Common", commonSupplies, 0, "market-section-common") +
+    section("Rare", rareSupplies, commonSupplies.length, "market-section-rare") +
+    section("Epic", epicSupplies, commonSupplies.length + rareSupplies.length, "market-section-epic");
 
   return `
 <div id="supplies-market" class="supplies-market-root troops-market-root">
@@ -310,6 +329,7 @@ export const suppliesMarketTemplate = () => {
     ${sections}
   </div>
   <div class="supplies-market-footer troops-market-footer">
+    ${marketLevelNavigatorPartial(selectedTier, maxLevel)}
     <div class="footer-banner">
       <div class="recruit-balance-bar">
         ${marketCreditsPartial(creditBalance)}

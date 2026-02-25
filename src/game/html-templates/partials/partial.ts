@@ -1,7 +1,7 @@
 import type { Soldier, SoldierTraitProfile } from "../../entities/types.ts";
 import { getRecruitCost } from "../../../constants/economy.ts";
 import { soldierXpBar } from "../components/soldier-xp-bar.ts";
-import { formatPctOneDecimal, getSoldierAttackIntervalMs } from "../../../utils/soldier-stats-utils.ts";
+import { formatPctOneDecimal, getSoldierAttackIntervalMs, getBaseAndGearStats, formatStatBaseAndGear } from "../../../utils/soldier-stats-utils.ts";
 import { UiServiceManager } from "../../../services/ui/ui-service.ts";
 import { formatDisplayName } from "../../../utils/name-utils.ts";
 
@@ -24,14 +24,15 @@ function Partial() {
     const recruitDisabledAttr = canRecruit ? "" : ' aria-disabled="true"';
     const rerollDisabledAttr = canReroll ? "" : ' disabled aria-disabled="true"';
     const rerollDisabledClass = canReroll ? "" : " reroll-disabled";
-    const hp = trooper.attributes.hit_points;
+    const bg = getBaseAndGearStats(trooper);
+    const hp = formatStatBaseAndGear(bg.hp.base, bg.hp.gear);
     const mit = formatPctOneDecimal(trooper.combatProfile.mitigateDamage);
     const avd = formatPctOneDecimal(trooper.combatProfile.chanceToEvade);
     const cth = formatPctOneDecimal(trooper.combatProfile.chanceToHit);
-    const mor = trooper.attributes.morale;
-    const tgh = trooper.attributes.toughness;
-    const awr = trooper.attributes.awareness;
-    const dex = trooper.attributes.dexterity;
+    const mor = formatStatBaseAndGear(bg.mor.base, bg.mor.gear);
+    const tgh = formatStatBaseAndGear(bg.tgh.base, bg.tgh.gear);
+    const awr = formatStatBaseAndGear(bg.awr.base, bg.awr.gear);
+    const dex = formatStatBaseAndGear(bg.dex.base, bg.dex.gear);
     const spdMs = getSoldierAttackIntervalMs(trooper);
     const spdRow = spdMs != null ? `<div class="detail-item"><span class="stat-label">Spd</span><span class="stat-value">${(spdMs / 1000).toFixed(1)}s</span></div>` : "";
     return `
@@ -51,8 +52,8 @@ function Partial() {
 							<div class="detail-item"><span class="stat-label">AVD</span><span class="stat-value">${avd}%</span></div>
 							<div class="detail-item"><span class="stat-label">CTH</span><span class="stat-value">${cth}%</span></div>
 							${spdRow}
-							<div class="detail-item"><span class="stat-label">MOR</span><span class="stat-value">${mor}</span></div>
 							<div class="detail-item"><span class="stat-label">TGH</span><span class="stat-value">${tgh}</span></div>
+							<div class="detail-item"><span class="stat-label">MOR</span><span class="stat-value">${mor}</span></div>
 							<div class="detail-item"><span class="stat-label">AWR</span><span class="stat-value">${awr}</span></div>
 							<div class="detail-item"><span class="stat-label">DEX</span><span class="stat-value">${dex}</span></div>
 						</div>
@@ -87,16 +88,16 @@ function Partial() {
    */
   function _rsc(soldier: Soldier, index: number, isActive: boolean) {
     const slotClass = isActive ? "roster-active" : "roster-reserve";
-    const attrs = soldier.attributes ?? {};
     const combat = soldier.combatProfile ?? {};
-    const hp = attrs.hit_points ?? 0;
+    const bg = getBaseAndGearStats(soldier);
+    const hp = formatStatBaseAndGear(bg.hp.base, bg.hp.gear);
     const mit = formatPctOneDecimal(combat.mitigateDamage ?? 0);
     const avd = formatPctOneDecimal(combat.chanceToEvade ?? 0);
     const cth = formatPctOneDecimal(combat.chanceToHit ?? 0);
-    const mor = attrs.morale ?? 0;
-    const tgh = attrs.toughness ?? 0;
-    const awr = attrs.awareness ?? 0;
-    const dex = attrs.dexterity ?? 0;
+    const mor = formatStatBaseAndGear(bg.mor.base, bg.mor.gear);
+    const tgh = formatStatBaseAndGear(bg.tgh.base, bg.tgh.gear);
+    const awr = formatStatBaseAndGear(bg.awr.base, bg.awr.gear);
+    const dex = formatStatBaseAndGear(bg.dex.base, bg.dex.gear);
     const avatar = soldier.avatar ?? "default.png";
     const spdMs = getSoldierAttackIntervalMs(soldier);
     const spdRow = spdMs != null ? `<div class="detail-item"><span class="stat-label">Spd</span><span class="stat-value">${(spdMs / 1000).toFixed(1)}s</span></div>` : "";
@@ -108,7 +109,7 @@ function Partial() {
         <img class="card-image" src="/images/green-portrait/${avatar}" alt="">
         <div class="roster-hp-wrap">
           <div class="roster-hp-bar" style="width: 100%"></div>
-          <span class="roster-hp-value">HP ${hp}</span>
+          <span class="roster-hp-value">HP ${bg.hp.base}${bg.hp.gear > 0 ? `+<span class="stat-gear">${bg.hp.gear}</span>` : ""}</span>
         </div>
       </div>
       <div class="card-title-block">
@@ -117,13 +118,13 @@ function Partial() {
       </div>
     </div>
     <div class="card-row card-row-2">
-      <div class="card-stats-grid">
+      <div class="card-stats-grid card-stats-grid-base-second">
         <div class="detail-item"><span class="stat-label">MIT</span><span class="stat-value">${mit}%</span></div>
         <div class="detail-item"><span class="stat-label">AVD</span><span class="stat-value">${avd}%</span></div>
         <div class="detail-item"><span class="stat-label">CTH</span><span class="stat-value">${cth}%</span></div>
         ${spdRow}
-        <div class="detail-item"><span class="stat-label">MOR</span><span class="stat-value">${mor}</span></div>
         <div class="detail-item"><span class="stat-label">TGH</span><span class="stat-value">${tgh}</span></div>
+        <div class="detail-item"><span class="stat-label">MOR</span><span class="stat-value">${mor}</span></div>
         <div class="detail-item"><span class="stat-label">AWR</span><span class="stat-value">${awr}</span></div>
         <div class="detail-item"><span class="stat-label">DEX</span><span class="stat-value">${dex}</span></div>
       </div>

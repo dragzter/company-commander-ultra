@@ -12,6 +12,7 @@ import { getActiveSlots, getFormationSlots } from "../../constants/company-slots
 import { setFormationSwapIndices } from "../html-templates/formation-template.ts";
 import { setLastEquipMoveSoldierIds, setLastReadyRoomMoveSlotIndices } from "../html-templates/ready-room-template.ts";
 import { usePlayerCompanyStore } from "../../store/ui-store.ts";
+import { getMaxSoldierLevel } from "../../utils/company-utils.ts";
 import { disableBtn, enableBtn, s_, sa_ } from "../../utils/html-utils.ts";
 import { DOM } from "../../constants/css-selectors.ts";
 import { Styler } from "../../utils/styler-manager.ts";
@@ -54,6 +55,38 @@ import {
  */
 export function eventConfigs() {
   const store = usePlayerCompanyStore.getState();
+
+  const marketLevelNavHandlers = (
+    containerId: string,
+    render: () => void,
+  ): HandlerInitConfig[] => [
+    {
+      selector: `#${containerId} .market-level-nav-prev`,
+      eventType: "click",
+      callback: () => {
+        const st = usePlayerCompanyStore.getState();
+        const max = getMaxSoldierLevel(st.company);
+        const cur = st.marketTierLevel || max;
+        if (cur > 1) {
+          st.setMarketTierLevel(cur - 1);
+          render();
+        }
+      },
+    },
+    {
+      selector: `#${containerId} .market-level-nav-next`,
+      eventType: "click",
+      callback: () => {
+        const st = usePlayerCompanyStore.getState();
+        const max = getMaxSoldierLevel(st.company);
+        const cur = st.marketTierLevel || max;
+        if (cur < max) {
+          st.setMarketTierLevel(cur + 1);
+          render();
+        }
+      },
+    },
+  ];
 
   // Handlers for the setup screen
   const gameSetupEventConfig: HandlerInitConfig[] = [
@@ -1345,23 +1378,37 @@ export function eventConfigs() {
         combatWinner = players.every((p) => p.hp <= 0 || p.downState) ? "enemy" : enemies.every((e) => e.hp <= 0 || e.downState) ? "player" : null;
         if (combatWinner) {
           updateCombatUI();
-          const screen = document.getElementById("combat-screen");
-          const missionJson = screen?.getAttribute("data-mission-json");
-          let mission: Mission | null = null;
-          if (missionJson) {
-            try {
-              mission = JSON.parse(missionJson.replace(/&quot;/g, '"'));
-            } catch {
-              //
-            }
-          }
           const victory = combatWinner === "player";
-          const summaryData = buildCombatSummaryData(victory, mission, players);
-          const container = document.getElementById("combat-summary-container");
-          if (container) {
-            container.innerHTML = combatSummaryTemplate(summaryData);
-            const overlay = container.querySelector(".combat-summary-overlay") as HTMLElement;
-            if (overlay) overlay.classList.add("combat-summary-visible");
+          const showSummary = () => {
+            const screen = document.getElementById("combat-screen");
+            const missionJson = screen?.getAttribute("data-mission-json");
+            let mission: Mission | null = null;
+            if (missionJson) {
+              try {
+                mission = JSON.parse(missionJson.replace(/&quot;/g, '"'));
+              } catch {
+                //
+              }
+            }
+            const kiaIds = players.filter((p) => p.downState === "kia").map((p) => p.id);
+            const missionName = mission?.name ?? "Unknown";
+            const kiaKilledBy = new Map<string, string>();
+            for (const p of players) {
+              if (p.downState === "kia" && p.killedBy) kiaKilledBy.set(p.id, p.killedBy);
+            }
+            usePlayerCompanyStore.getState().processCombatKIA(kiaIds, missionName, playerKills, kiaKilledBy);
+            const summaryData = buildCombatSummaryData(victory, mission, players);
+            const container = document.getElementById("combat-summary-container");
+            if (container) {
+              container.innerHTML = combatSummaryTemplate(summaryData);
+              const overlay = container.querySelector(".combat-summary-overlay") as HTMLElement;
+              if (overlay) overlay.classList.add("combat-summary-visible");
+            }
+          };
+          if (victory) {
+            window.setTimeout(showSummary, 2000);
+          } else {
+            showSummary();
           }
           return;
         }
@@ -1715,8 +1762,6 @@ export function eventConfigs() {
           const survivorIds = players.filter((p) => !kiaIds.includes(p.id)).map((p) => p.id);
           store.grantSoldierCombatXP(survivorIds, playerDamage, playerDamageTaken, playerKills, playerAbilitiesUsed, victory);
           store.syncCombatHpToSoldiers(players.map((p) => ({ id: p.id, hp: p.maxHp })));
-          const missionName = mission?.name ?? "Unknown";
-          store.processCombatKIA(kiaIds, missionName, playerKills);
           if (combatTickId != null) {
             clearTimeout(combatTickId);
             combatTickId = null;
@@ -2566,6 +2611,7 @@ export function eventConfigs() {
   ];
 
   const suppliesScreenEventConfig: HandlerInitConfig[] = [
+    ...marketLevelNavHandlers("supplies-market", () => UiManager.renderSuppliesMarketScreen()),
     {
       selector: DOM.supplies.item,
       eventType: "click",
@@ -2838,37 +2884,43 @@ export function eventConfigs() {
     ];
   }
 
-  const weaponsScreenEventConfig: HandlerInitConfig[] = gearBuyHandlers(
-    {
-      popup: "weapons-buy-popup",
-      title: "weapons-buy-title",
-      body: "weapons-buy-body",
-      qtyInput: "weapons-qty-input",
-      error: "weapons-buy-error",
-      buyBtn: "weapons-buy-btn",
-      qtyMinus: "weapons-qty-minus",
-      qtyPlus: "weapons-qty-plus",
-      buyClose: "weapons-buy-close",
-    },
-    DOM.weapons.item,
-    () => UiManager.renderWeaponsMarketScreen(),
-  );
+  const weaponsScreenEventConfig: HandlerInitConfig[] = [
+    ...marketLevelNavHandlers("weapons-market", () => UiManager.renderWeaponsMarketScreen()),
+    ...gearBuyHandlers(
+      {
+        popup: "weapons-buy-popup",
+        title: "weapons-buy-title",
+        body: "weapons-buy-body",
+        qtyInput: "weapons-qty-input",
+        error: "weapons-buy-error",
+        buyBtn: "weapons-buy-btn",
+        qtyMinus: "weapons-qty-minus",
+        qtyPlus: "weapons-qty-plus",
+        buyClose: "weapons-buy-close",
+      },
+      DOM.weapons.item,
+      () => UiManager.renderWeaponsMarketScreen(),
+    ),
+  ];
 
-  const armorScreenEventConfig: HandlerInitConfig[] = gearBuyHandlers(
-    {
-      popup: "armor-buy-popup",
-      title: "armor-buy-title",
-      body: "armor-buy-body",
-      qtyInput: "armor-qty-input",
-      error: "armor-buy-error",
-      buyBtn: "armor-buy-btn",
-      qtyMinus: "armor-qty-minus",
-      qtyPlus: "armor-qty-plus",
-      buyClose: "armor-buy-close",
-    },
-    DOM.armor.item,
-    () => UiManager.renderArmorMarketScreen(),
-  );
+  const armorScreenEventConfig: HandlerInitConfig[] = [
+    ...marketLevelNavHandlers("armor-market", () => UiManager.renderArmorMarketScreen()),
+    ...gearBuyHandlers(
+      {
+        popup: "armor-buy-popup",
+        title: "armor-buy-title",
+        body: "armor-buy-body",
+        qtyInput: "armor-qty-input",
+        error: "armor-buy-error",
+        buyBtn: "armor-buy-btn",
+        qtyMinus: "armor-qty-minus",
+        qtyPlus: "armor-qty-plus",
+        buyClose: "armor-buy-close",
+      },
+      DOM.armor.item,
+      () => UiManager.renderArmorMarketScreen(),
+    ),
+  ];
 
   return {
     gameSetup: () => gameSetupEventConfig,

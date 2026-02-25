@@ -30,41 +30,54 @@ function marketTier(avgCompanyLevel: number): GearLevel {
   return t as GearLevel;
 }
 
-/** All weapons at company level: one tier per base. Level 2 company sees level 2 gear. Sorted by price. */
-export function getWeaponsMarketItems(avgCompanyLevel: number): GearMarketEntry[] {
+/** Min company level to see rare items. */
+export const RARE_GEAR_MIN_LEVEL = 2;
+/** Min company level to see epic items. */
+export const EPIC_GEAR_MIN_LEVEL = 4;
+
+/** All weapons at company level: one tier per base. Rare at lvl 2+, Epic at lvl 4+. Sorted by price. */
+export function getWeaponsMarketItems(avgCompanyLevel: number, companyLevel: number): GearMarketEntry[] {
   const tier = marketTier(avgCompanyLevel);
   const entries: GearMarketEntry[] = [];
   for (const base of WEAPON_BASES) {
     const item = createWeapon(base, tier);
     entries.push({ item, price: getWeaponPrice(item) });
   }
-  for (const base of RARE_WEAPON_BASES) {
-    const item = createRareWeapon(base, tier);
-    entries.push({ item, price: getWeaponPrice(item) });
+  if (companyLevel >= RARE_GEAR_MIN_LEVEL) {
+    for (const base of RARE_WEAPON_BASES) {
+      const item = createRareWeapon(base, tier);
+      entries.push({ item, price: getWeaponPrice(item) });
+    }
   }
-  for (const base of EPIC_WEAPON_BASES) {
-    const item = createEpicWeapon(base, tier);
-    entries.push({ item, price: getWeaponPrice(item) });
+  if (companyLevel >= EPIC_GEAR_MIN_LEVEL) {
+    for (const base of EPIC_WEAPON_BASES) {
+      const item = createEpicWeapon(base, tier);
+      entries.push({ item, price: getWeaponPrice(item) });
+    }
   }
   entries.sort((a, b) => a.price - b.price);
   return entries;
 }
 
-/** All armor at company level: one tier per base. Level 2 company sees level 2 gear. Sorted by price. */
-export function getArmorMarketItems(avgCompanyLevel: number): GearMarketEntry[] {
+/** All armor at company level: one tier per base. Rare at lvl 2+, Epic at lvl 4+. Sorted by price. */
+export function getArmorMarketItems(avgCompanyLevel: number, companyLevel: number): GearMarketEntry[] {
   const tier = marketTier(avgCompanyLevel);
   const entries: GearMarketEntry[] = [];
   for (const base of ARMOR_BASES) {
     const item = createArmor(base, tier);
     entries.push({ item, price: getArmorPrice(item) });
   }
-  for (const base of RARE_ARMOR_BASES) {
-    const item = createRareArmor(base, tier);
-    entries.push({ item, price: getArmorPrice(item) });
+  if (companyLevel >= RARE_GEAR_MIN_LEVEL) {
+    for (const base of RARE_ARMOR_BASES) {
+      const item = createRareArmor(base, tier);
+      entries.push({ item, price: getArmorPrice(item) });
+    }
   }
-  for (const base of EPIC_ARMOR_BASES) {
-    const item = createEpicArmor(base, tier);
-    entries.push({ item, price: getArmorPrice(item) });
+  if (companyLevel >= EPIC_GEAR_MIN_LEVEL) {
+    for (const base of EPIC_ARMOR_BASES) {
+      const item = createEpicArmor(base, tier);
+      entries.push({ item, price: getArmorPrice(item) });
+    }
   }
   entries.sort((a, b) => a.price - b.price);
   return entries;

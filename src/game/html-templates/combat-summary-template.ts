@@ -72,7 +72,7 @@ export function combatSummaryTemplate(data: CombatSummaryData): string {
       ${holdingNote}
     </div>
     ` : ""}
-    <button type="button" id="combat-summary-return" class="mbtn green mbtn-md">Return to Missions</button>
+    <button type="button" id="combat-summary-return" class="game-btn game-btn-green combat-summary-return-btn">Return to Missions</button>
   </div>
 </div>`;
 }

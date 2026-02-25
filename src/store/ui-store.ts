@@ -43,6 +43,8 @@ export type CompanyStore = {
   companyExperience: number;
   company: Company;
   rerollCounter: number;
+  /** Selected gear tier (1–20) for market browsing. 0 = unset, defaults to max soldier level on first open. */
+  marketTierLevel: number;
 
   // Setters
   setMarketAvailableTroops: (soldiers: Soldier[]) => void;
@@ -53,6 +55,7 @@ export type CompanyStore = {
   setCompanyUnitPatch: (patchImgUrl: string) => void;
   setCompanyName: (companyName: string) => void;
   setGameStep: (step: GameStep) => void;
+  setMarketTierLevel: (n: number) => void;
   addSoldierToCompany: (soldier: Soldier) => void;
   addToRecruitStaging: (soldier: Soldier) => void;
   tryAddToRecruitStaging: (soldier: Soldier) => { success: boolean; reason?: "capacity" | "afford" };
@@ -100,6 +103,7 @@ export type CompanyStore = {
     kiaSoldierIds: string[],
     missionName?: string,
     playerKills?: Map<string, number>,
+    kiaKilledBy?: Map<string, string>,
   ) => void;
   syncCombatHpToSoldiers: (playerCombatants: { id: string; hp: number }[]) => void;
   claimHoldingInventory: () => void;
@@ -144,6 +148,8 @@ export const usePlayerCompanyStore = createStore<CompanyStore>()(
           if (fs.length > 0 && (!Array.isArray(merged.company?.formationSlots) || merged.company.formationSlots.length !== fs.length)) {
             merged.company = { ...merged.company, formationSlots: fs };
           }
+          const mtl = merged.marketTierLevel as number | undefined;
+          if (typeof mtl !== "number" || mtl < 0) merged.marketTierLevel = 0;
           return merged;
         },
       })

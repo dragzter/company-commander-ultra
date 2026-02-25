@@ -2,8 +2,10 @@
 export interface MemorialEntry {
   name: string;
   level: number;
+  role?: string;
   missionName: string;
   enemiesKilled: number;
+  killedBy?: string;
 }
 
 /** Normalize legacy Soldier objects to MemorialEntry for backward compatibility. */
@@ -18,7 +20,9 @@ export function toMemorialEntry(
   return {
     name: (item as { name?: string }).name ?? "Unknown",
     level: (item as { level?: number }).level ?? 1,
+    role: (item as MemorialEntry).role,
     missionName,
     enemiesKilled: (item as MemorialEntry).enemiesKilled ?? enemiesKilled,
+    killedBy: (item as MemorialEntry).killedBy,
   };
 }

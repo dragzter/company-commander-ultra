@@ -25,14 +25,12 @@ function isSmokeGrenade(grenade: Item): boolean {
 
 function isIncendiaryGrenade(grenade: Item): boolean {
   const tags = grenade.tags as string[] | undefined;
-  return grenade.id === "incendiary_grenade" || (tags?.includes("thermal") && (grenade.effect?.result === "burn"));
+  return !!(grenade.id === "incendiary_grenade" || (tags?.includes("thermal") && grenade.effect?.result === "burn"));
 }
 
 function isThrowingKnife(grenade: Item): boolean {
   return grenade.id === "tk21_throwing_knife";
 }
-
-const THROWING_KNIFE_DAMAGE = 20;
 
 export interface GrenadeHitResult {
   targetId: string;
@@ -52,11 +50,12 @@ export interface GrenadeThrowResult {
   splash: GrenadeHitResult[];
 }
 
-function applyDownState(c: Combatant, newHp: number): boolean | null {
+function applyDownState(c: Combatant, newHp: number, killedBy?: string): boolean | null {
   if (newHp > 0) return null;
   if (c.side === "player") {
     const rollIncap = Math.random() < INCAPACITATED_CHANCE;
     c.downState = rollIncap ? "incapacitated" : "kia";
+    if (c.downState === "kia" && killedBy) c.killedBy = killedBy;
     return rollIncap;
   }
   c.downState = "kia";
@@ -155,16 +154,18 @@ export function resolveGrenadeThrow(
     return { throwerId: thrower.id, primaryTargetId: primaryTarget.id, grenadeDamage: 0, primary, splash };
   }
 
-  /* Throwing knife: single-target 20 dmg, mitigated, no splash. */
+  /* Throwing knife: single-target damage from item, mitigated, no splash. */
   if (isThrowingKnife(grenade)) {
-    const damageDealt = computeFinalDamage(THROWING_KNIFE_DAMAGE, primaryTarget);
+    const knifeDmg = grenade.damage ?? 20;
+    const damageDealt = computeFinalDamage(knifeDmg, primaryTarget);
     const newHp = Math.max(0, Math.floor(primaryTarget.hp - damageDealt));
     primaryTarget.hp = newHp;
-    const targetIncap = applyDownState(primaryTarget, newHp);
+    const grenadeKiller = primaryTarget.side === "player" ? thrower.name : undefined;
+    const targetIncap = applyDownState(primaryTarget, newHp, grenadeKiller);
     return {
       throwerId: thrower.id,
       primaryTargetId: primaryTarget.id,
-      grenadeDamage: THROWING_KNIFE_DAMAGE,
+      grenadeDamage: knifeDmg,
       primary: {
         targetId: primaryTarget.id,
         hit: true,
@@ -178,9 +179,10 @@ export function resolveGrenadeThrow(
     };
   }
 
-  /* Incendiary: DoT only, unmitigated. Primary 4×8 dmg, adjacent 2×4 dmg. Last tick at t=3s (1s before expiry). */
+  /* Incendiary: DoT only, unmitigated. Primary 4×effect_value dmg, adjacent 2×half. Duration/ticks fixed. */
   if (isIncendiaryGrenade(grenade)) {
-    primaryTarget.burnTickDamage = 8;
+    const tickDmg = grenade.effect?.effect_value ?? 8;
+    primaryTarget.burnTickDamage = tickDmg;
     primaryTarget.burnTicksRemaining = 4;
     primaryTarget.burnIgnoresMitigation = true;
     primaryTarget.burningUntil = now + 4 * TURN_MS;
@@ -209,7 +211,7 @@ export function resolveGrenadeThrow(
         splash.push({ targetId: enemy.id, hit: true, evaded: true, damageDealt: 0, targetNewHp: enemy.hp, targetDown: false, targetIncapacitated: null });
         continue;
       }
-      enemy.burnTickDamage = 4;
+      enemy.burnTickDamage = Math.max(1, Math.floor(tickDmg / 2));
       enemy.burnTicksRemaining = 2;
       enemy.burnIgnoresMitigation = true;
       enemy.burningUntil = now + 2 * TURN_MS;
@@ -221,7 +223,8 @@ export function resolveGrenadeThrow(
   const damageDealt = computeFinalDamage(baseDamage, primaryTarget);
   const newHp = Math.max(0, Math.floor(primaryTarget.hp - damageDealt));
   primaryTarget.hp = newHp;
-  const targetIncap = applyDownState(primaryTarget, newHp);
+  const grenadeKiller = primaryTarget.side === "player" ? thrower.name : undefined;
+  const targetIncap = applyDownState(primaryTarget, newHp, grenadeKiller);
 
   const eff = grenade.effect;
   if (eff?.result && eff.duration) {
@@ -272,7 +275,8 @@ export function resolveGrenadeThrow(
     const splashDmg = computeFinalDamage(splashBase, enemy);
     const splashNewHp = Math.max(0, Math.floor(enemy.hp - splashDmg));
     enemy.hp = splashNewHp;
-    const splashIncap = applyDownState(enemy, splashNewHp);
+    const splashKiller = enemy.side === "player" ? thrower.name : undefined;
+    const splashIncap = applyDownState(enemy, splashNewHp, splashKiller);
     const eff = grenade.effect;
     if (eff?.result && eff.duration) {
       let adjDurMs = Math.floor(eff.duration * TURN_MS * SPLASH_EFFECT_PCT);

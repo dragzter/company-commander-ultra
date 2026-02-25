@@ -8,6 +8,7 @@ import { usePlayerCompanyStore } from "../../store/ui-store.ts";
 import { formatDisplayName } from "../../utils/name-utils.ts";
 import { getItemIconUrl } from "../../utils/item-utils.ts";
 import { Partial } from "./partials/partial.ts";
+import { getBaseAndGearStats } from "../../utils/soldier-stats-utils.ts";
 
 let _lastEquipMoveSoldierIds: string[] = [];
 export function setLastEquipMoveSoldierIds(ids: string[]) {
@@ -59,6 +60,7 @@ function readyRoomSoldierCard(s: Soldier, slotIndex: number, isActive: boolean):
   const animateClass = justMoved ? " ready-room-card-just-moved" : "";
   const lvl = getLevelFromExperience(s.experience ?? 0);
   const levelRarity = lvl >= 6 ? "epic" : lvl >= 3 ? "rare" : "common";
+  const bg = getBaseAndGearStats(s);
   return `
 <div class="ready-room-soldier-card entity-card designation-${des} ${slotClass}${animateClass}" data-soldier-id="${s.id}" data-slot-index="${slotIndex}" data-soldier-json="${escapeAttr(JSON.stringify(s))}" data-has-soldier="true">
   <div class="ready-room-card-inner">
@@ -70,7 +72,7 @@ function readyRoomSoldierCard(s: Soldier, slotIndex: number, isActive: boolean):
       </div>
       <div class="ready-room-hp-wrap">
         <div class="ready-room-hp-bar" style="width: 100%"></div>
-        <span class="ready-room-hp-value">HP ${s.attributes.hit_points}</span>
+        <span class="ready-room-hp-value">HP ${bg.hp.base}${bg.hp.gear > 0 ? `+<span class="stat-gear">${bg.hp.gear}</span>` : ""}</span>
       </div>
     </div>
     <div class="ready-room-details">

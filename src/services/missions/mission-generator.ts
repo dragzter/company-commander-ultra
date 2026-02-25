@@ -48,8 +48,8 @@ function generateFlavorText(kind: MissionKind): string {
   return template.replace("{LOC}", loc);
 }
 
-const CREDIT_BASE = 180;
-const CREDIT_SCALE = 120;
+const CREDIT_BASE = 100;
+const CREDIT_SCALE = 70;
 
 const MISSION_KIND_LIST: MissionKind[] = [
   "defend_objective",
@@ -78,7 +78,7 @@ export function generateMissions(_seed?: number): Mission[] {
     );
     const isRare = rareIndices.has(i);
     const creditReward =
-      CREDIT_BASE + difficulty * CREDIT_SCALE + randomInt(0, 80) + (isRare ? 80 : 0);
+      CREDIT_BASE + difficulty * CREDIT_SCALE + randomInt(0, 50) + (isRare ? 50 : 0);
     const xpReward = 25 * difficulty + (isRare ? 30 : 0);
     missions.push({
       id: `mission-${i}-${Date.now()}`,
@@ -104,7 +104,7 @@ export function generateMissions(_seed?: number): Mission[] {
       Math.max(4, difficulty * 2 + randomInt(0, 2)),
     );
     const creditReward = Math.floor(
-      (CREDIT_BASE + difficulty * CREDIT_SCALE) * 2.5 + randomInt(0, 200),
+      (CREDIT_BASE + difficulty * CREDIT_SCALE) * 1.8 + randomInt(0, 120),
     );
     const xpReward = 50 * difficulty;
     missions.push({
@@ -118,7 +118,7 @@ export function generateMissions(_seed?: number): Mission[] {
       flavorText: generateFlavorText(kind),
       isEpic: true,
       rarity: "epic",
-      rewardItems: ["m84_flashbang", "incendiary_grenade", "stim_pack"],
+      rewardItems: [pick(["m84_flashbang", "incendiary_grenade", "stim_pack", "standard_medkit", "tk21_throwing_knife"])],
     });
   }
 

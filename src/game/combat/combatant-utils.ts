@@ -1,4 +1,4 @@
-import { computeAttackIntervalMs, ENEMY_DAMAGE_MULTIPLIER, ENEMY_HP_MULTIPLIER } from "../../constants/combat";
+import { computeAttackIntervalMs, ENEMY_DAMAGE_MULTIPLIER, ENEMY_HP_MULTIPLIER, WEAPON_DAMAGE_MULTIPLIER } from "../../constants/combat";
 import type { WeaponEffectId } from "../../constants/items/types.ts";
 import { WEAPON_EFFECTS } from "../../constants/items/weapon-effects.ts";
 import { Images } from "../../constants/images.ts";
@@ -24,8 +24,8 @@ export function soldierToCombatant(soldier: Soldier): Combatant {
   let dmgMax = weapon?.damage_max ?? dmg;
   const effect = weapon?.weaponEffect ? WEAPON_EFFECTS[weapon.weaponEffect] : undefined;
   const damageMult = effect?.modifiers?.damagePercent != null ? 1 + effect.modifiers.damagePercent : 1;
-  dmgMin = Math.round(dmgMin * damageMult);
-  dmgMax = Math.round(dmgMax * damageMult);
+  dmgMin = Math.round(dmgMin * damageMult * WEAPON_DAMAGE_MULTIPLIER);
+  dmgMax = Math.round(dmgMax * damageMult * WEAPON_DAMAGE_MULTIPLIER);
   let attackIntervalMs = computeAttackIntervalMs(weapon, soldier.attributes?.dexterity ?? 0);
   const intervalMult = effect?.modifiers?.attackIntervalMultiplier ?? 1;
   attackIntervalMs = Math.round(attackIntervalMs * intervalMult);

@@ -7,18 +7,18 @@ import { RARITY } from "./items/types.ts";
 
 const ARMOR_PRICE_PER_TGH = 11;
 const ARMOR_PRICE_PER_MIT_PCT = 30; // Per 1% mitigation equivalent
-const ARMOR_RARE_MULTIPLIER = 1.75; // 75% more for rare armor
-const ARMOR_EPIC_MULTIPLIER = 2.8; // 180% more for epic armor
-const ARMOR_RARE_MIN = 450; // Cheapest rare must exceed typical common
-const ARMOR_EPIC_MIN = 850; // Cheapest epic must exceed typical rare
+const ARMOR_RARE_MULTIPLIER = 2.2; // 120% more for rare armor
+const ARMOR_EPIC_MULTIPLIER = 4.5; // 350% more for epic armor
+const ARMOR_RARE_MIN = 550; // Cheapest rare must exceed typical common
+const ARMOR_EPIC_MIN = 1400; // Epic armor very expensive
 
 const WEAPON_PRICE_PER_DMG = 18;
 const WEAPON_PRICE_PER_SPEED = 11;
 const WEAPON_BASE = 85;
-const WEAPON_RARE_MULTIPLIER = 1.6;
-const WEAPON_EPIC_MULTIPLIER = 2.4;
-const WEAPON_RARE_MIN = 280;
-const WEAPON_EPIC_MIN = 520;
+const WEAPON_RARE_MULTIPLIER = 2.0; // 100% more for rare weapons
+const WEAPON_EPIC_MULTIPLIER = 4.0; // 300% more for epic weapons
+const WEAPON_RARE_MIN = 400;
+const WEAPON_EPIC_MIN = 1200; // Epic weapons very expensive
 
 /** Mitigation from toughness: rough approx. toughness/9 gives ~% mitigation */
 function toughnessToMitigationPct(toughness: number): number {

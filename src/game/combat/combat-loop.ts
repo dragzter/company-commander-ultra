@@ -107,6 +107,7 @@ export function applyBurnTicks(
     events.push({ targetId: c.id, damage });
     if (newHp <= 0) {
       c.downState = c.side === "player" && Math.random() < 0.3 ? "incapacitated" : "kia";
+      if (c.downState === "kia") c.killedBy = "Burning";
     }
     c.burnTicksRemaining! -= 1;
     if (c.burnTicksRemaining! <= 0) {
@@ -220,6 +221,7 @@ export function resolveAttack(
 
   if (target.hp <= 0) {
     target.downState = target.side === "player" && Math.random() < 0.3 ? "incapacitated" : "kia";
+    if (target.downState === "kia") target.killedBy = attacker.name;
   }
 
   return {
