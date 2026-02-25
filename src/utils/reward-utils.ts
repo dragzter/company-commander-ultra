@@ -37,3 +37,19 @@ export function getRewardItemById(id: string): Item | null {
   if (item.uses == null) item.uses = 5;
   return item;
 }
+
+/** Common supply item ids for loot drops (throwables + medical). */
+export const COMMON_SUPPLY_IDS = [
+  "m84_flashbang",
+  "m3_frag_grenade",
+  "mk18_smoke",
+  "incendiary_grenade",
+  "tk21_throwing_knife",
+  "standard_medkit",
+  "stim_pack",
+] as const;
+
+export function pickRandomCommonSupply(): Item | null {
+  const id = COMMON_SUPPLY_IDS[Math.floor(Math.random() * COMMON_SUPPLY_IDS.length)];
+  return getRewardItemById(id);
+}

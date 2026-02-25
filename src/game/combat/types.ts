@@ -46,8 +46,22 @@ export interface Combatant {
   burnTicksRemaining?: number;
   /** True if burn bypasses armor (incendiary) */
   burnIgnoresMitigation?: boolean;
+  /** Timestamp (ms) when bleeding ends (DoT) */
+  bleedingUntil?: number;
+  /** Damage per bleed tick */
+  bleedTickDamage?: number;
+  /** Ticks of bleed remaining */
+  bleedTicksRemaining?: number;
   /** Timestamp (ms) when blinded ends */
   blindedUntil?: number;
+  /** Timestamp (ms) when accuracy debuff ends (e.g. Overwhelm) */
+  accuracyDebuffUntil?: number;
+  /** CTH reduction while accuracy debuff active (e.g. 0.02 = -2%) */
+  accuracyDebuffPct?: number;
+  /** Timestamp (ms) when toughness reduction ends (e.g. M3A Repressor) */
+  toughnessReducedUntil?: number;
+  /** Toughness multiplier while reduced (e.g. 0.2 = 80% reduction, 20% effective) */
+  toughnessReductionPct?: number;
   /** Timestamp (ms) when suppressed ends */
   suppressedUntil?: number;
   /** Timestamp (ms) when attack speed buff ends (stim pack) */
@@ -58,6 +72,13 @@ export interface Combatant {
   isEpicElite?: boolean;
   /** Weapon effect for proc checks (fire, blind, stun) */
   weaponEffect?: string;
+  /** Immunities from armor or traits */
+  immuneToStun?: boolean;
+  immuneToPanic?: boolean;
+  immuneToSuppression?: boolean;
+  immuneToBurning?: boolean;
+  /** Multiplier for incapacitation chance when reaching 0 HP (Relentless trait). 1.6 = 60% increase. */
+  incapChanceMultiplier?: number;
 }
 
 /** Map of attacker id -> target id */

@@ -23,6 +23,7 @@ export const EFFECT_RESULTS = {
   bleed: "bleed",
   burn: "burn",
   poison: "poison",
+  toughness_reduced: "toughness_reduced",
   cleansing: "cleansing",
   concealment: "concealment",
 } as const;

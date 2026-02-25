@@ -39,6 +39,7 @@ export function createArmor(base: ArmorBase, level: GearLevel) {
   const bonuses = base.bonuses;
   return {
     id: `${base.baseId}_${tier}`,
+    baseId: base.baseId,
     name: base.name,
     type: ITEM_TYPES.armor,
     rarity: RARITY.common,

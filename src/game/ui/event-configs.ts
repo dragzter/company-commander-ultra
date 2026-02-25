@@ -32,7 +32,9 @@ import {
   isStunned,
   assignTargets,
   applyBurnTicks,
+  applyBleedTicks,
   clearExpiredEffects,
+  getIncapacitationChance,
   removeTargetsForCombatantInCover,
   resolveAttack,
   getNextAttackAt,
@@ -59,14 +61,15 @@ export function eventConfigs() {
   const marketLevelNavHandlers = (
     containerId: string,
     render: () => void,
+    maxOverride?: number,
   ): HandlerInitConfig[] => [
     {
       selector: `#${containerId} .market-level-nav-prev`,
       eventType: "click",
       callback: () => {
         const st = usePlayerCompanyStore.getState();
-        const max = getMaxSoldierLevel(st.company);
-        const cur = st.marketTierLevel || max;
+        const max = maxOverride ?? getMaxSoldierLevel(st.company);
+        const cur = st.marketTierLevel || (maxOverride ?? max);
         if (cur > 1) {
           st.setMarketTierLevel(cur - 1);
           render();
@@ -78,8 +81,8 @@ export function eventConfigs() {
       eventType: "click",
       callback: () => {
         const st = usePlayerCompanyStore.getState();
-        const max = getMaxSoldierLevel(st.company);
-        const cur = st.marketTierLevel || max;
+        const max = maxOverride ?? getMaxSoldierLevel(st.company);
+        const cur = st.marketTierLevel || (maxOverride ?? max);
         if (cur < max) {
           st.setMarketTierLevel(cur + 1);
           render();
@@ -390,6 +393,13 @@ export function eventConfigs() {
       eventType: "click",
       callback: () => {
         UiManager.renderSuppliesMarketScreen();
+      },
+    },
+    {
+      selector: DOM.market.marketDevCatalogLink,
+      eventType: "click",
+      callback: () => {
+        UiManager.renderDevCatalogScreen();
       },
     },
   ];
@@ -882,7 +892,7 @@ export function eventConfigs() {
           setTimeout(() => popup.remove(), 2200);
         }
         if (target.hp <= 0) {
-          target.downState = target.side === "player" && Math.random() < 0.3 ? "incapacitated" : "kia";
+          target.downState = target.side === "player" && Math.random() < getIncapacitationChance(target) ? "incapacitated" : "kia";
         }
       };
 
@@ -890,7 +900,7 @@ export function eventConfigs() {
       setTimeout(() => doBurst(1), SUPPRESS_BURST_INTERVAL_MS);
       setTimeout(() => {
         doBurst(2);
-        if (anyHit && target.hp > 0 && !target.downState) {
+        if (anyHit && target.hp > 0 && !target.downState && !target.immuneToSuppression) {
           const applyNow = Date.now();
           target.suppressedUntil = applyNow + SUPPRESS_DURATION_MS;
           const popup = document.createElement("span");
@@ -1355,20 +1365,33 @@ export function eventConfigs() {
 
     let combatTickId: number | null = null;
     const lastBurnTickTimeRef = { current: 0 };
+    const lastBleedTickTimeRef = { current: 0 };
     function startCombatLoop() {
       const now = Date.now();
       lastBurnTickTimeRef.current = now;
+      lastBleedTickTimeRef.current = now;
       for (const c of [...players, ...enemies]) {
         if (c.hp > 0 && !c.downState) nextAttackAt.set(c.id, now + Math.random() * 500);
       }
       function tick() {
         const now = Date.now();
         const burnEvents = applyBurnTicks([...players, ...enemies], now, lastBurnTickTimeRef);
+        const bleedEvents = applyBleedTicks([...players, ...enemies], now, lastBleedTickTimeRef);
         for (const ev of burnEvents) {
           const card = document.querySelector(`[data-combatant-id="${ev.targetId}"]`);
           if (card) {
             const popup = document.createElement("span");
             popup.className = "combat-damage-popup combat-burn-popup";
+            popup.textContent = String(ev.damage);
+            card.appendChild(popup);
+            setTimeout(() => popup.remove(), 1500);
+          }
+        }
+        for (const ev of bleedEvents) {
+          const card = document.querySelector(`[data-combatant-id="${ev.targetId}"]`);
+          if (card) {
+            const popup = document.createElement("span");
+            popup.className = "combat-damage-popup combat-bleed-popup";
             popup.textContent = String(ev.damage);
             card.appendChild(popup);
             setTimeout(() => popup.remove(), 1500);
@@ -1403,12 +1426,16 @@ export function eventConfigs() {
             const oldLevels = new Map(store.company?.soldiers?.filter((s) => survivorIds.includes(s.id)).map((s) => [s.id, s.level ?? 1]) ?? []);
             store.grantSoldierCombatXP(survivorIds, playerDamage, playerDamageTaken, playerKills, playerAbilitiesUsed, victory);
             store.syncCombatHpToSoldiers(players.map((p) => ({ id: p.id, hp: p.maxHp })));
+            const kiaCount = kiaIds.length;
+            const { rewardItems, lootItems } = victory && mission
+              ? store.grantMissionRewards(mission, true, kiaCount)
+              : { rewardItems: [] as import("../../constants/items/types.ts").Item[], lootItems: [] as import("../../constants/items/types.ts").Item[] };
             const newLevels = new Map(usePlayerCompanyStore.getState().company?.soldiers?.filter((s) => survivorIds.includes(s.id)).map((s) => [s.id, s.level ?? 1]) ?? []);
             let leveledUpCount = 0;
             for (const id of survivorIds) {
               if ((newLevels.get(id) ?? 1) > (oldLevels.get(id) ?? 1)) leveledUpCount++;
             }
-            const summaryData = buildCombatSummaryData(victory, mission, players, playerKills, leveledUpCount);
+            const summaryData = buildCombatSummaryData(victory, mission, players, playerKills, leveledUpCount, rewardItems, lootItems);
             const container = document.getElementById("combat-summary-container");
             if (container) {
               container.innerHTML = combatSummaryTemplate(summaryData);
@@ -1757,19 +1784,7 @@ export function eventConfigs() {
           const target = (e.target as HTMLElement).closest("#combat-summary-return");
           if (!target) return;
           e.stopPropagation();
-          const screen = document.getElementById("combat-screen");
-          const missionJson = screen?.getAttribute("data-mission-json");
-          let mission: Mission | null = null;
-          if (missionJson) {
-            try {
-              mission = JSON.parse(missionJson.replace(/&quot;/g, '"'));
-            } catch {
-              //
-            }
-          }
-          const victory = combatWinner === "player";
           const store = usePlayerCompanyStore.getState();
-          store.grantMissionRewards(mission, victory);
           store.syncCombatHpToSoldiers(players.map((p) => ({ id: p.id, hp: p.maxHp })));
           if (combatTickId != null) {
             clearTimeout(combatTickId);
@@ -2743,8 +2758,8 @@ export function eventConfigs() {
       selector: "#supplies-buy-popup",
       eventType: "click",
       callback: (e: Event) => {
-        if (e.target === e.currentTarget) {
-          (e.currentTarget as HTMLElement).setAttribute("hidden", "");
+        if ((e.target as HTMLElement).id === "supplies-buy-popup") {
+          (e.target as HTMLElement).setAttribute("hidden", "");
         }
       },
     },
@@ -2885,8 +2900,8 @@ export function eventConfigs() {
         selector: `#${ids.popup}`,
         eventType: "click",
         callback: (e: Event) => {
-          if (e.target === e.currentTarget) {
-            (e.currentTarget as HTMLElement).setAttribute("hidden", "");
+          if ((e.target as HTMLElement).id === ids.popup) {
+            document.getElementById(ids.popup)?.setAttribute("hidden", "");
           }
         },
       },
@@ -2910,6 +2925,65 @@ export function eventConfigs() {
       DOM.weapons.item,
       () => UiManager.renderWeaponsMarketScreen(),
     ),
+  ];
+
+  const devCatalogScreenEventConfig: HandlerInitConfig[] = [
+    ...marketLevelNavHandlers("dev-catalog-market", () => UiManager.renderDevCatalogScreen(), 20),
+    {
+      selector: "#dev-catalog-market .dev-catalog-item",
+      eventType: "click",
+      callback: (e: Event) => {
+        const card = (e.target as HTMLElement).closest(".dev-catalog-item");
+        const itemJson = card?.getAttribute("data-gear-item");
+        if (!itemJson) return;
+        const item = JSON.parse(itemJson) as import("../entities/types.ts").Item;
+        const popup = document.getElementById("dev-catalog-popup");
+        const bodyEl = document.getElementById("dev-catalog-popup-body");
+        if (popup && bodyEl) {
+          (popup as HTMLElement).dataset.devCatalogItem = itemJson;
+          bodyEl.innerHTML = getItemPopupBodyHtml(item);
+          popup.removeAttribute("hidden");
+        }
+      },
+    },
+    {
+      selector: "#dev-catalog-grant-btn",
+      eventType: "click",
+      callback: () => {
+        const popup = document.getElementById("dev-catalog-popup");
+        const itemJson = (popup as HTMLElement)?.dataset?.devCatalogItem;
+        if (!itemJson) return;
+        let item: import("../constants/items/types.ts").Item;
+        try {
+          item = JSON.parse(itemJson.replace(/&quot;/g, '"'));
+        } catch {
+          return;
+        }
+        const copy = { ...item };
+        if (copy.uses == null && (copy.type === "throwable" || copy.type === "medical")) copy.uses = 5;
+        const result = usePlayerCompanyStore.getState().addItemsToCompanyInventory([copy], 0);
+        if (result.success) {
+          popup?.setAttribute("hidden", "");
+        }
+      },
+    },
+    {
+      selector: "#dev-catalog-popup-close",
+      eventType: "click",
+      callback: () => {
+        const popup = document.getElementById("dev-catalog-popup");
+        if (popup) popup.setAttribute("hidden", "");
+      },
+    },
+    {
+      selector: "#dev-catalog-popup",
+      eventType: "click",
+      callback: (e: Event) => {
+        if ((e.target as HTMLElement).id === "dev-catalog-popup") {
+          (e.target as HTMLElement).setAttribute("hidden", "");
+        }
+      },
+    },
   ];
 
   const armorScreenEventConfig: HandlerInitConfig[] = [
@@ -2944,6 +3018,7 @@ export function eventConfigs() {
     suppliesScreen: () => suppliesScreenEventConfig,
     weaponsScreen: () => weaponsScreenEventConfig,
     armorScreen: () => armorScreenEventConfig,
+    devCatalogScreen: () => devCatalogScreenEventConfig,
     memorialScreen: () => [],
     trainingScreen: () => [],
     abilitiesScreen: () => [],

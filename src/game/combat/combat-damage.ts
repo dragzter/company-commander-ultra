@@ -21,16 +21,23 @@ export function toughnessToMitigation(toughness: number): number {
 /**
  * Compute final damage to apply to target.
  * Mitigation is derived from target's current toughness (so debuffs flow through).
- * Stun halves effective mitigation.
+ * Stun halves effective mitigation. Toughness reduction (e.g. M3A Repressor) reduces effective toughness.
  */
 export function computeFinalDamage(
   rawDamage: number,
-  target: Pick<Combatant, "mitigateDamage" | "toughness" | "stunUntil">,
+  target: Pick<Combatant, "mitigateDamage" | "toughness" | "stunUntil" | "toughnessReducedUntil" | "toughnessReductionPct">,
 ): number {
-  // Derive mitigation from current toughness (handles toughness debuffs); fallback to stored mitigateDamage
+  let effectiveToughness = target.toughness ?? 0;
+  if (
+    target.toughnessReducedUntil != null &&
+    Date.now() < target.toughnessReducedUntil &&
+    target.toughnessReductionPct != null
+  ) {
+    effectiveToughness = effectiveToughness * (1 - target.toughnessReductionPct);
+  }
   let mit =
-    target.toughness != null && target.toughness > 0
-      ? toughnessToMitigation(target.toughness)
+    effectiveToughness > 0
+      ? toughnessToMitigation(effectiveToughness)
       : (target.mitigateDamage ?? 0);
   if (target.stunUntil != null && Date.now() < target.stunUntil) {
     mit *= 0.5; // Stunned: toughness-derived mitigation halved

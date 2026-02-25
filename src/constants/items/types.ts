@@ -46,17 +46,15 @@ export type WeaponBaseSpeed = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10; // Lower i
 /** Level/tier of gear (1-20). Same base item at higher level = better stats. */
 export type GearLevel = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20;
 
-/** Armor bonus: flat stats (TGH, HP, etc) or percent (MIT, AVD). Percent bonuses don't scale with tier. */
+/** Armor bonus: flat stats (TGH, HP, etc) or percent (MIT, AVD, CTH). Percent bonuses don't scale with tier. */
 export type ArmorBonus =
   | { type: "flat"; stat: "toughness" | "hp" | "dex" | "awareness" | "morale"; value: number }
-  | { type: "percent"; stat: "mitigation" | "avoidance"; value: number };
+  | { type: "percent"; stat: "mitigation" | "avoidance" | "chanceToHit"; value: number };
 
-/** Weapon stat bonus (rare/epic). Flat stats only. Maps to attributes: dex→dexterity, hp→hit_points. */
-export type WeaponBonus = {
-  type: "flat";
-  stat: "toughness" | "hp" | "dex" | "awareness" | "morale";
-  value: number;
-};
+/** Weapon stat bonus (rare/epic). Flat stats map to attributes; percent stats to combat profile. */
+export type WeaponBonus =
+  | { type: "flat"; stat: "toughness" | "hp" | "dex" | "awareness" | "morale"; value: number }
+  | { type: "percent"; stat: "chanceToHit"; value: number };
 
 /** Epic weapon effect: passive combat modifiers. Values are additive (e.g. 0.02 = +2%). */
 export type WeaponEffectModifiers = {
@@ -66,6 +64,8 @@ export type WeaponEffectModifiers = {
   damagePercent?: number;
   /** Multiplier for attack interval (0.95 = 5% faster). */
   attackIntervalMultiplier?: number;
+  /** Ignores this fraction of target's avoidance (0.6 = ignores 60% of it). */
+  ignoreAvoidancePercent?: number;
 };
 
 export type WeaponEffectId =
@@ -78,14 +78,23 @@ export type WeaponEffectId =
   | "firebreaker"
   | "eye_for_an_eye"
   | "stormhammer"
-  | "eagle_eye";
+  | "eagle_eye"
+  | "target_acquired"
+  | "carnage"
+  | "overwhelm"
+  | "focused"
+  | "eviscerate";
 
 export interface Item {
+  /** Base ID for gear (e.g. infantry_harness). Used for immunities, minLevel checks. */
+  baseId?: string;
   damage?: number;
   damage_min?: number;
   damage_max?: number;
   damage_type?: DamageType;
   description?: string;
+  /** Flavor text shown above mechanics (lore, personality). */
+  flavor?: string;
   effect?: ItemEffect;
   icon?: string;
   id: string;
@@ -104,7 +113,7 @@ export interface Item {
   type: ItemType;
   usable?: boolean;
   passiveEffect?: string; // Epic armor: display-only passive description
-  bonuses?: WeaponBonus[]; // Rare/epic weapons: flat stat bonuses
+  bonuses?: WeaponBonus[] | ArmorBonus[]; // Rare/epic weapons: flat stat bonuses; armor: flat or percent
   weaponEffect?: WeaponEffectId; // Epic weapons: passive combat trait
 }
 
@@ -117,6 +126,7 @@ export type ThrowableItem = Pick<
   | "type"
   | "rarity"
   | "description"
+  | "flavor"
   | "usable"
   | "quantity"
   | "uses"
@@ -128,6 +138,7 @@ export type ThrowableItem = Pick<
 
 export type Armor = Pick<
   Item,
+  | "baseId"
   | "id"
   | "name"
   | "type"

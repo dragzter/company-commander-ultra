@@ -33,11 +33,26 @@ import {
   canItemStackInArmory,
 } from "../utils/item-utils.ts";
 import { getFormationSlots, getActiveSlots, getReserveSlots } from "../constants/company-slots.ts";
+import type { Item } from "../constants/items/types.ts";
 import { TARGET_TYPES } from "../constants/items/types.ts";
 import { MAX_EQUIPMENT_SLOTS } from "../constants/inventory-slots.ts";
 import { weaponWieldOk, canEquipItemLevel } from "../utils/equip-utils.ts";
-import { getRewardItemById } from "../utils/reward-utils.ts";
+import { getRewardItemById, pickRandomCommonSupply } from "../utils/reward-utils.ts";
+import {
+  createWeaponByBaseId,
+  createArmorByBaseId,
+  EPIC_WEAPON_BASE_IDS,
+  getEpicArmorBaseIdsForLevel,
+  getRareArmorBaseIdsForLevel,
+  RARE_WEAPON_BASE_IDS,
+  pickRandomFrom,
+} from "../constants/gear-catalog.ts";
 import type { Mission } from "../constants/missions.ts";
+import {
+  LOOT_EPIC_CHANCE,
+  LOOT_RARE_CHANCE,
+  LOOT_COMMON_SUPPLY_CHANCE,
+} from "../constants/missions.ts";
 import type { MemorialEntry } from "../game/entities/memorial-types.ts";
 import { getStarterArmoryItems } from "../constants/starter-armory.ts";
 
@@ -782,19 +797,19 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
     });
   },
 
-  /** Grant mission rewards: credits on victory, XP/level-up, items (armory or holding if full). Respects per-category caps. Updates mission stats. */
-  grantMissionRewards: (mission: Mission | null, victory: boolean) => {
+  /** Grant mission rewards: credits on victory, XP/level-up, items (armory or holding if full). Respects per-category caps. Updates mission stats. Applies ~10% XP penalty when soldiers died. Returns reward items (guaranteed) and loot items (random drops) for summary display. */
+  grantMissionRewards: (mission: Mission | null, victory: boolean, kiaCount?: number): { rewardItems: Item[]; lootItems: Item[] } => {
     set((s: CompanyStore) => ({
       totalMissionsCompleted: (s.totalMissionsCompleted ?? 0) + (victory ? 1 : 0),
       totalMissionsFailed: (s.totalMissionsFailed ?? 0) + (victory ? 0 : 1),
     }));
-    if (!victory || !mission) return;
-    const state = get();
+    if (!victory || !mission) return { rewardItems: [], lootItems: [] };
     const credits = mission.creditReward ?? 0;
     set((s: CompanyStore) => ({ creditBalance: s.creditBalance + credits }));
 
-    /* Add XP and level up */
-    const xpGain = mission.xpReward ?? 20 * (mission.difficulty ?? 1);
+    /* Add XP and level up. Apply ~10% penalty if soldiers died. */
+    let xpGain = mission.xpReward ?? 20 * (mission.difficulty ?? 1);
+    if ((kiaCount ?? 0) > 0) xpGain = Math.max(1, Math.floor(xpGain * 0.9));
     const stateAfterCredits = get();
     const oldLevel = stateAfterCredits.company?.level ?? stateAfterCredits.companyLevel ?? 1;
     let exp = (stateAfterCredits.company?.experience ?? stateAfterCredits.companyExperience ?? 0) + xpGain;
@@ -819,19 +834,20 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
     }
 
     const rewardIds = mission.rewardItems ?? [];
-    if (rewardIds.length === 0) return;
-    const level = state.company?.level ?? state.companyLevel ?? 1;
+    const level = lvl; // Use post-XP level for drops
     const caps = {
       weapon: getWeaponArmorySlots(level),
       armor: getArmorArmorySlots(level),
       equipment: getEquipmentArmorySlots(level),
     };
-    let inv = [...(state.company?.inventory ?? [])];
-    let holding = [...(state.company?.holding_inventory ?? [])];
-    for (const id of rewardIds) {
-      const item = getRewardItemById(id);
-      if (!item) continue;
-      const copy = { ...item };
+    let inv = [...(get().company?.inventory ?? [])];
+    let holding = [...(get().company?.holding_inventory ?? [])];
+    const rewardItems: Item[] = [];
+    const lootItems: Item[] = [];
+
+    const addItemToInventory = (copy: Item, isLoot: boolean) => {
+      if (isLoot) lootItems.push(copy);
+      else rewardItems.push(copy);
       const canStack = canItemStackInArmory(copy);
       const existingIdx = canStack ? inv.findIndex((x) => x.id === copy.id && (x.uses != null || x.quantity != null)) : -1;
       if (existingIdx >= 0) {
@@ -849,7 +865,47 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
           holding = [...holding, copy];
         }
       }
+    };
+
+    for (const id of rewardIds) {
+      const item = getRewardItemById(id);
+      if (!item) continue;
+      addItemToInventory({ ...item }, false);
     }
+
+    /* Loot rolls: each rolled independently on any successful mission */
+    const tier = Math.max(1, Math.min(20, level)) as import("../constants/items/types.ts").GearLevel;
+    if (Math.random() < LOOT_EPIC_CHANCE) {
+      const isWeapon = Math.random() < 0.5;
+      const epicArmorIds = getEpicArmorBaseIdsForLevel(level);
+      const baseId = isWeapon
+        ? pickRandomFrom(EPIC_WEAPON_BASE_IDS)
+        : pickRandomFrom(epicArmorIds);
+      if (baseId) {
+        const drop = isWeapon
+          ? createWeaponByBaseId(baseId, tier)
+          : createArmorByBaseId(baseId, tier);
+        if (drop) addItemToInventory(drop, true);
+      }
+    }
+    if (Math.random() < LOOT_RARE_CHANCE) {
+      const isWeapon = Math.random() < 0.5;
+      const rareArmorIds = getRareArmorBaseIdsForLevel(level);
+      const baseId = isWeapon
+        ? pickRandomFrom(RARE_WEAPON_BASE_IDS)
+        : pickRandomFrom(rareArmorIds);
+      if (baseId) {
+        const drop = isWeapon
+          ? createWeaponByBaseId(baseId, tier)
+          : createArmorByBaseId(baseId, tier);
+        if (drop) addItemToInventory(drop, true);
+      }
+    }
+    if (Math.random() < LOOT_COMMON_SUPPLY_CHANCE) {
+      const supply = pickRandomCommonSupply();
+      if (supply) addItemToInventory({ ...supply }, true);
+    }
+
     set((s: CompanyStore) => ({
       company: {
         ...s.company,
@@ -857,6 +913,7 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
         holding_inventory: holding,
       },
     }));
+    return { rewardItems, lootItems };
   },
 
   /** Sync stored soldier.level with level derived from experience. Fixes drift from bugs/old saves. Sanitizes float XP (e.g. 20.599999994 → 20.6). */

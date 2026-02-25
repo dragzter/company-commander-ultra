@@ -91,6 +91,7 @@ export function generateMissions(_seed?: number): Mission[] {
       flavorText: generateFlavorText(kind),
       isEpic: false,
       rarity: isRare ? "rare" : "normal",
+      ...(isRare && { rewardItems: [pick(["m84_flashbang", "incendiary_grenade", "stim_pack", "standard_medkit", "tk21_throwing_knife", "m3a_repressor", "m3_frag_grenade", "mk18_smoke", "orange_stim_pack"])] }),
     });
   }
 
@@ -118,7 +119,7 @@ export function generateMissions(_seed?: number): Mission[] {
       flavorText: generateFlavorText(kind),
       isEpic: true,
       rarity: "epic",
-      rewardItems: [pick(["m84_flashbang", "incendiary_grenade", "stim_pack", "standard_medkit", "tk21_throwing_knife"])],
+      rewardItems: [pick(["m84_flashbang", "incendiary_grenade", "stim_pack", "standard_medkit", "tk21_throwing_knife", "m3a_repressor", "m3_frag_grenade", "mk18_smoke", "orange_stim_pack"])],
     });
   }
 

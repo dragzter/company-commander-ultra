@@ -44,6 +44,13 @@ export const DIFFICULTY_LABELS: Record<number, string> = {
 
 export type MissionRarity = "normal" | "rare" | "epic";
 
+/** Any successful mission: chance to drop an epic weapon or armor (level-appropriate). */
+export const LOOT_EPIC_CHANCE = 0.005;
+/** Any successful mission: chance to drop a rare weapon or armor (level-appropriate). */
+export const LOOT_RARE_CHANCE = 0.01;
+/** Any successful mission: chance to drop a common supply item (throwable/medical). */
+export const LOOT_COMMON_SUPPLY_CHANCE = 0.03;
+
 export type Mission = {
   id: string;
   kind: MissionKind;

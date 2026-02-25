@@ -5,7 +5,7 @@
  */
 import type { WeaponEffectId, WeaponEffectModifiers } from "./types.ts";
 
-export type WeaponProcType = "fire" | "blind" | "stun";
+export type WeaponProcType = "fire" | "blind" | "stun" | "carnage" | "overwhelm" | "bleed";
 
 export interface WeaponProc {
   chance: number;
@@ -57,8 +57,8 @@ export const WEAPON_EFFECTS: Record<WeaponEffectId, WeaponEffect> = {
   quick_cycle: {
     id: "quick_cycle",
     name: "Quick Cycle",
-    description: "Attacks 5% faster",
-    modifiers: { attackIntervalMultiplier: 0.95 },
+    description: "Attacks 10% faster",
+    modifiers: { attackIntervalMultiplier: 0.9 },
   },
   firebreaker: {
     id: "firebreaker",
@@ -77,7 +77,7 @@ export const WEAPON_EFFECTS: Record<WeaponEffectId, WeaponEffect> = {
   stormhammer: {
     id: "stormhammer",
     name: "Stormhammer",
-    description: "5% chance to stun enemy for 3s (toughness penalty applies)",
+    description: "5% chance to stun enemy for 3s",
     modifiers: {},
     proc: { chance: 0.05, type: "stun", durationMs: 3000 },
   },
@@ -86,5 +86,38 @@ export const WEAPON_EFFECTS: Record<WeaponEffectId, WeaponEffect> = {
     name: "Eagle Eye",
     description: "Increases chance to hit by 5%",
     modifiers: { chanceToHit: 0.05 },
+  },
+  target_acquired: {
+    id: "target_acquired",
+    name: "Target Acquired",
+    description: "Ignores 60% of target's avoidance",
+    modifiers: { ignoreAvoidancePercent: 0.6 },
+  },
+  carnage: {
+    id: "carnage",
+    name: "Carnage",
+    description: "8% chance to deal 5 extra damage",
+    modifiers: {},
+    proc: { chance: 0.08, type: "carnage", damage: 5 },
+  },
+  overwhelm: {
+    id: "overwhelm",
+    name: "Overwhelm",
+    description: "8% chance to reduce target's chance to hit by 5% for 10s",
+    modifiers: {},
+    proc: { chance: 0.08, type: "overwhelm", durationMs: 10000, hitChanceReduction: 0.05 },
+  },
+  focused: {
+    id: "focused",
+    name: "Focused",
+    description: "Increases chance to hit by 2%",
+    modifiers: { chanceToHit: 0.02 },
+  },
+  eviscerate: {
+    id: "eviscerate",
+    name: "Eviscerate",
+    description: "Chance to inflict bleeding: 3 damage per second for 4 seconds.",
+    modifiers: {},
+    proc: { chance: 0.08, type: "bleed", damage: 3, durationMs: 4000 },
   },
 };

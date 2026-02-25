@@ -33,6 +33,7 @@ export const DOM = {
     marketArmorLink: "#market-armor",
     marketWeaponsLink: "#market-weapons",
     marketSuppliesLink: "#market-supplies",
+    marketDevCatalogLink: "#market-dev-catalog",
     pages: {
       recruitTroops: {
         rerollSoldier: ".reroll-soldier",

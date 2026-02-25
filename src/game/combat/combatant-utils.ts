@@ -1,6 +1,9 @@
 import { computeAttackIntervalMs, ENEMY_DAMAGE_MULTIPLIER, ENEMY_HP_MULTIPLIER, WEAPON_DAMAGE_MULTIPLIER } from "../../constants/combat";
 import type { WeaponEffectId } from "../../constants/items/types.ts";
 import { WEAPON_EFFECTS } from "../../constants/items/weapon-effects.ts";
+import { RARE_ARMOR_BASES } from "../../constants/items/rare-armor-bases.ts";
+import { EPIC_ARMOR_BASES } from "../../constants/items/epic-armor-bases.ts";
+import type { ArmorImmunity } from "../../constants/items/epic-armor-bases.ts";
 import { Images } from "../../constants/images.ts";
 import { getItemIconUrl } from "../../utils/item-utils.ts";
 import type { Soldier } from "../entities/types.ts";
@@ -8,6 +11,20 @@ import { SoldierManager } from "../entities/soldier/soldier-manager.ts";
 import type { Combatant } from "./types.ts";
 
 const RED_PORTRAIT_KEYS = Object.keys(Images.red_portrait);
+
+const TRAIT_IMMUNITIES: Record<string, ArmorImmunity[]> = {
+  infantry_grunt: ["stun", "panic"],
+  unshakeable: ["panic", "suppression"],
+};
+
+function getArmorImmunities(baseId: string | undefined): ArmorImmunity[] {
+  if (!baseId) return [];
+  const rare = RARE_ARMOR_BASES.find((b) => b.baseId === baseId);
+  if (rare?.immunities) return rare.immunities;
+  const epic = EPIC_ARMOR_BASES.find((b) => b.baseId === baseId);
+  if (epic?.immunities) return epic.immunities;
+  return [];
+}
 
 /** Convert player Soldier to Combatant. */
 export function soldierToCombatant(soldier: Soldier): Combatant {
@@ -28,9 +45,17 @@ export function soldierToCombatant(soldier: Soldier): Combatant {
   dmgMax = Math.round(dmgMax * damageMult * WEAPON_DAMAGE_MULTIPLIER);
   let attackIntervalMs = computeAttackIntervalMs(weapon, soldier.attributes?.dexterity ?? 0);
   const intervalMult = effect?.modifiers?.attackIntervalMultiplier ?? 1;
-  attackIntervalMs = Math.round(attackIntervalMs * intervalMult);
+  attackIntervalMs = intervalMult < 1 ? Math.floor(attackIntervalMs * intervalMult) : Math.round(attackIntervalMs * intervalMult);
   const cp = soldier.combatProfile ?? { chanceToHit: 0.6, chanceToEvade: 0.05, mitigateDamage: 0, suppression: 0 };
   const weaponEffect = (weapon as { weaponEffect?: string })?.weaponEffect;
+
+  const armor = soldier.armor as { baseId?: string } | undefined;
+  const armorImmunities = getArmorImmunities(armor?.baseId);
+  const traitProfile = soldier.trait_profile as { name?: string } | undefined;
+  const traitName = traitProfile?.name ?? "";
+  const traitImmunities = TRAIT_IMMUNITIES[traitName] ?? [];
+  const allImmunities = new Set<ArmorImmunity>([...armorImmunities, ...traitImmunities]);
+  const incapMult = traitName === "relentless" ? 1.6 : 1;
 
   return {
     id: soldier.id,
@@ -51,6 +76,11 @@ export function soldierToCombatant(soldier: Soldier): Combatant {
     designation: soldier.designation,
     weaponIconUrl: weapon ? getItemIconUrl(weapon as import("../../constants/items/types.ts").Item) : undefined,
     weaponEffect,
+    immuneToStun: allImmunities.has("stun"),
+    immuneToPanic: allImmunities.has("panic"),
+    immuneToSuppression: allImmunities.has("suppression"),
+    immuneToBurning: allImmunities.has("burning"),
+    incapChanceMultiplier: incapMult,
   };
 }
 

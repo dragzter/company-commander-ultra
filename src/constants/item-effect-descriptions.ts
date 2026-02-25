@@ -1,32 +1,97 @@
-/** Human-readable effect descriptions for item popups. Descriptions are for flavor; effects explain mechanics. */
-export const ITEM_EFFECT_DESCRIPTIONS: Record<string, string> = {
-  /* Throwables - only items with specific effects (burn, stun, etc.); frag/knife use description */
-  m84_flashbang:
-    "Primary target stunned for 4 seconds. Adjacent targets stunned for 2 seconds.",
-  mk18_smoke:
-    "Primary target: −40% accuracy, +5% evasion for 5 seconds. Adjacent targets: −10% accuracy for 5 seconds.",
-  incendiary_grenade:
-    "Primary target: 8 damage per tick, every 1 second, for 4 seconds. Burns ignore armor. Adjacent targets suffer half duration and half damage per tick.",
-  nbc_neutralizer: "Cleanses Nuclear, Biological, and Chemical debuffs from allies in the area.",
-  nerve_gas_detonator:
-    "Primary target: 20 poison damage per tick for 2 ticks. Adjacent: half duration and damage.",
-  rad_emitter:
-    "Primary target: 5 radiation damage per tick for 4 ticks. Adjacent: half duration and damage.",
-  psychic_shredder:
-    "Primary target: Panic for 6 seconds. Adjacent targets: Panic for 3 seconds.",
-  m99_sticky_grenade:
-    "Sticks to target. 80 explosive damage to a single enemy. No splash.",
+/** Structured effect: primary + optional adjacent for area grenades. */
+export interface StructuredEffect {
+  primary: string;
+  adjacent?: string;
+}
+
+/** Single-target or simple effect (no primary/adjacent split). */
+export interface SimpleEffect {
+  effect: string;
+}
+
+export type EffectDescription = string | StructuredEffect | SimpleEffect;
+
+/** Human-readable effect descriptions for item popups. Use structured format for area grenades. */
+export const ITEM_EFFECT_DESCRIPTIONS: Record<string, EffectDescription> = {
+  /* Throwables – area effect (primary + adjacent) */
+  m84_flashbang: {
+    primary: "Stunned for 4 seconds.",
+    adjacent: "Stunned for 2 seconds.",
+  },
+  mk18_smoke: {
+    primary: "−40% accuracy, +5% evasion for 5 seconds.",
+    adjacent: "−10% accuracy for 5 seconds.",
+  },
+  incendiary_grenade: {
+    primary: "8 damage per tick, 1s interval, 4 seconds. Ignores armor.",
+    adjacent: "Half duration, half damage per tick.",
+  },
+  nerve_gas_detonator: {
+    primary: "20 poison damage per tick for 2 ticks.",
+    adjacent: "Half duration and damage.",
+  },
+  rad_emitter: {
+    primary: "5 radiation damage per tick for 4 ticks.",
+    adjacent: "Half duration and damage.",
+  },
+  psychic_shredder: {
+    primary: "Panic for 6 seconds.",
+    adjacent: "Panic for 3 seconds.",
+  },
+  m3a_repressor: {
+    primary: "10 damage, 80% toughness reduction for 8 seconds.",
+    adjacent: "20% toughness reduction for 4 seconds. No damage.",
+  },
+  m3_frag_grenade: {
+    primary: "Explosive damage (30 or 45).",
+    adjacent: "50% splash damage.",
+  },
+  /* Throwables – single target */
+  nbc_neutralizer: { effect: "Cleanses Nuclear, Biological, and Chemical debuffs from allies in the area." },
+  m99_sticky_grenade: { effect: "80 explosive damage to a single enemy. No splash." },
+  tk21_throwing_knife: { effect: "20 kinetic damage to a single enemy. No splash. Uses thrower's accuracy." },
   /* Medical */
-  stim_pack: "+50% attack speed for 10 seconds.",
-  standard_medkit: "Restores 20 HP immediately.",
-  orange_stim_pack: "Restores 40 HP immediately.",
-  adrenaline_injection:
-    "Restores 12 HP per tick for 3 ticks. While active: increased initiative and evasion, reduced accuracy.",
-  substance_m:
-    "Revives incapacitated ally and restores 30 HP per tick for 4 ticks. Massive damage resistance while active. High risk of death.",
+  stim_pack: { effect: "+50% attack speed for 10 seconds." },
+  standard_medkit: { effect: "Restores 20 HP immediately." },
+  orange_stim_pack: { effect: "Restores 40 HP immediately." },
+  adrenaline_injection: {
+    effect: "Restores 12 HP per tick for 3 ticks. While active: increased initiative and evasion, reduced accuracy.",
+  },
+  substance_m: {
+    effect:
+      "Revives incapacitated ally and restores 30 HP per tick for 4 ticks. Massive damage resistance while active.",
+  },
 };
 
-export function getItemEffectDescription(item: { id?: string }): string | null {
+function isStructuredEffect(d: EffectDescription): d is StructuredEffect {
+  return typeof d === "object" && d !== null && "primary" in d;
+}
+
+function isSimpleEffect(d: EffectDescription): d is SimpleEffect {
+  return typeof d === "object" && d !== null && "effect" in d;
+}
+
+export function getItemEffectDescription(item: { id?: string }): EffectDescription | null {
   if (!item?.id) return null;
   return ITEM_EFFECT_DESCRIPTIONS[item.id] ?? null;
+}
+
+/** Render effect description as HTML string for popup. */
+export function renderEffectDescriptionHtml(desc: EffectDescription, escapeHtml: (s: string) => string): string {
+  if (typeof desc === "string") {
+    return `<p class="item-popup-effect-text">${escapeHtml(desc)}</p>`;
+  }
+  if (isStructuredEffect(desc)) {
+    let html = '<div class="item-effect-structured">';
+    html += `<div class="item-effect-row item-effect-primary"><span class="item-effect-label">Primary</span><span class="item-effect-value">${escapeHtml(desc.primary)}</span></div>`;
+    if (desc.adjacent) {
+      html += `<div class="item-effect-row item-effect-adjacent"><span class="item-effect-label">Adjacent</span><span class="item-effect-value">${escapeHtml(desc.adjacent)}</span></div>`;
+    }
+    html += "</div>";
+    return html;
+  }
+  if (isSimpleEffect(desc)) {
+    return `<p class="item-popup-effect-text">${escapeHtml(desc.effect)}</p>`;
+  }
+  return "";
 }

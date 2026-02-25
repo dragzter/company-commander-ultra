@@ -279,6 +279,18 @@ const TraitProfileStats: Record<string, SoldierTraitProfile> = {
     hit_points: 10,
     dexterity: -4,
   },
+  infantry_grunt: {
+    toughness: 8,
+    awareness: 4,
+  },
+  unshakeable: {
+    morale: 15,
+    toughness: 5,
+  },
+  relentless: {
+    toughness: 10,
+    morale: 5,
+  },
 
   veteran: {
     awareness: 15,

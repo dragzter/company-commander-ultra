@@ -1442,6 +1442,23 @@ button.mbtn {
 .supplies-market-footer .recruit-balance-bar {
 	justify-content: center;
 }
+/* Credits badge below level navigator - larger on individual market pages */
+.weapons-market-footer .market-credits-display,
+.armor-market-footer .market-credits-display,
+.supplies-market-footer .market-credits-display {
+	padding: 6px 12px;
+	gap: 6px;
+}
+.weapons-market-footer .market-credits-label,
+.armor-market-footer .market-credits-label,
+.supplies-market-footer .market-credits-label {
+	font-size: 0.65rem;
+}
+.weapons-market-footer .market-credits-amount,
+.armor-market-footer .market-credits-amount,
+.supplies-market-footer .market-credits-amount {
+	font-size: 0.95rem;
+}
 
 /* Market level navigator: ← Level N → at bottom of gear/supplies screens */
 .market-level-nav {
@@ -1664,6 +1681,34 @@ button.mbtn {
 	background: linear-gradient(90deg, rgba(120, 40, 60, 0.14) 0%, transparent 100%);
 	color: var(--accent-magenta-2);
 	text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5), 0 0 12px rgba(234, 62, 101, 0.2);
+}
+
+/* Mission type section banners */
+.missions-kind-banner {
+	margin: 0 0 10px 0;
+	padding: 8px 14px 8px 16px;
+	font-size: 0.95rem;
+	font-weight: 700;
+	letter-spacing: 0.12em;
+	text-transform: uppercase;
+	color: var(--camo-tan-1);
+	border-left: 4px solid rgba(120, 200, 140, 0.6);
+	background: linear-gradient(90deg, rgba(50, 80, 50, 0.25) 0%, rgba(40, 60, 40, 0.08) 50%, transparent 100%);
+	border-radius: 0 6px 6px 0;
+	text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.missions-section-kind + .missions-section-kind .missions-kind-banner {
+	margin-top: 20px;
+}
+
+.missions-kind-banner-epic {
+	border-left-color: rgba(234, 62, 101, 0.8);
+	background: linear-gradient(90deg, rgba(100, 30, 50, 0.35) 0%, rgba(80, 25, 40, 0.12) 50%, transparent 100%);
+	color: var(--accent-magenta-2);
+	text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6), 0 0 14px rgba(234, 62, 101, 0.25);
+	box-shadow: 0 2px 12px rgba(234, 62, 101, 0.15);
 }
 
 .missions-grid {
@@ -1911,6 +1956,53 @@ button.mbtn {
 .mission-card[data-level="4"] .mission-diff-label { color: #f0a050; }
 .mission-card[data-level="5"] .mission-diff-label { color: #f06868; }
 
+.mission-card-rewards {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: 4px 6px;
+	font-size: 0.72rem;
+	margin-top: 6px;
+	padding: 6px 8px;
+	background: linear-gradient(135deg, rgba(40, 55, 30, 0.6) 0%, rgba(25, 38, 18, 0.75) 100%);
+	border: 1px solid rgba(100, 180, 80, 0.25);
+	border-radius: 4px;
+	position: relative;
+	z-index: 1;
+}
+.mission-rewards-label {
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	color: rgba(140, 200, 100, 0.9);
+	flex-shrink: 0;
+}
+.mission-rewards-list {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 4px 6px;
+}
+.mission-reward-chip {
+	display: inline-flex;
+	align-items: center;
+	gap: 3px;
+	font-weight: 600;
+	color: #f0d85c;
+	text-shadow: 0 0 6px rgba(240, 216, 92, 0.4);
+}
+.mission-reward-chip .mission-reward-icon {
+	opacity: 0.9;
+}
+.mission-reward-item-icon {
+	flex-shrink: 0;
+	object-fit: contain;
+}
+.mission-reward-item {
+	font-weight: 600;
+	color: #f0d85c;
+	text-shadow: 0 0 6px rgba(240, 216, 92, 0.4);
+}
 .mission-card-meta {
 	display: flex;
 	justify-content: space-between;
@@ -1942,12 +2034,16 @@ button.mbtn {
 .mission-card[data-kind="seek_and_destroy"] .mission-enemies-count { color: #e88080; }
 .mission-card[data-kind="manhunt"] .mission-enemies-count { color: #f0d050; }
 
-.mission-card-reward {
-	padding: 2px 6px;
-	border-radius: 4px;
-	background: linear-gradient(165deg, rgba(60, 50, 20, 0.7) 0%, rgba(40, 32, 12, 0.85) 100%);
-	border: 1px solid rgba(200, 170, 80, 0.45);
-	box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 1px 4px rgba(0, 0, 0, 0.35);
+.mission-card-epic .mission-card-rewards {
+	background: linear-gradient(135deg, rgba(55, 30, 65, 0.7) 0%, rgba(38, 18, 48, 0.8) 100%);
+	border-color: rgba(180, 120, 255, 0.35);
+}
+.mission-card-epic .mission-rewards-label {
+	color: rgba(220, 180, 255, 0.95);
+}
+.mission-card-epic .mission-reward-item {
+	color: #e8c8ff;
+	text-shadow: 0 0 8px rgba(232, 200, 255, 0.5);
 }
 
 .mission-enemies-icon {
@@ -3477,6 +3573,8 @@ button.mbtn {
 	font-size: 0.82rem;
 }
 
+.dev-catalog-label { font-size: 0.7rem; color: rgba(160, 160, 180, 0.9); }
+.dev-catalog-hint { margin-top: 12px; font-size: 0.8rem; color: rgba(160, 160, 180, 0.8); }
 .market-item-price {
 	font-weight: 800;
 	color: #7cff7c;
@@ -3722,10 +3820,24 @@ button.mbtn {
 	--popup-border: rgba(94, 184, 255, 0.4);
 	--popup-glow: rgba(94, 184, 255, 0.2);
 }
+.item-popup-body[data-rarity="rare"] .item-popup-stat-label {
+	color: #5eb8ff;
+}
+.item-popup-body[data-rarity="rare"] .item-popup-stat-value {
+	color: #fafafa;
+	text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
 .item-popup-body[data-rarity="epic"] {
 	--popup-accent: #c77dff;
 	--popup-border: rgba(199, 125, 255, 0.5);
 	--popup-glow: rgba(199, 125, 255, 0.25);
+}
+.item-popup-body[data-rarity="epic"] .item-popup-stat-label {
+	color: #c77dff;
+}
+.item-popup-body[data-rarity="epic"] .item-popup-stat-value {
+	color: #fafafa;
+	text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
 }
 .item-popup-hero {
 	display: flex;
@@ -3796,6 +3908,13 @@ button.mbtn {
 	background: rgba(199, 125, 255, 0.25);
 	color: #c77dff;
 }
+/* Weapon speed upgraded (e.g. Quick Cycle): bright yellow indicator; number is effective speed (baked-in) */
+.item-popup-stat-value.item-popup-stat-speed-upgraded,
+.item-popup-body[data-rarity="rare"] .item-popup-stat-value.item-popup-stat-speed-upgraded,
+.item-popup-body[data-rarity="epic"] .item-popup-stat-value.item-popup-stat-speed-upgraded {
+	color: #fde047 !important;
+	text-shadow: 0 0 12px rgba(253, 224, 71, 0.5), 0 1px 2px rgba(0, 0, 0, 0.4);
+}
 .item-popup-rarity-badge {
 	display: inline-block;
 	font-size: 0.65rem;
@@ -3828,6 +3947,13 @@ button.mbtn {
 	background: rgba(0, 0, 0, 0.4);
 	border-radius: 10px;
 	border: 1px solid var(--popup-border);
+}
+.item-popup-flavor {
+	margin: 10px 0 0;
+	font-size: 0.85rem;
+	line-height: 1.45;
+	color: rgba(160, 180, 200, 0.9);
+	font-style: italic;
 }
 .item-popup-desc {
 	margin: 12px 0 0;
@@ -3886,6 +4012,9 @@ button.mbtn {
 }
 /* Effect box - explains what the item does when used (like bonus box) */
 .item-popup-effect {
+	display: flex;
+	flex-direction: column;
+	gap: 0;
 	margin-top: 12px;
 	padding: 10px 12px;
 	background: rgba(34, 197, 94, 0.1);
@@ -3898,7 +4027,11 @@ button.mbtn {
 	text-transform: uppercase;
 	letter-spacing: 0.1em;
 	color: rgba(74, 222, 128, 0.65);
-	margin-bottom: 6px;
+	margin-bottom: 8px;
+}
+.item-popup-effect > .item-popup-effect-text,
+.item-popup-effect > .item-effect-structured {
+	margin-top: 0;
 }
 .item-popup-effect-text {
 	margin: 0;
@@ -3908,6 +4041,46 @@ button.mbtn {
 	color: #86efac;
 	text-shadow: 0 0 10px rgba(34, 197, 94, 0.35), 0 1px 2px rgba(0, 0, 0, 0.4);
 }
+/* Structured effect: Primary / Adjacent rows for easy parsing */
+.item-effect-structured {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	margin-top: 4px;
+}
+.item-effect-row {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	align-items: stretch;
+	padding: 8px 10px;
+	border-radius: 6px;
+	background: rgba(0, 0, 0, 0.25);
+	border-left: 3px solid transparent;
+}
+.item-effect-primary {
+	border-left-color: rgba(74, 222, 128, 0.7);
+}
+.item-effect-adjacent {
+	border-left-color: rgba(147, 197, 253, 0.6);
+}
+.item-effect-label {
+	flex-shrink: 0;
+	font-size: 0.7rem;
+	font-weight: 800;
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	min-width: 58px;
+}
+.item-effect-primary .item-effect-label { color: #86efac; }
+.item-effect-adjacent .item-effect-label { color: #93c5fd; }
+.item-effect-value {
+	font-size: 0.85rem;
+	line-height: 1.4;
+	font-weight: 600;
+}
+.item-effect-primary .item-effect-value { color: #bbf7d0; }
+.item-effect-adjacent .item-effect-value { color: #bfdbfe; }
 .item-popup-body[data-rarity="rare"] .item-popup-effect {
 	background: rgba(59, 184, 120, 0.1);
 	border-color: rgba(59, 184, 120, 0.4);
@@ -3930,6 +4103,14 @@ button.mbtn {
 .item-popup-body[data-rarity="epic"] .item-popup-effect-hint {
 	color: rgba(192, 132, 252, 0.7);
 }
+.item-popup-body[data-rarity="rare"] .item-effect-primary .item-effect-label { color: #5eead4; }
+.item-popup-body[data-rarity="rare"] .item-effect-primary .item-effect-value { color: #99f6e4; }
+.item-popup-body[data-rarity="rare"] .item-effect-adjacent .item-effect-label { color: #7dd3fc; }
+.item-popup-body[data-rarity="rare"] .item-effect-adjacent .item-effect-value { color: #bae6fd; }
+.item-popup-body[data-rarity="epic"] .item-effect-primary .item-effect-label { color: #e9d5ff; }
+.item-popup-body[data-rarity="epic"] .item-effect-primary .item-effect-value { color: #f3e8ff; }
+.item-popup-body[data-rarity="epic"] .item-effect-adjacent .item-effect-label { color: #c4b5fd; }
+.item-popup-body[data-rarity="epic"] .item-effect-adjacent .item-effect-value { color: #ddd6fe; }
 .item-popup-trait {
 	margin-top: 10px;
 	padding: 10px 12px;
@@ -5914,6 +6095,30 @@ button.mbtn {
 	gap: 10px;
 }
 
+.combat-summary-cards-row {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	align-items: flex-start;
+}
+.combat-summary-cards-row .combat-card {
+	min-width: 64px;
+	max-width: 72px;
+}
+.combat-summary-kills {
+	display: block;
+	font-size: 0.6rem;
+	color: var(--gray-3);
+	margin-top: 2px;
+}
+.combat-summary-status {
+	display: block;
+	font-size: 0.55rem;
+	font-weight: 700;
+	letter-spacing: 0.06em;
+	margin-top: 2px;
+}
+
 .combat-summary-participants-none {
 	margin: 0;
 	font-size: 0.85rem;
@@ -6010,6 +6215,22 @@ button.mbtn {
 	flex-shrink: 0;
 }
 
+.combat-summary-rewards-section .combat-summary-items-grid,
+.combat-summary-loot-section .combat-summary-items-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+	gap: 8px;
+	margin-top: 6px;
+}
+.combat-summary-item-slot {
+	cursor: default;
+}
+.combat-summary-item-slot .market-item-details .market-item-name {
+	font-size: 0.7rem;
+}
+.combat-summary-loot-section {
+	margin-top: 8px;
+}
 .combat-summary-holding-note {
 	margin: 8px 0 0;
 	font-size: 0.75rem;
@@ -6334,6 +6555,10 @@ button.mbtn {
 .combat-burn-popup {
 	color: #ff6633;
 	text-shadow: 0 0 10px #000, 0 2px 6px rgba(0,0,0,0.9), 0 0 24px rgba(255, 100, 50, 0.6);
+}
+.combat-bleed-popup {
+	color: #cc2244;
+	text-shadow: 0 0 10px #000, 0 2px 6px rgba(0,0,0,0.9), 0 0 24px rgba(200, 40, 60, 0.6);
 }
 
 @keyframes combat-damage-popup-anim {
@@ -7128,6 +7353,18 @@ button.mbtn {
 	box-shadow: 0 6px 22px rgba(220, 38, 38, 0.45), inset -2px -2px 4px rgba(0, 0, 0, 0.35), inset 2px 2px 4px rgba(255, 255, 255, 0.1), 0 0 18px rgba(255, 100, 100, 0.45);
 }
 
+#cc-market .text-center .mbtn.market-dev-btn,
+#cc-market .text-center .mbtn.gray {
+	background: linear-gradient(145deg, rgba(60, 60, 65, 0.9) 0%, rgba(40, 40, 45, 0.95) 100%);
+	border: 1px solid rgba(140, 140, 150, 0.5);
+	color: rgba(180, 180, 190, 0.95);
+	font-size: 0.85rem;
+}
+#cc-market .text-center .mbtn.market-dev-btn:hover,
+#cc-market .text-center .mbtn.gray:hover {
+	border-color: rgba(160, 160, 170, 0.7);
+	background: linear-gradient(145deg, rgba(70, 70, 75, 0.95) 0%, rgba(50, 50, 55, 1) 100%);
+}
 #cc-market .text-center .mbtn.blue:nth-of-type(4) {
 	background:
 		radial-gradient(ellipse 80% 60% at 30% 30%, rgba(255, 255, 255, 0.06) 0%, transparent 50%),

@@ -167,6 +167,10 @@ function UiManager() {
     _ScreenManager.generate.createArmorMarketPage();
   }
 
+  function renderDevCatalogScreen() {
+    _ScreenManager.generate.createDevCatalogPage();
+  }
+
   function renderSuppliesMarketScreen() {
     _ScreenManager.generate.createSuppliesMarketPage();
   }
@@ -218,6 +222,7 @@ function UiManager() {
     showTroopsRecruitError,
     renderWeaponsMarketScreen,
     renderArmorMarketScreen,
+    renderDevCatalogScreen,
     renderSuppliesMarketScreen,
     renderInventoryScreen,
     refreshEquipPickerContent,

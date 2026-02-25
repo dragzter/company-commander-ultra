@@ -17,7 +17,12 @@ import type { Soldier } from "../entities/types.ts";
 import { usePlayerCompanyStore } from "../../store/ui-store.ts";
 import { Partial } from "./partials/partial.ts";
 import { getSuppliesMarketItems } from "../../constants/equipment-market.ts";
-import { getWeaponsMarketItems, getArmorMarketItems } from "../../constants/gear-market.ts";
+import {
+  getWeaponsMarketItems,
+  getArmorMarketItems,
+  getWeaponsMarketItemsAll,
+  getArmorMarketItemsAll,
+} from "../../constants/gear-market.ts";
 import { getItemIconUrl } from "../../utils/item-utils.ts";
 import { getWeaponRestrictRole } from "../../utils/equip-utils.ts";
 import { getMaxSoldierLevel } from "../../utils/company-utils.ts";
@@ -36,7 +41,8 @@ export const marketTemplate = () => {
 				<button id="${c(market.marketTroopsLink)}" class="green mbtn mb-3">Troops</button>
 				<button id="${c(market.marketArmorLink)}" class="blue mbtn mb-3">Body Armor</button>
 				<button id="${c(market.marketWeaponsLink)}" class="red mbtn mb-3">Weapons</button>
-				<button id="${c(market.marketSuppliesLink)}" class="blue mbtn">Supplies</button>
+				<button id="${c(market.marketSuppliesLink)}" class="blue mbtn mb-3">Supplies</button>
+				${typeof import.meta !== "undefined" && (import.meta as { env?: { DEV?: boolean } }).env?.DEV ? `<button id="${c(market.marketDevCatalogLink)}" class="gray mbtn market-dev-btn" title="Developer: view all weapons and armor">Dev Catalog</button>` : ""}
 			</div>
 			<div class="market-credits-inline">${marketCreditsPartial(usePlayerCompanyStore.getState().creditBalance)}</div>
 		</div>
@@ -262,6 +268,118 @@ export const armorMarketTemplate = () => {
 function escapeAttr(s: string): string {
   return s.replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
+
+/** Dev-only: view all weapons and armor including epics. View-only, no purchase. */
+export const devCatalogMarketTemplate = () => {
+  const store = usePlayerCompanyStore.getState();
+  const maxLevel = 20; // Dev catalog: browse all levels 1-20
+  const selectedTier = Math.max(1, Math.min(20, store.marketTierLevel || 1));
+  const tier = selectedTier as import("../../constants/items/types.ts").GearLevel;
+
+  const allWeapons = getWeaponsMarketItemsAll(tier);
+  const allArmor = getArmorMarketItemsAll(tier);
+  const commonWeapons = allWeapons.filter((e) => (e.item.rarity ?? "common") === "common");
+  const rareWeapons = allWeapons.filter((e) => e.item.rarity === "rare");
+  const epicWeapons = allWeapons.filter((e) => e.item.rarity === "epic");
+  const commonArmor = allArmor.filter((e) => (e.item.rarity ?? "common") === "common");
+  const rareArmor = allArmor.filter((e) => e.item.rarity === "rare");
+  const epicArmor = allArmor.filter((e) => e.item.rarity === "epic");
+
+  const devCard = (
+    entry: { item: import("../../constants/items/types.ts").Item; price: number },
+    dataAttrs: string,
+    slotClass: string,
+  ) => {
+    const iconUrl = getItemIconUrl(entry.item);
+    const name = entry.item.name;
+    const level = entry.item.level ?? 1;
+    const rarity = entry.item.rarity ?? "common";
+    const rarityClass = rarity !== "common" ? ` market-item-rarity-${rarity} rarity-${rarity}` : "";
+    const isWeapon = entry.item.type === "ballistic_weapon" || entry.item.type === "melee_weapon";
+    const weaponRole = isWeapon
+      ? (getWeaponRestrictRole(entry.item) ?? (entry.item as { restrictRole?: string }).restrictRole ?? "any")
+      : null;
+    const roleBadgeHtml = weaponRole
+      ? `<span class="market-weapon-role-badge role-${weaponRole}">${WEAPON_ROLE_LABELS[weaponRole] ?? weaponRole}</span>`
+      : "";
+    const iconHtml = iconUrl
+      ? `<div class="market-item-icon-wrap"><img class="market-item-icon" src="${iconUrl}" alt="${name}" width="42" height="42"><span class="item-level-badge rarity-${rarity}">Lv${level}</span>${roleBadgeHtml}</div>`
+      : "";
+    return `
+<div class="market-item-slot ${slotClass}${rarityClass}" ${dataAttrs} role="button" tabindex="0">
+  <div class="market-item-inner">
+    ${iconHtml}
+    <div class="market-item-details">
+      <span class="market-item-name">${name}</span>
+      <span class="market-item-price dev-catalog-label">VIEW</span>
+    </div>
+  </div>
+</div>`;
+  };
+
+  const gearData = (e: { item: import("../../constants/items/types.ts").Item; price: number }, i: number, ctx: string) =>
+    `data-gear-index="${i}" data-gear-context="${ctx}" data-gear-item="${escapeAttr(JSON.stringify(e.item))}"`;
+
+  const section = (
+    title: string,
+    items: { item: import("../../constants/items/types.ts").Item; price: number }[],
+    offset: number,
+    rarityClass: string,
+    ctx: string,
+  ) =>
+    items.length > 0
+      ? `
+    <div class="market-section ${rarityClass}">
+      <h4 class="market-section-title">${title}</h4>
+      <div class="market-grid market-grid-2col">
+        ${items.map((e, i) => devCard(e, gearData(e, offset + i, ctx), "gear-market-item dev-catalog-item")).join("")}
+      </div>
+    </div>`
+      : "";
+
+  const weaponsSections =
+    section("Weapons — Common", commonWeapons, 0, "market-section-common", "dev-weapons") +
+    section("Weapons — Rare", rareWeapons, commonWeapons.length, "market-section-rare", "dev-weapons") +
+    section("Weapons — Epic", epicWeapons, commonWeapons.length + rareWeapons.length, "market-section-epic", "dev-weapons");
+
+  const armorSections =
+    section("Armor — Common", commonArmor, 0, "market-section-common", "dev-armor") +
+    section("Armor — Rare", rareArmor, commonArmor.length, "market-section-rare", "dev-armor") +
+    section("Armor — Epic", epicArmor, commonArmor.length + rareArmor.length, "market-section-epic", "dev-armor");
+
+  const { common: commonSupplies, rare: rareSupplies, epic: epicSupplies } = getSuppliesMarketItems(selectedTier, Math.max(4, store.company?.level ?? store.companyLevel ?? 1));
+  const suppliesSections =
+    section("Supplies — Common", commonSupplies, 0, "market-section-common", "dev-supplies") +
+    section("Supplies — Rare", rareSupplies, commonSupplies.length, "market-section-rare", "dev-supplies") +
+    section("Supplies — Epic", epicSupplies, commonSupplies.length + rareSupplies.length, "market-section-epic", "dev-supplies");
+
+  return `
+<div id="dev-catalog-market" class="dev-catalog-root weapons-market-root troops-market-root">
+  <div id="dev-catalog-popup" class="gear-buy-popup supplies-buy-popup" role="dialog" aria-modal="true" hidden>
+    <div class="gear-buy-popup-inner supplies-buy-popup-inner">
+      <div class="gear-buy-title-wrap"><button type="button" id="dev-catalog-popup-close" class="popup-close-btn">×</button></div>
+      <div id="dev-catalog-popup-body" class="supplies-buy-body"></div>
+      <div class="dev-catalog-actions">
+        <button type="button" id="dev-catalog-grant-btn" class="mbtn green equipment-buy-btn-full">Add to Armory</button>
+      </div>
+      <p class="dev-catalog-hint">Dev Catalog — add any item for testing</p>
+    </div>
+  </div>
+  ${companyHeaderPartial("Dev Catalog — All Gear & Supplies")}
+  <div class="dev-catalog-main market-main-2col">
+    ${weaponsSections}
+    ${armorSections}
+    ${suppliesSections}
+  </div>
+  <div class="dev-catalog-footer weapons-market-footer troops-market-footer">
+    ${marketLevelNavigatorPartial(selectedTier, maxLevel)}
+    <div class="footer-banner">
+      ${companyActionsTemplate()}
+    </div>
+  </div>
+</div>
+`;
+};
 
 function abbreviateItemName(name: string): string {
   return name.replace(/Incendiary/g, "Incend.");

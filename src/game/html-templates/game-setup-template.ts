@@ -97,6 +97,11 @@ export function codexPopupTemplate(): string {
     },
   ];
   const combatEffects = [
+    {
+      name: "Incapacitation",
+      desc: "At 0 HP, soldiers have a 20% base + 1% per level chance to be incapacitated instead of KIA. Relentless trait increases that by 60%.",
+      badges: [{ cls: "codex-badge-positive", text: "survival" }],
+    },
     { name: "Stun", desc: "Cannot act.", badges: [{ cls: "codex-badge-negative", text: "MIT halved" }] },
     { name: "Panic", desc: "50% slower.", badges: [], remediedBy: "MOR" },
     { name: "Suppressed", desc: "Cannot attack.", badges: [{ cls: "codex-badge-neutral", text: "+10% AVD" }], remediedBy: "MOR" },

@@ -15,6 +15,7 @@ const SUPPLIES_BASE_PRICES = {
   frag: 105 * 5,
   incendiary: 140 * 5,
   throwing_knife: 35 * 10,
+  m3a_repressor: 160 * 5,
   psychic_shredder: 800 * 5,
   stim_pack: 1950,
   medkit: 130 * 5,
@@ -26,7 +27,7 @@ function supplyPrice(base: number, tier: number): number {
   return Math.round(base * (1 + (tier - 1) * TIER_PRICE_FACTOR));
 }
 
-/** Create leveled supply item. Psychic Shredder has no level (stays tier 1). Incendiary: only effect_value scales. */
+/** Create leveled supply item. Psychic Shredder has no level (stays tier 1). Incendiary: only effect_value (burn dmg) scales. */
 function createLeveledSupply<T extends Item>(
   base: T,
   tier: GearLevel,
@@ -40,17 +41,19 @@ function createLeveledSupply<T extends Item>(
 
   if (options.noLevel) return item;
 
+  /* Incendiary: burn tick damage scales with tier only (duration/ticks fixed) */
   if (options.damageOnly) {
     if (item.effect?.result === "burn" && item.effect.effect_value != null) {
       const baseDmg = 8;
-      const scaled = Math.round(baseDmg + (tier - 1) * 1.5);
+      const scaled = Math.round(baseDmg + (tier - 1) * 2);
       (item as Item).effect = { ...item.effect!, effect_value: scaled };
     }
     return item;
   }
 
+  /* Frag, throwing knife: damage scales 10% per tier */
   if (base.damage != null && base.damage > 0) {
-    (item as Item).damage = Math.round((base.damage as number) * (1 + (tier - 1) * 0.08));
+    (item as Item).damage = Math.round((base.damage as number) * (1 + (tier - 1) * 0.1));
   }
   if (base.effect) {
     const eff = { ...base.effect };
@@ -112,6 +115,18 @@ function getCommonSupplies(tier: GearLevel, _companyLvl: number): EquipmentMarke
   ];
 }
 
+/** Rare: M3A Repressor. Damage scales with thrower level at use time. */
+function getRareSupplies(tier: GearLevel, companyLvl: number): EquipmentMarketEntry[] {
+  if (companyLvl < 2) return [];
+  const t = Math.max(1, Math.min(20, tier)) as GearLevel;
+  const item = createLeveledSupply(
+    { ...ThrowableItems.rare.m3a_repressor } as Item,
+    1,
+    { noLevel: true },
+  );
+  return [{ item, price: supplyPrice(SUPPLIES_BASE_PRICES.m3a_repressor, t) }];
+}
+
 /** Epic: Psychic Shredder - no level. */
 function getEpicSupplies(companyLvl: number): EquipmentMarketEntry[] {
   if (companyLvl < 4) return [];
@@ -131,14 +146,14 @@ export function getSuppliesMarketItems(
   const t = Math.max(1, Math.min(20, Math.floor(tier))) as GearLevel;
   return {
     common: getCommonSupplies(t, companyLvl),
-    rare: [],
+    rare: getRareSupplies(t, companyLvl),
     epic: getEpicSupplies(companyLvl),
   };
 }
 
 /** Legacy: flat lists for backward compatibility */
 export const EQUIPMENT_MARKET_COMMON: EquipmentMarketEntry[] = getSuppliesMarketItems(1, 4).common;
-export const EQUIPMENT_MARKET_RARE: EquipmentMarketEntry[] = [];
+export const EQUIPMENT_MARKET_RARE: EquipmentMarketEntry[] = getSuppliesMarketItems(1, 4).rare;
 export const EQUIPMENT_MARKET_EPIC: EquipmentMarketEntry[] = getSuppliesMarketItems(1, 4).epic;
 
 /** Legacy flat list for backward compatibility (common + rare + epic) */

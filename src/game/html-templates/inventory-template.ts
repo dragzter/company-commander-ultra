@@ -12,7 +12,11 @@ import type { Item, ArmorBonus } from "../../constants/items/types.ts";
 import { ITEM_TYPES } from "../../constants/items/types.ts";
 import { computeAttackIntervalMs } from "../../constants/combat.ts";
 import { WEAPON_EFFECTS } from "../../constants/items/weapon-effects.ts";
-import { getItemEffectDescription } from "../../constants/item-effect-descriptions.ts";
+import {
+  getItemEffectDescription,
+  renderEffectDescriptionHtml,
+  type EffectDescription,
+} from "../../constants/item-effect-descriptions.ts";
 import { getWeaponRestrictRole } from "../../utils/equip-utils.ts";
 
 const STAT_LABELS: Record<string, string> = {
@@ -23,6 +27,7 @@ const STAT_LABELS: Record<string, string> = {
   morale: "MOR",
   mitigation: "MIT",
   avoidance: "AVD",
+  chanceToHit: "CTH",
 };
 
 export function getItemPopupBodyHtml(item: Item): string {
@@ -38,7 +43,7 @@ export function getItemPopupBodyHtml(item: Item): string {
   html += '<div class="item-popup-name-wrap"><h4 class="item-popup-name">' + escapeHtml(item.name) + '</h4></div>';
   html += '</div>';
 
-  const rows: [string, string][] = [];
+  const rows: [string, string, string?][] = [];
   if (item.damage_min != null && item.damage_max != null) {
     rows.push(["Damage", `${item.damage_min}–${item.damage_max}`]);
   } else if (item.damage != null) {
@@ -53,27 +58,27 @@ export function getItemPopupBodyHtml(item: Item): string {
     if (weaponEffect) {
       const mult = WEAPON_EFFECTS[weaponEffect as keyof typeof WEAPON_EFFECTS]?.modifiers?.attackIntervalMultiplier;
       if (mult != null) {
-        intervalMs = Math.round(intervalMs * mult);
+        intervalMs = mult < 1 ? Math.floor(intervalMs * mult) : Math.round(intervalMs * mult);
         speedMult = mult;
       }
     }
-      rows.push(["Class", `${Math.max(1, Math.min(10, speedBase))} (speed 1–10)`]);
-    rows.push(["Speed", `${(intervalMs / 1000).toFixed(1)}s`]);
-    if (speedMult != null) {
-      const pct = Math.round((1 / speedMult - 1) * 100);
-      const rateLabel = pct > 0 ? `+${pct}%` : `${pct}%`;
-      rows.push(["Rate", rateLabel]);
-    }
+    rows.push(["Class", `${Math.max(1, Math.min(10, speedBase))} (speed 1–10)`]);
+    const speedValue = speedMult != null && speedMult < 1
+      ? `${(intervalMs / 1000).toFixed(1)}s ↑${Math.round((1 - speedMult) * 100)}%`
+      : `${(intervalMs / 1000).toFixed(1)}s`;
+    rows.push(["Speed", speedValue, speedMult != null && speedMult < 1 ? "speed-upgraded" : undefined]);
   }
   if (item.type === "ballistic_weapon" || item.type === "melee_weapon") {
     const role = getWeaponRestrictRole(item) ?? (item as Item & { restrictRole?: string }).restrictRole ?? "any";
     const roleLabel = role === "any" ? "Any" : role.charAt(0).toUpperCase() + role.slice(1) + " only";
     rows.push(["Role", roleLabel]);
   }
-  rows.push(["Rarity", (rarity as string).toUpperCase()]);
+  rows.push(["Rarity", (rarity as string).toUpperCase(), undefined]);
   html += '<div class="item-popup-stats">';
-  for (const [label, value] of rows) {
-    const valueClass = label === "Rarity" ? `item-popup-stat-value rarity-badge-inline rarity-${rarity}` : "item-popup-stat-value";
+  for (const row of rows) {
+    const [label, value, valueExtraClass] = row;
+    let valueClass = label === "Rarity" ? `item-popup-stat-value rarity-badge-inline rarity-${rarity}` : "item-popup-stat-value";
+    if (valueExtraClass) valueClass += ` item-popup-stat-${valueExtraClass}`;
     html += `<div class="item-popup-stat-row"><span class="item-popup-stat-label">${escapeHtml(label)}</span><span class="${valueClass}">${escapeHtml(value)}</span></div>`;
   }
   html += '</div>';
@@ -81,17 +86,34 @@ export function getItemPopupBodyHtml(item: Item): string {
   const bonuses = (item as Item & { bonuses?: ArmorBonus[] }).bonuses;
   if (bonuses?.length) {
     const badges = bonuses.map((b) => {
-      const label = STAT_LABELS[b.stat] ?? b.stat.toUpperCase();
-      const text = b.type === "percent" ? `+${b.value}% ${label}` : `+${b.value} ${label}`;
+      const label = STAT_LABELS[b.stat] ?? b.stat.replace(/([A-Z])/g, " $1").trim().toUpperCase().replace(/ /g, "");
+      // chanceToHit bonus: show as "+1 CTH" (1% = 1 CTH). Focused effect (2% CTH) is a separate effect box.
+      const text = b.type === "percent" && b.stat === "chanceToHit"
+        ? `+${b.value} CTH`
+        : b.type === "percent"
+          ? `+${b.value}% ${label}`
+          : `+${b.value} ${label}`;
       return `<span class="item-popup-bonus-badge">${escapeHtml(text)}</span>`;
     });
     html += `<div class="item-popup-bonus"><span class="item-popup-bonus-hint">Bonus</span><div class="item-popup-bonus-row">${badges.join("")}</div></div>`;
   }
-  const effectDesc = getItemEffectDescription(item);
-  if (effectDesc) {
-    html += `<div class="item-popup-effect"><span class="item-popup-effect-hint">Effect</span><p class="item-popup-effect-text">${escapeHtml(effectDesc)}</p></div>`;
+  const flavor = (item as Item & { flavor?: string }).flavor;
+  if (flavor) {
+    html += `<p class="item-popup-flavor">${escapeHtml(flavor)}</p>`;
   }
-  if (item.description) {
+  const effectDesc = getItemEffectDescription(item);
+  const descForEffectBox: EffectDescription | string | null =
+    effectDesc ?? ((item.type === "throwable" || item.type === "medical") && item.description ? item.description : null);
+  if (descForEffectBox) {
+    html += '<div class="item-popup-effect"><span class="item-popup-effect-hint">Effect</span>';
+    if (typeof descForEffectBox === "string") {
+      html += `<p class="item-popup-effect-text">${escapeHtml(descForEffectBox)}</p>`;
+    } else {
+      html += renderEffectDescriptionHtml(descForEffectBox, escapeHtml);
+    }
+    html += "</div>";
+  }
+  if (item.description && !effectDesc && descForEffectBox !== item.description) {
     html += `<p class="item-popup-desc">${escapeHtml(item.description)}</p>`;
   }
   const weaponEffect = (item as Item & { weaponEffect?: string }).weaponEffect;

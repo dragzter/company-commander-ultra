@@ -60,7 +60,7 @@ import {
   MAX_COMPANY_SIZE_LEVEL_1 as CAPACITY_LEVEL_1,
 } from "../../../constants/company-capacity.ts";
 
-/** Max company size at level 1 (4 active, 8 total, 8 reserve) */
+/** Max company size at level 1 (4 active, 8 total) */
 export const MAX_COMPANY_SIZE_LEVEL_1 = CAPACITY_LEVEL_1;
 
 export function getMaxCompanySize(level: number): number {
@@ -84,153 +84,29 @@ export type CompanyResourcesProfile = {
 };
 
 /**
- * What a company gets at every level
+ * What a company gets at every level.
+ * soldier_slots: max medic/support/rifleman in roster. rifleman = total - medic - support.
+ * soldier_mission_slots: max medic/support that can be active. Rifleman unlimited (fills remaining slots).
  */
 export const COMPANY_RESOURCES_BY_LEVEL: CompanyResourcesProfile[] = [
-  {
-    level: 1,
-    soldier_slots: {
-      medic: 1,
-      support: 2,
-      rifleman: 5,
-    },
-    company_abilities: [],
-    commander_abilities: [],
-    soldier_mission_slots: {
-      medic: 1,
-      support: 1,
-      rifleman: 2,
-    },
-  },
-  {
-    level: 2,
-    soldier_slots: {
-      medic: 0,
-      support: 1,
-      rifleman: 6,
-    },
-    company_abilities: [],
-    commander_abilities: [],
-    soldier_mission_slots: {
-      medic: 0,
-      support: 1,
-      rifleman: 5,
-    },
-  },
-  {
-    level: 3,
-    soldier_slots: {
-      medic: 0,
-      support: 1,
-      rifleman: 8,
-    },
-    company_abilities: [],
-    commander_abilities: [],
-    soldier_mission_slots: {
-      medic: 0,
-      support: 1,
-      rifleman: 7,
-    },
-  },
-  {
-    level: 4,
-    soldier_slots: {
-      medic: 1,
-      support: 1,
-      rifleman: 8,
-    },
-    company_abilities: [],
-    commander_abilities: [],
-    soldier_mission_slots: {
-      medic: 1,
-      support: 1,
-      rifleman: 7,
-    },
-  },
-  {
-    level: 5,
-    soldier_slots: {
-      medic: 1,
-      support: 1,
-      rifleman: 10,
-    },
-    company_abilities: [],
-    commander_abilities: [],
-    soldier_mission_slots: {
-      medic: 1,
-      support: 1,
-      rifleman: 8,
-    },
-  },
-  {
-    level: 6,
-    soldier_slots: {
-      medic: 1,
-      support: 2,
-      rifleman: 12,
-    },
-    company_abilities: [],
-    commander_abilities: [],
-    soldier_mission_slots: {
-      medic: 1,
-      support: 1,
-      rifleman: 10,
-    },
-  },
-  {
-    level: 7,
-    soldier_slots: {
-      medic: 2,
-      support: 2,
-      rifleman: 13,
-    },
-    company_abilities: [],
-    commander_abilities: [],
-    soldier_mission_slots: {
-      medic: 1,
-      support: 1,
-      rifleman: 12,
-    },
-  },
-  {
-    level: 8,
-    soldier_slots: {
-      medic: 2,
-      support: 2,
-      rifleman: 15,
-    },
-    company_abilities: [],
-    commander_abilities: [],
-    soldier_mission_slots: {
-      medic: 1,
-      support: 2,
-      rifleman: 14,
-    },
-  },
-  {
-    level: 9,
-    soldier_slots: {
-      medic: 3,
-      support: 4,
-      rifleman: 18,
-    },
-    company_abilities: [],
-    commander_abilities: [],
-    soldier_mission_slots: {
-      medic: 2,
-      support: 2,
-      rifleman: 16,
-    },
-  },
-  { level: 10, soldier_slots: { medic: 4, support: 4, rifleman: 24 }, company_abilities: [], commander_abilities: [], soldier_mission_slots: { medic: 2, support: 2, rifleman: 20 } },
-  { level: 11, soldier_slots: { medic: 5, support: 5, rifleman: 26 }, company_abilities: [], commander_abilities: [], soldier_mission_slots: { medic: 2, support: 2, rifleman: 22 } },
-  { level: 12, soldier_slots: { medic: 5, support: 5, rifleman: 28 }, company_abilities: [], commander_abilities: [], soldier_mission_slots: { medic: 3, support: 3, rifleman: 24 } },
-  { level: 13, soldier_slots: { medic: 6, support: 6, rifleman: 30 }, company_abilities: [], commander_abilities: [], soldier_mission_slots: { medic: 3, support: 3, rifleman: 26 } },
-  { level: 14, soldier_slots: { medic: 6, support: 6, rifleman: 32 }, company_abilities: [], commander_abilities: [], soldier_mission_slots: { medic: 3, support: 3, rifleman: 28 } },
-  { level: 15, soldier_slots: { medic: 7, support: 7, rifleman: 34 }, company_abilities: [], commander_abilities: [], soldier_mission_slots: { medic: 4, support: 4, rifleman: 30 } },
-  { level: 16, soldier_slots: { medic: 7, support: 7, rifleman: 36 }, company_abilities: [], commander_abilities: [], soldier_mission_slots: { medic: 4, support: 4, rifleman: 32 } },
-  { level: 17, soldier_slots: { medic: 8, support: 8, rifleman: 38 }, company_abilities: [], commander_abilities: [], soldier_mission_slots: { medic: 4, support: 4, rifleman: 34 } },
-  { level: 18, soldier_slots: { medic: 8, support: 8, rifleman: 40 }, company_abilities: [], commander_abilities: [], soldier_mission_slots: { medic: 5, support: 5, rifleman: 36 } },
-  { level: 19, soldier_slots: { medic: 9, support: 9, rifleman: 42 }, company_abilities: [], commander_abilities: [], soldier_mission_slots: { medic: 5, support: 5, rifleman: 38 } },
-  { level: 20, soldier_slots: { medic: 10, support: 10, rifleman: 44 }, company_abilities: [], commander_abilities: [], soldier_mission_slots: { medic: 5, support: 5, rifleman: 40 } },
+  { level: 1, soldier_slots: { medic: 1, support: 1, rifleman: 6 }, company_abilities: [], commander_abilities: [], soldier_mission_slots: { medic: 1, support: 1, rifleman: 4 } },
+  { level: 2, soldier_slots: { medic: 1, support: 1, rifleman: 6 }, company_abilities: [], commander_abilities: [], soldier_mission_slots: { medic: 1, support: 1, rifleman: 4 } },
+  { level: 3, soldier_slots: { medic: 1, support: 2, rifleman: 5 }, company_abilities: [], commander_abilities: [], soldier_mission_slots: { medic: 1, support: 1, rifleman: 5 } },
+  { level: 4, soldier_slots: { medic: 1, support: 2, rifleman: 5 }, company_abilities: [], commander_abilities: [], soldier_mission_slots: { medic: 1, support: 1, rifleman: 5 } },
+  { level: 5, soldier_slots: { medic: 1, support: 2, rifleman: 7 }, company_abilities: [], commander_abilities: [], soldier_mission_slots: { medic: 1, support: 1, rifleman: 5 } },
+  { level: 6, soldier_slots: { medic: 2, support: 2, rifleman: 6 }, company_abilities: [], commander_abilities: [], soldier_mission_slots: { medic: 1, support: 1, rifleman: 6 } },
+  { level: 7, soldier_slots: { medic: 2, support: 2, rifleman: 6 }, company_abilities: [], commander_abilities: [], soldier_mission_slots: { medic: 1, support: 1, rifleman: 6 } },
+  { level: 8, soldier_slots: { medic: 2, support: 2, rifleman: 8 }, company_abilities: [], commander_abilities: [], soldier_mission_slots: { medic: 1, support: 2, rifleman: 6 } },
+  { level: 9, soldier_slots: { medic: 2, support: 3, rifleman: 7 }, company_abilities: [], commander_abilities: [], soldier_mission_slots: { medic: 1, support: 2, rifleman: 7 } },
+  { level: 10, soldier_slots: { medic: 2, support: 3, rifleman: 7 }, company_abilities: [], commander_abilities: [], soldier_mission_slots: { medic: 2, support: 2, rifleman: 7 } },
+  { level: 11, soldier_slots: { medic: 2, support: 3, rifleman: 9 }, company_abilities: [], commander_abilities: [], soldier_mission_slots: { medic: 2, support: 2, rifleman: 7 } },
+  { level: 12, soldier_slots: { medic: 2, support: 3, rifleman: 9 }, company_abilities: [], commander_abilities: [], soldier_mission_slots: { medic: 2, support: 2, rifleman: 8 } },
+  { level: 13, soldier_slots: { medic: 3, support: 3, rifleman: 8 }, company_abilities: [], commander_abilities: [], soldier_mission_slots: { medic: 2, support: 2, rifleman: 8 } },
+  { level: 14, soldier_slots: { medic: 3, support: 3, rifleman: 10 }, company_abilities: [], commander_abilities: [], soldier_mission_slots: { medic: 2, support: 2, rifleman: 8 } },
+  { level: 15, soldier_slots: { medic: 3, support: 3, rifleman: 10 }, company_abilities: [], commander_abilities: [], soldier_mission_slots: { medic: 2, support: 2, rifleman: 8 } },
+  { level: 16, soldier_slots: { medic: 3, support: 3, rifleman: 10 }, company_abilities: [], commander_abilities: [], soldier_mission_slots: { medic: 2, support: 2, rifleman: 9 } },
+  { level: 17, soldier_slots: { medic: 3, support: 3, rifleman: 10 }, company_abilities: [], commander_abilities: [], soldier_mission_slots: { medic: 2, support: 2, rifleman: 9 } },
+  { level: 18, soldier_slots: { medic: 3, support: 3, rifleman: 12 }, company_abilities: [], commander_abilities: [], soldier_mission_slots: { medic: 2, support: 2, rifleman: 9 } },
+  { level: 19, soldier_slots: { medic: 3, support: 3, rifleman: 12 }, company_abilities: [], commander_abilities: [], soldier_mission_slots: { medic: 2, support: 2, rifleman: 9 } },
+  { level: 20, soldier_slots: { medic: 3, support: 3, rifleman: 14 }, company_abilities: [], commander_abilities: [], soldier_mission_slots: { medic: 2, support: 3, rifleman: 10 } },
 ];

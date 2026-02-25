@@ -12,7 +12,6 @@ import { UiServiceManager } from "../../services/ui/ui-service.ts";
 // import { UiAnimationManager } from "../../services/ui/ui-animation-manager.ts";
 import { DomEventManager } from "./event-handlers/dom-event-manager.ts";
 import { usePlayerCompanyStore } from "../../store/ui-store.ts";
-import { getMaxSoldierLevel } from "../../utils/company-utils.ts";
 import { UiManager } from "./ui-manager.ts";
 import { DOM } from "../../constants/css-selectors.ts";
 import {
@@ -21,6 +20,7 @@ import {
   weaponsMarketTemplate,
   armorMarketTemplate,
   suppliesMarketTemplate,
+  devCatalogMarketTemplate,
 } from "../html-templates/market-templates.ts";
 import { missionsTemplate } from "../html-templates/missions-template.ts";
 import {
@@ -36,6 +36,7 @@ import { abilitiesTemplate } from "../html-templates/abilities-template.ts";
 import { combatTemplate } from "../html-templates/combat-template.ts";
 import { soldierToCombatant, createEnemyCombatant } from "../combat/combatant-utils.ts";
 import { getActiveSlots, getFormationSlots, getSoldierById } from "../../constants/company-slots.ts";
+import { getAverageCompanyLevel, getMaxSoldierLevel } from "../../utils/company-utils.ts";
 import { generateMissions } from "../../services/missions/mission-generator.ts";
 import { Styler } from "../../utils/styler-manager.ts";
 import { SoldierManager } from "../entities/soldier/soldier-manager.ts";
@@ -130,7 +131,8 @@ function ScreenManager() {
   function createMissionsPage() {
     UiManager.clear.center();
     const missions = generateMissions();
-    const content = parseHTML(missionsTemplate(missions));
+    const companyLevel = usePlayerCompanyStore.getState().companyLevel ?? 1;
+    const content = parseHTML(missionsTemplate(missions, companyLevel));
     center.appendChild(content as Element);
     DomEventManager.initEventArray(ec().companyHome().concat(ec().missionsScreen()));
     UiManager.selectCompanyHomeButton(DOM.company.missions);
@@ -161,10 +163,10 @@ function ScreenManager() {
       .filter((s): s is NonNullable<typeof s> => s != null);
     const players = activeSoldiers.map((s) => soldierToCombatant(s));
     const enemyCount = mission?.enemyCount ?? 3;
-    const companyLevel = store.companyLevel ?? 1;
+    const avgSoldierLevel = getAverageCompanyLevel(company);
     const isEpicMission = !!(mission?.isEpic ?? mission?.rarity === "epic");
     const enemies = Array.from({ length: enemyCount }, (_, i) =>
-      createEnemyCombatant(i, enemyCount, companyLevel, isEpicMission),
+      createEnemyCombatant(i, enemyCount, avgSoldierLevel, isEpicMission),
     );
     const content = parseHTML(combatTemplate(mission ?? null, players, enemies));
     center.appendChild(content as Element);
@@ -223,6 +225,18 @@ function ScreenManager() {
     center.appendChild(content as Element);
     DomEventManager.initEventArray(ec().companyHome().concat(ec().market()));
     DomEventManager.initDelegatedEventArray(center as HTMLElement, ec().armorScreen(), "armor-screen");
+    UiManager.selectCompanyHomeButton(DOM.company.market);
+    Styler.setCenterBG("bg_76.jpg", true);
+    show.center();
+  }
+
+  function createDevCatalogPage() {
+    UiManager.clear.center();
+    ensureMarketTierInitialized();
+    const content = parseHTML(devCatalogMarketTemplate());
+    center.appendChild(content as Element);
+    DomEventManager.initEventArray(ec().companyHome().concat(ec().market()));
+    DomEventManager.initDelegatedEventArray(center as HTMLElement, ec().devCatalogScreen(), "dev-catalog-screen");
     UiManager.selectCompanyHomeButton(DOM.company.market);
     Styler.setCenterBG("bg_76.jpg", true);
     show.center();
@@ -334,6 +348,7 @@ function ScreenManager() {
       createTroopsPage,
       createWeaponsMarketPage,
       createArmorMarketPage,
+      createDevCatalogPage,
       createSuppliesMarketPage,
       createMissionsPage,
       createReadyRoomPage,

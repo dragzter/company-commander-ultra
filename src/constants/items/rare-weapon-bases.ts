@@ -17,6 +17,8 @@ export interface RareWeaponBase {
   damage_type: "ballistic";
   restrictRole: "support" | "rifleman" | "medic" | "any";
   bonuses: WeaponBonus[];
+  /** If false, item is drop-only (not in store). Default true. */
+  storeAvailable?: boolean;
 }
 
 /** Rare: +3–5 base damage over common equivalents, + flat stat bonuses. No special effects. */

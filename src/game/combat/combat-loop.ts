@@ -83,6 +83,14 @@ export function assignTargets(
 
 const BURN_TICK_INTERVAL_MS = 1000;
 
+/** Base 20% + 1% per level (doc in codex). Relentless multiplies by 1.6. */
+export function getIncapacitationChance(c: { level?: number; incapChanceMultiplier?: number }): number {
+  const level = c.level ?? 1;
+  const base = 0.2 + (level - 1) * 0.01;
+  const mult = c.incapChanceMultiplier ?? 1;
+  return Math.min(1, base * mult);
+}
+
 export interface BurnDamageEvent {
   targetId: string;
   damage: number;
@@ -99,6 +107,7 @@ export function applyBurnTicks(
   lastBurnTickTimeRef.current = now;
   for (const c of combatants) {
     if ((c.burnTicksRemaining ?? 0) <= 0) continue;
+    if (c.immuneToBurning) continue;
     const dmg = c.burnTickDamage ?? 0;
     if (dmg <= 0) continue;
     const damage = c.burnIgnoresMitigation ? dmg : computeFinalDamage(dmg, c);
@@ -106,7 +115,7 @@ export function applyBurnTicks(
     c.hp = newHp;
     events.push({ targetId: c.id, damage });
     if (newHp <= 0) {
-      c.downState = c.side === "player" && Math.random() < 0.3 ? "incapacitated" : "kia";
+      c.downState = c.side === "player" && Math.random() < getIncapacitationChance(c) ? "incapacitated" : "kia";
       if (c.downState === "kia") c.killedBy = "Burning";
     }
     c.burnTicksRemaining! -= 1;
@@ -115,6 +124,36 @@ export function applyBurnTicks(
       delete c.burnTickDamage;
       delete c.burnIgnoresMitigation;
       /* Keep burningUntil so the burning visual lasts the full duration; clearExpiredEffects will clear it. */
+    }
+  }
+  return events;
+}
+
+/** Apply bleed DoT tick. Uses same interval as burn (1s). Bleed damage is mitigated. */
+export function applyBleedTicks(
+  combatants: Combatant[],
+  now: number,
+  lastTickTimeRef: { current: number },
+): BurnDamageEvent[] {
+  const events: BurnDamageEvent[] = [];
+  if (now - lastTickTimeRef.current < BURN_TICK_INTERVAL_MS) return events;
+  lastTickTimeRef.current = now;
+  for (const c of combatants) {
+    if ((c.bleedTicksRemaining ?? 0) <= 0) continue;
+    const dmg = c.bleedTickDamage ?? 0;
+    if (dmg <= 0) continue;
+    const damage = computeFinalDamage(dmg, c);
+    const newHp = Math.max(0, Math.floor(c.hp - damage));
+    c.hp = newHp;
+    events.push({ targetId: c.id, damage });
+    if (newHp <= 0) {
+      c.downState = c.side === "player" && Math.random() < getIncapacitationChance(c) ? "incapacitated" : "kia";
+      if (c.downState === "kia") c.killedBy = "Bleeding";
+    }
+    c.bleedTicksRemaining! -= 1;
+    if (c.bleedTicksRemaining! <= 0) {
+      delete c.bleedTicksRemaining;
+      delete c.bleedTickDamage;
     }
   }
   return events;
@@ -133,7 +172,20 @@ export function clearExpiredEffects(combatants: Combatant[], now: number): void 
       delete c.burnTicksRemaining;
       delete c.burnIgnoresMitigation;
     }
+    if (c.bleedingUntil != null && now >= c.bleedingUntil) {
+      delete c.bleedingUntil;
+      delete c.bleedTickDamage;
+      delete c.bleedTicksRemaining;
+    }
     if (c.blindedUntil != null && now >= c.blindedUntil) delete c.blindedUntil;
+    if (c.accuracyDebuffUntil != null && now >= c.accuracyDebuffUntil) {
+      delete c.accuracyDebuffUntil;
+      delete c.accuracyDebuffPct;
+    }
+    if (c.toughnessReducedUntil != null && now >= c.toughnessReducedUntil) {
+      delete c.toughnessReducedUntil;
+      delete c.toughnessReductionPct;
+    }
     if (c.suppressedUntil != null && now >= c.suppressedUntil) delete c.suppressedUntil;
     if (c.attackSpeedBuffUntil != null && now >= c.attackSpeedBuffUntil) {
       delete c.attackSpeedBuffUntil;
@@ -175,15 +227,26 @@ export function resolveAttack(
   target: Combatant,
   now: number = Date.now(),
 ): AttackResult {
-  const baseCth = attacker.chanceToHit ?? 0.6;
+  let baseCth = attacker.chanceToHit ?? 0.6;
   const blinded = attacker.blindedUntil != null && now < attacker.blindedUntil;
-  const effectiveCth = blinded ? baseCth * (1 - BLINDED_HIT_REDUCTION) : baseCth;
+  if (blinded) baseCth *= 1 - BLINDED_HIT_REDUCTION;
+  const accuracyDebuffed = attacker.accuracyDebuffUntil != null && now < attacker.accuracyDebuffUntil;
+  if (accuracyDebuffed && attacker.accuracyDebuffPct != null) baseCth = Math.max(0.05, baseCth * (1 - attacker.accuracyDebuffPct));
+  const effectiveCth = baseCth;
 
   const hitRoll = Math.random() < effectiveCth;
   if (!hitRoll) {
     return { attackerId: attacker.id, targetId: target.id, hit: false, evaded: false, damage: 0 };
   }
-  const evadeRoll = Math.random() < (target.chanceToEvade ?? 0.05);
+  let targetEvade = target.chanceToEvade ?? 0.05;
+  const attackerEffect = attacker.weaponEffect
+    ? WEAPON_EFFECTS[attacker.weaponEffect as keyof typeof WEAPON_EFFECTS]
+    : undefined;
+  const ignorePct = attackerEffect?.modifiers?.ignoreAvoidancePercent;
+  if (ignorePct != null && ignorePct > 0) {
+    targetEvade = targetEvade * (1 - ignorePct);
+  }
+  const evadeRoll = Math.random() < targetEvade;
   if (evadeRoll) {
     return { attackerId: attacker.id, targetId: target.id, hit: true, evaded: true, damage: 0 };
   }
@@ -205,22 +268,34 @@ export function resolveAttack(
   if (proc && target.hp > 0 && !target.downState) {
     const roll = Math.random();
     if (roll < proc.chance) {
-      if (proc.type === "fire" && proc.damage != null) {
+      if (proc.type === "fire" && proc.damage != null && !target.immuneToBurning) {
         procFireDamage = Math.max(1, Math.floor(proc.damage));
         target.hp = Math.max(0, Math.floor(target.hp - procFireDamage));
         totalDamage += procFireDamage;
+      } else if (proc.type === "carnage" && proc.damage != null) {
+        const carnageDmg = computeFinalDamage(proc.damage, target);
+        target.hp = Math.max(0, Math.floor(target.hp - carnageDmg));
+        totalDamage += carnageDmg;
+      } else if (proc.type === "overwhelm" && proc.durationMs != null && proc.hitChanceReduction != null) {
+        target.accuracyDebuffUntil = now + proc.durationMs;
+        target.accuracyDebuffPct = proc.hitChanceReduction;
       } else if (proc.type === "blind" && proc.durationMs != null) {
         target.blindedUntil = now + proc.durationMs;
         procBlind = true;
-      } else if (proc.type === "stun" && proc.durationMs != null) {
+      } else if (proc.type === "stun" && proc.durationMs != null && !target.immuneToStun) {
         target.stunUntil = now + proc.durationMs;
         procStun = true;
+      } else if (proc.type === "bleed" && proc.damage != null && proc.durationMs != null) {
+        const ticks = Math.max(1, Math.floor(proc.durationMs / 1000));
+        target.bleedTickDamage = Math.max(1, Math.floor(proc.damage));
+        target.bleedTicksRemaining = ticks;
+        target.bleedingUntil = now + proc.durationMs;
       }
     }
   }
 
   if (target.hp <= 0) {
-    target.downState = target.side === "player" && Math.random() < 0.3 ? "incapacitated" : "kia";
+    target.downState = target.side === "player" && Math.random() < getIncapacitationChance(target) ? "incapacitated" : "kia";
     if (target.downState === "kia") target.killedBy = attacker.name;
   }
 
