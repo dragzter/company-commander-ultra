@@ -6,9 +6,10 @@ import { getRewardItemById } from "../../utils/reward-utils.ts";
 export interface CombatSummaryData {
   victory: boolean;
   mission: Mission | null;
-  casualties: { name: string; state: "kia" | "wounded" }[];
+  participants: { name: string; avatar: string; kills: number; state?: "kia" | "wounded" }[];
   creditReward: number;
   itemRewards: { id: string; name: string; iconUrl: string }[];
+  leveledUpCount: number;
 }
 
 function escapeHtml(s: string): string {
@@ -19,17 +20,21 @@ function escapeAttr(s: string): string {
 }
 
 export function combatSummaryTemplate(data: CombatSummaryData): string {
-  const { victory, mission, casualties, creditReward, itemRewards } = data;
+  const { victory, mission, participants, creditReward, itemRewards, leveledUpCount } = data;
   const title = victory ? "Victory!" : "Defeat";
   const titleClass = victory ? "combat-summary-victory" : "combat-summary-defeat";
+  const levelUpHtml =
+    leveledUpCount > 0
+      ? '<div class="combat-summary-levelup-wrap"><div class="combat-summary-levelup-burst"></div><div class="combat-summary-levelup-text">Level up!</div></div>'
+      : "";
 
-  const casualtiesHtml =
-    casualties.length === 0
-      ? "<p class=\"combat-summary-casualty-none\">No casualties.</p>"
-      : casualties
+  const participantsHtml =
+    participants.length === 0
+      ? "<p class=\"combat-summary-participants-none\">No soldiers.</p>"
+      : participants
           .map(
-            (c) =>
-              `<div class="combat-summary-casualty-row"><span class="combat-summary-casualty-name">${escapeHtml(c.name)}</span><span class="combat-summary-casualty-state">${c.state === "kia" ? "KIA" : "Wounded"}</span></div>`,
+            (p) =>
+              `<div class="combat-summary-participant"><img class="combat-summary-participant-avatar" src="/images/green-portrait/${escapeAttr(p.avatar)}" alt="" width="40" height="40"><span class="combat-summary-participant-name">${escapeHtml(p.name)}</span><span class="combat-summary-participant-kills">${p.kills} kill${p.kills === 1 ? "" : "s"}</span>${p.state === "kia" ? '<span class="combat-summary-participant-status combat-summary-kia">KIA</span>' : p.state === "wounded" ? '<span class="combat-summary-participant-status combat-summary-wounded">Wounded</span>' : ""}</div>`,
           )
           .join("");
 
@@ -55,12 +60,13 @@ export function combatSummaryTemplate(data: CombatSummaryData): string {
 
   return `
 <div id="combat-summary-overlay" class="combat-summary-overlay" role="dialog" aria-modal="true">
-  <div class="combat-summary-inner">
+  <div class="combat-summary-inner${leveledUpCount > 0 ? " combat-summary-levelup-celebrate" : ""}">
+    ${levelUpHtml}
     <h3 class="combat-summary-title ${titleClass}">${title}</h3>
     ${mission ? `<p class="combat-summary-mission-name">${escapeHtml(mission.name)}</p>` : ""}
     <div class="combat-summary-section">
-      <h4>Casualties</h4>
-      <div class="combat-summary-casualties">${casualtiesHtml}</div>
+      <h4>Soldiers</h4>
+      <div class="combat-summary-participants">${participantsHtml}</div>
     </div>
     ${victory ? `
     <div class="combat-summary-section">
@@ -82,15 +88,19 @@ export function buildCombatSummaryData(
   victory: boolean,
   mission: Mission | null,
   players: Combatant[],
+  playerKills?: Map<string, number>,
+  leveledUpCount = 0,
 ): CombatSummaryData {
-  const kiaIds = new Set<string>();
-  const casualties: { name: string; state: "kia" | "wounded" }[] = [];
+  const participants: { name: string; avatar: string; kills: number; state?: "kia" | "wounded" }[] = [];
   for (const p of players) {
-    if (p.hp <= 0 || p.downState) {
-      const state = p.downState === "kia" ? "kia" : "wounded";
-      casualties.push({ name: p.name, state });
-      if (state === "kia") kiaIds.add(p.id);
-    }
+    const state =
+      p.downState === "kia" ? ("kia" as const) : p.hp <= 0 || p.downState ? ("wounded" as const) : undefined;
+    participants.push({
+      name: p.name,
+      avatar: p.avatar ?? "default.png",
+      kills: playerKills?.get(p.id) ?? 0,
+      ...(state && { state }),
+    });
   }
 
   const creditReward = mission?.creditReward ?? 0;
@@ -109,8 +119,9 @@ export function buildCombatSummaryData(
   return {
     victory,
     mission,
-    casualties,
+    participants,
     creditReward,
     itemRewards,
+    leveledUpCount,
   };
 }

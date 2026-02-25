@@ -551,15 +551,16 @@ export function eventConfigs() {
         return equipmentSlots.map((slot) => {
           if (slot.type === "grenade") {
             const g = slot.data;
+            const isKnife = g.item.id === "tk21_throwing_knife";
             const qty = g.item.uses ?? g.item.quantity ?? 1;
             const level = g.item.level ?? 1;
             const rarity = g.item.rarity ?? "common";
             const iconUrl = getItemIconUrl(g.item);
             const hasUses = g.item.uses != null || g.item.quantity != null;
             const btnRarity = rarity !== "common" ? ` rarity-${rarity}` : "";
-            const grenadeDisabled = !canUse || grenadeOnCooldown;
-            const cooldownClass = grenadeOnCooldown ? " combat-grenade-cooldown" : "";
-            const timerHtml = grenadeOnCooldown
+            const grenadeDisabled = !canUse || (!isKnife && grenadeOnCooldown);
+            const cooldownClass = !isKnife && grenadeOnCooldown ? " combat-grenade-cooldown" : "";
+            const timerHtml = !isKnife && grenadeOnCooldown
               ? `<span class="combat-grenade-cooldown-timer">${grenadeRemainingSec}</span>`
               : "";
             return `<button type="button" class="combat-grenade-item${btnRarity}${cooldownClass}" data-inventory-index="${g.inventoryIndex}" data-soldier-id="${c.id}" title="${g.item.name}" aria-label="${g.item.name}" ${grenadeDisabled ? "disabled" : ""}>
@@ -1397,7 +1398,17 @@ export function eventConfigs() {
               if (p.downState === "kia" && p.killedBy) kiaKilledBy.set(p.id, p.killedBy);
             }
             usePlayerCompanyStore.getState().processCombatKIA(kiaIds, missionName, playerKills, kiaKilledBy);
-            const summaryData = buildCombatSummaryData(victory, mission, players);
+            const survivorIds = players.filter((p) => !kiaIds.includes(p.id)).map((p) => p.id);
+            const store = usePlayerCompanyStore.getState();
+            const oldLevels = new Map(store.company?.soldiers?.filter((s) => survivorIds.includes(s.id)).map((s) => [s.id, s.level ?? 1]) ?? []);
+            store.grantSoldierCombatXP(survivorIds, playerDamage, playerDamageTaken, playerKills, playerAbilitiesUsed, victory);
+            store.syncCombatHpToSoldiers(players.map((p) => ({ id: p.id, hp: p.maxHp })));
+            const newLevels = new Map(usePlayerCompanyStore.getState().company?.soldiers?.filter((s) => survivorIds.includes(s.id)).map((s) => [s.id, s.level ?? 1]) ?? []);
+            let leveledUpCount = 0;
+            for (const id of survivorIds) {
+              if ((newLevels.get(id) ?? 1) > (oldLevels.get(id) ?? 1)) leveledUpCount++;
+            }
+            const summaryData = buildCombatSummaryData(victory, mission, players, playerKills, leveledUpCount);
             const container = document.getElementById("combat-summary-container");
             if (container) {
               container.innerHTML = combatSummaryTemplate(summaryData);
@@ -1522,12 +1533,13 @@ export function eventConfigs() {
             const inventoryIndex = parseInt(idxStr, 10);
             const thrower = players.find((p) => p.id === soldierId);
             if (!thrower || thrower.hp <= 0 || thrower.downState) return;
-            const grenadeOnCooldown = (thrower.grenadeCooldownUntil ?? 0) > Date.now();
-            if (grenadeOnCooldown) return;
             const soldier = getSoldierFromStore(soldierId);
             const grenades = soldier ? getSoldierGrenades(soldier.inventory) : [];
             const g = grenades.find((gr) => gr.inventoryIndex === inventoryIndex);
             if (!g) return;
+            const isKnife = g.item.id === "tk21_throwing_knife";
+            const grenadeOnCooldown = !isKnife && (thrower.grenadeCooldownUntil ?? 0) > Date.now();
+            if (grenadeOnCooldown) return;
             grenadeTargetingMode = { thrower, grenade: g };
             showGrenadeTargetingHint(thrower, g);
             document.querySelectorAll("#combat-enemies-grid .combat-card:not(.combat-card-down)").forEach((card) => {
@@ -1758,9 +1770,6 @@ export function eventConfigs() {
           const victory = combatWinner === "player";
           const store = usePlayerCompanyStore.getState();
           store.grantMissionRewards(mission, victory);
-          const kiaIds = players.filter((p) => p.downState === "kia").map((p) => p.id);
-          const survivorIds = players.filter((p) => !kiaIds.includes(p.id)).map((p) => p.id);
-          store.grantSoldierCombatXP(survivorIds, playerDamage, playerDamageTaken, playerKills, playerAbilitiesUsed, victory);
           store.syncCombatHpToSoldiers(players.map((p) => ({ id: p.id, hp: p.maxHp })));
           if (combatTickId != null) {
             clearTimeout(combatTickId);
