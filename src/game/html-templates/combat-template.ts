@@ -77,6 +77,7 @@ export function combatTemplate(
 <div id="combat-screen" class="combat-root" data-mission-json="${missionData}" data-players-json="${playersData}" data-enemies-json="${enemiesData}">
   ${companyHeaderPartial(missionName)}
   <div class="combat-main combat-main-with-drawer">
+    <div id="combat-targeting-hint" class="combat-targeting-hint" aria-hidden="true"></div>
     <div id="combat-battle-area" class="combat-battle-area">
       <svg id="combat-attack-lines-svg" class="combat-attack-lines-svg" aria-hidden="true">
         <defs>

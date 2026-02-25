@@ -507,6 +507,17 @@ export function eventConfigs() {
 
     function openAbilitiesPopup(combatant: Combatant, card?: HTMLElement | null) {
       if (combatWinner || combatant.side !== "player") return;
+      grenadeTargetingMode = null;
+      medTargetingMode = null;
+      suppressTargetingMode = null;
+      document.querySelectorAll(".combat-card-grenade-target").forEach((el) => el.classList.remove("combat-card-grenade-target"));
+      document.querySelectorAll(".combat-card-heal-target").forEach((el) => el.classList.remove("combat-card-heal-target"));
+      document.querySelectorAll(".combat-ability-selected").forEach((el) => el.classList.remove("combat-ability-selected"));
+      const th = document.getElementById("combat-targeting-hint");
+      if (th) {
+        th.textContent = "";
+        th.setAttribute("aria-hidden", "true");
+      }
       const popup = document.getElementById("combat-abilities-popup");
       const contentEl = document.getElementById("combat-abilities-popup-content");
       const hintEl = document.getElementById("combat-abilities-popup-hint");
@@ -603,6 +614,7 @@ export function eventConfigs() {
       function refreshAbilitiesList() {
         const c = players.find((p) => p.id === combatant.id);
         if (!c || popup.getAttribute("aria-hidden") === "true") return;
+        if (grenadeTargetingMode || medTargetingMode || suppressTargetingMode) return;
         const now = Date.now();
         const suppressOnCooldown = (c.suppressCooldownUntil ?? 0) > now;
         const suppressRemainingSec = suppressOnCooldown ? Math.ceil((c.suppressCooldownUntil! - now) / 1000) : 0;
@@ -676,40 +688,58 @@ export function eventConfigs() {
       popup.style.transform = "none";
     }
 
-    function showGrenadeTargetingHint(_thrower: Combatant, grenade: SoldierGrenade) {
+    function clearSelectedHighlight() {
+      document.querySelectorAll(".combat-ability-selected").forEach((el) => el.classList.remove("combat-ability-selected"));
+    }
+
+    function highlightSelectedAbility(
+      type: "grenade" | "med" | "suppress",
+      soldierId: string,
+      inventoryIndex?: number,
+    ) {
+      clearSelectedHighlight();
       const popup = document.getElementById("combat-abilities-popup");
-      const contentEl = document.getElementById("combat-abilities-popup-content");
-      const hintEl = document.getElementById("combat-abilities-popup-hint");
-      if (!popup || !contentEl || !hintEl) return;
-      contentEl.style.display = "none";
+      if (!popup) return;
+      let btn: HTMLElement | null = null;
+      if (type === "grenade" || type === "med") {
+        const sel = type === "grenade" ? ".combat-grenade-item" : ".combat-med-item";
+        btn = popup.querySelector(`${sel}[data-soldier-id="${soldierId}"][data-inventory-index="${String(inventoryIndex)}"]`) as HTMLElement | null;
+      } else {
+        btn = popup.querySelector(`.combat-ability-suppress-wrap[data-soldier-id="${soldierId}"]`) as HTMLElement | null;
+      }
+      if (btn) btn.classList.add("combat-ability-selected");
+    }
+
+    function showGrenadeTargetingHint(thrower: Combatant, _grenade: SoldierGrenade) {
+      const hintEl = document.getElementById("combat-targeting-hint");
+      if (!hintEl) return;
       hintEl.textContent = "Click an enemy to throw";
-      hintEl.classList.add("visible");
-      popup.classList.add("combat-abilities-popup-hint-only");
-      requestAnimationFrame(() => positionPopupAtTop(popup));
+      hintEl.setAttribute("aria-hidden", "false");
+      highlightSelectedAbility("grenade", thrower.id, _grenade.inventoryIndex);
     }
 
-    function showSuppressTargetingHint(_user: Combatant) {
-      const popup = document.getElementById("combat-abilities-popup");
-      const contentEl = document.getElementById("combat-abilities-popup-content");
-      const hintEl = document.getElementById("combat-abilities-popup-hint");
-      if (!popup || !contentEl || !hintEl) return;
-      contentEl.style.display = "none";
+    function showSuppressTargetingHint(user: Combatant) {
+      const hintEl = document.getElementById("combat-targeting-hint");
+      if (!hintEl) return;
       hintEl.textContent = "Click an enemy to suppress";
-      hintEl.classList.add("visible");
-      popup.classList.add("combat-abilities-popup-hint-only");
-      requestAnimationFrame(() => positionPopupAtTop(popup));
+      hintEl.setAttribute("aria-hidden", "false");
+      highlightSelectedAbility("suppress", user.id);
     }
 
-    function showMedTargetingHint(_user: Combatant, medItem: SoldierMedItem) {
-      const popup = document.getElementById("combat-abilities-popup");
-      const contentEl = document.getElementById("combat-abilities-popup-content");
-      const hintEl = document.getElementById("combat-abilities-popup-hint");
-      if (!popup || !contentEl || !hintEl) return;
-      contentEl.style.display = "none";
+    function showMedTargetingHint(user: Combatant, medItem: SoldierMedItem) {
+      const hintEl = document.getElementById("combat-targeting-hint");
+      if (!hintEl) return;
       hintEl.textContent = "Click ally to heal";
-      hintEl.classList.add("visible");
-      popup.classList.add("combat-abilities-popup-hint-only");
-      requestAnimationFrame(() => positionPopupAtTop(popup));
+      hintEl.setAttribute("aria-hidden", "false");
+      highlightSelectedAbility("med", user.id, medItem.inventoryIndex);
+    }
+
+    function hideTargetingHint() {
+      const hintEl = document.getElementById("combat-targeting-hint");
+      if (hintEl) {
+        hintEl.textContent = "";
+        hintEl.setAttribute("aria-hidden", "true");
+      }
     }
 
     let abilitiesPopupRefreshIntervalId: ReturnType<typeof setInterval> | null = null;
@@ -725,11 +755,13 @@ export function eventConfigs() {
       popupCombatantId = null;
       document.querySelectorAll(".combat-card-grenade-target").forEach((el) => el.classList.remove("combat-card-grenade-target"));
       document.querySelectorAll(".combat-card-heal-target").forEach((el) => el.classList.remove("combat-card-heal-target"));
+      clearSelectedHighlight();
       const popup = document.getElementById("combat-abilities-popup");
       if (popup) {
         popup.classList.remove("combat-abilities-popup-hint-only");
         popup.setAttribute("aria-hidden", "true");
       }
+      hideTargetingHint();
     }
 
     const BULLET_ICON = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3E%3Cellipse cx='4' cy='4' rx='3.2' ry='1.2' fill='%23ffcc44' stroke='%23fff' stroke-width='0.4'/%3E%3C/svg%3E";
@@ -1615,6 +1647,7 @@ export function eventConfigs() {
         selector: DOM.combat.battleArea,
         eventType: "click",
         callback: (e: Event) => {
+          if (grenadeTargetingMode || medTargetingMode || suppressTargetingMode) return;
           const popup = document.getElementById("combat-abilities-popup");
           const target = e.target as HTMLElement;
           if (popup?.contains(target)) return;
@@ -1626,6 +1659,7 @@ export function eventConfigs() {
         selector: "#combat-screen",
         eventType: "click",
         callback: (e: Event) => {
+          if (grenadeTargetingMode || medTargetingMode || suppressTargetingMode) return;
           const popup = document.getElementById("combat-abilities-popup");
           if (popup?.getAttribute("aria-hidden") === "true") return;
           const target = e.target as HTMLElement;
