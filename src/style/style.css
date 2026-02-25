@@ -6556,8 +6556,21 @@ button.mbtn {
 	outline: 2px solid var(--accent-magenta-1);
 	outline-offset: 2px;
 	background: rgba(255, 255, 255, 0.18) !important;
-	box-shadow: 0 0 0 1px var(--accent-magenta-1);
-	animation: combat-grenade-target-pulse 1s ease-in-out infinite;
+	box-shadow: 0 0 0 2px var(--accent-magenta-1);
+	animation: combat-ability-selected-pulse 1s ease-in-out infinite;
+}
+
+/* Pulse ring via pseudo-element - avoids conflicts with rarity/other styles */
+.combat-ability-selected::after,
+.combat-grenade-item.combat-ability-selected::after,
+.combat-med-item.combat-ability-selected::after,
+.combat-ability-icon-slot.combat-ability-selected::after {
+	content: "";
+	position: absolute;
+	inset: -4px;
+	border-radius: 10px;
+	pointer-events: none;
+	animation: combat-ability-selected-ring-pulse 1s ease-in-out infinite;
 }
 
 .combat-grenade-icon-wrap {
@@ -6586,6 +6599,20 @@ button.mbtn {
 @keyframes combat-grenade-target-pulse {
 	0%, 100% { outline-color: var(--accent-magenta-1); }
 	50% { outline-color: var(--accent-magenta-2); }
+}
+
+@keyframes combat-ability-selected-pulse {
+	0%, 100% { outline-color: var(--accent-magenta-1); }
+	50% { outline-color: var(--accent-magenta-2); }
+}
+
+@keyframes combat-ability-selected-ring-pulse {
+	0%, 100% {
+		box-shadow: 0 0 0 2px var(--accent-magenta-1);
+	}
+	50% {
+		box-shadow: 0 0 0 3px var(--accent-magenta-2), 0 0 14px 2px rgba(234, 62, 101, 0.5);
+	}
 }
 
 /* Attack lines SVG (behind projectiles) */
