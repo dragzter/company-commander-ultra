@@ -936,6 +936,58 @@ button.mbtn {
 	color: #ffd0c8;
 	text-shadow: 0 0 10px rgba(255, 140, 120, 0.5), 0 1px 2px rgba(0, 0, 0, 0.9);
 }
+.staged-trooper-card .soldier-xp-wrapper {
+	max-width: 80px;
+	margin-top: 2px;
+}
+
+/* Equip picker: uses entity-card for card-footer, compact XP bar */
+#equip-picker-popup .equip-picker-soldier.entity-card .card-footer .soldier-xp-bar {
+	height: 12px;
+}
+#equip-picker-popup .equip-picker-soldier.entity-card .card-footer .soldier-xp-progress-inline {
+	font-size: 0.58rem;
+}
+
+/* Ready room & formation: entity-card + card-footer, no black bar, contain width */
+#ready-room-screen .ready-room-soldier-card.entity-card,
+#formation-screen .formation-soldier-card.entity-card {
+	min-width: 0;
+	width: 100%;
+	max-width: 100%;
+	flex-shrink: 1;
+	overflow: hidden;
+	box-sizing: border-box;
+}
+#ready-room-screen .ready-room-soldier-card .ready-room-card-inner,
+#formation-screen .formation-soldier-card .formation-card-inner {
+	min-width: 0;
+}
+#ready-room-screen .ready-room-soldier-card .ready-room-details,
+#formation-screen .formation-soldier-card .formation-details {
+	min-width: 0;
+}
+#ready-room-screen .ready-room-soldier-card.entity-card .card-footer,
+#formation-screen .formation-soldier-card.entity-card .card-footer {
+	background: transparent;
+	border-top: 1px solid rgba(255, 255, 255, 0.08);
+	padding: 4px 0 0 0;
+}
+#ready-room-screen .ready-room-soldier-card.entity-card .card-footer .soldier-xp-wrapper,
+#formation-screen .formation-soldier-card.entity-card .card-footer .soldier-xp-wrapper,
+#ready-room-screen .ready-room-soldier-card.entity-card .card-footer .soldier-xp-row,
+#formation-screen .formation-soldier-card.entity-card .card-footer .soldier-xp-row {
+	min-width: 0;
+}
+#ready-room-screen .ready-room-soldier-card.entity-card .card-footer .soldier-xp-bar,
+#formation-screen .formation-soldier-card.entity-card .card-footer .soldier-xp-bar {
+	height: 12px;
+	min-width: 0;
+}
+#ready-room-screen .ready-room-soldier-card.entity-card .card-footer .soldier-xp-progress-inline,
+#formation-screen .formation-soldier-card.entity-card .card-footer .soldier-xp-progress-inline {
+	font-size: 0.58rem;
+}
 
 /* Shared layout for market-style screens (missions, ready room, troops, etc.) */
 .troops-recruit-error {
@@ -979,7 +1031,7 @@ button.mbtn {
 	display: flex;
 	flex-direction: column;
 	gap: 6px;
-	padding: 6px 0 10px 0;
+	padding: 6px 0 0 0;
 	background: linear-gradient(180deg, rgba(15, 18, 12, 0.95) 0%, rgba(5, 8, 5, 0.98) 100%);
 	border-top: 1px solid rgba(255, 255, 255, 0.06);
 	flex-shrink: 0;
@@ -1015,18 +1067,18 @@ button.mbtn {
 	justify-content: center;
 }
 
-/* Troops market: 2-row metadata banner (credits + soldier breakdown) - compact */
+/* Troops market: 2-row metadata banner (credits + soldier breakdown) - sleek, full width */
 .troops-metadata-banner {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
+	justify-content: center;
 	gap: 2px;
-	padding: 3px 8px;
-	margin-inline: var(--page-padding-x-reduced);
-	background: linear-gradient(145deg, rgba(25, 35, 25, 0.92) 0%, rgba(12, 18, 14, 0.97) 100%);
-	border: 1px solid rgba(100, 150, 100, 0.25);
-	border-radius: 4px;
-	box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+	width: 100%;
+	padding: 4px var(--page-padding-x-reduced);
+	background: linear-gradient(180deg, rgba(18, 24, 18, 0.6) 0%, rgba(8, 12, 8, 0.8) 100%);
+	border-top: 1px solid rgba(100, 150, 100, 0.15);
+	box-sizing: border-box;
 }
 .troops-metadata-banner:empty {
 	display: none;
@@ -1568,12 +1620,15 @@ button.mbtn {
 
 .ready-room-root .ready-room-main {
 	flex: 1;
+	min-width: 0;
 	overflow-y: auto;
+	overflow-x: hidden;
 	padding: 16px var(--page-padding-x-reduced);
 }
 
 .ready-room-section {
 	margin-bottom: 20px;
+	min-width: 0;
 }
 
 .ready-room-section-title {
@@ -1593,10 +1648,14 @@ button.mbtn {
 .ready-room-grid {
 	display: grid;
 	gap: 10px;
+	min-width: 0;
 }
 
 .ready-room-grid-2col {
 	grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.ready-room-grid > * {
+	min-width: 0;
 }
 
 .ready-room-soldier-card {
@@ -1709,6 +1768,7 @@ button.mbtn {
 	flex-direction: column;
 	gap: 2px;
 	margin-bottom: 3px;
+	min-width: 0;
 }
 .ready-room-name-block .ready-room-name {
 	font-weight: 700;
@@ -1832,13 +1892,20 @@ button.mbtn {
 }
 
 /* Formation screen: 2-col layout, Active/Reserve, select-then-swap */
+.formation-root,
+.ready-room-root {
+	min-width: 0;
+}
 .formation-root .formation-main {
 	flex: 1;
+	min-width: 0;
 	overflow-y: auto;
+	overflow-x: hidden;
 	padding: 16px var(--page-padding-x-reduced);
 }
 .formation-section {
 	margin-bottom: 20px;
+	min-width: 0;
 }
 .formation-section-title {
 	margin: 0 0 8px 0;
@@ -1856,9 +1923,13 @@ button.mbtn {
 .formation-grid {
 	display: grid;
 	gap: 10px;
+	min-width: 0;
 }
 .formation-grid-2col {
 	grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.formation-grid > * {
+	min-width: 0;
 }
 .formation-soldier-card {
 	display: flex;
@@ -1976,6 +2047,7 @@ button.mbtn {
 	flex-direction: column;
 	gap: 2px;
 	margin-bottom: 3px;
+	min-width: 0;
 }
 .formation-name {
 	font-weight: 700;
@@ -2729,6 +2801,7 @@ button.mbtn {
 	position: absolute;
 	bottom: 2px;
 	right: 2px;
+	transform: translate(3px, 3px);
 	background: rgba(0, 0, 0, 0.65);
 	color: #fff;
 	padding: 1px 3px;
@@ -2985,6 +3058,7 @@ button.mbtn {
 	position: absolute;
 	bottom: 2px;
 	right: 2px;
+	transform: translate(3px, 3px);
 	font-size: 0.55rem;
 	font-weight: 800;
 	background: rgba(0, 0, 0, 0.7);
@@ -2998,6 +3072,7 @@ button.mbtn {
 .supplies-market-item .market-item-icon-wrap .market-item-uses-badge {
 	bottom: 2px;
 	right: 2px;
+	transform: translate(3px, 3px);
 	font-size: 0.75rem;
 	padding: 2px 5px;
 	border-radius: 3px;
@@ -4182,6 +4257,7 @@ button.mbtn {
 	position: absolute;
 	bottom: -2px;
 	right: -2px;
+	transform: translate(3px, 3px);
 	font-size: 0.55rem;
 	font-weight: 700;
 	background: rgba(0, 0, 0, 0.75);
@@ -4223,6 +4299,7 @@ button.mbtn {
 	position: absolute;
 	bottom: 2px;
 	right: 2px;
+	transform: translate(3px, 3px);
 	font-size: 0.55rem;
 	font-weight: 700;
 	background: rgba(0, 0, 0, 0.65);
@@ -5727,7 +5804,83 @@ button.mbtn {
 		font-weight: 700;
 		color: #e8c547;
 	}
-	
+
+/* Soldier XP bar - used in cards, roster, equip picker, ready room, combat */
+/* XP bar wrapper: label + bar + tooltip */
+.soldier-xp-wrapper {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	min-width: 0;
+}
+.soldier-xp-row {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	min-width: 0;
+}
+.soldier-xp-label {
+	font-size: 0.65rem;
+	font-weight: 700;
+	color: var(--camo-tan-1);
+	flex-shrink: 0;
+}
+.soldier-xp-next {
+	font-size: 0.65rem;
+	font-weight: 700;
+	color: var(--camo-tan-1);
+	flex-shrink: 0;
+}
+.soldier-xp-bar {
+	position: relative;
+	flex: 1;
+	min-width: 48px;
+	height: 20px;
+	background: linear-gradient(90deg, rgba(15, 18, 12, 0.95) 0%, rgba(28, 24, 18, 0.92) 100%);
+	border: 1px solid rgba(90, 80, 60, 0.35);
+	border-radius: 3px;
+	overflow: hidden;
+	flex-shrink: 1;
+	box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+.soldier-xp-bar .soldier-xp-fill {
+	position: absolute;
+	top: 0;
+	left: 0;
+	bottom: 0;
+	z-index: 1;
+}
+.soldier-xp-progress-inline {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 0.6rem;
+	font-weight: 700;
+	color: var(--camo-tan-1);
+	text-shadow: 0 0 2px #000, 0 1px 2px #000, 1px 0 2px #000, -1px 0 2px #000, 0 -1px 2px #000;
+	pointer-events: none;
+	z-index: 2;
+}
+.soldier-xp-bar .soldier-xp-fill {
+	height: 100%;
+	min-width: 0;
+	background: linear-gradient(90deg, #e8c84a 0%, #8ed040 50%, #5cb820 100%);
+	box-shadow: 0 0 6px rgba(140, 220, 60, 0.6);
+	border-radius: 2px;
+	transition: width 0.2s;
+}
+.entity-card .card-footer .soldier-xp-wrapper,
+.card-footer .soldier-xp-wrapper {
+	flex-basis: 100%;
+	order: 10;
+}
+.entity-card .card-footer .soldier-xp-bar,
+.card-footer .soldier-xp-bar {
+	width: 100%;
+}
+
 	.card-actions {
 		height: 3rem;
 		display: flex;
@@ -5829,14 +5982,18 @@ button.mbtn {
 	
 	.card-footer {
 		display: flex;
+		flex-wrap: wrap;
 		align-items: center;
-		justify-content: space-between;
+		gap: 6px;
 		background: #000;
 		padding: 8px 10px;
 		font-weight: 900;
 		border-top: 2px solid #333;
 		border-bottom-right-radius: var(--std-border-radius);
 		border-bottom-left-radius: var(--std-border-radius);
+	}
+	.card-footer .soldier-xp-bar {
+		flex: 1;
 	}
 
 	.trooper-level-badge {
@@ -5850,6 +6007,7 @@ button.mbtn {
 		border: 1px solid var(--camo-green-1);
 		border-radius: 4px;
 	}
+
 	
 	.trait-profile {
 		padding: 4px 8px;
@@ -5940,6 +6098,22 @@ button.mbtn {
 .entity-card.roster-card.roster-reserve {
 	outline-color: rgba(80, 80, 75, 0.6);
 	opacity: 0.92;
+}
+
+/* Roster: compact trait so level + trait fit on same row above XP bar */
+#roster-screen .card-footer .trait-tooltip-wrap .trait-profile {
+	font-size: 0.6rem;
+	padding: 1px 5px;
+	border-radius: 3px;
+	white-space: nowrap;
+}
+
+/* Roster card: XP bar more prominent, clear progress visualization */
+#roster-screen .card-footer .soldier-xp-bar {
+	height: 12px;
+}
+#roster-screen .card-footer .soldier-xp-progress-inline {
+	font-size: 0.58rem;
 }
 
 /*
@@ -7379,4 +7553,31 @@ input[type="text"] {
 	font-weight: 600;
 	font-size: calc(1rem - 4px);
 	text-align: right;
+}
+
+/* XP bar tooltip - show on hover/click (focus) */
+.xp-tooltip-wrap .xp-tooltip {
+	position: absolute;
+	pointer-events: none;
+	opacity: 0;
+	bottom: 100%;
+	left: 0;
+	margin-bottom: 4px;
+	white-space: nowrap;
+	background: url("/images/ui/info_panel_600.png") no-repeat center / 100% 100%;
+	z-index: 10;
+	padding: 4px 8px;
+	border-radius: var(--std-border-radius);
+	transition: opacity 0.2s;
+	font-size: 0.75rem;
+	font-weight: 600;
+	color: var(--camo-tan-1);
+}
+.xp-tooltip-wrap:hover .xp-tooltip,
+.xp-tooltip-wrap:focus .xp-tooltip {
+	opacity: 1;
+	z-index: 20;
+}
+.xp-tooltip-wrap:focus {
+	outline: none;
 }

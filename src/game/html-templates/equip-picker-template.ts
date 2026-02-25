@@ -4,7 +4,9 @@ import { getItemIconUrl } from "../../utils/item-utils.ts";
 import { formatDisplayName } from "../../utils/name-utils.ts";
 import { usePlayerCompanyStore } from "../../store/ui-store.ts";
 import { MAX_EQUIPMENT_SLOTS } from "../../constants/inventory-slots.ts";
+import { getLevelFromExperience } from "../../constants/economy.ts";
 import { getActiveSlots, getFormationSlots, getSoldierById } from "../../constants/company-slots.ts";
+import { soldierXpBar } from "./components/soldier-xp-bar.ts";
 
 function escapeAttr(s: string): string {
   return s.replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -58,10 +60,10 @@ function soldierRow(s: Soldier, isActive: boolean): string {
     eqSlots.push(slotHtml(s.id, "equipment", undefined, i, des));
   }
   const unequipBtn = `<button type="button" class="equip-unequip-all-btn" data-soldier-id="${s.id}" title="Unequip all to armory"><span class="equip-unequip-icon">⬇</span><span class="equip-unequip-label">All</span></button>`;
-  const level = s.level ?? 1;
+  const level = getLevelFromExperience(s.experience ?? 0);
   const statusBadge = `<span class="equip-picker-status-badge ${isActive ? "equip-picker-status-active" : "equip-picker-status-reserve"}">${isActive ? "Active" : "Reserve"}</span>`;
   return `
-<div class="equip-picker-soldier designation-${des}" data-soldier-id="${s.id}" data-soldier-json="${escapeAttr(JSON.stringify(s))}">
+<div class="equip-picker-soldier entity-card designation-${des}" data-soldier-id="${s.id}" data-soldier-json="${escapeAttr(JSON.stringify(s))}">
   <div class="equip-picker-soldier-header">
     <div class="equip-picker-avatar-wrap">
       <img class="equip-picker-avatar" src="/images/green-portrait/${s.avatar}" alt="" width="48" height="48">
@@ -78,6 +80,9 @@ function soldierRow(s: Soldier, isActive: boolean): string {
     ${armorSlot}
     ${eqSlots.join("")}
     ${unequipBtn}
+  </div>
+  <div class="card-footer">
+    ${soldierXpBar(s)}
   </div>
 </div>`;
 }

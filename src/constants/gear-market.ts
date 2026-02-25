@@ -1,6 +1,7 @@
 /**
- * Gear market: weapons and armor for sale based on company level.
- * Items are scaled to tier (1 to companyLevel), sorted by price cheapest first.
+ * Gear market: weapons and armor at company average soldier level.
+ * Each base has tiers 1-10. Market stocks only the tier matching avg level.
+ * A predominantly level 2 company sees level 2 gear; level 5 sees level 5 gear.
  */
 import type { Item } from "./items/types.ts";
 import { WEAPON_BASES } from "./items/weapon-bases.ts";
@@ -23,59 +24,47 @@ export interface GearMarketEntry {
   price: number;
 }
 
-/** Max tier available in market = company level, capped 1-10 */
-function maxTier(companyLevel: number): GearLevel {
-  const t = Math.max(1, Math.min(10, companyLevel));
+/** Market tier = avg company soldier level (1-20). Company sees gear at its level only. */
+function marketTier(avgCompanyLevel: number): GearLevel {
+  const t = Math.max(1, Math.min(20, Math.floor(avgCompanyLevel)));
   return t as GearLevel;
 }
 
-/** All weapon items: common, rare, epic. Tiers 1 to companyLevel. Sorted by price. */
-export function getWeaponsMarketItems(companyLevel: number): GearMarketEntry[] {
-  const cap = maxTier(companyLevel);
+/** All weapons at company level: one tier per base. Level 2 company sees level 2 gear. Sorted by price. */
+export function getWeaponsMarketItems(avgCompanyLevel: number): GearMarketEntry[] {
+  const tier = marketTier(avgCompanyLevel);
   const entries: GearMarketEntry[] = [];
   for (const base of WEAPON_BASES) {
-    for (let t = 1; t <= cap; t++) {
-      const item = createWeapon(base, t as GearLevel);
-      entries.push({ item, price: getWeaponPrice(item) });
-    }
+    const item = createWeapon(base, tier);
+    entries.push({ item, price: getWeaponPrice(item) });
   }
   for (const base of RARE_WEAPON_BASES) {
-    for (let t = 1; t <= cap; t++) {
-      const item = createRareWeapon(base, t as GearLevel);
-      entries.push({ item, price: getWeaponPrice(item) });
-    }
+    const item = createRareWeapon(base, tier);
+    entries.push({ item, price: getWeaponPrice(item) });
   }
   for (const base of EPIC_WEAPON_BASES) {
-    for (let t = 1; t <= cap; t++) {
-      const item = createEpicWeapon(base, t as GearLevel);
-      entries.push({ item, price: getWeaponPrice(item) });
-    }
+    const item = createEpicWeapon(base, tier);
+    entries.push({ item, price: getWeaponPrice(item) });
   }
   entries.sort((a, b) => a.price - b.price);
   return entries;
 }
 
-/** All armor items: common (all bases), rare, epic. Tiers 1 to companyLevel. Sorted by price. */
-export function getArmorMarketItems(companyLevel: number): GearMarketEntry[] {
-  const cap = maxTier(companyLevel);
+/** All armor at company level: one tier per base. Level 2 company sees level 2 gear. Sorted by price. */
+export function getArmorMarketItems(avgCompanyLevel: number): GearMarketEntry[] {
+  const tier = marketTier(avgCompanyLevel);
   const entries: GearMarketEntry[] = [];
   for (const base of ARMOR_BASES) {
-    for (let t = 1; t <= cap; t++) {
-      const item = createArmor(base, t as GearLevel);
-      entries.push({ item, price: getArmorPrice(item) });
-    }
+    const item = createArmor(base, tier);
+    entries.push({ item, price: getArmorPrice(item) });
   }
   for (const base of RARE_ARMOR_BASES) {
-    for (let t = 1; t <= cap; t++) {
-      const item = createRareArmor(base, t as GearLevel);
-      entries.push({ item, price: getArmorPrice(item) });
-    }
+    const item = createRareArmor(base, tier);
+    entries.push({ item, price: getArmorPrice(item) });
   }
   for (const base of EPIC_ARMOR_BASES) {
-    for (let t = 1; t <= cap; t++) {
-      const item = createEpicArmor(base, t as GearLevel);
-      entries.push({ item, price: getArmorPrice(item) });
-    }
+    const item = createEpicArmor(base, tier);
+    entries.push({ item, price: getArmorPrice(item) });
   }
   entries.sort((a, b) => a.price - b.price);
   return entries;

@@ -38,7 +38,7 @@ import {
 } from "../combat/combat-loop.ts";
 import type { TargetMap } from "../combat/types.ts";
 import { getItemIconUrl } from "../../utils/item-utils.ts";
-import { weaponWieldOk, itemFitsSlot } from "../../utils/equip-utils.ts";
+import { weaponWieldOk, itemFitsSlot, canEquipItemLevel } from "../../utils/equip-utils.ts";
 import { resolveGrenadeThrow } from "../../services/combat/grenade-resolver.ts";
 import type { Combatant } from "../combat/types.ts";
 import type { Mission } from "../../constants/missions.ts";
@@ -417,8 +417,14 @@ export function eventConfigs() {
     const targets: TargetMap = new Map();
     const nextAttackAt = new Map<string, number>();
     const playerKills = new Map<string, number>();
+    const playerDamage = new Map<string, number>();
+    const playerDamageTaken = new Map<string, number>();
+    const playerAbilitiesUsed = new Map<string, number>();
     for (const p of players) {
       playerKills.set(p.id, 0);
+      playerDamage.set(p.id, 0);
+      playerDamageTaken.set(p.id, 0);
+      playerAbilitiesUsed.set(p.id, 0);
     }
 
     function getSoldierFromStore(soldierId: string) {
@@ -652,6 +658,7 @@ export function eventConfigs() {
     }
 
     function executeMedicalUse(user: Combatant, target: Combatant, medItem: SoldierMedItem) {
+      playerAbilitiesUsed.set(user.id, (playerAbilitiesUsed.get(user.id) ?? 0) + 1);
       const isStimPack = medItem.item.id === "stim_pack";
       usePlayerCompanyStore.getState().consumeSoldierMedical(user.id, medItem.inventoryIndex);
       medTargetingMode = null;
@@ -863,8 +870,13 @@ export function eventConfigs() {
         for (const s of result.splash) {
           if (s.targetDown) killsFromGrenade++;
         }
+        playerAbilitiesUsed.set(thrower.id, (playerAbilitiesUsed.get(thrower.id) ?? 0) + 1);
         if (killsFromGrenade > 0) {
           playerKills.set(thrower.id, (playerKills.get(thrower.id) ?? 0) + killsFromGrenade);
+        }
+        const grenadeDmg = result.primary.damageDealt + result.splash.reduce((a, s) => a + s.damageDealt, 0);
+        if (grenadeDmg > 0) {
+          playerDamage.set(thrower.id, (playerDamage.get(thrower.id) ?? 0) + grenadeDmg);
         }
       }, 400);
     }
@@ -1163,8 +1175,16 @@ export function eventConfigs() {
             const target = all.find((x) => x.id === targetId);
             if (target && target.hp > 0 && !target.downState) {
               const result = resolveAttack(c, target);
-              if (c.side === "player" && target.side === "enemy" && (target.hp <= 0 || target.downState === "kia")) {
-                playerKills.set(c.id, (playerKills.get(c.id) ?? 0) + 1);
+              if (c.side === "player") {
+                if (target.side === "enemy" && (target.hp <= 0 || target.downState === "kia")) {
+                  playerKills.set(c.id, (playerKills.get(c.id) ?? 0) + 1);
+                }
+                if (result.damage > 0) {
+                  playerDamage.set(c.id, (playerDamage.get(c.id) ?? 0) + result.damage);
+                }
+              }
+              if (target.side === "player" && result.damage > 0) {
+                playerDamageTaken.set(target.id, (playerDamageTaken.get(target.id) ?? 0) + result.damage);
               }
               nextAttackAt.set(c.id, getNextAttackAt(c, now));
               const attackerCard = document.querySelector(`[data-combatant-id="${c.id}"]`);
@@ -1271,6 +1291,7 @@ export function eventConfigs() {
             if (!soldierId) return;
             const combatant = players.find((p) => p.id === soldierId);
             if (!combatant || combatant.takeCoverUsed || combatant.hp <= 0 || combatant.downState) return;
+            playerAbilitiesUsed.set(combatant.id, (playerAbilitiesUsed.get(combatant.id) ?? 0) + 1);
             const now = Date.now();
             combatant.takeCoverUntil = now + TAKE_COVER_DURATION_MS;
             combatant.takeCoverUsed = true;
@@ -1462,10 +1483,10 @@ export function eventConfigs() {
           const victory = combatWinner === "player";
           const store = usePlayerCompanyStore.getState();
           store.grantMissionRewards(mission, victory);
+          const kiaIds = players.filter((p) => p.downState === "kia").map((p) => p.id);
+          const survivorIds = players.filter((p) => !kiaIds.includes(p.id)).map((p) => p.id);
+          store.grantSoldierCombatXP(survivorIds, playerDamage, playerDamageTaken, playerKills, playerAbilitiesUsed, victory);
           store.syncCombatHpToSoldiers(players.map((p) => ({ id: p.id, hp: p.maxHp })));
-          const kiaIds = players
-            .filter((p) => p.downState === "kia")
-            .map((p) => p.id);
           const missionName = mission?.name ?? "Unknown";
           store.processCombatKIA(kiaIds, missionName, playerKills);
           if (combatTickId != null) {
@@ -1493,6 +1514,7 @@ export function eventConfigs() {
       .map((item, idx) => ({ item, armoryIndex: idx }))
       .filter(({ item }) => {
         if (!itemFitsSlot(item, slotType)) return false;
+        if (!canEquipItemLevel(item, soldier)) return false;
         if (slotType === "weapon" && !weaponWieldOk(item, soldier)) return false;
         return true;
       });

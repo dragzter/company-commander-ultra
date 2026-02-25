@@ -59,7 +59,7 @@ export function createEnemyCombatant(
   companyLevel: number,
   isEpicMission = false,
 ): Combatant {
-  const level = Math.max(1, Math.min(10, companyLevel));
+  const level = Math.max(1, Math.min(20, companyLevel));
   const soldier =
     index === 0 && enemyCount >= 1
       ? SoldierManager.getNewSupportMan(level)

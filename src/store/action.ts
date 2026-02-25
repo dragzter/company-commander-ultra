@@ -17,7 +17,15 @@ import {
   getWeaponArmorySlots,
   getArmorArmorySlots,
   getEquipmentArmorySlots,
+  getLevelFromExperience,
   getXpRequiredForLevel,
+  getSoldierXpRequiredForLevel,
+  SOLDIER_XP_BASE_SURVIVE_VICTORY,
+  SOLDIER_XP_BASE_SURVIVE_DEFEAT,
+  SOLDIER_XP_PER_DAMAGE,
+  SOLDIER_XP_PER_DAMAGE_TAKEN,
+  SOLDIER_XP_PER_KILL,
+  SOLDIER_XP_PER_ABILITY_USE,
 } from "../constants/economy.ts";
 import {
   getItemArmoryCategory,
@@ -27,7 +35,7 @@ import {
 import { getFormationSlots, getActiveSlots, getReserveSlots } from "../constants/company-slots.ts";
 import { TARGET_TYPES } from "../constants/items/types.ts";
 import { MAX_EQUIPMENT_SLOTS } from "../constants/inventory-slots.ts";
-import { weaponWieldOk } from "../utils/equip-utils.ts";
+import { weaponWieldOk, canEquipItemLevel } from "../utils/equip-utils.ts";
 import { getRewardItemById } from "../utils/reward-utils.ts";
 import type { Mission } from "../constants/missions.ts";
 import type { MemorialEntry } from "../game/entities/memorial-types.ts";
@@ -288,9 +296,7 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
     }),
   onCompanyLevelUp: () => {
     set((s: CompanyStore) => ({ rerollCounter: 6 }));
-    const soldiers = SoldierManager.generateTroopList(
-      get().companyLevel ?? 1,
-    );
+    const soldiers = SoldierManager.generateTroopList(1);
     get().setMarketAvailableTroops(soldiers);
   },
   addInitialTroopsIfEmpty: () =>
@@ -481,6 +487,9 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
     let newArmory = armory.slice();
 
     if (slotType === "weapon") {
+      if (!canEquipItemLevel(item, soldier)) {
+        return { success: false, reason: "soldier level too low for item" };
+      }
       if (
         (item.type === "ballistic_weapon" || item.type === "melee_weapon") &&
         !weaponWieldOk(item, soldier)
@@ -491,6 +500,9 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
         toAddToArmory.push({ ...soldier.weapon, target: (soldier.weapon as any).target ?? TARGET_TYPES.none } as any);
       }
     } else if (slotType === "armor") {
+      if (!canEquipItemLevel(item, soldier)) {
+        return { success: false, reason: "soldier level too low for item" };
+      }
       if (soldier.armor) {
         toAddToArmory.push({ ...soldier.armor, target: (soldier.armor as any).target ?? TARGET_TYPES.none } as any);
       }
@@ -499,6 +511,9 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
       const eqIdx = options?.equipmentIndex ?? inv.length;
       if (eqIdx >= inv.length && inv.length >= MAX_EQUIPMENT_SLOTS) {
         return { success: false, reason: "equipment slots full" };
+      }
+      if (!canEquipItemLevel(item, soldier)) {
+        return { success: false, reason: "soldier level too low for item" };
       }
       if (eqIdx < inv.length && inv[eqIdx]) {
         toAddToArmory.push({ ...inv[eqIdx], target: (inv[eqIdx] as any).target ?? TARGET_TYPES.none } as any);
@@ -647,6 +662,9 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
         return { success: false, reason: "weapon restricted to role" };
       }
     }
+    if (!canEquipItemLevel(srcItem as import("../constants/items/types.ts").Item, dest)) {
+      return { success: false, reason: "soldier level too low for item" };
+    }
 
     const destInv = dest.inventory ?? [];
     const destItem = getItem(dest, op.destSlotType, op.destEqIndex);
@@ -768,11 +786,11 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
     const oldLevel = stateAfterCredits.company?.level ?? stateAfterCredits.companyLevel ?? 1;
     let exp = (stateAfterCredits.company?.experience ?? stateAfterCredits.companyExperience ?? 0) + xpGain;
     let lvl = oldLevel;
-    const maxLevel = 10;
+    const maxLevel = 20;
     while (lvl < maxLevel && exp >= getXpRequiredForLevel(lvl + 1)) {
       lvl += 1;
     }
-    const profile = COMPANY_RESOURCES_BY_LEVEL[Math.min(lvl, 10) - 1] ?? COMPANY_RESOURCES_BY_LEVEL[0];
+    const profile = COMPANY_RESOURCES_BY_LEVEL[Math.min(lvl, 20) - 1] ?? COMPANY_RESOURCES_BY_LEVEL[0];
     set((s: CompanyStore) => ({
       company: {
         ...s.company,
@@ -828,7 +846,70 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
     }));
   },
 
-  /** Sync combatant HP back to store soldiers after combat. */
+  /** Sync stored soldier.level with level derived from experience. Fixes drift from bugs/old saves. Sanitizes float XP (e.g. 20.599999994 → 20.6). */
+  syncSoldierLevelsFromExperience: () => {
+    set((state: CompanyStore) => {
+      const soldiers = state.company?.soldiers ?? [];
+      const newSoldiers = soldiers.map((s) => {
+        const rawExp = s.experience ?? 0;
+        const exp = Math.round(rawExp * 10) / 10;
+        let base = exp !== rawExp ? { ...s, experience: exp } : s;
+        const correctLvl = getLevelFromExperience(exp);
+        const storedLvl = base.level ?? 1;
+        if (correctLvl === storedLvl) return base;
+        let soldier: Soldier = { ...base, level: correctLvl };
+        if (correctLvl > storedLvl) {
+          for (let i = storedLvl + 1; i <= correctLvl; i++) {
+            SoldierManager.levelUpSoldier(soldier, i);
+          }
+          SoldierManager.refreshCombatProfile(soldier);
+        }
+        return soldier;
+      });
+      return { company: { ...state.company, soldiers: newSoldiers } };
+    });
+  },
+
+  /** Grant soldier XP from combat: base (survive + victory/defeat), damage dealt, damage taken, kills, ability use. Levels up when thresholds crossed. */
+  grantSoldierCombatXP: (
+    survivorIds: string[],
+    damageBySoldier: Map<string, number>,
+    damageTakenBySoldier: Map<string, number>,
+    killsBySoldier: Map<string, number>,
+    abilitiesUsedBySoldier: Map<string, number>,
+    victory: boolean,
+  ) => {
+    const baseXp = victory ? SOLDIER_XP_BASE_SURVIVE_VICTORY : SOLDIER_XP_BASE_SURVIVE_DEFEAT;
+    set((state: CompanyStore) => {
+      const soldiers = state.company?.soldiers ?? [];
+      const newSoldiers = soldiers.map((s) => {
+        if (!survivorIds.includes(s.id)) return s;
+        const dmg = damageBySoldier.get(s.id) ?? 0;
+        const dmgTaken = damageTakenBySoldier.get(s.id) ?? 0;
+        const kills = killsBySoldier.get(s.id) ?? 0;
+        const abilitiesUsed = abilitiesUsedBySoldier.get(s.id) ?? 0;
+        const xpGain = baseXp + dmg * SOLDIER_XP_PER_DAMAGE + dmgTaken * SOLDIER_XP_PER_DAMAGE_TAKEN + kills * SOLDIER_XP_PER_KILL + abilitiesUsed * SOLDIER_XP_PER_ABILITY_USE;
+        let exp = Math.round(((s.experience ?? 0) + xpGain) * 10) / 10;
+        let lvl = s.level ?? 1;
+        const maxLevel = 20;
+        while (lvl < maxLevel && exp >= getSoldierXpRequiredForLevel(lvl + 1)) {
+          lvl += 1;
+        }
+        const oldLevel = s.level ?? 1;
+        let soldier: Soldier = { ...s, experience: exp, level: lvl };
+        if (lvl > oldLevel) {
+          for (let i = oldLevel + 1; i <= lvl; i++) {
+            SoldierManager.levelUpSoldier(soldier, i);
+          }
+          SoldierManager.refreshCombatProfile(soldier);
+        }
+        return soldier;
+      });
+      return { company: { ...state.company, soldiers: newSoldiers } };
+    });
+  },
+
+  /** Sync combatant HP back to store soldiers after combat. Never overwrite with a lower value—soldiers may have gained HP from leveling up during grantSoldierCombatXP. */
   syncCombatHpToSoldiers: (playerCombatants: { id: string; hp: number }[]) => {
     set((state: CompanyStore) => {
       const soldiers = state.company?.soldiers ?? [];
@@ -836,9 +917,12 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
       const newSoldiers = soldiers.map((s) => {
         const hp = byId.get(s.id);
         if (hp == null) return s;
+        const currentMax = s.attributes?.hit_points ?? 0;
+        const synced = Math.max(0, Math.floor(hp));
+        const hitPoints = Math.max(currentMax, synced);
         return {
           ...s,
-          attributes: { ...s.attributes, hit_points: Math.max(0, Math.floor(hp)) },
+          attributes: { ...s.attributes, hit_points: hitPoints },
         };
       });
       return { company: { ...state.company, soldiers: newSoldiers } };

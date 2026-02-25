@@ -87,6 +87,15 @@ export type CompanyStore = {
   ) => { success: boolean; reason?: string };
   emptySoldierToCompanyInventory: (soldierId: string) => { success: boolean; reason?: string };
   grantMissionRewards: (mission: import("../constants/missions.ts").Mission | null, victory: boolean) => void;
+  syncSoldierLevelsFromExperience: () => void;
+  grantSoldierCombatXP: (
+    survivorIds: string[],
+    damageBySoldier: Map<string, number>,
+    damageTakenBySoldier: Map<string, number>,
+    killsBySoldier: Map<string, number>,
+    abilitiesUsedBySoldier: Map<string, number>,
+    victory: boolean,
+  ) => void;
   processCombatKIA: (
     kiaSoldierIds: string[],
     missionName?: string,

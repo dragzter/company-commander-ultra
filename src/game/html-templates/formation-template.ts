@@ -1,4 +1,6 @@
 import { companyHeaderPartial, companyActionsTemplate } from "./game-setup-template.ts";
+import { Partial } from "./partials/partial.ts";
+import { getLevelFromExperience } from "../../constants/economy.ts";
 import type { Soldier } from "../entities/types.ts";
 import type { Item } from "../../constants/items/types.ts";
 import { getActiveSlots, getReserveSlots, getFormationSlots, getSoldierById } from "../../constants/company-slots.ts";
@@ -27,11 +29,14 @@ function formationEquipSlot(
   const level = item.level ?? 1;
   const rarity = (item.rarity ?? "common") as string;
   const name = item.name ?? "?";
+  const uses = item.uses ?? item.quantity;
+  const usesBadge = uses != null ? `<span class="equip-slot-uses-badge">×${uses}</span>` : "";
   if (!iconUrl) return `<div class="formation-equip-slot formation-equip-empty formation-equip-droppable" title="${name}" ${dataAttrs}><span class="formation-equip-placeholder">—</span></div>`;
   return `
 <div class="formation-equip-slot item-icon-wrap formation-equip-droppable" title="${name}" ${dataAttrs}>
   <img class="formation-equip-icon" src="${iconUrl}" alt="" width="32" height="32">
   <span class="item-level-badge formation-equip-level rarity-${rarity}">Lv${level}</span>
+  ${usesBadge}
 </div>`;
 }
 
@@ -44,10 +49,10 @@ function formationSoldierCard(
   const des = (s.designation ?? "rifleman").toLowerCase();
   const slotClass = isActive ? "formation-active-slot" : "formation-reserve-slot";
   const swapClass = justSwapped ? " formation-just-swapped" : "";
-  const lvl = s.level ?? 1;
+  const lvl = getLevelFromExperience(s.experience ?? 0);
   const levelRarity = lvl >= 6 ? "epic" : lvl >= 3 ? "rare" : "common";
   return `
-<div class="formation-soldier-card designation-${des} ${slotClass}${swapClass}" data-soldier-id="${s.id}" data-slot-index="${slotIndex}" data-soldier-json="${escapeAttr(JSON.stringify(s))}" data-has-soldier="true">
+<div class="formation-soldier-card entity-card designation-${des} ${slotClass}${swapClass}" data-soldier-id="${s.id}" data-slot-index="${slotIndex}" data-soldier-json="${escapeAttr(JSON.stringify(s))}" data-has-soldier="true">
   <div class="formation-card-inner">
     <div class="formation-left">
       <div class="formation-avatar-wrap">
@@ -60,7 +65,7 @@ function formationSoldierCard(
         <span class="formation-hp-value">HP ${s.attributes.hit_points}</span>
       </div>
     </div>
-    <div class="formation-details">
+      <div class="formation-details">
       <div class="formation-name-block">
         <span class="formation-name">${formatDisplayName(s.name)}</span>
       </div>
@@ -73,6 +78,9 @@ function formationSoldierCard(
         ${formationEquipSlot((s.inventory ?? [])[1] as Item | undefined, s.id, "equipment", 1)}
       </div>
     </div>
+  </div>
+  <div class="card-footer">
+    ${Partial.create.soldierXpBar(s)}
   </div>
 </div>`;
 }

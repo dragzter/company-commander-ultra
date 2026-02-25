@@ -24,15 +24,16 @@ export const RARE_ARMOR_BASES: RareArmorBase[] = [
 ];
 
 export function createRareArmor(base: RareArmorBase, level: GearLevel) {
-  const baseToughness = base.toughnessBase + (level - 1) * base.toughnessPerLevel;
+  const tier = Math.max(1, Math.min(20, level));
+  const baseToughness = base.toughnessBase + (tier - 1) * base.toughnessPerLevel;
   const bonuses = base.bonuses.map((b) => {
     if (b.type === "flat" && b.stat === "toughness") {
-      return { ...b, value: b.value + (level - 1) * 1 };
+      return { ...b, value: b.value + (tier - 1) * 1 };
     }
     return b;
   });
   return {
-    id: `${base.baseId}_${level}`,
+    id: `${base.baseId}_${tier}`,
     name: base.name,
     type: ITEM_TYPES.armor,
     rarity: RARITY.rare,
@@ -40,7 +41,7 @@ export function createRareArmor(base: RareArmorBase, level: GearLevel) {
     usable: true,
     icon: base.icon,
     toughness: baseToughness,
-    level,
+    level: tier as GearLevel,
     bonuses,
     target: TARGET_TYPES.none,
   };

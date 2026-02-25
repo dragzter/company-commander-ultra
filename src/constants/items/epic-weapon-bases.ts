@@ -28,7 +28,7 @@ export const EPIC_WEAPON_BASES: EpicWeaponBase[] = [
 ];
 
 export function createEpicWeapon(base: EpicWeaponBase, level: GearLevel) {
-  const tier = Math.max(1, Math.min(10, level));
+  const tier = Math.max(1, Math.min(20, level)) as GearLevel;
   const add = (tier - 1) * base.damagePerLevel;
   const damageMin = base.damageMinBase + add;
   const damageMax = base.damageMaxBase + add;

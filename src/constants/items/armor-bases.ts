@@ -33,11 +33,12 @@ export function scaleArmor(base: ArmorBase, tier: GearLevel) {
 }
 
 export function createArmor(base: ArmorBase, level: GearLevel) {
-  const toughness = base.toughnessBase + (level - 1) * base.toughnessPerLevel;
+  const tier = Math.max(1, Math.min(20, level));
+  const toughness = base.toughnessBase + (tier - 1) * base.toughnessPerLevel;
   // Percent bonuses do NOT scale with tier - stay fixed
   const bonuses = base.bonuses;
   return {
-    id: `${base.baseId}_${level}`,
+    id: `${base.baseId}_${tier}`,
     name: base.name,
     type: ITEM_TYPES.armor,
     rarity: RARITY.common,
@@ -45,7 +46,7 @@ export function createArmor(base: ArmorBase, level: GearLevel) {
     usable: true,
     icon: base.icon,
     toughness,
-    level,
+    level: tier as GearLevel,
     bonuses,
     target: TARGET_TYPES.none,
   };

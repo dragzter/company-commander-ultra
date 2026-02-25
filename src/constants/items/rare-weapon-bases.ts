@@ -30,7 +30,7 @@ export const RARE_WEAPON_BASES: RareWeaponBase[] = [
 ];
 
 export function createRareWeapon(base: RareWeaponBase, level: GearLevel) {
-  const tier = Math.max(1, Math.min(10, level));
+  const tier = Math.max(1, Math.min(20, level)) as GearLevel;
   const add = (tier - 1) * base.damagePerLevel;
   const damageMin = base.damageMinBase + add;
   const damageMax = base.damageMaxBase + add;
@@ -49,7 +49,7 @@ export function createRareWeapon(base: RareWeaponBase, level: GearLevel) {
     damage_type: base.damage_type,
     target: "enemy" as const,
     speed_base: base.speed_base,
-    level: tier as GearLevel,
+    level: tier,
     restrictRole: base.restrictRole,
     bonuses: base.bonuses,
   };

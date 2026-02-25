@@ -8,28 +8,27 @@ export const RECRUIT_COST_PER_SOLDIER = 500;
 export const DEFAULT_INVENTORY_CAPACITY = 20;
 
 /**
- * Armory slots: 20 base, +4 every other level (L2,L4,L6,L8,L10), max 40 at L10.
- * L1=20, L2=24, L3=24, L4=28, L5=28, L6=32, L7=32, L8=36, L9=36, L10=40.
+ * Armory slots: 20 base, +4 every other level. L1=20, L10=40, L20=60.
  */
 export function getArmorySlots(level: number): number {
   if (level < 1) return DEFAULT_INVENTORY_CAPACITY;
-  return 20 + Math.floor(level / 2) * 4;
+  return 20 + Math.floor(Math.min(level, 20) / 2) * 4;
 }
 
 /**
- * Per-category armory caps: L1→5/5/10, L10→20/20/40 (weapons/armor/equipment).
+ * Per-category armory caps: L1→5/5/10, L10→20/20/40, L20→36/36/70 (weapons/armor/equipment).
  */
 export function getWeaponArmorySlots(level: number): number {
   if (level < 1) return 5;
-  return 5 + Math.floor(((level - 1) * 15) / 9);
+  return 5 + Math.floor(((Math.min(level, 20) - 1) * 31) / 19);
 }
 export function getArmorArmorySlots(level: number): number {
   if (level < 1) return 5;
-  return 5 + Math.floor(((level - 1) * 15) / 9);
+  return 5 + Math.floor(((Math.min(level, 20) - 1) * 31) / 19);
 }
 export function getEquipmentArmorySlots(level: number): number {
   if (level < 1) return 10;
-  return 10 + Math.floor(((level - 1) * 30) / 9);
+  return 10 + Math.floor(((Math.min(level, 20) - 1) * 60) / 19);
 }
 
 /** Cap for a category (used by external modules that need category string). */
@@ -47,13 +46,45 @@ export function getTotalArmorySlots(level: number): number {
   return getWeaponArmorySlots(level) + getArmorArmorySlots(level) + getEquipmentArmorySlots(level);
 }
 
-/** XP required to reach level L (total). L1=0, L2=100, L3=250, L4=450, ..., L10=3250. Max level 10. */
-const XP_FOR_LEVEL = [0, 100, 250, 450, 700, 1000, 1350, 1750, 2200, 2700, 3250];
+/** Company XP required to reach level L (total). Slow: ~80-100+ missions to L10, ~200+ to L20. */
+const XP_FOR_LEVEL = [
+  0, 500, 1500, 3000, 5000, 7500, 10500, 14000, 18000, 22500, 27500,
+  33000, 39000, 46000, 54000, 63000, 73000, 84000, 96000, 109000, 124000,
+];
 
 export function getXpRequiredForLevel(level: number): number {
-  if (level < 1 || level > 10) return level <= 1 ? 0 : XP_FOR_LEVEL[10];
+  if (level < 1 || level > 20) return level <= 1 ? 0 : XP_FOR_LEVEL[20];
   return XP_FOR_LEVEL[level] ?? 0;
 }
+
+/** Soldier XP required to reach level L (total). L1=0, L2=70, ..., L10=1940, L20=8520. Scaled 1.8x from original for slower leveling. */
+const SOLDIER_XP_FOR_LEVEL = [
+  0, 70, 170, 300, 450, 630, 840, 1070, 1330, 1620, 1940,
+  2320, 2755, 3240, 3780, 4380, 5065, 5810, 6620, 7525, 8520,
+];
+
+export function getSoldierXpRequiredForLevel(level: number): number {
+  if (level < 1 || level > 20) return level <= 1 ? 0 : SOLDIER_XP_FOR_LEVEL[19];
+  return SOLDIER_XP_FOR_LEVEL[level - 1] ?? 0;
+}
+
+/** Derive level from total XP (RPG-style: level is calculated from XP). */
+export function getLevelFromExperience(totalXp: number): number {
+  let lvl = 1;
+  for (let i = 2; i <= 20; i++) {
+    if (totalXp >= getSoldierXpRequiredForLevel(i)) lvl = i;
+    else break;
+  }
+  return lvl;
+}
+
+/** Soldier combat XP: base for surviving mission, + per damage dealt, + per damage taken, + per kill, + per ability use. Tuned for equitable distribution (high base, moderate bonuses). */
+export const SOLDIER_XP_BASE_SURVIVE_VICTORY = 25;
+export const SOLDIER_XP_BASE_SURVIVE_DEFEAT = 12;
+export const SOLDIER_XP_PER_DAMAGE = 0.15;
+export const SOLDIER_XP_PER_DAMAGE_TAKEN = 0.08;
+export const SOLDIER_XP_PER_KILL = 6;
+export const SOLDIER_XP_PER_ABILITY_USE = 1.5;
 
 /** Re-export gear pricing from item-pricing for use in gear market. */
 export { getWeaponPrice, getArmorPrice } from "./item-pricing.ts";

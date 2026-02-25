@@ -1,5 +1,5 @@
 import { DOM } from "../../constants/css-selectors.ts";
-import { getTotalArmorySlots } from "../../constants/economy.ts";
+import { getTotalArmorySlots, getXpRequiredForLevel } from "../../constants/economy.ts";
 import type { MemorialEntry } from "../entities/memorial-types.ts";
 import { clrHash } from "../../utils/html-utils.ts";
 import { Images } from "../../constants/images.ts";
@@ -361,9 +361,9 @@ export const companyHomePageTemplate = () => {
       </div>
 
       <div class="company-level-bar-wrapper">
-        <p class="ms-2 mb-1">Level ${companyLevel}</p>
+        <p class="ms-2 mb-1">Level ${companyLevel}${companyLvl < 20 ? ` · ${companyExperience} / ${getXpRequiredForLevel(companyLvl + 1)} XP` : ""}</p>
         <div class="company-level-progress">
-          <div class="progress-bar" data-experience="${companyExperience}"></div>
+          <div class="progress-bar" style="width: ${companyLvl >= 20 ? 100 : Math.max(0, ((companyExperience - getXpRequiredForLevel(companyLvl)) / Math.max(1, getXpRequiredForLevel(companyLvl + 1) - getXpRequiredForLevel(companyLvl))) * 100)}%"></div>
         </div>
       </div>
     </div>

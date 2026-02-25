@@ -1,5 +1,6 @@
 import type { Soldier, SoldierTraitProfile } from "../../entities/types.ts";
 import { getRecruitCost } from "../../../constants/economy.ts";
+import { soldierXpBar } from "../components/soldier-xp-bar.ts";
 import { formatPctOneDecimal, getSoldierAttackIntervalMs } from "../../../utils/soldier-stats-utils.ts";
 import { UiServiceManager } from "../../../services/ui/ui-service.ts";
 import { formatDisplayName } from "../../../utils/name-utils.ts";
@@ -66,6 +67,7 @@ function Partial() {
 				<div class="card-footer">
 					<span class="trooper-level-badge">Lv ${trooper.level}</span>
 					${_traitWithTooltip(trooper.trait_profile)}
+					${soldierXpBar(trooper)}
 				</div>
 			</div>`;
   }
@@ -136,6 +138,7 @@ function Partial() {
   <div class="card-footer">
     <span class="trooper-level-badge">Lv ${soldier.level}</span>
     ${_traitWithTooltip(soldier.trait_profile)}
+    ${soldierXpBar(soldier)}
   </div>
 </div>`;
   }
@@ -155,6 +158,7 @@ function Partial() {
             <span class="staged-trooper-role">${(soldier.designation ?? "Rifleman").toUpperCase()}</span>
         </div>
         <span class="staged-trooper-level">${soldier.level}</span>
+        ${soldierXpBar(soldier)}
         <div class="staged-trooper-metadata">
             <p class="staged-trooper-name">${formatDisplayName(soldier.name)}</p>
         </div>
@@ -229,6 +233,7 @@ function Partial() {
       stagedTrooperCard: _stc,
       trooper: _t,
       rosterCard: _rsc,
+      soldierXpBar,
       traitProfile: _traitProfileHTML,
       traitWithTooltip: _traitWithTooltip,
     },

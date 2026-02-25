@@ -14,6 +14,7 @@ import {
   getStatsForLevel,
   SOLDIER_BASE,
 } from "../levels.ts";
+import { getSoldierXpRequiredForLevel } from "../../../constants/economy.ts";
 import { generateName } from "../../../utils/name-utils.ts";
 import type {
   Armor,
@@ -76,7 +77,7 @@ function SoldierManager() {
     soldier.id = uuidv4();
     soldier.designation = designation;
     soldier.trait_profile = traitOverride ?? getSoldierTraitProfile();
-    soldier.experience = getExperienceBaseAtLevel(lvl).experience;
+    soldier.experience = getSoldierXpRequiredForLevel(lvl);
 
     applyTraitProfileStats(soldier);
     initializeCombatProfile(soldier);
@@ -89,6 +90,17 @@ function SoldierManager() {
   function levelUpSoldier(soldier: Soldier, lvl: number) {
     const atts = getStatsForLevel(lvl) as Attributes;
     addUpAttributes(soldier, atts);
+    soldier.level = lvl;
+  }
+
+  /** Recompute combat profile from current attributes, armor, weapon, trait. Call after level-up. */
+  function refreshCombatProfile(soldier: Soldier) {
+    const base = JSON.parse(JSON.stringify(SOLDIER_BASE.combatProfile)) as Soldier["combatProfile"];
+    soldier.combatProfile = base;
+    applyTraitProfileStats(soldier);
+    initializeCombatProfile(soldier);
+    if (soldier.armor) applyArmorPercentToCombatProfile(soldier, soldier.armor);
+    if (soldier.weapon) applyWeaponEffectToCombatProfile(soldier, soldier.weapon);
   }
 
   function addUpAttributes(soldier: Soldier, attributes: Attributes) {
@@ -226,8 +238,7 @@ function SoldierManager() {
     level: number;
   } {
     const levelExperience: { level: number; experience: number }[] = [];
-
-    for (let i = 1; i < 11; i++) {
+    for (let i = 1; i <= 20; i++) {
       levelExperience.push({
         level: i,
         experience: Math.floor(
@@ -235,11 +246,8 @@ function SoldierManager() {
         ),
       });
     }
-
-    return levelExperience.find((l) => l.level === lvl) as {
-      experience: number;
-      level: number;
-    };
+    const found = levelExperience.find((l) => l.level === lvl);
+    return (found ?? levelExperience[Math.min(lvl - 1, 19)]) as { experience: number; level: number };
   }
 
   function getSoldierTraitProfile(): TraitDict {
@@ -291,6 +299,7 @@ function SoldierManager() {
     getSoldierTraitProfile,
     getSoldierTraitProfileByName,
     levelUpSoldier,
+    refreshCombatProfile,
   };
 }
 

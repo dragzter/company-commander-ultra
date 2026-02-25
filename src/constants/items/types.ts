@@ -43,8 +43,8 @@ export type EffectSeverity = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
 
 export type WeaponBaseSpeed = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10; // Lower is slower
 
-/** Level/tier of gear (1-10). Same base item at higher level = better stats. */
-export type GearLevel = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
+/** Level/tier of gear (1-20). Same base item at higher level = better stats. */
+export type GearLevel = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20;
 
 /** Armor bonus: flat stats (TGH, HP, etc) or percent (MIT, AVD). Percent bonuses don't scale with tier. */
 export type ArmorBonus =

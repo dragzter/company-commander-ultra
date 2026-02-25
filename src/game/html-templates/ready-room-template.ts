@@ -1,11 +1,13 @@
 import { companyHeaderPartial, companyActionsTemplate } from "./game-setup-template.ts";
 import type { Soldier } from "../entities/types.ts";
+import { getLevelFromExperience } from "../../constants/economy.ts";
 import type { Item } from "../../constants/items/types.ts";
 import type { Mission } from "../../constants/missions.ts";
 import { getActiveSlots, getReserveSlots, getFormationSlots, getSoldierById } from "../../constants/company-slots.ts";
 import { usePlayerCompanyStore } from "../../store/ui-store.ts";
 import { formatDisplayName } from "../../utils/name-utils.ts";
 import { getItemIconUrl } from "../../utils/item-utils.ts";
+import { Partial } from "./partials/partial.ts";
 
 let _lastEquipMoveSoldierIds: string[] = [];
 export function setLastEquipMoveSoldierIds(ids: string[]) {
@@ -39,11 +41,14 @@ function readyRoomEquipSlot(
   const level = item.level ?? 1;
   const rarity = (item.rarity ?? "common") as string;
   const name = item.name ?? "?";
+  const uses = item.uses ?? item.quantity;
+  const usesBadge = uses != null ? `<span class="equip-slot-uses-badge">×${uses}</span>` : "";
   if (!iconUrl) return `<div class="ready-room-equip-slot ready-room-equip-empty ready-room-equip-droppable" title="${name}" ${dataAttrs}><span class="ready-room-equip-placeholder">—</span></div>`;
   return `
 <div class="ready-room-equip-slot item-icon-wrap ready-room-equip-droppable" title="${name}" ${dataAttrs}>
   <img class="ready-room-equip-icon" src="${iconUrl}" alt="" width="38" height="38">
   <span class="item-level-badge ready-room-equip-level rarity-${rarity}">Lv${level}</span>
+  ${usesBadge}
 </div>`;
 }
 
@@ -52,10 +57,10 @@ function readyRoomSoldierCard(s: Soldier, slotIndex: number, isActive: boolean):
   const slotClass = isActive ? "ready-room-active-slot" : "ready-room-reserve-slot";
   const justMoved = _lastEquipMoveSoldierIds.includes(s.id) || _lastReadyRoomMoveSlotIndices.includes(slotIndex);
   const animateClass = justMoved ? " ready-room-card-just-moved" : "";
-  const lvl = s.level ?? 1;
+  const lvl = getLevelFromExperience(s.experience ?? 0);
   const levelRarity = lvl >= 6 ? "epic" : lvl >= 3 ? "rare" : "common";
   return `
-<div class="ready-room-soldier-card designation-${des} ${slotClass}${animateClass}" data-soldier-id="${s.id}" data-slot-index="${slotIndex}" data-soldier-json="${escapeAttr(JSON.stringify(s))}" data-has-soldier="true">
+<div class="ready-room-soldier-card entity-card designation-${des} ${slotClass}${animateClass}" data-soldier-id="${s.id}" data-slot-index="${slotIndex}" data-soldier-json="${escapeAttr(JSON.stringify(s))}" data-has-soldier="true">
   <div class="ready-room-card-inner">
     <div class="ready-room-left">
       <div class="ready-room-avatar-wrap">
@@ -81,6 +86,9 @@ function readyRoomSoldierCard(s: Soldier, slotIndex: number, isActive: boolean):
         ${readyRoomEquipSlot((s.inventory ?? [])[1] as Item | undefined, s.id, "equipment", 1)}
       </div>
     </div>
+  </div>
+  <div class="card-footer">
+    ${Partial.create.soldierXpBar(s)}
   </div>
 </div>`;
 }

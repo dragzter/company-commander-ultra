@@ -18,15 +18,27 @@ export function getWeaponRestrictRole(weapon: Item): "support" | "rifleman" | "m
   return undefined;
 }
 
-/** Check if a weapon can be wielded by a soldier (restrictRole vs designation) */
+/** Check if a weapon can be wielded by a soldier (restrictRole vs designation, level restriction) */
 export function weaponWieldOk(weapon: Item, soldier: Soldier): boolean {
   const role = getWeaponRestrictRole(weapon);
-  if (!role || role === "any") return true;
-  const des = (soldier.designation ?? "").toLowerCase();
-  if (role === "support") return des === "support";
-  if (role === "rifleman") return des === "rifleman";
-  if (role === "medic") return des === "medic";
-  return false;
+  if (!role || role === "any") {
+    // role ok
+  } else {
+    const des = (soldier.designation ?? "").toLowerCase();
+    if (role === "support" && des !== "support") return false;
+    if (role === "rifleman" && des !== "rifleman") return false;
+    if (role === "medic" && des !== "medic") return false;
+  }
+  const itemLevel = (weapon.level as number) ?? 1;
+  const soldierLevel = soldier.level ?? 1;
+  return itemLevel <= soldierLevel;
+}
+
+/** Check if a soldier can equip an item (level restriction: item.level <= soldier.level) */
+export function canEquipItemLevel(item: Item, soldier: Soldier): boolean {
+  const itemLevel = (item.level as number) ?? 1;
+  const soldierLevel = soldier.level ?? 1;
+  return itemLevel <= soldierLevel;
 }
 
 /** Check if an item can go in a given slot type */

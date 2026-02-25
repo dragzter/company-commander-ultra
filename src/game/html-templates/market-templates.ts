@@ -24,6 +24,7 @@ import {
 import { getWeaponsMarketItems, getArmorMarketItems } from "../../constants/gear-market.ts";
 import { getItemIconUrl } from "../../utils/item-utils.ts";
 import { getWeaponRestrictRole } from "../../utils/equip-utils.ts";
+import { getAverageCompanyLevel } from "../../utils/company-utils.ts";
 
 export const marketTemplate = () => {
   const { market } = DOM;
@@ -96,6 +97,7 @@ function marketItemCard(
 
 export const weaponsMarketTemplate = () => {
   const store = usePlayerCompanyStore.getState();
+  const avgLevel = getAverageCompanyLevel(store.company);
   const companyLvl = store.company?.level ?? store.companyLevel ?? 1;
   const creditBalance = store.creditBalance;
   const inv = store.company?.inventory ?? [];
@@ -103,7 +105,7 @@ export const weaponsMarketTemplate = () => {
   const totalCapacity = getWeaponArmorySlots(companyLvl);
   const slotsFree = Math.max(0, totalCapacity - counts.weapon);
 
-  const allWeapons = getWeaponsMarketItems(companyLvl);
+  const allWeapons = getWeaponsMarketItems(avgLevel);
   const commonWeapons = allWeapons.filter((e) => (e.item.rarity ?? "common") === "common");
   const rareWeapons = allWeapons.filter((e) => e.item.rarity === "rare");
   const epicWeapons = allWeapons.filter((e) => e.item.rarity === "epic");
@@ -169,6 +171,7 @@ export const weaponsMarketTemplate = () => {
 
 export const armorMarketTemplate = () => {
   const store = usePlayerCompanyStore.getState();
+  const avgLevel = getAverageCompanyLevel(store.company);
   const companyLvl = store.company?.level ?? store.companyLevel ?? 1;
   const creditBalance = store.creditBalance;
   const inv = store.company?.inventory ?? [];
@@ -176,7 +179,7 @@ export const armorMarketTemplate = () => {
   const totalCapacity = getArmorArmorySlots(companyLvl);
   const slotsFree = Math.max(0, totalCapacity - counts.armor);
 
-  const allArmor = getArmorMarketItems(companyLvl);
+  const allArmor = getArmorMarketItems(avgLevel);
   const commonArmor = allArmor.filter((e) => (e.item.rarity ?? "common") === "common");
   const rareArmor = allArmor.filter((e) => e.item.rarity === "rare");
   const epicArmor = allArmor.filter((e) => e.item.rarity === "epic");

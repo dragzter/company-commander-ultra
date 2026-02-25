@@ -239,6 +239,7 @@ function ScreenManager() {
   }
 
   function createRosterPage() {
+    usePlayerCompanyStore.getState().syncSoldierLevelsFromExperience?.();
     const target = document.getElementById("g-center");
     if (!target) {
       console.error("[Roster] #g-center not found");
