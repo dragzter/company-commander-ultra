@@ -26,6 +26,11 @@ import {
   SOLDIER_XP_PER_DAMAGE_TAKEN,
   SOLDIER_XP_PER_KILL,
   SOLDIER_XP_PER_ABILITY_USE,
+  ENERGY_MAX,
+  ENERGY_COST_BASE,
+  ENERGY_COST_CASUALTY,
+  ENERGY_COST_FAIL,
+  ENERGY_RECOVERY_REST,
 } from "../constants/economy.ts";
 import {
   getItemArmoryCategory,
@@ -797,8 +802,8 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
     });
   },
 
-  /** Grant mission rewards: credits on victory, XP/level-up, items (armory or holding if full). Respects per-category caps. Updates mission stats. Applies ~10% XP penalty when soldiers died. Returns reward items (guaranteed) and loot items (random drops) for summary display. */
-  grantMissionRewards: (mission: Mission | null, victory: boolean, kiaCount?: number): { rewardItems: Item[]; lootItems: Item[] } => {
+  /** Grant mission rewards: credits on victory, XP/level-up, items (armory or holding if full). Respects per-category caps. Updates mission stats. Applies ~10% XP penalty when soldiers died. Returns reward items (guaranteed) and loot items (random drops) for summary display. Uses missionLevel (same derivation as enemy soldiers) for item tiers when provided. */
+  grantMissionRewards: (mission: Mission | null, victory: boolean, kiaCount?: number, missionLevel?: number): { rewardItems: Item[]; lootItems: Item[] } => {
     set((s: CompanyStore) => ({
       totalMissionsCompleted: (s.totalMissionsCompleted ?? 0) + (victory ? 1 : 0),
       totalMissionsFailed: (s.totalMissionsFailed ?? 0) + (victory ? 0 : 1),
@@ -834,7 +839,8 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
     }
 
     const rewardIds = mission.rewardItems ?? [];
-    const level = lvl; // Use post-XP level for drops
+    const level = lvl; // Company level for armory caps
+    const itemLevel = missionLevel != null ? Math.max(1, Math.min(20, missionLevel)) : level; // Mission level (same derivation as enemy soldiers) for item tiers
     const caps = {
       weapon: getWeaponArmorySlots(level),
       armor: getArmorArmorySlots(level),
@@ -870,14 +876,15 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
     for (const id of rewardIds) {
       const item = getRewardItemById(id);
       if (!item) continue;
-      addItemToInventory({ ...item }, false);
+      const copy = { ...item, level: itemLevel as import("../constants/items/types.ts").GearLevel };
+      addItemToInventory(copy, false);
     }
 
     /* Loot rolls: each rolled independently on any successful mission */
-    const tier = Math.max(1, Math.min(20, level)) as import("../constants/items/types.ts").GearLevel;
+    const tier = Math.max(1, Math.min(20, itemLevel)) as import("../constants/items/types.ts").GearLevel;
     if (Math.random() < LOOT_EPIC_CHANCE) {
       const isWeapon = Math.random() < 0.5;
-      const epicArmorIds = getEpicArmorBaseIdsForLevel(level);
+      const epicArmorIds = getEpicArmorBaseIdsForLevel(itemLevel);
       const baseId = isWeapon
         ? pickRandomFrom(EPIC_WEAPON_BASE_IDS)
         : pickRandomFrom(epicArmorIds);
@@ -890,7 +897,7 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
     }
     if (Math.random() < LOOT_RARE_CHANCE) {
       const isWeapon = Math.random() < 0.5;
-      const rareArmorIds = getRareArmorBaseIdsForLevel(level);
+      const rareArmorIds = getRareArmorBaseIdsForLevel(itemLevel);
       const baseId = isWeapon
         ? pickRandomFrom(RARE_WEAPON_BASE_IDS)
         : pickRandomFrom(rareArmorIds);
@@ -903,7 +910,7 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
     }
     if (Math.random() < LOOT_COMMON_SUPPLY_CHANCE) {
       const supply = pickRandomCommonSupply();
-      if (supply) addItemToInventory({ ...supply }, true);
+      if (supply) addItemToInventory({ ...supply, level: itemLevel as import("../constants/items/types.ts").GearLevel }, true);
     }
 
     set((s: CompanyStore) => ({
@@ -974,6 +981,37 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
           SoldierManager.refreshCombatProfile(soldier);
         }
         return soldier;
+      });
+      return { company: { ...state.company, soldiers: newSoldiers } };
+    });
+  },
+
+  /** Deduct energy from mission participants (survivors); recover energy for soldiers who rested. */
+  deductMissionEnergy: (
+    survivorIds: string[],
+    participantCount: number,
+    hasCasualty: boolean,
+    failed: boolean,
+  ) => {
+    set((state: CompanyStore) => {
+      const soldiers = state.company?.soldiers ?? [];
+      const n = survivorIds.length;
+      if (n === 0) return state;
+      const totalCost =
+        participantCount * ENERGY_COST_BASE +
+        (hasCasualty ? ENERGY_COST_CASUALTY : 0) +
+        (failed ? ENERGY_COST_FAIL : 0);
+      const baseDeduction = Math.floor(totalCost / n);
+      const remainder = totalCost - baseDeduction * n;
+      const participantSet = new Set(survivorIds);
+      const newSoldiers = soldiers.map((s) => {
+        const current = Math.max(0, Math.min(ENERGY_MAX, s.energy ?? ENERGY_MAX));
+        if (participantSet.has(s.id)) {
+          const extra = survivorIds.indexOf(s.id) === 0 ? remainder : 0;
+          const deduct = baseDeduction + extra;
+          return { ...s, energy: Math.max(0, current - deduct) };
+        }
+        return { ...s, energy: Math.min(ENERGY_MAX, current + ENERGY_RECOVERY_REST) };
       });
       return { company: { ...state.company, soldiers: newSoldiers } };
     });

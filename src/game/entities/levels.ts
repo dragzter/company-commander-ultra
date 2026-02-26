@@ -166,6 +166,7 @@ const SOLDIER_BASE: Soldier = {
   name: "",
   attributes: ATTRIBUTES_INCREASES_BY_LEVEL[0],
   experience: 0,
+  energy: 100,
   level: 1,
   avatar: "",
   designation: SOLDIER_DESIGNATION.rifleman,

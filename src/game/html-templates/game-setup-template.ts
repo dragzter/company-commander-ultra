@@ -151,7 +151,7 @@ export function codexPopupTemplate(): string {
   return `
   <div id="codex-popup" class="codex-popup" role="dialog" aria-modal="true" hidden>
     <div class="codex-popup-inner codex-popup-tall">
-      <button type="button" class="popup-close-btn codex-popup-close" id="codex-popup-close" aria-label="Close">×</button>
+      <button type="button" class="game-btn game-btn-md game-btn-red codex-popup-close" id="codex-popup-close" aria-label="Close">Close</button>
       <h4 class="codex-popup-title">Game Codex</h4>
       <div class="codex-tabs">
         <button type="button" class="codex-tab active" data-tab="stats">Stats</button>
@@ -193,7 +193,7 @@ export function memorialPopupTemplate(): string {
   return `
   <div id="memorial-popup" class="codex-popup memorial-popup" role="dialog" aria-modal="true" hidden>
     <div class="codex-popup-inner">
-      <button type="button" class="popup-close-btn codex-popup-close" id="memorial-popup-close" aria-label="Close">×</button>
+      <button type="button" class="game-btn game-btn-md game-btn-red codex-popup-close" id="memorial-popup-close" aria-label="Close">Close</button>
       <h4 class="codex-popup-title">Memorial Wall</h4>
       <p class="memorial-count">Total lost in combat: <strong>${menLost}</strong></p>
       <div class="memorial-fallen-list">${fallenList}</div>

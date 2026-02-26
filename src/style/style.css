@@ -1307,10 +1307,43 @@ button.mbtn {
 	margin-top: 2px;
 }
 
+/* Equip picker & armory close buttons - same style as roster Release */
+#equip-picker-close,
+#equip-supplies-close {
+	background-image: none;
+	background:
+		radial-gradient(ellipse 70% 50% at 25% 25%, rgba(255, 255, 255, 0.1) 0%, transparent 50%),
+		radial-gradient(ellipse 50% 70% at 75% 75%, rgba(0, 0, 0, 0.25) 0%, transparent 50%),
+		linear-gradient(145deg, #e85454 0%, #b81c1c 40%, #c92a2a 100%);
+	color: #fff;
+	border: 2px solid rgba(255, 140, 140, 0.85);
+	border-radius: 6px;
+	box-shadow: 0 2px 10px rgba(220, 38, 38, 0.35), inset -2px -2px 3px rgba(0, 0, 0, 0.35), inset 2px 2px 2px rgba(255, 255, 255, 0.06), 0 0 8px rgba(255, 100, 100, 0.25);
+	transition: transform 0.15s, box-shadow 0.2s, filter 0.2s, border-color 0.2s;
+}
+#equip-picker-close:hover,
+#equip-supplies-close:hover {
+	transform: translateY(-1px);
+	filter: brightness(1.1);
+	border-color: rgba(255, 180, 180, 1);
+	box-shadow: 0 4px 14px rgba(220, 38, 38, 0.45), inset -2px -2px 3px rgba(0, 0, 0, 0.3), inset 2px 2px 3px rgba(255, 255, 255, 0.08), 0 0 12px rgba(255, 100, 100, 0.35);
+}
+#equip-picker-close:active,
+#equip-supplies-close:active {
+	transform: translateY(0) scale(0.98);
+	filter: brightness(0.95);
+}
+#equip-supplies-close {
+	border-radius: 4px;
+}
+
 /* Equip picker: uses entity-card for card-footer, compact XP bar */
 #equip-picker-popup .equip-picker-soldier.entity-card .card-footer {
 	min-width: 0;
-	overflow: hidden;
+	overflow: visible;
+	margin: 8px -10px 0 -10px;
+	padding: 8px 10px;
+	border-radius: 0 0 8px 8px;
 }
 #equip-picker-popup .equip-picker-soldier.entity-card .card-footer .soldier-xp-bar {
 	height: 12px;
@@ -1339,9 +1372,12 @@ button.mbtn {
 }
 #ready-room-screen .ready-room-soldier-card.entity-card .card-footer,
 #formation-screen .formation-soldier-card.entity-card .card-footer {
-	background: transparent;
-	border-top: 1px solid rgba(255, 255, 255, 0.08);
-	padding: 4px 0 0 0;
+	margin: 8px -8px 0 -8px;
+	padding: 8px 8px;
+	background: rgba(0, 0, 0, 0.5);
+	border-top: 2px solid rgba(255, 255, 255, 0.15);
+	border-bottom-left-radius: 6px;
+	border-bottom-right-radius: 6px;
 }
 #ready-room-screen .ready-room-soldier-card.entity-card .card-footer .soldier-xp-wrapper,
 #formation-screen .formation-soldier-card.entity-card .card-footer .soldier-xp-wrapper,
@@ -2101,17 +2137,21 @@ button.mbtn {
 	position: absolute;
 	top: 8px;
 	right: 8px;
-	background: none;
-	border: none;
-	color: var(--white-2);
-	font-size: 1.5rem;
-	cursor: pointer;
-	padding: 4px;
-	line-height: 1;
+	background-image: none;
+	background:
+		radial-gradient(ellipse 70% 50% at 25% 25%, rgba(255, 255, 255, 0.1) 0%, transparent 50%),
+		radial-gradient(ellipse 50% 70% at 75% 75%, rgba(0, 0, 0, 0.25) 0%, transparent 50%),
+		linear-gradient(145deg, #e85454 0%, #b81c1c 40%, #c92a2a 100%);
+	color: #fff;
+	border: 2px solid rgba(255, 140, 140, 0.85);
+	border-radius: 6px;
+	box-shadow: 0 2px 10px rgba(220, 38, 38, 0.35), inset -2px -2px 3px rgba(0, 0, 0, 0.35), inset 2px 2px 2px rgba(255, 255, 255, 0.06), 0 0 8px rgba(255, 100, 100, 0.25);
 }
-
 .mission-flavor-popup-close:hover {
-	color: var(--red-1);
+	transform: translateY(-1px);
+	filter: brightness(1.1);
+	border-color: rgba(255, 180, 180, 1);
+	box-shadow: 0 4px 14px rgba(220, 38, 38, 0.45), inset -2px -2px 3px rgba(0, 0, 0, 0.3), inset 2px 2px 3px rgba(255, 255, 255, 0.08), 0 0 12px rgba(255, 100, 100, 0.35);
 }
 
 .mission-flavor-popup-title {
@@ -2179,7 +2219,7 @@ button.mbtn {
 	background: linear-gradient(165deg, rgba(32, 42, 32, 0.88) 0%, rgba(22, 32, 22, 0.92) 100%);
 	border: 1px solid rgba(100, 140, 80, 0.6);
 	border-radius: 6px;
-	padding: 6px 8px;
+	padding: 6px 8px 0;
 	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.06);
 	cursor: pointer;
 	transition: border-color 0.15s, box-shadow 0.15s;
@@ -2452,7 +2492,7 @@ button.mbtn {
 	background: linear-gradient(165deg, rgba(32, 42, 32, 0.88) 0%, rgba(22, 32, 22, 0.92) 100%);
 	border: 1px solid rgba(100, 140, 80, 0.6);
 	border-radius: 6px;
-	padding: 6px 8px;
+	padding: 6px 8px 0;
 	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.06);
 	cursor: pointer;
 	transition: border-color 0.15s, box-shadow 0.15s;
@@ -3729,13 +3769,6 @@ button.mbtn {
 	overflow: visible;
 }
 /* Close button - out of flow, top-right of card */
-.gear-buy-popup-inner .popup-close-btn,
-.supplies-buy-popup-inner .popup-close-btn,
-.item-stats-popup-inner .popup-close-btn {
-	position: absolute;
-	top: 8px;
-	right: 8px;
-}
 .supplies-buy-body {
 	margin-bottom: 8px;
 	font-size: 0.9rem;
@@ -4266,23 +4299,31 @@ button.mbtn {
 .equip-picker-popup[hidden] {
 	display: none !important;
 }
-.popup-close-btn {
-	min-width: 44px;
-	height: 28px;
-	padding: 0 12px;
-	font-size: 1rem;
-	line-height: 1;
-	border: none;
-	border-radius: 2px;
-	background: #c41b1b;
+/* Popup close: same style as roster Release button (game-btn game-btn-md game-btn-red) */
+.popup-close-btn.game-btn.game-btn-red {
+	position: absolute;
+	top: 8px;
+	right: 8px;
+	background-image: none;
+	background:
+		radial-gradient(ellipse 70% 50% at 25% 25%, rgba(255, 255, 255, 0.1) 0%, transparent 50%),
+		radial-gradient(ellipse 50% 70% at 75% 75%, rgba(0, 0, 0, 0.25) 0%, transparent 50%),
+		linear-gradient(145deg, #e85454 0%, #b81c1c 40%, #c92a2a 100%);
 	color: #fff;
-	cursor: pointer;
-	transition: background 0.2s, filter 0.15s;
-	font-weight: 700;
+	border: 2px solid rgba(255, 140, 140, 0.85);
+	border-radius: 6px;
+	box-shadow: 0 2px 10px rgba(220, 38, 38, 0.35), inset -2px -2px 3px rgba(0, 0, 0, 0.35), inset 2px 2px 2px rgba(255, 255, 255, 0.06), 0 0 8px rgba(255, 100, 100, 0.25);
+	transition: transform 0.15s, box-shadow 0.2s, filter 0.2s, border-color 0.2s;
 }
-.popup-close-btn:hover {
-	background: #e52929;
+.popup-close-btn.game-btn.game-btn-red:hover {
+	transform: translateY(-1px);
 	filter: brightness(1.1);
+	border-color: rgba(255, 180, 180, 1);
+	box-shadow: 0 4px 14px rgba(220, 38, 38, 0.45), inset -2px -2px 3px rgba(0, 0, 0, 0.3), inset 2px 2px 3px rgba(255, 255, 255, 0.08), 0 0 12px rgba(255, 100, 100, 0.35);
+}
+.popup-close-btn.game-btn.game-btn-red:active {
+	transform: translateY(0) scale(0.98);
+	filter: brightness(0.95);
 }
 .equip-picker-inner {
 	background: linear-gradient(180deg, #1a1d1a 0%, #0f1210 50%, #080a08 100%);
@@ -4342,7 +4383,7 @@ button.mbtn {
 	position: relative;
 	background: linear-gradient(135deg, rgba(20, 24, 20, 0.95) 0%, rgba(8, 10, 8, 0.98) 100%);
 	border-radius: 8px;
-	padding: 8px 10px;
+	padding: 8px 10px 0;
 	border: 1px solid rgba(103, 86, 69, 0.25);
 	box-shadow: 0 2px 12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.03) inset;
 	transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
@@ -4967,11 +5008,12 @@ button.mbtn {
 	bottom: 0;
 	left: 0;
 	right: 0;
+	z-index: 100;
 	background: linear-gradient(180deg, rgba(15, 18, 12, 0.97) 0%, #0a0c0a 100%);
 	border-top: 1px solid rgba(103, 86, 69, 0.5);
 	padding: 8px 10px;
 	max-height: 45%;
-	min-height: 0;
+	min-height: 86px;
 	display: flex;
 	flex-direction: column;
 	box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.5);
@@ -5003,7 +5045,10 @@ button.mbtn {
 	flex-wrap: wrap;
 	gap: 6px;
 	overflow-y: auto;
-	min-height: 0;
+	overflow-x: hidden;
+	min-height: 54px;
+	flex: 1 1 0;
+	align-content: flex-start;
 }
 .equip-supplies-item.equip-slot {
 	cursor: pointer;
@@ -6124,8 +6169,8 @@ button.mbtn {
 	align-items: flex-start;
 }
 .combat-summary-cards-row .combat-card {
-	min-width: 64px;
-	max-width: 72px;
+	min-width: 80px;
+	max-width: 96px;
 }
 .combat-summary-kills {
 	display: block;
@@ -6235,6 +6280,71 @@ button.mbtn {
 	color: #fbbf24;
 }
 
+/* Combat summary: XP bar - same look as roster card footer */
+.combat-summary-xp {
+	margin-top: 6px;
+	width: 100%;
+	align-self: stretch;
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+.combat-summary-xp-row {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	min-width: 0;
+	width: 100%;
+}
+.combat-summary-xp-label {
+	font-size: 0.6rem;
+	font-weight: 700;
+	color: var(--camo-tan-1);
+	flex-shrink: 0;
+}
+.combat-summary-xp-bar {
+	position: relative;
+	flex: 1;
+	min-width: 0;
+	height: 12px;
+	background: linear-gradient(90deg, rgba(15, 18, 12, 0.95) 0%, rgba(28, 24, 18, 0.92) 100%);
+	border: 1px solid rgba(90, 80, 60, 0.35);
+	border-radius: 3px;
+	overflow: hidden;
+	box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+.combat-summary-xp-fill {
+	position: absolute;
+	top: 0;
+	left: 0;
+	bottom: 0;
+	background: linear-gradient(90deg, #e8c84a 0%, #8ed040 50%, #5cb820 100%);
+	box-shadow: 0 0 6px rgba(140, 220, 60, 0.6);
+	border-radius: 2px;
+	transition: width 0.2s;
+}
+.combat-summary-xp-text {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 0.58rem;
+	font-weight: 700;
+	color: var(--camo-tan-1);
+	text-shadow: 0 0 2px #000, 0 1px 2px #000, 1px 0 2px #000, -1px 0 2px #000, 0 -1px 2px #000;
+	pointer-events: none;
+	z-index: 2;
+}
+.combat-summary-xp-earned {
+	display: block;
+	font-size: 0.55rem;
+	font-weight: 700;
+	color: #4ade80;
+	text-align: center;
+	margin-top: 1px;
+}
+
 .combat-summary-rewards {
 	display: flex;
 	flex-direction: column;
@@ -6256,6 +6366,64 @@ button.mbtn {
 .combat-summary-reward-amount {
 	color: #4ade80;
 	font-weight: 700;
+}
+
+.combat-summary-credit-reward {
+	display: inline-flex;
+	align-items: center;
+	gap: 10px;
+	padding: 14px 20px;
+	background: linear-gradient(145deg, rgba(34, 197, 94, 0.2) 0%, rgba(22, 163, 74, 0.12) 40%, rgba(21, 128, 61, 0.08) 100%);
+	border: 1px solid rgba(74, 222, 128, 0.45);
+	border-radius: 10px;
+	align-self: flex-start;
+	box-shadow:
+		0 0 20px rgba(74, 222, 128, 0.2),
+		inset 0 1px 0 rgba(255, 255, 255, 0.06);
+	margin-bottom: 8px;
+	position: relative;
+	overflow: hidden;
+}
+.combat-summary-credit-reward::before {
+	content: "";
+	position: absolute;
+	inset: 0;
+	background: linear-gradient(105deg, transparent 0%, rgba(255, 255, 255, 0.04) 50%, transparent 100%);
+	pointer-events: none;
+	border-radius: inherit;
+}
+
+.combat-summary-credit-icon {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 36px;
+	height: 36px;
+	font-size: 1.4rem;
+	font-weight: 800;
+	color: #4ade80;
+	text-shadow: 0 0 10px rgba(74, 222, 128, 0.7), 0 1px 2px rgba(0, 0, 0, 0.5);
+	background: rgba(0, 0, 0, 0.2);
+	border-radius: 8px;
+	border: 1px solid rgba(74, 222, 128, 0.25);
+}
+
+.combat-summary-credit-amount {
+	font-size: 1.35rem;
+	font-weight: 900;
+	color: #bbf7d0;
+	letter-spacing: 0.03em;
+	font-variant-numeric: tabular-nums;
+	text-shadow: 0 0 12px rgba(187, 247, 208, 0.4);
+}
+
+.combat-summary-credit-label {
+	font-size: 0.65rem;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.15em;
+	color: rgba(134, 239, 172, 0.85);
+	margin-left: 4px;
 }
 
 .combat-summary-item-rewards {
@@ -6949,6 +7117,74 @@ button.mbtn {
 	border-radius: 2px;
 	transition: width 0.2s;
 }
+
+/* Energy bar - thin yellow bar below XP */
+.soldier-energy-row {
+	display: flex;
+	align-items: center;
+	min-width: 0;
+	height: 6px;
+}
+.soldier-energy-bar {
+	position: relative;
+	flex: 1;
+	min-width: 48px;
+	height: 6px;
+	background: rgba(15, 18, 12, 0.9);
+	border: 1px solid rgba(90, 80, 50, 0.35);
+	border-radius: 2px;
+	overflow: hidden;
+	box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.4);
+}
+.soldier-energy-bar .soldier-energy-fill {
+	position: absolute;
+	top: 0;
+	left: 0;
+	bottom: 0;
+	background: linear-gradient(90deg, #c9a227 0%, #e8c547 100%);
+	border-radius: 1px;
+	transition: width 0.2s;
+}
+.soldier-energy-bar .soldier-energy-text {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 0.5rem;
+	font-weight: 700;
+	color: var(--camo-tan-1);
+	text-shadow: 0 0 2px #000, 0 1px 2px #000, 1px 0 2px #000, -1px 0 2px #000, 0 -1px 2px #000;
+	pointer-events: none;
+	z-index: 2;
+}
+/* Energy bar tooltip - show on hover */
+.energy-tooltip-wrap .energy-tooltip {
+	position: absolute;
+	pointer-events: none;
+	opacity: 0;
+	bottom: 100%;
+	left: 50%;
+	transform: translateX(-50%);
+	margin-bottom: 4px;
+	white-space: nowrap;
+	background: url("/images/ui/info_panel_600.png") no-repeat center / 100% 100%;
+	z-index: 5000;
+	padding: 4px 8px;
+	border-radius: var(--std-border-radius);
+	transition: opacity 0.2s;
+	font-size: 0.75rem;
+	font-weight: 600;
+	color: var(--camo-tan-1);
+}
+.energy-tooltip-wrap:hover .energy-tooltip,
+.energy-tooltip-wrap:focus .energy-tooltip {
+	opacity: 1;
+}
+.energy-tooltip-wrap:focus {
+	outline: none;
+}
+
 .entity-card .card-footer .soldier-xp-wrapper,
 .card-footer .soldier-xp-wrapper {
 	flex-basis: 100%;
@@ -6957,6 +7193,11 @@ button.mbtn {
 .entity-card .card-footer .soldier-xp-bar,
 .card-footer .soldier-xp-bar {
 	width: 100%;
+}
+.entity-card .card-footer .soldier-energy-bar,
+.card-footer .soldier-energy-bar {
+	width: 100%;
+	min-width: 48px;
 }
 
 	.card-actions {
@@ -7063,12 +7304,13 @@ button.mbtn {
 		flex-wrap: wrap;
 		align-items: center;
 		gap: 6px;
-		background: #000;
+		margin-top: 8px;
 		padding: 8px 10px;
 		font-weight: 900;
-		border-top: 2px solid #333;
-		border-bottom-right-radius: var(--std-border-radius);
+		background: rgba(0, 0, 0, 0.85);
+		border-top: 2px solid rgba(103, 86, 69, 0.6);
 		border-bottom-left-radius: var(--std-border-radius);
+		border-bottom-right-radius: var(--std-border-radius);
 	}
 	.card-footer .soldier-xp-bar {
 		flex: 1;
@@ -7901,21 +8143,21 @@ button.mbtn {
 	position: absolute;
 	top: 6px;
 	right: 6px;
-	background: rgba(255, 255, 255, 0.06);
-	border: 1px solid rgba(255, 255, 255, 0.1);
-	border-radius: 4px;
-	color: var(--white-2);
-	font-size: 1.15rem;
-	cursor: pointer;
-	padding: 3px 6px;
-	line-height: 1;
-	transition: background 0.2s, color 0.2s, border-color 0.2s;
+	background-image: none;
+	background:
+		radial-gradient(ellipse 70% 50% at 25% 25%, rgba(255, 255, 255, 0.1) 0%, transparent 50%),
+		radial-gradient(ellipse 50% 70% at 75% 75%, rgba(0, 0, 0, 0.25) 0%, transparent 50%),
+		linear-gradient(145deg, #e85454 0%, #b81c1c 40%, #c92a2a 100%);
+	color: #fff;
+	border: 2px solid rgba(255, 140, 140, 0.85);
+	border-radius: 6px;
+	box-shadow: 0 2px 10px rgba(220, 38, 38, 0.35), inset -2px -2px 3px rgba(0, 0, 0, 0.35), inset 2px 2px 2px rgba(255, 255, 255, 0.06), 0 0 8px rgba(255, 100, 100, 0.25);
 }
-
 .codex-popup-close:hover {
-	background: rgba(220, 60, 60, 0.2);
-	color: var(--red-1);
-	border-color: rgba(220, 60, 60, 0.4);
+	transform: translateY(-1px);
+	filter: brightness(1.1);
+	border-color: rgba(255, 180, 180, 1);
+	box-shadow: 0 4px 14px rgba(220, 38, 38, 0.45), inset -2px -2px 3px rgba(0, 0, 0, 0.3), inset 2px 2px 3px rgba(255, 255, 255, 0.08), 0 0 12px rgba(255, 100, 100, 0.35);
 }
 
 .codex-popup-title {
@@ -8996,7 +9238,7 @@ input[type="text"] {
 	margin-bottom: 4px;
 	white-space: nowrap;
 	background: url("/images/ui/info_panel_600.png") no-repeat center / 100% 100%;
-	z-index: 10;
+	z-index: 5000;
 	padding: 4px 8px;
 	border-radius: var(--std-border-radius);
 	transition: opacity 0.2s;
@@ -9007,7 +9249,6 @@ input[type="text"] {
 .xp-tooltip-wrap:hover .xp-tooltip,
 .xp-tooltip-wrap:focus .xp-tooltip {
 	opacity: 1;
-	z-index: 20;
 }
 .xp-tooltip-wrap:focus {
 	outline: none;

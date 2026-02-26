@@ -239,7 +239,7 @@ export function inventoryTemplate(): string {
     <div class="item-stats-popup-inner gear-buy-popup-inner supplies-buy-popup-inner">
       <div class="gear-buy-title-wrap">
         <h4 id="item-stats-popup-title" class="supplies-buy-title"></h4>
-        <button type="button" id="item-stats-popup-close" class="popup-close-btn">×</button>
+        <button type="button" id="item-stats-popup-close" class="game-btn game-btn-md game-btn-red popup-close-btn">Close</button>
       </div>
       <div id="item-stats-popup-body" class="item-stats-popup-body supplies-buy-body"></div>
       <div class="item-popup-actions item-market-purchase item-popup-equip-only">

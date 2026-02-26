@@ -89,7 +89,7 @@ export type CompanyStore = {
     equipmentIndex?: number,
   ) => { success: boolean; reason?: string };
   emptySoldierToCompanyInventory: (soldierId: string) => { success: boolean; reason?: string };
-  grantMissionRewards: (mission: import("../constants/missions.ts").Mission | null, victory: boolean, kiaCount?: number) => { rewardItems: import("../constants/items/types.ts").Item[]; lootItems: import("../constants/items/types.ts").Item[] };
+  grantMissionRewards: (mission: import("../constants/missions.ts").Mission | null, victory: boolean, kiaCount?: number, missionLevel?: number) => { rewardItems: import("../constants/items/types.ts").Item[]; lootItems: import("../constants/items/types.ts").Item[] };
   syncSoldierLevelsFromExperience: () => void;
   grantSoldierCombatXP: (
     survivorIds: string[],
@@ -105,6 +105,7 @@ export type CompanyStore = {
     playerKills?: Map<string, number>,
     kiaKilledBy?: Map<string, string>,
   ) => void;
+  deductMissionEnergy: (survivorIds: string[], participantCount: number, hasCasualty: boolean, failed: boolean) => void;
   syncCombatHpToSoldiers: (playerCombatants: { id: string; hp: number }[]) => void;
   claimHoldingInventory: () => void;
   moveItemBetweenSlots: (op: {
@@ -147,6 +148,15 @@ export const usePlayerCompanyStore = createStore<CompanyStore>()(
           const fs = getFormationSlots(merged.company);
           if (fs.length > 0 && (!Array.isArray(merged.company?.formationSlots) || merged.company.formationSlots.length !== fs.length)) {
             merged.company = { ...merged.company, formationSlots: fs };
+          }
+          /* Ensure soldiers have energy for old saves */
+          if (Array.isArray(merged.company?.soldiers)) {
+            merged.company = {
+              ...merged.company,
+              soldiers: merged.company!.soldiers!.map((s: { energy?: number }) =>
+                typeof s.energy !== "number" ? { ...s, energy: 100 } : s,
+              ),
+            };
           }
           const mtl = merged.marketTierLevel as number | undefined;
           if (typeof mtl !== "number" || mtl < 0) merged.marketTierLevel = 0;

@@ -52,6 +52,8 @@ export interface Soldier {
   name: string;
   level: number; // increases all attributes according to a scale
   experience: number;
+  /** Energy 0–100. Depleted by missions; rested soldiers recover. */
+  energy?: number;
   status: SoldierStatus;
   avatar: string;
 

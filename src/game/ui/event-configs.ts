@@ -3,6 +3,12 @@ import { getItemPopupBodyHtml } from "../html-templates/inventory-template.ts";
 import {
   STARTING_CREDITS,
   getArmorySlotsForCategory,
+  SOLDIER_XP_BASE_SURVIVE_VICTORY,
+  SOLDIER_XP_BASE_SURVIVE_DEFEAT,
+  SOLDIER_XP_PER_DAMAGE,
+  SOLDIER_XP_PER_DAMAGE_TAKEN,
+  SOLDIER_XP_PER_KILL,
+  SOLDIER_XP_PER_ABILITY_USE,
 } from "../../constants/economy.ts";
 import {
   getItemArmoryCategory,
@@ -12,7 +18,7 @@ import { getActiveSlots, getFormationSlots } from "../../constants/company-slots
 import { setFormationSwapIndices } from "../html-templates/formation-template.ts";
 import { setLastEquipMoveSoldierIds, setLastReadyRoomMoveSlotIndices } from "../html-templates/ready-room-template.ts";
 import { usePlayerCompanyStore } from "../../store/ui-store.ts";
-import { getMaxSoldierLevel } from "../../utils/company-utils.ts";
+import { getMaxSoldierLevel, getAverageCompanyLevel } from "../../utils/company-utils.ts";
 import { disableBtn, enableBtn, s_, sa_ } from "../../utils/html-utils.ts";
 import { DOM } from "../../constants/css-selectors.ts";
 import { Styler } from "../../utils/styler-manager.ts";
@@ -1433,6 +1439,11 @@ export function eventConfigs() {
         assignTargets(players, enemies, targets, now);
         combatWinner = players.every((p) => p.hp <= 0 || p.downState) ? "enemy" : enemies.every((e) => e.hp <= 0 || e.downState) ? "player" : null;
         if (combatWinner) {
+          closeAbilitiesPopup();
+          const missionDetailsPopup = document.getElementById("combat-mission-details-popup");
+          if (missionDetailsPopup) missionDetailsPopup.hidden = true;
+          const quitConfirmPopup = document.getElementById("combat-quit-confirm-popup");
+          if (quitConfirmPopup) quitConfirmPopup.hidden = true;
           updateCombatUI();
           const victory = combatWinner === "player";
           const showSummary = () => {
@@ -1454,20 +1465,35 @@ export function eventConfigs() {
             }
             usePlayerCompanyStore.getState().processCombatKIA(kiaIds, missionName, playerKills, kiaKilledBy);
             const survivorIds = players.filter((p) => !kiaIds.includes(p.id)).map((p) => p.id);
+            const hasCasualty = players.some((p) => p.downState === "kia" || p.downState === "incapacitated");
             const store = usePlayerCompanyStore.getState();
+            /* Same derivation as enemy soldiers: getAverageCompanyLevel(company) - compute before XP to match combat setup */
+            const missionLevel = Math.max(1, Math.min(20, getAverageCompanyLevel(store.company)));
+            store.deductMissionEnergy(survivorIds, players.length, hasCasualty, !victory);
             const oldLevels = new Map(store.company?.soldiers?.filter((s) => survivorIds.includes(s.id)).map((s) => [s.id, s.level ?? 1]) ?? []);
             store.grantSoldierCombatXP(survivorIds, playerDamage, playerDamageTaken, playerKills, playerAbilitiesUsed, victory);
             store.syncCombatHpToSoldiers(players.map((p) => ({ id: p.id, hp: p.maxHp })));
             const kiaCount = kiaIds.length;
             const { rewardItems, lootItems } = victory && mission
-              ? store.grantMissionRewards(mission, true, kiaCount)
+              ? store.grantMissionRewards(mission, true, kiaCount, missionLevel)
               : { rewardItems: [] as import("../../constants/items/types.ts").Item[], lootItems: [] as import("../../constants/items/types.ts").Item[] };
             const newLevels = new Map(usePlayerCompanyStore.getState().company?.soldiers?.filter((s) => survivorIds.includes(s.id)).map((s) => [s.id, s.level ?? 1]) ?? []);
             const leveledUpIds = new Set<string>();
             for (const id of survivorIds) {
               if ((newLevels.get(id) ?? 1) > (oldLevels.get(id) ?? 1)) leveledUpIds.add(id);
             }
-            const summaryData = buildCombatSummaryData(victory, mission, players, playerKills, leveledUpIds.size, rewardItems, lootItems, leveledUpIds, newLevels);
+            const baseXp = victory ? SOLDIER_XP_BASE_SURVIVE_VICTORY : SOLDIER_XP_BASE_SURVIVE_DEFEAT;
+            const xpEarnedBySoldier = new Map<string, number>();
+            for (const id of survivorIds) {
+              const dmg = playerDamage.get(id) ?? 0;
+              const dmgTaken = playerDamageTaken.get(id) ?? 0;
+              const kills = playerKills.get(id) ?? 0;
+              const abilitiesUsed = playerAbilitiesUsed.get(id) ?? 0;
+              const xp = baseXp + dmg * SOLDIER_XP_PER_DAMAGE + dmgTaken * SOLDIER_XP_PER_DAMAGE_TAKEN + kills * SOLDIER_XP_PER_KILL + abilitiesUsed * SOLDIER_XP_PER_ABILITY_USE;
+              xpEarnedBySoldier.set(id, Math.round(xp * 10) / 10);
+            }
+            const soldiersAfterCombat = new Map(usePlayerCompanyStore.getState().company?.soldiers?.filter((s) => players.some((p) => p.id === s.id)).map((s) => [s.id, s]) ?? []);
+            const summaryData = buildCombatSummaryData(victory, mission, players, playerKills, leveledUpIds.size, rewardItems, lootItems, leveledUpIds, newLevels, soldiersAfterCombat, xpEarnedBySoldier);
             const container = document.getElementById("combat-summary-container");
             if (container) {
               container.innerHTML = combatSummaryTemplate(summaryData);
@@ -1717,6 +1743,17 @@ export function eventConfigs() {
         selector: DOM.combat.beginBtn,
         eventType: "click",
         callback: () => {
+          const store = usePlayerCompanyStore.getState();
+          const minEnergy = 5;
+          const lowEnergy = players.filter((p) => {
+            const s = store.company?.soldiers?.find((x) => x.id === p.id);
+            return (s?.energy ?? 100) < minEnergy;
+          });
+          if (lowEnergy.length > 0) {
+            const names = lowEnergy.map((p) => formatDisplayName(p.name)).join(", ");
+            alert(`Need at least ${minEnergy} energy to deploy. Soldiers low on energy: ${names}`);
+            return;
+          }
           combatStarted = true;
           const btn = s_(DOM.combat.beginBtn) as HTMLButtonElement | null;
           if (btn) btn.setAttribute("hidden", "");
@@ -1915,6 +1952,35 @@ export function eventConfigs() {
     },
     {
       selector: "#equip-picker-popup",
+      eventType: "click",
+      callback: (e: Event) => {
+        const target = e.target as HTMLElement;
+        const picker = document.getElementById("equip-picker-popup");
+        const supplies = document.getElementById("equip-supplies-popup");
+        if (!picker || picker.hasAttribute("hidden")) return;
+        if (target.closest("#equip-supplies-close")) return;
+        /* Dismiss unequip wrap when clicking outside slots/unequip */
+        const existingUnequip = picker.querySelector(".equip-slot-unequip-wrap");
+        if (existingUnequip && !target.closest(".equip-slot-unequip-wrap") && !target.closest(".equip-slot")) {
+          existingUnequip.remove();
+          document.querySelectorAll(".equip-slot").forEach((el) => el.classList.remove("equip-slot-selected", "equip-slot-highlight"));
+        }
+        /* Close supplies popup when clicking outside slots/armory items - use click not pointerdown so scroll doesn't trigger */
+        if (
+          supplies &&
+          !supplies.hasAttribute("hidden") &&
+          !target.closest(".equip-slot") &&
+          !target.closest(".equip-supplies-item") &&
+          !target.closest(".equip-slot-unequip-wrap")
+        ) {
+          supplies.setAttribute("hidden", "");
+          document.querySelectorAll(".equip-slot").forEach((el) => el.classList.remove("equip-slot-selected", "equip-slot-highlight"));
+          picker.querySelectorAll(".equip-slot-unequip-wrap").forEach((el) => el.remove());
+        }
+      },
+    },
+    {
+      selector: "#equip-picker-popup",
       eventType: "pointerdown",
       callback: (e: Event) => {
         const ev = e as PointerEvent;
@@ -1943,13 +2009,6 @@ export function eventConfigs() {
             }
           }
           return;
-        }
-
-        /* Dismiss unequip only when clicking outside equip slots; slot clicks handle swap/select themselves */
-        const existingUnequip = picker.querySelector(".equip-slot-unequip-wrap");
-        if (existingUnequip && !target.closest(".equip-slot-unequip-wrap") && !target.closest(".equip-slot")) {
-          existingUnequip.remove();
-          document.querySelectorAll(".equip-slot").forEach((el) => el.classList.remove("equip-slot-selected", "equip-slot-highlight"));
         }
 
         const suppliesItem = target.closest(".equip-supplies-item") as HTMLElement | null;
@@ -2042,21 +2101,6 @@ export function eventConfigs() {
             UiManager.refreshEquipPickerContent?.();
           }
           return;
-        }
-
-        /* Close supplies popup when clicking outside movable items (slots, armory items) */
-        if (
-          !target.closest(".equip-slot") &&
-          !target.closest(".equip-supplies-item") &&
-          !target.closest(".equip-slot-unequip-wrap")
-        ) {
-          const supplies = document.getElementById("equip-supplies-popup");
-          if (supplies && !supplies.hasAttribute("hidden")) {
-            supplies.setAttribute("hidden", "");
-            document.querySelectorAll(".equip-slot").forEach((el) => el.classList.remove("equip-slot-selected", "equip-slot-highlight"));
-            picker.querySelectorAll(".equip-slot-unequip-wrap").forEach((el) => el.remove());
-            return;
-          }
         }
 
         if (!target.closest(".equip-picker-inner")) {

@@ -86,6 +86,17 @@ export const SOLDIER_XP_PER_DAMAGE_TAKEN = 0.12;
 export const SOLDIER_XP_PER_KILL = 6;
 export const SOLDIER_XP_PER_ABILITY_USE = 1.5;
 
+/** Soldier energy (0–100, fixed). Depleted by missions; rested soldiers recover. */
+export const ENERGY_MAX = 100;
+/** Base energy cost per mission (each participating soldier) */
+export const ENERGY_COST_BASE = 5;
+/** Extra energy cost (once) if any soldier dies or is incapacitated */
+export const ENERGY_COST_CASUALTY = 5;
+/** Extra energy cost (once) if mission is failed */
+export const ENERGY_COST_FAIL = 10;
+/** Energy recovered by soldiers who did not participate in the mission */
+export const ENERGY_RECOVERY_REST = 20;
+
 /** Re-export gear pricing from item-pricing for use in gear market. */
 export { getWeaponPrice, getArmorPrice } from "./item-pricing.ts";
 

@@ -154,7 +154,7 @@ export const weaponsMarketTemplate = () => {
     <div class="gear-buy-popup-inner supplies-buy-popup-inner">
       <div class="gear-buy-title-wrap">
         <h4 id="weapons-buy-title" class="supplies-buy-title"></h4>
-        <button type="button" id="weapons-buy-close" class="popup-close-btn">×</button>
+        <button type="button" id="weapons-buy-close" class="game-btn game-btn-md game-btn-red popup-close-btn">Close</button>
       </div>
       <div id="weapons-buy-body" class="supplies-buy-body"></div>
       <div class="item-market-purchase">
@@ -230,7 +230,7 @@ export const armorMarketTemplate = () => {
     <div class="gear-buy-popup-inner supplies-buy-popup-inner">
       <div class="gear-buy-title-wrap">
         <h4 id="armor-buy-title" class="supplies-buy-title"></h4>
-        <button type="button" id="armor-buy-close" class="popup-close-btn">×</button>
+        <button type="button" id="armor-buy-close" class="game-btn game-btn-md game-btn-red popup-close-btn">Close</button>
       </div>
       <div id="armor-buy-body" class="supplies-buy-body"></div>
       <div class="item-market-purchase">
@@ -357,7 +357,7 @@ export const devCatalogMarketTemplate = () => {
 <div id="dev-catalog-market" class="dev-catalog-root weapons-market-root troops-market-root">
   <div id="dev-catalog-popup" class="gear-buy-popup supplies-buy-popup" role="dialog" aria-modal="true" hidden>
     <div class="gear-buy-popup-inner supplies-buy-popup-inner">
-      <div class="gear-buy-title-wrap"><button type="button" id="dev-catalog-popup-close" class="popup-close-btn">×</button></div>
+      <div class="gear-buy-title-wrap"><button type="button" id="dev-catalog-popup-close" class="game-btn game-btn-md game-btn-red popup-close-btn">Close</button></div>
       <div id="dev-catalog-popup-body" class="supplies-buy-body"></div>
       <div class="dev-catalog-actions">
         <button type="button" id="dev-catalog-grant-btn" class="mbtn green equipment-buy-btn-full">Add to Armory</button>
@@ -438,7 +438,7 @@ export const suppliesMarketTemplate = () => {
       <p id="supplies-buy-error" class="supplies-buy-error" role="alert"></p>
       <div class="supplies-buy-actions">
         <button type="button" id="supplies-buy-btn" class="mbtn green equipment-buy-btn-full">Buy</button>
-        <button type="button" id="supplies-buy-close" class="popup-close-btn">×</button>
+        <button type="button" id="supplies-buy-close" class="game-btn game-btn-md game-btn-red popup-close-btn">Close</button>
       </div>
     </div>
   </div>
