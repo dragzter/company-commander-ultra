@@ -1,0 +1,14 @@
+---
+description: When user says "commit and push", stage and commit ALL changes
+alwaysApply: true
+---
+
+# Commit and Push
+
+When the user says "commit and push" (or similar: "commit", "push", "commit and push all"):
+
+1. **Stage all changes**: `git add -A` or equivalent - include every modified, new, and deleted file
+2. **Commit** with the user's message or an inferred one
+3. **Push** to the remote
+
+Do NOT commit only specific files (e.g. version bumps) unless the user explicitly limits scope. "Commit and push" means the entire working tree.

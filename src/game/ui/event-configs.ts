@@ -2408,13 +2408,10 @@ export function eventConfigs() {
     },
     {
       selector: DOM.inventory.itemCard,
-      eventType: "pointerdown",
+      eventType: "click",
       callback: (e: Event) => {
-        const ev = e as PointerEvent;
-        if (ev.pointerType === "mouse" && ev.button !== 0) return;
         const card = (e.target as HTMLElement).closest(".inventory-item-card");
         if (!card || (e.target as HTMLElement).closest(".inventory-destroy-btn")) return;
-        e.preventDefault();
         const json = (card as HTMLElement).getAttribute("data-item-json");
         const indexStr = (card as HTMLElement).dataset.itemIndex;
         if (!json) return;

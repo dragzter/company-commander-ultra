@@ -3201,6 +3201,7 @@ button.mbtn {
 	padding-block: 16px;
 	width: 100%;
 	max-width: 100%;
+	touch-action: pan-y;
 	box-sizing: border-box;
 }
 
@@ -4320,33 +4321,45 @@ button.mbtn {
 	display: none !important;
 	pointer-events: none;
 }
-.item-stats-popup .popup-close-btn {
+.item-stats-popup .popup-close-btn,
+.gear-buy-popup .popup-close-btn,
+.supplies-buy-popup .popup-close-btn {
 	width: 72px;
 	min-width: 72px;
 	padding: 4px 8px;
 	font-size: 0.7rem;
 	border-radius: 4px;
 }
-.item-stats-popup .popup-close-btn.game-btn-md {
+.item-stats-popup .popup-close-btn.game-btn-md,
+.gear-buy-popup .popup-close-btn.game-btn-md,
+.supplies-buy-popup .popup-close-btn.game-btn-md {
 	aspect-ratio: auto;
 	height: 28px;
 }
-.item-stats-popup .gear-buy-title-wrap .supplies-buy-title {
+.item-stats-popup .gear-buy-title-wrap .supplies-buy-title,
+.gear-buy-popup .gear-buy-title-wrap .supplies-buy-title,
+.supplies-buy-popup .gear-buy-title-wrap .supplies-buy-title {
 	padding-right: 84px;
 	min-width: 0;
 }
 @media (max-width: 480px) {
-	.item-stats-popup .popup-close-btn {
+	.item-stats-popup .popup-close-btn,
+	.gear-buy-popup .popup-close-btn,
+	.supplies-buy-popup .popup-close-btn {
 		width: 52px;
 		min-width: 52px;
 		padding: 2px 6px;
 		font-size: 0.6rem;
 		height: 22px;
 	}
-	.item-stats-popup .popup-close-btn.game-btn-md {
+	.item-stats-popup .popup-close-btn.game-btn-md,
+	.gear-buy-popup .popup-close-btn.game-btn-md,
+	.supplies-buy-popup .popup-close-btn.game-btn-md {
 		height: 22px;
 	}
-	.item-stats-popup .gear-buy-title-wrap .supplies-buy-title {
+	.item-stats-popup .gear-buy-title-wrap .supplies-buy-title,
+	.gear-buy-popup .gear-buy-title-wrap .supplies-buy-title,
+	.supplies-buy-popup .gear-buy-title-wrap .supplies-buy-title {
 		padding-right: 60px;
 	}
 }
