@@ -47,7 +47,7 @@ import {
 } from "../combat/combat-loop.ts";
 import type { TargetMap } from "../combat/types.ts";
 import { getItemIconUrl } from "../../utils/item-utils.ts";
-import { weaponWieldOk, itemFitsSlot, canEquipItemLevel } from "../../utils/equip-utils.ts";
+import { weaponWieldOk, itemFitsSlot, canEquipItemLevel, getWeaponRestrictRole } from "../../utils/equip-utils.ts";
 import { resolveGrenadeThrow } from "../../services/combat/grenade-resolver.ts";
 import type { Combatant } from "../combat/types.ts";
 import type { Mission } from "../../constants/missions.ts";
@@ -855,7 +855,15 @@ export function eventConfigs() {
       } else {
         const isMedic = (user.designation ?? "").toLowerCase() === "medic";
         const baseHeal = (medItem.item as { effect?: { effect_value?: number } }).effect?.effect_value ?? 20;
-        const healAmount = isMedic ? 50 : baseHeal;
+        let healAmount: number;
+        if (medItem.item.id === "standard_medkit") {
+          const itemLevel = (medItem.item as { level?: number }).level ?? 1;
+          const t = Math.max(0, Math.min(1, (itemLevel - 1) / 19));
+          /* MedKit: non-medic 20→40, medic 50→100 from Lv1 to Lv20 */
+          healAmount = isMedic ? Math.round(50 + 50 * t) : Math.round(20 + 20 * t);
+        } else {
+          healAmount = baseHeal;
+        }
         const newHp = Math.min(target.maxHp, Math.floor(target.hp) + healAmount);
         target.hp = newHp;
         if (target.downState === "incapacitated") delete target.downState;
@@ -1582,7 +1590,7 @@ export function eventConfigs() {
         eventType: "pointerdown",
         callback: (e: Event) => {
           const ev = e as PointerEvent;
-          if (ev.button !== 0) return;
+          if (ev.pointerType === "mouse" && ev.button !== 0) return;
           const t = e.target as HTMLElement;
           const grenadeBtn = t.closest(".combat-grenade-item");
           const medBtn = t.closest(".combat-med-item");
@@ -1602,7 +1610,8 @@ export function eventConfigs() {
             if (!m) return;
             const isMedic = (user.designation ?? "").toLowerCase() === "medic";
             const isStimPack = m.item.id === "stim_pack";
-            if (isStimPack && !isMedic) {
+            /* Non-medics can only use stim/medkit on themselves; medic can target allies */
+            if (!isMedic) {
               executeMedicalUse(user, user, m);
               return;
             }
@@ -1884,13 +1893,14 @@ export function eventConfigs() {
     const armory = store.company?.inventory ?? [];
     const soldier = store.company?.soldiers?.find((s) => s.id === soldierId);
     if (!soldier) return;
-    const filtered = armory
+    const itemsWithMeta = armory
       .map((item, idx) => ({ item, armoryIndex: idx }))
-      .filter(({ item }) => {
-        if (!itemFitsSlot(item, slotType)) return false;
-        if (!canEquipItemLevel(item, soldier)) return false;
-        if (slotType === "weapon" && !weaponWieldOk(item, soldier)) return false;
-        return true;
+      .filter(({ item }) => itemFitsSlot(item, slotType))
+      .map(({ item, armoryIndex }) => {
+        const canEquip =
+          canEquipItemLevel(item, soldier) &&
+          (slotType !== "weapon" || weaponWieldOk(item, soldier));
+        return { item, armoryIndex, canEquip };
       });
     const grid = document.getElementById("equip-supplies-grid");
     const popup = document.getElementById("equip-supplies-popup");
@@ -1899,22 +1909,31 @@ export function eventConfigs() {
     const titleByType = { weapon: "Weapons", armor: "Armor", equipment: "Supplies" };
     if (titleEl) titleEl.textContent = titleByType[slotType] ?? "Armory";
     const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-    grid.innerHTML = filtered.length === 0
+    const WEAPON_ROLE_LABELS: Record<string, string> = { rifleman: "Rifleman", support: "Support", medic: "Medic", any: "Any" };
+    grid.innerHTML = itemsWithMeta.length === 0
       ? '<div class="equip-supplies-empty">No items in armory for this slot.</div>'
-      : filtered
+      : itemsWithMeta
           .map(
-            ({ item, armoryIndex }) => {
+            ({ item, armoryIndex, canEquip }) => {
               const iconUrl = getItemIconUrl(item);
               const uses = item.uses ?? item.quantity;
               const level = item.level ?? 1;
               const rarity = item.rarity ?? "common";
               const json = JSON.stringify(item).replace(/"/g, "&quot;");
+              const unusableClass = canEquip ? "" : " equip-supplies-item-unusable";
+              const weaponRole = slotType === "weapon"
+                ? (getWeaponRestrictRole(item) ?? (item as { restrictRole?: string }).restrictRole ?? "any")
+                : null;
+              const roleLabelHtml = weaponRole
+                ? `<span class="equip-supplies-role-label role-${weaponRole}">${WEAPON_ROLE_LABELS[weaponRole] ?? weaponRole}</span>`
+                : "";
               return `
-<button type="button" class="equip-supplies-item equip-slot equip-slot-filled${rarity !== "common" ? ` rarity-${rarity}` : ""}" data-armory-index="${armoryIndex}" data-item-json="${json}" title="${esc(item.name ?? "")}">
+<button type="button" class="equip-supplies-item equip-slot equip-slot-filled${rarity !== "common" ? ` rarity-${rarity}` : ""}${unusableClass}" data-armory-index="${armoryIndex}" data-item-json="${json}" data-can-equip="${canEquip}" title="${esc(item.name ?? "")}">
   <div class="equip-slot-inner">
     <img src="${iconUrl}" alt="${item.name}" width="48" height="48">
     <span class="equip-slot-level rarity-${rarity}">Lv${level}</span>
     ${uses != null ? `<span class="equip-slot-uses-badge">×${uses}</span>` : ""}
+    ${roleLabelHtml}
   </div>
 </button>`;
             },
@@ -1939,6 +1958,7 @@ export function eventConfigs() {
         const openedFrom = (picker as HTMLElement).dataset.openedFrom;
         picker.setAttribute("hidden", "");
         if (openedFrom === "roster") UiManager.renderRosterScreen();
+        else if (openedFrom === "inventory") UiManager.renderInventoryScreen();
       },
     },
     {
@@ -1946,8 +1966,14 @@ export function eventConfigs() {
       eventType: "click",
       callback: () => {
         const supplies = document.getElementById("equip-supplies-popup");
+        const picker = document.getElementById("equip-picker-popup");
         if (supplies) supplies.setAttribute("hidden", "");
         document.querySelectorAll(".equip-slot").forEach((el) => el.classList.remove("equip-slot-selected", "equip-slot-highlight"));
+        document.querySelectorAll(".equip-supplies-item").forEach((el) => el.classList.remove("equip-supplies-item-selected"));
+        if (picker) {
+          (picker as HTMLElement).dataset.preselectedItem = "";
+          (picker as HTMLElement).dataset.preselectedArmoryIndex = "";
+        }
       },
     },
     {
@@ -1958,14 +1984,16 @@ export function eventConfigs() {
         const picker = document.getElementById("equip-picker-popup");
         const supplies = document.getElementById("equip-supplies-popup");
         if (!picker || picker.hasAttribute("hidden")) return;
+        if (target.closest("#equip-picker-close")) return;
         if (target.closest("#equip-supplies-close")) return;
+
         /* Dismiss unequip wrap when clicking outside slots/unequip */
         const existingUnequip = picker.querySelector(".equip-slot-unequip-wrap");
         if (existingUnequip && !target.closest(".equip-slot-unequip-wrap") && !target.closest(".equip-slot")) {
           existingUnequip.remove();
           document.querySelectorAll(".equip-slot").forEach((el) => el.classList.remove("equip-slot-selected", "equip-slot-highlight"));
         }
-        /* Close supplies popup when clicking outside slots/armory items - use click not pointerdown so scroll doesn't trigger */
+        /* Close supplies popup when clicking outside slots/armory items */
         if (
           supplies &&
           !supplies.hasAttribute("hidden") &&
@@ -1977,19 +2005,6 @@ export function eventConfigs() {
           document.querySelectorAll(".equip-slot").forEach((el) => el.classList.remove("equip-slot-selected", "equip-slot-highlight"));
           picker.querySelectorAll(".equip-slot-unequip-wrap").forEach((el) => el.remove());
         }
-      },
-    },
-    {
-      selector: "#equip-picker-popup",
-      eventType: "pointerdown",
-      callback: (e: Event) => {
-        const ev = e as PointerEvent;
-        if (ev.button !== 0) return;
-        const target = e.target as HTMLElement;
-        const picker = document.getElementById("equip-picker-popup");
-        if (!picker || picker.hasAttribute("hidden")) return;
-        if (target.closest("#equip-picker-close")) return;
-        if (target.closest("#equip-supplies-close")) return;
 
         const unequipPopBtn = target.closest(".equip-slot-unequip-btn");
         if (unequipPopBtn) {
@@ -2019,6 +2034,37 @@ export function eventConfigs() {
           const eqIdxStr = (picker as HTMLElement).dataset.suppliesTargetEqIndex;
           const armoryIdxStr = suppliesItem.dataset.armoryIndex;
           const itemJson = suppliesItem.dataset.itemJson;
+
+          /* Item-first: no slot selected – allow clicking any item to select and highlight valid slots */
+          if (!soldierId && armoryIdxStr != null && itemJson) {
+            const item = JSON.parse(itemJson.replace(/&quot;/g, '"'));
+            (picker as HTMLElement).dataset.preselectedItem = itemJson;
+            (picker as HTMLElement).dataset.preselectedArmoryIndex = armoryIdxStr;
+            document.querySelectorAll(".equip-slot").forEach((el) => el.classList.remove("equip-slot-selected", "equip-slot-highlight"));
+            picker.querySelectorAll(".equip-slot-unequip-wrap").forEach((el) => el.remove());
+            const soldiers = usePlayerCompanyStore.getState().company?.soldiers ?? [];
+            soldiers.forEach((s) => {
+              const slotsToCheck: { type: "weapon" | "armor" | "equipment"; eqIndex: number }[] =
+                itemFitsSlot(item, "weapon") ? [{ type: "weapon", eqIndex: 0 }] :
+                itemFitsSlot(item, "armor") ? [{ type: "armor", eqIndex: 0 }] :
+                itemFitsSlot(item, "equipment") ? [{ type: "equipment", eqIndex: 0 }, { type: "equipment", eqIndex: 1 }] : [];
+              for (const { type, eqIndex } of slotsToCheck) {
+                const canReceive = canEquipItemLevel(item, s) &&
+                  (type !== "weapon" || weaponWieldOk(item, s));
+                if (canReceive) {
+                  const sel = `.equip-slot[data-soldier-id="${s.id}"][data-slot-type="${type}"]${type === "equipment" ? `[data-eq-index="${eqIndex}"]` : ""}`;
+                  picker.querySelectorAll(sel).forEach((destSlot) => (destSlot as HTMLElement).classList.add("equip-slot-highlight"));
+                }
+              }
+            });
+            document.querySelectorAll(".equip-supplies-item").forEach((el) => el.classList.remove("equip-supplies-item-selected"));
+            suppliesItem.classList.add("equip-supplies-item-selected");
+            return;
+          }
+
+          /* Slot-first: block unusable items (e.g. medic weapon for rifleman slot) */
+          if (soldierId && suppliesItem.dataset.canEquip === "false") return;
+
           if (soldierId && slotType && eqIdxStr != null && armoryIdxStr != null && itemJson) {
             const eqIndex = parseInt(eqIdxStr, 10);
             const slotSelector = `.equip-slot[data-soldier-id="${soldierId}"][data-slot-type="${slotType}"]${slotType === "equipment" ? `[data-eq-index="${eqIndex}"]` : ""}`;
@@ -2034,7 +2080,11 @@ export function eventConfigs() {
               });
               if (result.success) {
                 UiManager.refreshEquipPickerContent?.();
-                openAvailableSuppliesPopup(picker as HTMLElement, soldierId!, slotType, eqIndex);
+                document.querySelectorAll(".equip-slot").forEach((el) => el.classList.remove("equip-slot-selected", "equip-slot-highlight"));
+                picker.querySelectorAll(".equip-slot-unequip-wrap").forEach((el) => el.remove());
+                document.querySelectorAll(".equip-supplies-item").forEach((el) => el.classList.remove("equip-supplies-item-selected"));
+                openAvailableSuppliesPopup(picker as HTMLElement, soldierId, slotType, eqIndex);
+                (picker as HTMLElement).dataset.suppliesTargetSoldierId = "";
                 requestAnimationFrame(() => {
                   const newSlot = picker.querySelector(slotSelector) as HTMLElement | null;
                   if (newSlot) {
@@ -2107,6 +2157,7 @@ export function eventConfigs() {
           picker.setAttribute("hidden", "");
           const openedFrom = (picker as HTMLElement).dataset.openedFrom;
           if (openedFrom === "roster") UiManager.renderRosterScreen();
+          else if (openedFrom === "inventory") UiManager.renderInventoryScreen();
           return;
         }
 
@@ -2161,13 +2212,13 @@ export function eventConfigs() {
             return;
           }
 
-          /* Preselected from inventory screen: equip to this slot if valid */
+          /* Preselected from inventory/armory: equip to this slot if valid, with fly animation */
           if (preselectedJson && preselectedIdxStr != null) {
             const item = JSON.parse(preselectedJson.replace(/&quot;/g, '"'));
             const soldier = soldiers.find((s) => s.id === soldierId);
             if (soldier) {
               let valid = false;
-              if (slotType === "weapon" && item.type === "ballistic_weapon" && weaponWieldOk(item, soldier)) valid = true;
+              if (slotType === "weapon" && itemFitsSlot(item, "weapon") && weaponWieldOk(item, soldier)) valid = true;
               else if (slotType === "armor" && item.type === "armor") valid = true;
               else if (slotType === "equipment" && itemFitsSlot(item, "equipment")) valid = true;
               if (valid) {
@@ -2176,15 +2227,70 @@ export function eventConfigs() {
                 const eqIdx = slotType === "equipment" && slotEl.dataset.eqIndex !== undefined
                   ? parseInt(slotEl.dataset.eqIndex, 10)
                   : undefined;
-                const result = usePlayerCompanyStore.getState().equipItemToSoldier(soldierId, slot, item, { fromArmoryIndex: armoryIndex, equipmentIndex: eqIdx });
-                if (result.success) {
-                  (picker as HTMLElement).dataset.preselectedItem = "";
-                  (picker as HTMLElement).dataset.preselectedArmoryIndex = "";
-                  UiManager.refreshEquipPickerContent?.();
+                const suppliesItem = document.querySelector(".equip-supplies-item.equip-supplies-item-selected") as HTMLElement | null;
+                const slotSelector = `.equip-slot[data-soldier-id="${soldierId}"][data-slot-type="${slotType}"]${slotType === "equipment" ? `[data-eq-index="${eqIdx ?? 0}"]` : ""}`;
+
+                const runEquipAndRefresh = () => {
+                  const result = usePlayerCompanyStore.getState().equipItemToSoldier(soldierId, slot, item, { fromArmoryIndex: armoryIndex, equipmentIndex: eqIdx });
+                  if (result.success) {
+                    (picker as HTMLElement).dataset.preselectedItem = "";
+                    (picker as HTMLElement).dataset.preselectedArmoryIndex = "";
+                    document.querySelectorAll(".equip-slot").forEach((el) => el.classList.remove("equip-slot-highlight"));
+                    document.querySelectorAll(".equip-supplies-item").forEach((el) => el.classList.remove("equip-supplies-item-selected"));
+                    UiManager.refreshEquipPickerContent?.();
+                    const suppliesPopup = document.getElementById("equip-supplies-popup");
+                    if (suppliesPopup && !suppliesPopup.hasAttribute("hidden")) {
+                      openAvailableSuppliesPopup(picker as HTMLElement, soldierId, slotType, eqIdx ?? 0);
+                      (picker as HTMLElement).dataset.suppliesTargetSoldierId = "";
+                    }
+                    requestAnimationFrame(() => {
+                      const newSlot = picker.querySelector(slotSelector) as HTMLElement | null;
+                      if (newSlot) {
+                        newSlot.classList.add("equip-slot-plop");
+                        setTimeout(() => newSlot.classList.remove("equip-slot-plop"), 450);
+                      }
+                    });
+                  }
+                };
+
+                if (suppliesItem) {
+                  const img = suppliesItem.querySelector("img");
+                  const clone = document.createElement("div");
+                  clone.className = "equip-fly-clone";
+                  if (img) {
+                    const cloneImg = img.cloneNode(true) as HTMLImageElement;
+                    cloneImg.style.width = "40px";
+                    cloneImg.style.height = "40px";
+                    clone.appendChild(cloneImg);
+                  }
+                  document.body.appendChild(clone);
+                  const startRect = suppliesItem.getBoundingClientRect();
+                  const endRect = slotEl.getBoundingClientRect();
+                  const startX = startRect.left + (startRect.width - 44) / 2;
+                  const startY = startRect.top + (startRect.height - 44) / 2;
+                  const endX = endRect.left + (endRect.width - 44) / 2;
+                  const endY = endRect.top + (endRect.height - 44) / 2;
+                  clone.style.left = `${startX}px`;
+                  clone.style.top = `${startY}px`;
+                  const dx = endX - startX;
+                  const dy = endY - startY;
+                  clone.animate(
+                    [
+                      { transform: "translate(0, 0) scale(1)" },
+                      { transform: `translate(${dx}px, ${dy}px) scale(1.15)` },
+                    ],
+                    { duration: 280, easing: "cubic-bezier(0.25, 0.46, 0.45, 0.94)" },
+                  ).finished.then(() => {
+                    clone.remove();
+                    runEquipAndRefresh();
+                  });
+                } else {
+                  runEquipAndRefresh();
                 }
+                return;
               }
             }
-            return;
+            /* When preselected item doesn't fit this slot, fall through to open armory so user can pick another */
           }
 
           /* Click any slot (empty or filled): select, highlight if filled, and open armory popup */
@@ -2279,6 +2385,7 @@ export function eventConfigs() {
       callback: () => {
         const picker = document.getElementById("equip-picker-popup");
         if (!picker) return;
+        (picker as HTMLElement).dataset.openedFrom = "inventory";
         picker.dataset.preselectedItem = "";
         picker.dataset.preselectedArmoryIndex = "";
         (document.getElementById("equip-picker-title") as HTMLElement).textContent = "Equip Troops";
@@ -2304,7 +2411,7 @@ export function eventConfigs() {
       eventType: "pointerdown",
       callback: (e: Event) => {
         const ev = e as PointerEvent;
-        if (ev.button !== 0) return;
+        if (ev.pointerType === "mouse" && ev.button !== 0) return;
         const card = (e.target as HTMLElement).closest(".inventory-item-card");
         if (!card || (e.target as HTMLElement).closest(".inventory-destroy-btn")) return;
         e.preventDefault();
@@ -2351,12 +2458,42 @@ export function eventConfigs() {
         const idxStr = (popup as HTMLElement).dataset.itemIndex;
         if (!json) return;
         const item = JSON.parse(json.replace(/&quot;/g, '"'));
+        (picker as HTMLElement).dataset.openedFrom = "inventory";
         (picker as HTMLElement).dataset.preselectedItem = json;
         (picker as HTMLElement).dataset.preselectedArmoryIndex = idxStr ?? "";
         (document.getElementById("equip-picker-title") as HTMLElement).textContent = `Equip: ${item.name}`;
         picker.removeAttribute("hidden");
         popup.hidden = true;
         UiManager.refreshEquipPickerContent?.();
+        /* Highlight slots that can receive this item (same as item-first armory click) */
+        document.querySelectorAll(".equip-slot").forEach((el) => el.classList.remove("equip-slot-selected", "equip-slot-highlight"));
+        picker.querySelectorAll(".equip-slot-unequip-wrap").forEach((el) => el.remove());
+        const soldiers = usePlayerCompanyStore.getState().company?.soldiers ?? [];
+        soldiers.forEach((s) => {
+          const slotsToCheck: { type: "weapon" | "armor" | "equipment"; eqIndex: number }[] =
+            itemFitsSlot(item, "weapon") ? [{ type: "weapon", eqIndex: 0 }] :
+            itemFitsSlot(item, "armor") ? [{ type: "armor", eqIndex: 0 }] :
+            itemFitsSlot(item, "equipment") ? [{ type: "equipment", eqIndex: 0 }, { type: "equipment", eqIndex: 1 }] : [];
+          for (const { type, eqIndex } of slotsToCheck) {
+            const canReceive = canEquipItemLevel(item, s) &&
+              (type !== "weapon" || weaponWieldOk(item, s));
+            if (canReceive) {
+              const sel = `.equip-slot[data-soldier-id="${s.id}"][data-slot-type="${type}"]${type === "equipment" ? `[data-eq-index="${eqIndex}"]` : ""}`;
+              picker.querySelectorAll(sel).forEach((destSlot) => (destSlot as HTMLElement).classList.add("equip-slot-highlight"));
+            }
+          }
+        });
+        /* Open armory popup so user sees items and can tap highlighted slots or pick different item */
+        const slotType = itemFitsSlot(item, "weapon") ? "weapon" : itemFitsSlot(item, "armor") ? "armor" : "equipment";
+        const firstRecipient = soldiers.find((s) => {
+          if (slotType === "weapon") return weaponWieldOk(item, s) && canEquipItemLevel(item, s);
+          if (slotType === "armor") return item.type === "armor" && canEquipItemLevel(item, s);
+          return itemFitsSlot(item, "equipment") && canEquipItemLevel(item, s);
+        });
+        if (firstRecipient) {
+          openAvailableSuppliesPopup(picker as HTMLElement, firstRecipient.id, slotType, 0);
+          (picker as HTMLElement).dataset.suppliesTargetSoldierId = "";
+        }
       },
     },
     {

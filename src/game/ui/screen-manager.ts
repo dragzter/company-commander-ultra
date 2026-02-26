@@ -299,6 +299,7 @@ function ScreenManager() {
   }
 
   function createInventoryPage() {
+    usePlayerCompanyStore.getState().syncSoldierLevelsFromExperience?.();
     UiManager.clear.center();
     const content = parseHTML(inventoryTemplate());
     center.appendChild(content as Element);

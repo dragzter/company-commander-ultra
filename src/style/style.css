@@ -3207,7 +3207,8 @@ button.mbtn {
 .inventory-section {
 	margin-bottom: 24px;
 	min-width: 0;
-	overflow-x: hidden;
+	overflow: visible;
+	flex-shrink: 0;
 }
 
 .inventory-section-title {
@@ -3237,12 +3238,38 @@ button.mbtn {
 	gap: 6px;
 	min-width: 0;
 	max-width: 100%;
+	overflow: visible;
 }
 
 .inventory-empty {
 	color: var(--gray-4);
 	font-style: italic;
 	margin: 0;
+}
+
+/* Empty armory slot: same height as item cards, faint background, dashed border */
+.inventory-empty-slot {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: rgba(40, 45, 50, 0.25);
+	border: 1px dashed rgba(103, 86, 69, 0.35);
+	border-radius: 6px;
+	padding: 4px 6px;
+	min-height: 0;
+	align-self: stretch;
+}
+.inventory-empty-slot-text {
+	font-size: 0.75rem;
+	font-weight: 500;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: rgba(140, 130, 120, 0.5);
+}
+/* Armory grid: uniform row height so empty slots match item cards */
+.inventory-root .inventory-grid.market-grid {
+	grid-auto-rows: minmax(54px, auto);
+	align-items: stretch;
 }
 
 .inventory-holding-section {
@@ -3297,27 +3324,51 @@ button.mbtn {
 	border-radius: 4px;
 }
 
+/* Reserve space so item name doesn't overlap trash button */
+.inventory-item-card .market-item-inner,
+.holding-item-card .market-item-inner {
+	padding-right: 32px;
+}
+.inventory-item-card .market-item-details,
+.holding-item-card .market-item-details {
+	min-width: 0;
+}
 .inventory-item-card .inventory-destroy-btn {
 	position: absolute;
 	top: 4px;
 	right: 4px;
-	width: 22px;
-	height: 22px;
+	width: 24px;
+	height: 24px;
 	min-width: 0;
 	padding: 0;
-	font-size: 0.7rem;
+	font-size: 0.9rem;
 	line-height: 1;
-	background: rgba(80, 30, 30, 0.9);
-	border: 1px solid rgba(180, 60, 60, 0.5);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: linear-gradient(180deg, rgba(140, 45, 45, 0.95) 0%, rgba(90, 25, 25, 0.98) 100%);
+	border: 1px solid rgba(220, 100, 100, 0.6);
 	border-radius: 4px;
-	color: #ffb0a0;
+	color: #ffe0d8;
+	text-shadow: 0 0 6px rgba(255, 150, 140, 0.5), 0 1px 2px rgba(0, 0, 0, 0.5);
+	box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.15);
 	cursor: pointer;
-	opacity: 0.85;
-	transition: opacity 0.2s;
+	z-index: 2;
+	transition: transform 0.15s, box-shadow 0.2s, border-color 0.2s;
 }
 .inventory-item-card .inventory-destroy-btn:hover {
-	opacity: 1;
-	background: rgba(100, 40, 40, 0.95);
+	background: linear-gradient(180deg, rgba(180, 55, 55, 0.98) 0%, rgba(120, 35, 35, 0.98) 100%);
+	border-color: rgba(255, 140, 130, 0.7);
+	box-shadow: 0 2px 8px rgba(180, 60, 60, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+	transform: scale(1.08);
+}
+.inventory-item-card .inventory-destroy-btn:active {
+	transform: scale(0.98);
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+.inventory-destroy-icon {
+	display: block;
+	fill: #fff;
 }
 
 /* Armory: rarity badge styled like market price - same position/size in market-item-details */
@@ -3429,6 +3480,10 @@ button.mbtn {
 	display: flex;
 	flex-direction: column;
 	gap: 12px;
+}
+/* Armory: sections must not shrink – entire page scrolls in main */
+.inventory-root .market-main-2col .inventory-section {
+	flex-shrink: 0;
 }
 
 .market-section {
@@ -3609,8 +3664,14 @@ button.mbtn {
 	overflow: hidden;
 	text-overflow: ellipsis;
 }
-.inventory-item-card .market-item-name {
-	font-size: 0.82rem;
+.inventory-item-card .market-item-name,
+.holding-item-card .market-item-name {
+	font-size: 0.72rem;
+	white-space: normal;
+	overflow-wrap: break-word;
+	word-break: break-word;
+	overflow: visible;
+	text-overflow: unset;
 }
 
 .dev-catalog-label { font-size: 0.7rem; color: rgba(160, 160, 180, 0.9); }
@@ -4257,6 +4318,37 @@ button.mbtn {
 
 .item-stats-popup[hidden] {
 	display: none !important;
+	pointer-events: none;
+}
+.item-stats-popup .popup-close-btn {
+	width: 72px;
+	min-width: 72px;
+	padding: 4px 8px;
+	font-size: 0.7rem;
+	border-radius: 4px;
+}
+.item-stats-popup .popup-close-btn.game-btn-md {
+	aspect-ratio: auto;
+	height: 28px;
+}
+.item-stats-popup .gear-buy-title-wrap .supplies-buy-title {
+	padding-right: 84px;
+	min-width: 0;
+}
+@media (max-width: 480px) {
+	.item-stats-popup .popup-close-btn {
+		width: 52px;
+		min-width: 52px;
+		padding: 2px 6px;
+		font-size: 0.6rem;
+		height: 22px;
+	}
+	.item-stats-popup .popup-close-btn.game-btn-md {
+		height: 22px;
+	}
+	.item-stats-popup .gear-buy-title-wrap .supplies-buy-title {
+		padding-right: 60px;
+	}
 }
 
 .item-stats-popup-title {
@@ -4298,6 +4390,7 @@ button.mbtn {
 }
 .equip-picker-popup[hidden] {
 	display: none !important;
+	pointer-events: none;
 }
 /* Popup close: same style as roster Release button (game-btn game-btn-md game-btn-red) */
 .popup-close-btn.game-btn.game-btn-red {
@@ -4377,7 +4470,10 @@ button.mbtn {
 	gap: 6px;
 	min-width: 0;
 	width: 100%;
-	max-width: 100%;
+}
+#equip-picker-popup .equip-slot,
+.equip-supplies-item.equip-slot {
+	touch-action: manipulation;
 }
 .equip-picker-soldier {
 	position: relative;
@@ -5051,11 +5147,76 @@ button.mbtn {
 	align-content: flex-start;
 }
 .equip-supplies-item.equip-slot {
+	width: 53px;
+	height: 53px;
+	min-width: 53px;
 	cursor: pointer;
+}
+.equip-supplies-item .equip-slot-inner {
+	position: relative;
+	z-index: 1;
+}
+.equip-supplies-item .equip-slot img {
+	width: 49px;
+	height: 49px;
+}
+.equip-supplies-role-label {
+	position: absolute;
+	left: 50%;
+	bottom: -3px;
+	transform: translateX(-50%);
+	font-size: 0.58rem;
+	font-weight: 700;
+	line-height: 1.1;
+	text-align: center;
+	text-transform: capitalize;
+	padding: 1px 4px;
+	border-radius: 2px;
+}
+.equip-supplies-role-label.role-rifleman {
+	background: linear-gradient(135deg, rgba(75, 110, 45, 0.95) 0%, rgba(35, 65, 18, 0.95) 100%);
+	color: #c8f088;
+	border: 1px solid rgba(140, 200, 90, 0.5);
+}
+.equip-supplies-role-label.role-support {
+	background: linear-gradient(135deg, rgba(90, 78, 45, 0.95) 0%, rgba(48, 38, 18, 0.95) 100%);
+	color: #beaa60;
+	border: 1px solid rgba(230, 210, 130, 0.5);
+}
+.equip-supplies-role-label.role-medic {
+	background: linear-gradient(135deg, rgba(90, 35, 32, 0.95) 0%, rgba(48, 15, 12, 0.95) 100%);
+	color: #ffc0b8;
+	border: 1px solid rgba(220, 100, 95, 0.5);
+}
+.equip-supplies-role-label.role-any {
+	background: rgba(60, 60, 70, 0.9);
+	color: #aaa;
+	border: 1px solid rgba(140, 140, 150, 0.5);
 }
 .equip-supplies-item.equip-slot:hover {
 	border-color: rgba(103, 86, 69, 0.6);
 	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+.equip-supplies-item-unusable {
+	cursor: not-allowed;
+	position: relative;
+}
+.equip-supplies-item-unusable::after {
+	content: "";
+	position: absolute;
+	inset: 0;
+	background: rgba(180, 40, 40, 0.5);
+	border-radius: inherit;
+	pointer-events: none;
+}
+.equip-supplies-item-unusable:hover {
+	border-color: rgba(103, 86, 69, 0.6);
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+.equip-supplies-item-selected {
+	outline: 2px solid var(--accent-cyan-1);
+	outline-offset: 1px;
+	box-shadow: 0 0 10px rgba(34, 211, 238, 0.4);
 }
 .equip-supplies-empty {
 	font-size: 0.85rem;

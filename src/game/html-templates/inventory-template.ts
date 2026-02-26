@@ -5,7 +5,6 @@ import {
   getWeaponArmorySlots,
   getArmorArmorySlots,
   getEquipmentArmorySlots,
-  getTotalArmorySlots,
 } from "../../constants/economy.ts";
 import { getItemIconUrl } from "../../utils/item-utils.ts";
 import type { Item, ArmorBonus } from "../../constants/items/types.ts";
@@ -162,10 +161,11 @@ function inventoryItemCard(item: Item, index: number): string {
     ${iconHtml}
     <div class="market-item-details">
       <span class="market-item-name">${item.name}</span>
-      <span class="market-item-rarity-badge rarity-${rarity}">${(rarity as string).toUpperCase()}</span>
     </div>
   </div>
-  <button type="button" class="inventory-destroy-btn" data-item-index="${index}" title="Destroy">🗑</button>
+  <button type="button" class="inventory-destroy-btn" data-item-index="${index}" title="Destroy" aria-label="Destroy">
+    <svg class="inventory-destroy-icon" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="white" d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+</button>
 </div>`;
 }
 
@@ -195,7 +195,6 @@ function holdingItemCard(item: Item): string {
     ${iconHtml}
     <div class="market-item-details">
       <span class="market-item-name">${item.name}</span>
-      <span class="market-item-rarity-badge rarity-${rarity}">${(rarity as string).toUpperCase()}</span>
     </div>
   </div>
 </div>`;
@@ -217,12 +216,45 @@ export function inventoryTemplate(): string {
   const armorIndices = armor.map((a) => items.indexOf(a));
   const equipmentIndices = equipment.map((e) => items.indexOf(e));
 
+  const companyLevel = store.company?.level ?? store.companyLevel ?? 1;
+  const weaponSlots = getWeaponArmorySlots(companyLevel);
+  const armorSlots = getArmorArmorySlots(companyLevel);
+  const equipmentSlots = getEquipmentArmorySlots(companyLevel);
+
+  function armorySectionSlots(
+    itemsInCategory: Item[],
+    indices: number[],
+    capacity: number,
+    sectionId: string,
+    sectionTitle: string,
+  ): string {
+    const filled = itemsInCategory.map((item, i) => ({ item, index: indices[i] }));
+    const slots: (Item | null)[] = Array.from({ length: capacity }, (_, i) => filled[i]?.item ?? null);
+    const slotIndices: (number | null)[] = Array.from({ length: capacity }, (_, i) =>
+      filled[i] != null ? indices[i] : null,
+    );
+    const gridItems = slots
+      .map((item, i) =>
+        item
+          ? inventoryItemCard(item, slotIndices[i]!)
+          : '<div class="inventory-empty-slot" aria-label="Empty slot"><span class="inventory-empty-slot-text">Empty</span></div>',
+      )
+      .join("");
+    return `
+    <div class="inventory-section market-section">
+      <h4 class="inventory-section-title market-section-title">${sectionTitle} <span class="inventory-section-cap">${itemsInCategory.length} / ${capacity}</span></h4>
+      <div class="inventory-grid market-grid market-grid-2col" id="${sectionId}">
+        ${gridItems}
+      </div>
+    </div>`;
+  }
+
   const holdingSection =
     holding.length === 0
       ? ""
       : `
-    <div class="inventory-section inventory-holding-section">
-      <h4 class="inventory-section-title">Items Waiting (Armory Full)</h4>
+    <div class="inventory-section market-section inventory-holding-section">
+      <h4 class="inventory-section-title market-section-title">Items Waiting (Armory Full)</h4>
       <p class="inventory-holding-hint">Mission rewards are waiting. Make room in your armory to claim them.</p>
       <div class="inventory-holding-actions">
         <button type="button" id="claim-holding-inventory-btn" class="mbtn blue mbtn-sm">Claim to Armory</button>
@@ -248,28 +280,10 @@ export function inventoryTemplate(): string {
     </div>
   </div>
   ${companyHeaderPartial("Company Armory")}
-  <div class="inventory-main">
-    <div class="inventory-section">
-      <h4 class="inventory-section-title">Weapons <span class="inventory-section-cap">${weapons.length} / ${getWeaponArmorySlots(store.company?.level ?? store.companyLevel ?? 1)}</span></h4>
-      <div class="inventory-grid" id="inventory-weapons">
-        ${weapons.map((item, i) => inventoryItemCard(item, weaponIndices[i])).join("")}
-        ${weapons.length === 0 ? '<p class="inventory-empty">No weapons</p>' : ""}
-      </div>
-    </div>
-    <div class="inventory-section">
-      <h4 class="inventory-section-title">Armor <span class="inventory-section-cap">${armor.length} / ${getArmorArmorySlots(store.company?.level ?? store.companyLevel ?? 1)}</span></h4>
-      <div class="inventory-grid" id="inventory-armor">
-        ${armor.map((item, i) => inventoryItemCard(item, armorIndices[i])).join("")}
-        ${armor.length === 0 ? '<p class="inventory-empty">No armor</p>' : ""}
-      </div>
-    </div>
-    <div class="inventory-section">
-      <h4 class="inventory-section-title">Equipment & Supplies <span class="inventory-section-cap">${equipment.length} / ${getEquipmentArmorySlots(store.company?.level ?? store.companyLevel ?? 1)}</span></h4>
-      <div class="inventory-grid" id="inventory-equipment">
-        ${equipment.map((item, i) => inventoryItemCard(item, equipmentIndices[i])).join("")}
-        ${equipment.length === 0 ? '<p class="inventory-empty">No equipment</p>' : ""}
-      </div>
-    </div>
+  <div class="inventory-main market-main-2col">
+    ${armorySectionSlots(weapons, weaponIndices, weaponSlots, "inventory-weapons", "Weapons")}
+    ${armorySectionSlots(armor, armorIndices, armorSlots, "inventory-armor", "Armor")}
+    ${armorySectionSlots(equipment, equipmentIndices, equipmentSlots, "inventory-equipment", "Equipment & Supplies")}
     ${holdingSection}
   </div>
   <div class="inventory-footer troops-market-footer">

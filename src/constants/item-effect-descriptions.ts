@@ -50,10 +50,18 @@ export const ITEM_EFFECT_DESCRIPTIONS: Record<string, EffectDescription> = {
   nbc_neutralizer: { effect: "Cleanses Nuclear, Biological, and Chemical debuffs from allies in the area." },
   m99_sticky_grenade: { effect: "80 explosive damage to a single enemy. No splash." },
   tk21_throwing_knife: { effect: "20 kinetic damage to a single enemy. No splash. Uses thrower's accuracy." },
-  /* Medical */
-  stim_pack: { effect: "+50% attack speed for 10 seconds." },
-  standard_medkit: { effect: "Restores 20 HP immediately." },
-  orange_stim_pack: { effect: "Restores 40 HP immediately." },
+  /* Medical – non-medics can only use on self; medics can use on self or allies */
+  stim_pack: {
+    effect:
+      "Self only. +50% attack speed for 10 seconds. Medics may use on allies.",
+  },
+  standard_medkit: {
+    /* Description built dynamically in getItemEffectDescription from item.level */
+    effect: "_dynamic_",
+  },
+  orange_stim_pack: {
+    effect: "Self only (40 HP). Medics may use on allies.",
+  },
   adrenaline_injection: {
     effect: "Restores 12 HP per tick for 3 ticks. While active: increased initiative and evasion, reduced accuracy.",
   },
@@ -71,9 +79,27 @@ function isSimpleEffect(d: EffectDescription): d is SimpleEffect {
   return typeof d === "object" && d !== null && "effect" in d;
 }
 
-export function getItemEffectDescription(item: { id?: string }): EffectDescription | null {
+/** MedKit heal amounts: non-medic 20→40, medic 50→100 from Lv1 to Lv20 */
+function getMedKitHealValues(level: number): { nonMedic: number; medic: number } {
+  const lvl = Math.max(1, Math.min(20, level ?? 1));
+  const t = (lvl - 1) / 19;
+  return {
+    nonMedic: Math.round(20 + 20 * t),
+    medic: Math.round(50 + 50 * t),
+  };
+}
+
+export function getItemEffectDescription(item: { id?: string; level?: number }): EffectDescription | null {
   if (!item?.id) return null;
-  return ITEM_EFFECT_DESCRIPTIONS[item.id] ?? null;
+  const entry = ITEM_EFFECT_DESCRIPTIONS[item.id];
+  if (!entry) return null;
+  if (item.id === "standard_medkit" && isSimpleEffect(entry) && entry.effect === "_dynamic_") {
+    const { nonMedic, medic } = getMedKitHealValues(item.level ?? 1);
+    return {
+      effect: `Self only (heals ${nonMedic} HP). When used by a Medic: heals ${medic} HP; can target self or allies.`,
+    };
+  }
+  return entry;
 }
 
 /** Render effect description as HTML string for popup. */

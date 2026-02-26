@@ -16,19 +16,30 @@ export function getArmorySlots(level: number): number {
 }
 
 /**
- * Per-category armory caps: L1→5/5/10, L10→20/20/40, L20→36/36/70 (weapons/armor/equipment).
+ * Per-category armory caps:
+ * L1–6: 6/6/20 (weapons/armor/supplies)
+ * L7–12: 8/8/25
+ * L13–18: 10/10/30
+ * L19–20: 10/10/40
  */
 export function getWeaponArmorySlots(level: number): number {
-  if (level < 1) return 5;
-  return 5 + Math.floor(((Math.min(level, 20) - 1) * 31) / 19);
+  if (level < 1) return 6;
+  if (level <= 6) return 6;
+  if (level <= 12) return 8;
+  return 10;
 }
 export function getArmorArmorySlots(level: number): number {
-  if (level < 1) return 5;
-  return 5 + Math.floor(((Math.min(level, 20) - 1) * 31) / 19);
+  if (level < 1) return 6;
+  if (level <= 6) return 6;
+  if (level <= 12) return 8;
+  return 10;
 }
 export function getEquipmentArmorySlots(level: number): number {
-  if (level < 1) return 10;
-  return 10 + Math.floor(((Math.min(level, 20) - 1) * 60) / 19);
+  if (level < 1) return 20;
+  if (level <= 6) return 20;
+  if (level <= 12) return 25;
+  if (level <= 18) return 30;
+  return 40;
 }
 
 /** Cap for a category (used by external modules that need category string). */
