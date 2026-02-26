@@ -49,7 +49,6 @@ export const ITEM_EFFECT_DESCRIPTIONS: Record<string, EffectDescription> = {
   /* Throwables – single target */
   nbc_neutralizer: { effect: "Cleanses Nuclear, Biological, and Chemical debuffs from allies in the area." },
   m99_sticky_grenade: { effect: "80 explosive damage to a single enemy. No splash." },
-  tk21_throwing_knife: { effect: "20 kinetic damage to a single enemy. No splash. Uses thrower's accuracy." },
   /* Medical – non-medics can only use on self; medics can use on self or allies */
   stim_pack: {
     effect:

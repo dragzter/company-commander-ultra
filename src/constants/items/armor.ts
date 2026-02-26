@@ -20,7 +20,7 @@ export const ArmorItems: ItemsVolume<Armor> = {
       description: "Hardened with ceramic plates. Now with extra ammo pouches.",
       usable: true,
       toughness: 25,
-      icon: "armor_19.png",
+      icon: "armor_11.png",
     },
     m108_flak_jacket: {
       id: "m108_flak_jacket",

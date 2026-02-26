@@ -4,6 +4,7 @@ import { WEAPON_EFFECTS } from "../../constants/items/weapon-effects.ts";
 import { RARE_ARMOR_BASES } from "../../constants/items/rare-armor-bases.ts";
 import { EPIC_ARMOR_BASES } from "../../constants/items/epic-armor-bases.ts";
 import type { ArmorImmunity } from "../../constants/items/epic-armor-bases.ts";
+import { getItemSpecialEffect } from "../../constants/item-special-effects.ts";
 import { Images } from "../../constants/images.ts";
 import { getItemIconUrl } from "../../utils/item-utils.ts";
 import type { Soldier } from "../entities/types.ts";
@@ -12,18 +13,35 @@ import type { Combatant } from "./types.ts";
 
 const RED_PORTRAIT_KEYS = Object.keys(Images.red_portrait);
 
-const TRAIT_IMMUNITIES: Record<string, ArmorImmunity[]> = {
-  infantry_grunt: ["stun", "panic"],
-  unshakeable: ["panic", "suppression"],
-};
-
-function getArmorImmunities(baseId: string | undefined): ArmorImmunity[] {
+function getArmorImmunitiesFromBase(baseId: string | undefined): ArmorImmunity[] {
   if (!baseId) return [];
   const rare = RARE_ARMOR_BASES.find((b) => b.baseId === baseId);
+  if (rare?.specialEffect) {
+    const eff = getItemSpecialEffect(rare.specialEffect);
+    return eff.immunities ?? [];
+  }
   if (rare?.immunities) return rare.immunities;
   const epic = EPIC_ARMOR_BASES.find((b) => b.baseId === baseId);
-  if (epic?.immunities) return epic.immunities;
+  if (epic?.specialEffect) {
+    const eff = getItemSpecialEffect(epic.specialEffect);
+    return eff.immunities ?? [];
+  }
   return [];
+}
+
+function getArmorIncapMultiplier(baseId: string | undefined): number {
+  if (!baseId) return 1;
+  const rare = RARE_ARMOR_BASES.find((b) => b.baseId === baseId);
+  if (rare?.specialEffect) {
+    const eff = getItemSpecialEffect(rare.specialEffect);
+    return eff.incapChanceMultiplier ?? 1;
+  }
+  const epic = EPIC_ARMOR_BASES.find((b) => b.baseId === baseId);
+  if (epic?.specialEffect) {
+    const eff = getItemSpecialEffect(epic.specialEffect);
+    return eff.incapChanceMultiplier ?? 1;
+  }
+  return 1;
 }
 
 /** Convert player Soldier to Combatant. */
@@ -50,12 +68,9 @@ export function soldierToCombatant(soldier: Soldier): Combatant {
   const weaponEffect = (weapon as { weaponEffect?: string })?.weaponEffect;
 
   const armor = soldier.armor as { baseId?: string } | undefined;
-  const armorImmunities = getArmorImmunities(armor?.baseId);
-  const traitProfile = soldier.trait_profile as { name?: string } | undefined;
-  const traitName = traitProfile?.name ?? "";
-  const traitImmunities = TRAIT_IMMUNITIES[traitName] ?? [];
-  const allImmunities = new Set<ArmorImmunity>([...armorImmunities, ...traitImmunities]);
-  const incapMult = traitName === "relentless" ? 1.6 : 1;
+  const armorImmunities = getArmorImmunitiesFromBase(armor?.baseId);
+  const allImmunities = new Set<ArmorImmunity>(armorImmunities);
+  const incapMult = getArmorIncapMultiplier(armor?.baseId);
 
   return {
     id: soldier.id,

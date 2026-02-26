@@ -45,6 +45,7 @@ function itemCard(item: Item): string {
   const iconUrl = getItemIconUrl(item);
   const name = item.name ?? item.id ?? "Unknown";
   const level = item.level ?? 1;
+  const noLevel = (item as { noLevel?: boolean }).noLevel;
   const rarity = (item.rarity ?? "common") as string;
   const rarityClass = rarity !== "common" ? ` rarity-${rarity}` : "";
   const isWeapon = item.type === "ballistic_weapon" || item.type === "melee_weapon";
@@ -52,8 +53,9 @@ function itemCard(item: Item): string {
   const roleBadgeHtml = weaponRole ? `<span class="market-weapon-role-badge role-${weaponRole}">${WEAPON_ROLE_LABELS[weaponRole] ?? weaponRole}</span>` : "";
   const uses = item.uses ?? item.quantity;
   const usesBadge = uses != null ? `<span class="market-item-uses-badge">×${uses}</span>` : "";
+  const levelBadgeHtml = !noLevel ? `<span class="item-level-badge rarity-${rarity}">Lv${level}</span>` : "";
   const iconHtml = iconUrl
-    ? `<div class="market-item-icon-wrap"><img class="market-item-icon" src="${escapeAttr(iconUrl)}" alt="${escapeAttr(name)}" width="42" height="42"><span class="item-level-badge rarity-${rarity}">Lv${level}</span>${usesBadge}${roleBadgeHtml}</div>`
+    ? `<div class="market-item-icon-wrap"><img class="market-item-icon" src="${escapeAttr(iconUrl)}" alt="${escapeAttr(name)}" width="42" height="42">${levelBadgeHtml}${usesBadge}${roleBadgeHtml}</div>`
     : "";
   return `
 <div class="market-item-slot combat-summary-item-slot${rarityClass}">

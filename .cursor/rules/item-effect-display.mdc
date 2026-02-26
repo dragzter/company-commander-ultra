@@ -1,0 +1,44 @@
+---
+description: Item effect display format - named effects use two-line layout
+globs: **/inventory-template.ts **/market-templates.ts **/item-effect-descriptions.ts **/item-special-effects.ts
+alwaysApply: false
+---
+
+# Item Effect Display Format
+
+For items with **named effects** (effects that have both a name and a description):
+
+## Required Layout
+
+The effect box label (where "EFFECT" would go) **IS** the effect name:
+
+```
+-------------------------
+[Effect name]              |
+[description]              |
+-------------------------
+```
+
+- **item-popup-effect-hint** = the effect name (e.g. "Infantry Grunt", "Firebreaker")
+- **item-popup-effect-text** = the effect description
+
+## Implementation
+
+```html
+<div class="item-popup-effect">
+  <span class="item-popup-effect-hint">${escapeHtml(eff.name)}</span>
+  <p class="item-popup-effect-text">${escapeHtml(eff.description)}</p>
+</div>
+```
+
+## Do NOT
+
+- Use generic labels like "Effect" or "Special Effect" when the effect has a name
+- Put name and description on the same line with a colon
+- Add a redundant name line — the hint IS the name
+
+## Applies To
+
+- Item special effects (from item-special-effects.ts: Infantry Grunt, Sturdy, Flame Ward, etc.)
+- Weapon effects (Calibrated, Firebreaker, etc.)
+- Any item effect with a `name` and `description` pair

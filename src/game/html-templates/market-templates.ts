@@ -42,7 +42,7 @@ export const marketTemplate = () => {
 				<button id="${c(market.marketArmorLink)}" class="blue mbtn mb-3">Body Armor</button>
 				<button id="${c(market.marketWeaponsLink)}" class="red mbtn mb-3">Weapons</button>
 				<button id="${c(market.marketSuppliesLink)}" class="blue mbtn mb-3">Supplies</button>
-				${typeof import.meta !== "undefined" && (import.meta as { env?: { DEV?: boolean } }).env?.DEV ? `<button id="${c(market.marketDevCatalogLink)}" class="gray mbtn market-dev-btn" title="Developer: view all weapons and armor">Dev Catalog</button>` : ""}
+				<button id="${c(market.marketDevCatalogLink)}" class="gray mbtn market-dev-btn" title="Developer: view all weapons and armor">Dev Catalog</button>
 			</div>
 			<div class="market-credits-inline">${marketCreditsPartial(usePlayerCompanyStore.getState().creditBalance)}</div>
 		</div>
@@ -84,6 +84,7 @@ function marketItemCard(
   const iconUrl = getItemIconUrl(entry.item);
   const name = nameOverride ?? entry.item.name;
   const level = entry.item.level ?? 1;
+  const noLevel = (entry.item as { noLevel?: boolean }).noLevel;
   const uses = entry.item.uses;
   const rarity = entry.item.rarity ?? "common";
   const rarityClass = rarity !== "common" ? ` market-item-rarity-${rarity} rarity-${rarity}` : "";
@@ -96,8 +97,9 @@ function marketItemCard(
   const roleBadgeHtml = weaponRole
     ? `<span class="market-weapon-role-badge role-${weaponRole}">${WEAPON_ROLE_LABELS[weaponRole] ?? weaponRole}</span>`
     : "";
+  const levelBadgeHtml = !noLevel ? `<span class="item-level-badge rarity-${rarity}">Lv${level}</span>` : "";
   const iconHtml = iconUrl
-    ? `<div class="market-item-icon-wrap"><img class="market-item-icon" src="${iconUrl}" alt="${name}" width="42" height="42"><span class="item-level-badge rarity-${rarity}">Lv${level}</span>${isSupplies && uses != null ? usesBadgeHtml : ""}${roleBadgeHtml}</div>`
+    ? `<div class="market-item-icon-wrap"><img class="market-item-icon" src="${iconUrl}" alt="${name}" width="42" height="42">${levelBadgeHtml}${isSupplies && uses != null ? usesBadgeHtml : ""}${roleBadgeHtml}</div>`
     : "";
   const slotLevelUsesBadge = !isSupplies && uses != null ? usesBadgeHtml : "";
   return `
@@ -293,6 +295,7 @@ export const devCatalogMarketTemplate = () => {
     const iconUrl = getItemIconUrl(entry.item);
     const name = entry.item.name;
     const level = entry.item.level ?? 1;
+    const noLevel = (entry.item as { noLevel?: boolean }).noLevel;
     const rarity = entry.item.rarity ?? "common";
     const rarityClass = rarity !== "common" ? ` market-item-rarity-${rarity} rarity-${rarity}` : "";
     const isWeapon = entry.item.type === "ballistic_weapon" || entry.item.type === "melee_weapon";
@@ -302,8 +305,9 @@ export const devCatalogMarketTemplate = () => {
     const roleBadgeHtml = weaponRole
       ? `<span class="market-weapon-role-badge role-${weaponRole}">${WEAPON_ROLE_LABELS[weaponRole] ?? weaponRole}</span>`
       : "";
+    const levelBadgeHtml = !noLevel ? `<span class="item-level-badge rarity-${rarity}">Lv${level}</span>` : "";
     const iconHtml = iconUrl
-      ? `<div class="market-item-icon-wrap"><img class="market-item-icon" src="${iconUrl}" alt="${name}" width="42" height="42"><span class="item-level-badge rarity-${rarity}">Lv${level}</span>${roleBadgeHtml}</div>`
+      ? `<div class="market-item-icon-wrap"><img class="market-item-icon" src="${iconUrl}" alt="${name}" width="42" height="42">${levelBadgeHtml}${roleBadgeHtml}</div>`
       : "";
     return `
 <div class="market-item-slot ${slotClass}${rarityClass}" ${dataAttrs} role="button" tabindex="0">

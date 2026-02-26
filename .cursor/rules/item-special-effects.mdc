@@ -1,0 +1,31 @@
+---
+description: Do NOT overwrite or regress item-special-effects.ts
+globs: **/item-special-effects.ts
+alwaysApply: false
+---
+
+# Item Special Effects — Primary Dictionary
+
+**Do NOT overwrite or regress this file.** `src/constants/item-special-effects.ts` is the canonical source for all item effects attachable to rare/epic armors and other items.
+
+## Structure
+
+Each effect has:
+- **name** — Effect box label (displayed as header)
+- **description** — Effect box body (displayed below name)
+- **bonuses** — Optional flat stat enhancements (+4 DEX, +10 AWR). Always shown in Bonuses box. Never scale.
+- **immunities** — Optional (stun, panic, suppression, burning)
+- **incapChanceMultiplier** — Optional (e.g. 1.6 for Relentless)
+- **durationReduction** — Optional (stun, panic, suppression, burning, blind)
+
+## When Adding Effects
+
+1. Add to `ITEM_SPECIAL_EFFECTS` with unique id
+2. Add id to `ItemSpecialEffectId` union type
+3. Wire armor/items to use it via `specialEffect` property
+
+## Do NOT
+
+- Remove or rename existing effects without updating all consumers
+- Change the file structure (name, description, bonuses)
+- Duplicate effect definitions elsewhere

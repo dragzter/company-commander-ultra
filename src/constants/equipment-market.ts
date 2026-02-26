@@ -37,7 +37,7 @@ function createLeveledSupply<T extends Item>(
   } = {},
 ): T {
   const level = options.noLevel ? 1 : tier;
-  const item = { ...base, level } as T;
+  const item = { ...base, level, noLevel: options.noLevel ? true : undefined } as T;
 
   if (options.noLevel) return item;
 
@@ -105,26 +105,25 @@ function getCommonSupplies(tier: GearLevel, _companyLvl: number): EquipmentMarke
   );
 
   return [
-    { item: smoke, price: supplyPrice(SUPPLIES_BASE_PRICES.smoke, t) },
-    { item: flashbang, price: supplyPrice(SUPPLIES_BASE_PRICES.flashbang, t) },
+    { item: smoke, price: supplyPrice(SUPPLIES_BASE_PRICES.smoke, 1) },
+    { item: flashbang, price: supplyPrice(SUPPLIES_BASE_PRICES.flashbang, 1) },
     { item: frag, price: supplyPrice(SUPPLIES_BASE_PRICES.frag, t) },
     { item: incendiary, price: supplyPrice(SUPPLIES_BASE_PRICES.incendiary, t) },
     { item: knife, price: supplyPrice(SUPPLIES_BASE_PRICES.throwing_knife, t) },
-    { item: stim, price: supplyPrice(SUPPLIES_BASE_PRICES.stim_pack, t) },
+    { item: stim, price: supplyPrice(SUPPLIES_BASE_PRICES.stim_pack, 1) },
     { item: medkit, price: supplyPrice(SUPPLIES_BASE_PRICES.medkit, t) },
   ];
 }
 
 /** Rare: M3A Repressor. Damage scales with thrower level at use time. */
-function getRareSupplies(tier: GearLevel, companyLvl: number): EquipmentMarketEntry[] {
+function getRareSupplies(_tier: GearLevel, companyLvl: number): EquipmentMarketEntry[] {
   if (companyLvl < 2) return [];
-  const t = Math.max(1, Math.min(20, tier)) as GearLevel;
   const item = createLeveledSupply(
     { ...ThrowableItems.rare.m3a_repressor } as Item,
     1,
     { noLevel: true },
   );
-  return [{ item, price: supplyPrice(SUPPLIES_BASE_PRICES.m3a_repressor, t) }];
+  return [{ item, price: supplyPrice(SUPPLIES_BASE_PRICES.m3a_repressor, 1) }];
 }
 
 /** Epic: Psychic Shredder - no level. */

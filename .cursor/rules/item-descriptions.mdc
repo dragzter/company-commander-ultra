@@ -1,0 +1,23 @@
+---
+description: Item descriptions must be flavor, not mechanics
+globs: **/items/*.ts **/weapon-bases.ts **/ballistic.ts
+alwaysApply: false
+---
+
+# Item Descriptions — Flavor Only
+
+Item `description` fields must be **flavor** — lore, setting, reputation. NOT mechanical stats or bonuses.
+
+## BAD (mechanics)
+
+- "Piston-caliber. Lowest damage, fastest cycle."
+- "Heavy tank plate."
+- "Reduces stun duration by 25%."
+
+## GOOD (flavor)
+
+- "A staple in the spec ops community."
+- "Heavy harness worn by those who hold the line."
+- "Legendary heavy armor."
+
+Stats (damage, speed, toughness) and effects go in their respective boxes. The description is for vibe, not specs.

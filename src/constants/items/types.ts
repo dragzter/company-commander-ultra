@@ -99,6 +99,12 @@ export interface Item {
   icon?: string;
   id: string;
   level?: GearLevel; // Gear tier 1-10
+  /** If true, item has no level scaling (e.g. stim pack, flashbang, smoke). No Lv badge, fixed price. */
+  noLevel?: boolean;
+  /** Armor only: immunities granted (e.g. stun, panic). Shown in effect box. */
+  immunities?: ("stun" | "panic" | "suppression" | "burning")[];
+  /** Armor only: named special effect (Infantry Grunt, Unshakeable, Relentless). */
+  specialEffect?: string;
   name: string;
   uses?: number;
   price?: number;
@@ -113,6 +119,7 @@ export interface Item {
   type: ItemType;
   usable?: boolean;
   passiveEffect?: string; // Epic armor: display-only passive description
+  passiveEffectName?: string; // Epic armor: effect box label (replaces generic "Effect")
   bonuses?: WeaponBonus[] | ArmorBonus[]; // Rare/epic weapons: flat stat bonuses; armor: flat or percent
   weaponEffect?: WeaponEffectId; // Epic weapons: passive combat trait
 }

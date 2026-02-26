@@ -41,9 +41,9 @@ export function getArmorPrice(item: Item): number {
     }
   }
 
-  // Passive effect (epic) adds value
-  const passive = (item as Item & { passiveEffect?: string }).passiveEffect;
-  if (passive) base *= 1.15;
+  // Special effect adds value
+  const specialEffect = (item as Item & { specialEffect?: string }).specialEffect;
+  if (specialEffect) base *= 1.15;
 
   const rarity = item.rarity ?? "common";
   let price: number;

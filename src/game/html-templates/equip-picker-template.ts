@@ -35,8 +35,9 @@ function slotHtml(
       : "<span class='equip-slot-placeholder'>—</span>";
   const uses = item?.uses;
   const rarity = item?.rarity ?? "common";
+  const noLevel = (item as { noLevel?: boolean })?.noLevel;
   const usesBadge = uses != null ? `<span class="equip-slot-uses-badge">×${uses}</span>` : "";
-  const levelBadge = item ? `<span class="equip-slot-level rarity-${rarity}">Lv${level ?? 1}</span>` : "";
+  const levelBadge = item && !noLevel ? `<span class="equip-slot-level rarity-${rarity}">Lv${level ?? 1}</span>` : "";
   return `
 <div class="equip-slot ${slotClass}${rarityClass} ${slotTypeClass} ${designationClass}" data-soldier-id="${soldierId}" data-slot-type="${slotType}" ${dataSlot} data-slot-item="${item ? escapeAttr(JSON.stringify(item)) : ""}" role="button" tabindex="0">
   <div class="equip-slot-inner">
