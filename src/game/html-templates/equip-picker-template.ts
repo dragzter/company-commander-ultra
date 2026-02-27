@@ -118,6 +118,11 @@ export function equipPickerTemplate(): string {
         ${soldiers}
       </div>
     </div>
+    <div id="equip-slot-tooltip" class="equip-slot-tooltip-floating" hidden>
+      <div id="equip-slot-tooltip-inner" class="equip-slot-tooltip-inner item-stats-popup-inner supplies-buy-popup-inner">
+        <div id="equip-slot-tooltip-content" class="equip-slot-tooltip-content"></div>
+      </div>
+    </div>
     <div id="equip-supplies-popup" class="equip-supplies-popup" hidden role="dialog" aria-label="Armory">
       <div class="equip-supplies-header">
         <span id="equip-supplies-title" class="equip-supplies-title">Armory</span>

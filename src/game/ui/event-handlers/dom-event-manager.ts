@@ -6,8 +6,9 @@ function DomEventManager() {
     {
       selector: string;
       callback: EventListener;
-      elements: HTMLElement[];
+      elements: (HTMLElement | Document)[];
       eventType: keyof HTMLElementEventMap;
+      capture?: boolean;
     }
   > = new Map();
   let idCounter = 0;
@@ -82,8 +83,9 @@ function DomEventManager() {
   function removeHandlers(id: string) {
     const item = handlerMap.get(id);
     if (!item) return;
+    const opts = item.capture ? { capture: true } : undefined;
     item.elements.forEach((el) =>
-      el.removeEventListener(item.eventType, item.callback),
+      el.removeEventListener(item.eventType, item.callback, opts),
     );
     handlerMap.delete(id);
   }
@@ -95,6 +97,7 @@ function DomEventManager() {
     handlerMap.forEach((_, id) => removeHandlers(id));
     handlerMap.clear();
     delegatedIds.clear();
+    _tooltipCaptureAttached = false;
   }
 
   function initEventArray(eventConfig: HandlerInitConfig[]) {
@@ -104,6 +107,25 @@ function DomEventManager() {
   }
 
   const delegatedIds = new Set<string>();
+  let _tooltipCaptureAttached = false;
+
+  /** Hide equip slot tooltip on any click (capture phase). Slot handlers re-show if needed. */
+  function initEquipSlotTooltipHideOnClick() {
+    if (_tooltipCaptureAttached) return;
+    _tooltipCaptureAttached = true;
+    const fn = (e: Event) => {
+      const tt = document.getElementById("equip-slot-tooltip");
+      if (tt && !tt.hidden) { tt.hidden = true; tt.classList.remove("equip-slot-tooltip-visible"); }
+    };
+    document.addEventListener("click", fn, true);
+    handlerMap.set("equip-tooltip-hide", {
+      callback: fn as EventListener,
+      selector: "(capture)",
+      elements: [document],
+      eventType: "click",
+      capture: true,
+    });
+  }
 
   /**
    * Event delegation: attach to a persistent parent; handlers work for dynamically added content.
@@ -151,6 +173,7 @@ function DomEventManager() {
     initHandlers,
     initEventArray,
     initDelegatedEventArray,
+    initEquipSlotTooltipHideOnClick,
     removeHandlers,
     getMap: () => new Map(handlerMap),
   };

@@ -113,6 +113,7 @@ function ScreenManager() {
 
     UiManager.selectCompanyHomeButton(DOM.company.home);
     DomEventManager.initEventArray(ec().companyHome());
+    DomEventManager.initEquipSlotTooltipHideOnClick();
     Styler.setCenterBG("bg_81.jpg", true);
     show.center();
   }
@@ -293,6 +294,8 @@ function ScreenManager() {
     }
     target.innerHTML = html;
     DomEventManager.initEventArray(ec().companyHome().concat(ec().rosterScreen()));
+    DomEventManager.initDelegatedEventArray(document, ec().equipPicker(), "equip-picker");
+    DomEventManager.initEquipSlotTooltipHideOnClick();
     UiManager.selectCompanyHomeButton(DOM.company.roster);
     Styler.setCenterBG("bg_81.jpg", true);
     show.center();
@@ -304,6 +307,8 @@ function ScreenManager() {
     const content = parseHTML(inventoryTemplate());
     center.appendChild(content as Element);
     DomEventManager.initEventArray(ec().companyHome().concat(ec().inventoryScreen()));
+    DomEventManager.initDelegatedEventArray(document, ec().equipPicker(), "equip-picker");
+    DomEventManager.initEquipSlotTooltipHideOnClick();
     UiManager.selectCompanyHomeButton(DOM.company.inventory);
     Styler.setCenterBG("bg_81.jpg", true);
     show.center();

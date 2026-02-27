@@ -3779,7 +3779,8 @@ button.mbtn {
 .gear-buy-popup[data-rarity="rare"] .supplies-buy-popup-inner,
 .supplies-buy-popup[data-rarity="rare"] .supplies-buy-popup-inner,
 .item-stats-popup[data-rarity="rare"] .item-stats-popup-inner,
-.item-stats-popup[data-rarity="rare"] .gear-buy-popup-inner {
+.item-stats-popup[data-rarity="rare"] .gear-buy-popup-inner,
+.equip-slot-tooltip-floating[data-rarity="rare"] .equip-slot-tooltip-inner {
 	background: linear-gradient(165deg, #0e141a 0%, #121c28 50%, #0f1824 100%);
 	border-color: rgba(94, 184, 255, 0.5);
 	box-shadow: 0 0 50px rgba(94, 184, 255, 0.18), 0 0 0 1px rgba(94, 184, 255, 0.15);
@@ -3788,7 +3789,8 @@ button.mbtn {
 .gear-buy-popup[data-rarity="epic"] .supplies-buy-popup-inner,
 .supplies-buy-popup[data-rarity="epic"] .supplies-buy-popup-inner,
 .item-stats-popup[data-rarity="epic"] .item-stats-popup-inner,
-.item-stats-popup[data-rarity="epic"] .gear-buy-popup-inner {
+.item-stats-popup[data-rarity="epic"] .gear-buy-popup-inner,
+.equip-slot-tooltip-floating[data-rarity="epic"] .equip-slot-tooltip-inner {
 	background: linear-gradient(165deg, #140e18 0%, #1a1422 50%, #160f1c 100%);
 	border-color: rgba(199, 125, 255, 0.55);
 	box-shadow: 0 0 60px rgba(199, 125, 255, 0.2), 0 0 0 1px rgba(199, 125, 255, 0.2);
@@ -4332,6 +4334,102 @@ button.mbtn {
 	box-sizing: border-box;
 }
 
+/* Popover variant: anchored above clicked equip slot, no full overlay */
+.item-stats-popup-popover {
+	inset: auto;
+	display: block;
+	background: transparent;
+	backdrop-filter: none;
+	padding: 0;
+	min-width: 0;
+	z-index: 2200;
+}
+.item-stats-popup-popover .item-stats-popup-inner {
+	position: relative;
+	max-height: 180px;
+	overflow: hidden;
+	box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+}
+/* Arrow pointing down (when popover is above slot) */
+.item-stats-popup-popover[data-popover-placement="above"] .item-stats-popup-inner::after {
+	content: "";
+	position: absolute;
+	bottom: -10px;
+	left: 50%;
+	transform: translateX(-50%);
+	border: 10px solid transparent;
+	border-top-color: rgba(120, 255, 255, 0.25);
+}
+/* Arrow pointing up (when popover is below slot) */
+.item-stats-popup-popover[data-popover-placement="below"] .item-stats-popup-inner::before {
+	content: "";
+	position: absolute;
+	top: -10px;
+	left: 50%;
+	transform: translateX(-50%);
+	border: 10px solid transparent;
+	border-bottom-color: rgba(120, 255, 255, 0.25);
+}
+.item-stats-popup-popover .gear-buy-title-wrap {
+	display: none;
+}
+/* Compact popover content – no scrollbar, minimal space */
+.item-stats-popup-popover .item-stats-popup-inner {
+	padding: 6px 8px;
+}
+.item-stats-popup-popover .item-popup-compact .item-popup-hero-compact {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin-bottom: 4px;
+}
+.item-stats-popup-popover .item-popup-compact .item-popup-icon-wrap-compact {
+	position: relative;
+	flex-shrink: 0;
+}
+.item-stats-popup-popover .item-popup-compact .item-popup-icon-wrap-compact .item-popup-icon {
+	width: 32px;
+	height: 32px;
+}
+.item-stats-popup-popover .item-popup-compact .item-popup-name-compact {
+	margin: 0;
+	font-size: 0.85rem;
+	line-height: 1.2;
+}
+.item-stats-popup-popover .item-popup-compact .item-popup-stats-compact {
+	font-size: 0.7rem;
+	opacity: 0.9;
+	margin-bottom: 4px;
+	line-height: 1.3;
+}
+.item-stats-popup-popover .item-popup-compact .item-popup-bonus-compact {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+	margin-bottom: 4px;
+}
+.item-stats-popup-popover .item-popup-compact .item-popup-bonus-badge-compact {
+	font-size: 0.6rem;
+	padding: 2px 5px;
+}
+.item-stats-popup-popover .item-popup-compact .item-popup-effect-compact {
+	font-size: 0.65rem;
+	opacity: 0.85;
+	line-height: 1.2;
+}
+.item-stats-popup-popover .item-popup-unequip-wrap {
+	margin-top: 6px;
+	padding-top: 6px;
+}
+.item-stats-popup-popover .item-stats-popup-unequip-btn {
+	padding: 4px 8px;
+	font-size: 0.65rem;
+}
+.item-stats-popup-popover .item-stats-popup-body {
+	margin-bottom: 0;
+	font-size: 0.8rem;
+}
+
 .item-stats-popup[hidden] {
 	display: none !important;
 	pointer-events: none;
@@ -4394,6 +4492,36 @@ button.mbtn {
 .item-stats-popup-body {
 	margin-bottom: 16px;
 	font-size: 0.9rem;
+}
+/* Unequip button at bottom of item popup (equipped slot in equip picker) */
+.item-popup-unequip-wrap {
+	margin-top: 12px;
+	padding-top: 12px;
+	border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+.item-stats-popup-unequip-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 6px 12px;
+	font-size: 0.75rem;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	color: #fff;
+	background: linear-gradient(180deg, #e53535 0%, #c41b1b 50%, #9a1414 100%);
+	border: 2px solid rgba(255, 180, 180, 0.6);
+	border-radius: 6px;
+	cursor: pointer;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+	transition: transform 0.15s, box-shadow 0.2s;
+}
+.item-stats-popup-unequip-btn:hover {
+	transform: scale(1.02);
+	box-shadow: 0 3px 12px rgba(0, 0, 0, 0.5);
+}
+.item-stats-popup-unequip-btn:active {
+	transform: scale(0.98);
 }
 /* Armory popup: Equip button full width, no quantity row */
 .item-popup-equip-only .equipment-buy-btn-full {
@@ -4503,6 +4631,93 @@ button.mbtn {
 .equip-supplies-item.equip-slot {
 	touch-action: manipulation;
 }
+
+/* Slot tooltip: wraps icon, shows on hover, positioned above */
+.equip-slot-tooltip-wrap {
+	position: relative;
+	display: inline-block;
+}
+.equip-slot-tooltip {
+	position: absolute;
+	bottom: 100%;
+	left: 50%;
+	transform: translateX(-50%);
+	margin-bottom: 6px;
+	width: 220px;
+	z-index: 100;
+	opacity: 0;
+	visibility: hidden;
+	pointer-events: none;
+	transition: opacity 0.15s, visibility 0.15s;
+}
+.equip-slot-tooltip-wrap:hover .equip-slot-tooltip {
+	opacity: 1;
+	visibility: visible;
+	pointer-events: auto;
+}
+.equip-slot-tooltip .equip-slot-tooltip-inner {
+	width: 100%;
+	box-sizing: border-box;
+	padding: 6px 8px;
+	max-height: 180px;
+	overflow: hidden;
+	box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+}
+.equip-slot-tooltip .equip-slot-tooltip-inner .item-popup-compact .item-popup-hero-compact { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.equip-slot-tooltip .equip-slot-tooltip-inner .item-popup-compact .item-popup-icon-wrap-compact .item-popup-icon { width: 32px; height: 32px; }
+.equip-slot-tooltip .equip-slot-tooltip-inner .item-popup-compact .item-popup-name-compact { margin: 0; font-size: 0.85rem; }
+.equip-slot-tooltip .equip-slot-tooltip-inner .item-popup-compact .item-popup-stats-compact { font-size: 0.7rem; margin-bottom: 4px; }
+.equip-slot-tooltip .equip-slot-tooltip-inner .item-popup-compact .item-popup-bonus-compact { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 4px; }
+.equip-slot-tooltip .equip-slot-tooltip-inner .item-popup-compact .item-popup-bonus-badge-compact { font-size: 0.6rem; padding: 2px 5px; }
+.equip-slot-tooltip .equip-slot-tooltip-inner .item-popup-compact .item-popup-effect-compact { font-size: 0.65rem; }
+.equip-slot-tooltip .equip-slot-tooltip-inner .item-popup-unequip-wrap { margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.12); }
+.equip-slot-tooltip .equip-slot-tooltip-inner .item-stats-popup-unequip-btn { padding: 4px 8px; font-size: 0.65rem; }
+
+/* Floating tooltip: appended to body, shown on click, left-aligned with icon, no clipping */
+.equip-slot-tooltip-floating {
+	position: fixed;
+	width: 240px;
+	box-sizing: border-box;
+	pointer-events: auto;
+	box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+}
+.equip-slot-tooltip-floating .equip-slot-tooltip-inner {
+	width: 100%;
+	box-sizing: border-box;
+}
+.equip-slot-tooltip-floating .equip-slot-tooltip-content {
+	padding: 6px 8px 0;
+	max-height: 180px;
+	overflow: hidden;
+	position: relative;
+}
+.equip-slot-tooltip-floating .equip-slot-tooltip-content .item-popup-compact .item-popup-hero-compact { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; padding-right: 44px; }
+.equip-slot-tooltip-floating .equip-slot-tooltip-content .item-popup-compact .item-popup-icon-wrap-compact .item-popup-icon { width: 38px; height: 38px; flex-shrink: 0; }
+.equip-slot-tooltip-floating .equip-slot-tooltip-content .item-popup-compact .item-popup-name-wrap { flex: 1; min-width: 0; display: flex; align-items: center; }
+.equip-slot-tooltip-floating .equip-slot-tooltip-content .item-popup-compact .item-popup-name-compact { margin: 0; font-size: 0.85rem; width: 100%; overflow-wrap: break-word; word-wrap: break-word; }
+.equip-slot-tooltip-floating .equip-slot-tooltip-content .item-popup-compact .item-popup-stats-compact { font-size: 0.7rem; margin-bottom: 4px; }
+.equip-slot-tooltip-floating .equip-slot-tooltip-content .item-popup-compact .item-popup-bonus-compact { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 4px; }
+.equip-slot-tooltip-floating .equip-slot-tooltip-content .item-popup-compact .item-popup-bonus-badge-compact { font-size: 0.6rem; padding: 2px 5px; }
+.equip-slot-tooltip-floating .equip-slot-tooltip-content .item-popup-compact .item-popup-effect-compact { font-size: 0.65rem; }
+.equip-slot-tooltip-floating .equip-slot-tooltip-content .item-popup-unequip-wrap {
+	position: absolute;
+	top: 6px;
+	right: 8px;
+	margin: 0;
+	padding: 0;
+	border: none;
+}
+.equip-slot-tooltip-floating .equip-slot-tooltip-content .item-stats-popup-unequip-btn {
+	width: 38px;
+	height: 38px;
+	padding: 0;
+	font-size: 1rem;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+.equip-slot-tooltip-floating .equip-slot-tooltip-content .item-stats-popup-unequip-btn .item-stats-popup-unequip-label { display: none; }
+
 .equip-picker-soldier {
 	position: relative;
 	background: linear-gradient(135deg, rgba(20, 24, 20, 0.95) 0%, rgba(8, 10, 8, 0.98) 100%);
@@ -4511,7 +4726,7 @@ button.mbtn {
 	border: 1px solid rgba(103, 86, 69, 0.25);
 	box-shadow: 0 2px 12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.03) inset;
 	transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
-	overflow: hidden;
+	overflow: visible;
 	min-width: 0;
 	width: 100%;
 	max-width: 100%;
@@ -4751,6 +4966,7 @@ button.mbtn {
 	gap: 8px;
 	min-width: 0;
 	max-width: 100%;
+	overflow: visible;
 }
 .equip-picker-slots-1x5 {
 	flex-wrap: wrap;

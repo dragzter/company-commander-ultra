@@ -19,6 +19,23 @@ import {
 import { getItemSpecialEffect } from "../../constants/item-special-effects.ts";
 import { getWeaponRestrictRole } from "../../utils/equip-utils.ts";
 
+/** Shared item stats popup markup – used by inventory and roster (equip picker from roster needs it). */
+export function itemStatsPopupHtml(): string {
+  return `
+<div id="item-stats-popup" class="item-stats-popup gear-buy-popup supplies-buy-popup" hidden role="dialog" aria-modal="true">
+  <div class="item-stats-popup-inner gear-buy-popup-inner supplies-buy-popup-inner">
+    <div class="gear-buy-title-wrap">
+      <h4 id="item-stats-popup-title" class="supplies-buy-title"></h4>
+      <button type="button" id="item-stats-popup-close" class="game-btn game-btn-md game-btn-red popup-close-btn">Close</button>
+    </div>
+    <div id="item-stats-popup-body" class="item-stats-popup-body supplies-buy-body"></div>
+    <div class="item-popup-actions item-market-purchase item-popup-equip-only">
+      <button type="button" id="item-stats-popup-equip" class="mbtn blue equipment-buy-btn-full" style="display:none">Equip</button>
+    </div>
+  </div>
+</div>`;
+}
+
 const STAT_LABELS: Record<string, string> = {
   toughness: "TGH",
   hp: "HP",
@@ -139,6 +156,71 @@ export function getItemPopupBodyHtml(item: Item): string {
   if (weaponEffect && WEAPON_EFFECTS[weaponEffect as keyof typeof WEAPON_EFFECTS]) {
     const ef = WEAPON_EFFECTS[weaponEffect as keyof typeof WEAPON_EFFECTS];
     html += `<div class="item-popup-effect"><span class="item-popup-effect-hint">${escapeHtml(ef.name)}</span><p class="item-popup-effect-text">${escapeHtml(ef.description)}</p></div>`;
+  }
+  html += "</div>";
+  return html;
+}
+
+/** Compact version for popover/tooltip – no scrollbar, fits in small space. */
+export function getItemPopupBodyHtmlCompact(item: Item): string {
+  const rarity = (item.rarity ?? "common") as string;
+  const iconUrl = getItemIconUrl(item);
+  const level = item.level ?? 1;
+  const noLevel = (item as { noLevel?: boolean }).noLevel;
+
+  let html = '<div class="item-popup-body item-popup-compact" data-rarity="' + rarity + '">';
+  html += '<div class="item-popup-hero item-popup-hero-compact">';
+  if (iconUrl) {
+    const levelBadge = !noLevel ? `<span class="item-level-badge rarity-${rarity}">Lv${level}</span>` : "";
+    html += `<div class="item-popup-icon-wrap item-popup-icon-wrap-compact"><img class="item-popup-icon" src="${iconUrl}" alt="" width="38" height="38">${levelBadge}</div>`;
+  }
+  html += '<div class="item-popup-name-wrap"><h4 class="item-popup-name item-popup-name-compact">' + escapeHtml(item.name) + '</h4></div>';
+  html += '</div>';
+
+  const parts: string[] = [];
+  if (item.damage_min != null && item.damage_max != null) {
+    parts.push(`${item.damage_min}–${item.damage_max} dmg`);
+  } else if (item.damage != null) {
+    parts.push(`${item.damage} dmg`);
+  }
+  if (item.toughness != null) parts.push(`${item.toughness} TGH`);
+  const speedBase = item.speed_base ?? (item as Item & { speed_base?: number }).speed_base;
+  if (speedBase != null) {
+    const intervalMs = computeAttackIntervalMs(item as Item & { speed_base?: number }, 0);
+    parts.push(`${(intervalMs / 1000).toFixed(1)}s`);
+  }
+  parts.push((rarity as string).toUpperCase());
+  if (parts.length) {
+    html += '<div class="item-popup-stats-compact">' + escapeHtml(parts.join(" · ")) + '</div>';
+  }
+
+  const bonuses = (item as Item & { bonuses?: ArmorBonus[] }).bonuses;
+  if (bonuses?.length) {
+    const badges = bonuses.slice(0, 3).map((b) => {
+      const label = STAT_LABELS[b.stat] ?? b.stat.replace(/([A-Z])/g, " $1").trim().slice(0, 4).toUpperCase().replace(/ /g, "");
+      const text = b.type === "percent" && b.stat === "chanceToHit"
+        ? `+${b.value} CTH`
+        : b.type === "percent"
+          ? `+${b.value}% ${label}`
+          : `+${b.value} ${label}`;
+      return `<span class="item-popup-bonus-badge item-popup-bonus-badge-compact">${escapeHtml(text)}</span>`;
+    });
+    html += `<div class="item-popup-bonus-compact">${badges.join("")}</div>`;
+  }
+
+  const specialEffectId = (item as Item & { specialEffect?: string }).specialEffect;
+  const effectDesc = getItemEffectDescription(item);
+  let oneLiner: string | null = specialEffectId
+    ? (getItemSpecialEffect(specialEffectId as import("../../constants/item-special-effects.ts").ItemSpecialEffectId)?.name ?? "")
+    : typeof effectDesc === "string"
+      ? effectDesc
+      : (item.type === "throwable" || item.type === "medical") && item.description
+        ? item.description
+        : null;
+  if (!oneLiner && item.description) oneLiner = item.description;
+  if (oneLiner) {
+    const short = oneLiner.length > 48 ? oneLiner.slice(0, 45) + "…" : oneLiner;
+    html += `<div class="item-popup-effect-compact">${escapeHtml(short)}</div>`;
   }
   html += "</div>";
   return html;
@@ -291,18 +373,7 @@ export function inventoryTemplate(): string {
   return `
 <div id="inventory-screen" class="inventory-root troops-market-root">
   ${equipPickerTemplate()}
-  <div id="item-stats-popup" class="item-stats-popup gear-buy-popup supplies-buy-popup" hidden role="dialog" aria-modal="true">
-    <div class="item-stats-popup-inner gear-buy-popup-inner supplies-buy-popup-inner">
-      <div class="gear-buy-title-wrap">
-        <h4 id="item-stats-popup-title" class="supplies-buy-title"></h4>
-        <button type="button" id="item-stats-popup-close" class="game-btn game-btn-md game-btn-red popup-close-btn">Close</button>
-      </div>
-      <div id="item-stats-popup-body" class="item-stats-popup-body supplies-buy-body"></div>
-      <div class="item-popup-actions item-market-purchase item-popup-equip-only">
-        <button type="button" id="item-stats-popup-equip" class="mbtn blue equipment-buy-btn-full" style="display:none">Equip</button>
-      </div>
-    </div>
-  </div>
+  ${itemStatsPopupHtml()}
   ${companyHeaderPartial("Company Armory")}
   <div class="inventory-main market-main-2col">
     ${armorySectionSlots(weapons, weaponIndices, weaponSlots, "inventory-weapons", "Weapons")}

@@ -1,5 +1,5 @@
 import type { HandlerInitConfig } from "../../constants/types.ts";
-import { getItemPopupBodyHtml } from "../html-templates/inventory-template.ts";
+import { getItemPopupBodyHtml, getItemPopupBodyHtmlCompact } from "../html-templates/inventory-template.ts";
 import {
   STARTING_CREDITS,
   getArmorySlotsForCategory,
@@ -1896,6 +1896,14 @@ export function eventConfigs() {
     ];
   }
 
+  function hideEquipSlotTooltipAndDeselectSlots() {
+    document.querySelectorAll("[id='equip-slot-tooltip']").forEach((tt) => {
+      (tt as HTMLElement).hidden = true;
+      tt.classList.remove("equip-slot-tooltip-visible");
+    });
+    document.querySelectorAll(".equip-slot").forEach((el) => el.classList.remove("equip-slot-selected", "equip-slot-highlight"));
+  }
+
   function openAvailableSuppliesPopup(
     picker: HTMLElement,
     soldierId: string,
@@ -1960,11 +1968,46 @@ export function eventConfigs() {
 
   const equipPickerEventConfig: HandlerInitConfig[] = [
     {
+      selector: ".item-stats-popup-unequip-btn",
+      eventType: "click",
+      callback: (e: Event) => {
+        const btn = (e.target as HTMLElement).closest(".item-stats-popup-unequip-btn") as HTMLElement | null;
+        if (!btn) return;
+        e.preventDefault();
+        const soldierId = btn.dataset.unequipSoldierId;
+        const slotType = btn.dataset.unequipSlotType as "weapon" | "armor" | "equipment";
+        const eqIdxStr = btn.dataset.unequipEqIndex;
+        if (!soldierId || !slotType) return;
+        const eqIndex = slotType === "equipment" && eqIdxStr != null ? parseInt(eqIdxStr, 10) : 0;
+        const result = usePlayerCompanyStore.getState().unequipItemToArmory(soldierId, slotType, slotType === "equipment" ? eqIndex : undefined);
+        if (result.success) {
+          const popup = document.getElementById("item-stats-popup");
+          const picker = document.getElementById("equip-picker-popup");
+          const tt = document.getElementById("equip-slot-tooltip");
+          if (popup) {
+            (popup as HTMLElement).classList.remove("item-stats-popup-popover");
+            delete (popup as HTMLElement).dataset.popoverPlacement;
+            (popup as HTMLElement).style.cssText = "";
+            popup.hidden = true;
+          }
+          if (tt) { tt.hidden = true; tt.classList.remove("equip-slot-tooltip-visible"); }
+          document.querySelectorAll(".equip-slot").forEach((el) => el.classList.remove("equip-slot-selected", "equip-slot-highlight"));
+          if (picker) {
+            picker.querySelectorAll(".equip-slot-unequip-wrap").forEach((el) => el.remove());
+            UiManager.refreshEquipPickerContent?.();
+            openAvailableSuppliesPopup(picker as HTMLElement, soldierId, slotType, eqIndex);
+          }
+        }
+      },
+    },
+    {
       selector: "#equip-picker-close",
-      eventType: "pointerdown",
+      eventType: "click",
       callback: () => {
         const picker = document.getElementById("equip-picker-popup");
         if (!picker) return;
+        const tt = document.getElementById("equip-slot-tooltip");
+        if (tt) { tt.hidden = true; tt.classList.remove("equip-slot-tooltip-visible"); }
         const supplies = document.getElementById("equip-supplies-popup");
         if (supplies) supplies.setAttribute("hidden", "");
         picker.querySelectorAll(".equip-slot-unequip-wrap").forEach((el) => el.remove());
@@ -1980,6 +2023,8 @@ export function eventConfigs() {
       callback: () => {
         const supplies = document.getElementById("equip-supplies-popup");
         const picker = document.getElementById("equip-picker-popup");
+        const tt = document.getElementById("equip-slot-tooltip");
+        if (tt) { tt.hidden = true; tt.classList.remove("equip-slot-tooltip-visible"); }
         if (supplies) supplies.setAttribute("hidden", "");
         document.querySelectorAll(".equip-slot").forEach((el) => el.classList.remove("equip-slot-selected", "equip-slot-highlight"));
         document.querySelectorAll(".equip-supplies-item").forEach((el) => el.classList.remove("equip-supplies-item-selected"));
@@ -2004,7 +2049,7 @@ export function eventConfigs() {
         const existingUnequip = picker.querySelector(".equip-slot-unequip-wrap");
         if (existingUnequip && !target.closest(".equip-slot-unequip-wrap") && !target.closest(".equip-slot")) {
           existingUnequip.remove();
-          document.querySelectorAll(".equip-slot").forEach((el) => el.classList.remove("equip-slot-selected", "equip-slot-highlight"));
+          hideEquipSlotTooltipAndDeselectSlots();
         }
         /* Close supplies popup when clicking outside slots/armory items */
         if (
@@ -2012,10 +2057,12 @@ export function eventConfigs() {
           !supplies.hasAttribute("hidden") &&
           !target.closest(".equip-slot") &&
           !target.closest(".equip-supplies-item") &&
-          !target.closest(".equip-slot-unequip-wrap")
+          !target.closest(".equip-slot-unequip-wrap") &&
+          !target.closest("#equip-slot-tooltip") &&
+          !target.closest("#item-stats-popup")
         ) {
+          hideEquipSlotTooltipAndDeselectSlots();
           supplies.setAttribute("hidden", "");
-          document.querySelectorAll(".equip-slot").forEach((el) => el.classList.remove("equip-slot-selected", "equip-slot-highlight"));
           picker.querySelectorAll(".equip-slot-unequip-wrap").forEach((el) => el.remove());
         }
 
@@ -2167,6 +2214,8 @@ export function eventConfigs() {
         }
 
         if (!target.closest(".equip-picker-inner")) {
+          const tt = document.getElementById("equip-slot-tooltip");
+          if (tt) { tt.hidden = true; tt.classList.remove("equip-slot-tooltip-visible"); }
           picker.setAttribute("hidden", "");
           const openedFrom = (picker as HTMLElement).dataset.openedFrom;
           if (openedFrom === "roster") UiManager.renderRosterScreen();
@@ -2176,7 +2225,15 @@ export function eventConfigs() {
 
         const preselectedJson = (picker as HTMLElement).dataset.preselectedItem;
         const preselectedIdxStr = (picker as HTMLElement).dataset.preselectedArmoryIndex;
-        const slotEl = target.closest(".equip-slot") as HTMLElement | null;
+        /* Only match slots in soldier cards, not supplies grid items */
+        const slotEl = target.closest(".equip-picker-soldiers-list .equip-slot[data-soldier-id]") as HTMLElement | null;
+
+        /* Click outside slots (header, empty area, armory popup): hide tooltip and deselect */
+        if (!slotEl) {
+          hideEquipSlotTooltipAndDeselectSlots();
+          picker.querySelectorAll(".equip-slot-unequip-wrap").forEach((el) => el.remove());
+          return;
+        }
 
         const soldiers = usePlayerCompanyStore.getState().company?.soldiers ?? [];
 
@@ -2191,6 +2248,8 @@ export function eventConfigs() {
 
           /* Move between soldiers: click highlighted destination to move */
           if (selectedSlot && slotEl.classList.contains("equip-slot-highlight")) {
+            const tt = document.getElementById("equip-slot-tooltip");
+            if (tt) { tt.hidden = true; tt.classList.remove("equip-slot-tooltip-visible"); }
             const srcSoldierId = selectedSlot.dataset.soldierId!;
             const srcSlotType = selectedSlot.dataset.slotType as "weapon" | "armor" | "equipment";
             const srcEqIdx = selectedSlot.dataset.eqIndex != null ? parseInt(selectedSlot.dataset.eqIndex, 10) : undefined;
@@ -2219,6 +2278,8 @@ export function eventConfigs() {
 
           /* Deselect: click same selected slot again */
           if (selectedSlot === slotEl) {
+            const tt = document.getElementById("equip-slot-tooltip");
+            if (tt) { tt.hidden = true; tt.classList.remove("equip-slot-tooltip-visible"); }
             slotEl.classList.remove("equip-slot-selected");
             document.querySelectorAll(".equip-slot").forEach((el) => el.classList.remove("equip-slot-highlight"));
             picker.querySelectorAll(".equip-slot-unequip-wrap").forEach((el) => el.remove());
@@ -2307,6 +2368,11 @@ export function eventConfigs() {
           }
 
           /* Click any slot (empty or filled): select, highlight if filled, and open armory popup */
+          const slotTooltip = document.getElementById("equip-slot-tooltip");
+          if (slotTooltip) {
+            slotTooltip.hidden = true;
+            slotTooltip.classList.remove("equip-slot-tooltip-visible");
+          }
           document.querySelectorAll(".equip-slot").forEach((el) => el.classList.remove("equip-slot-selected", "equip-slot-highlight"));
           picker.querySelectorAll(".equip-slot-unequip-wrap").forEach((el) => el.remove());
           slotEl.classList.add("equip-slot-selected");
@@ -2323,21 +2389,55 @@ export function eventConfigs() {
                 if (canMove) (destSlot as HTMLElement).classList.add("equip-slot-highlight");
               });
             });
-            const soldierCard = slotEl.closest(".equip-picker-soldier") as HTMLElement;
-            if (soldierCard) {
-              const slotRect = slotEl.getBoundingClientRect();
-              const cardRect = soldierCard.getBoundingClientRect();
-              const gap = 4;
-              const wrap = document.createElement("div");
-              wrap.className = "equip-slot-unequip-wrap";
-              wrap.style.left = `${slotRect.left - cardRect.left}px`;
-              wrap.style.top = `${slotRect.top - cardRect.top - 48 - gap}px`;
-              wrap.innerHTML = `<button type="button" class="equip-slot-unequip-btn" data-unequip-soldier-id="${soldierId}" data-unequip-slot-type="${slotType}" data-unequip-eq-index="${eqIndex}"><span class="equip-slot-unequip-label">Unequip</span><span class="equip-slot-unequip-icon" aria-hidden="true">⏏</span></button>`;
-              soldierCard.appendChild(wrap);
+            /* Show tooltip on click: append to body (no clipping), position above slot, left-aligned with icon */
+            let tooltip = picker.querySelector("#equip-slot-tooltip") ?? document.querySelector("body > [id='equip-slot-tooltip']");
+            if (tooltip && tooltip.parentElement === document.body) {
+              /* Tooltip already in body (re-opening): remove any *other* tooltips in body (orphans from a different screen) */
+              document.querySelectorAll("body > [id='equip-slot-tooltip']").forEach((el) => { if (el !== tooltip) el.remove(); });
+            } else if (picker.querySelector("#equip-slot-tooltip")) {
+              /* Tooltip in picker: remove orphans from body so we don't have duplicates */
+              document.querySelectorAll("body > [id='equip-slot-tooltip']").forEach((el) => el.remove());
+              tooltip = picker.querySelector("#equip-slot-tooltip");
+            }
+            const tooltipContent = tooltip?.querySelector("#equip-slot-tooltip-content") ?? document.getElementById("equip-slot-tooltip-content");
+            if (tooltip && tooltipContent) {
+              const eqIdx = slotType === "equipment" ? eqIndex : 0;
+              const unequipHtml = `<div class="item-popup-unequip-wrap"><button type="button" class="item-stats-popup-unequip-btn" data-unequip-soldier-id="${soldierId}" data-unequip-slot-type="${slotType}" data-unequip-eq-index="${eqIdx}"><span class="item-stats-popup-unequip-label">Unequip</span> <span aria-hidden="true">⏏</span></button></div>`;
+              tooltipContent.innerHTML = getItemPopupBodyHtmlCompact(slotItem) + unequipHtml;
+              (tooltip as HTMLElement).dataset.rarity = (slotItem.rarity as string) ?? "common";
+              document.body.appendChild(tooltip as HTMLElement);
+              const popupWidth = 240;
+              const gameRect = document.querySelector("#game")?.getBoundingClientRect();
+              const top = gameRect ? gameRect.top + 10 : 10;
+              const rightOffset = gameRect ? window.innerWidth - gameRect.right + 10 : 10;
+              (tooltip as HTMLElement).style.cssText = `position:fixed;top:${top}px;right:${rightOffset}px;left:auto;width:${popupWidth}px;z-index:2500;`;
+              tooltip.classList.add("equip-slot-tooltip-visible");
+              (tooltip as HTMLElement).hidden = false;
             }
           }
           openAvailableSuppliesPopup(picker as HTMLElement, soldierId, slotType, eqIndex);
         }
+      },
+    },
+    {
+      /* Click on tooltip (not unequip btn) – dismiss tooltip */
+      selector: "#equip-slot-tooltip",
+      eventType: "click",
+      callback: (e: Event) => {
+        if ((e.target as HTMLElement).closest(".item-stats-popup-unequip-btn")) return;
+        hideEquipSlotTooltipAndDeselectSlots();
+      },
+    },
+    {
+      /* Fallback: click outside picker – hide tooltip and deselect (roster/inventory background) */
+      selector: "body",
+      eventType: "click",
+      callback: (e: Event) => {
+        const target = e.target as HTMLElement;
+        const picker = document.getElementById("equip-picker-popup");
+        if (!picker || picker.hasAttribute("hidden")) return;
+        if (target.closest("#equip-picker-popup")) return;
+        hideEquipSlotTooltipAndDeselectSlots();
       },
     },
   ];
@@ -2372,6 +2472,8 @@ export function eventConfigs() {
         if (!soldierId) return;
         const picker = document.getElementById("equip-picker-popup");
         if (!picker) return;
+        const tt = document.getElementById("equip-slot-tooltip");
+        if (tt) { tt.hidden = true; tt.classList.remove("equip-slot-tooltip-visible"); }
         (picker as HTMLElement).dataset.focusSoldierId = soldierId;
         (picker as HTMLElement).dataset.openedFrom = "roster";
         (document.getElementById("equip-picker-title") as HTMLElement).textContent = "Inventory";
@@ -2398,6 +2500,8 @@ export function eventConfigs() {
       callback: () => {
         const picker = document.getElementById("equip-picker-popup");
         if (!picker) return;
+        const tt = document.getElementById("equip-slot-tooltip");
+        if (tt) { tt.hidden = true; tt.classList.remove("equip-slot-tooltip-visible"); }
         (picker as HTMLElement).dataset.openedFrom = "inventory";
         picker.dataset.preselectedItem = "";
         picker.dataset.preselectedArmoryIndex = "";
@@ -2434,9 +2538,14 @@ export function eventConfigs() {
         const bodyEl = document.getElementById("item-stats-popup-body");
         const equipBtn = document.getElementById("item-stats-popup-equip");
         if (popup && titleEl && bodyEl) {
+          (popup as HTMLElement).classList.remove("item-stats-popup-popover");
+          (popup as HTMLElement).style.cssText = "";
           (popup as HTMLElement).dataset.itemJson = json;
           (popup as HTMLElement).dataset.itemIndex = indexStr ?? "";
           (popup as HTMLElement).dataset.rarity = (item.rarity as string) ?? "common";
+          delete (popup as HTMLElement).dataset.unequipSoldierId;
+          delete (popup as HTMLElement).dataset.unequipSlotType;
+          delete (popup as HTMLElement).dataset.unequipEqIndex;
           titleEl.textContent = "";
           bodyEl.innerHTML = getItemPopupBodyHtml(item);
           const isEquippable =
@@ -2448,6 +2557,8 @@ export function eventConfigs() {
           if (equipBtn) {
             (equipBtn as HTMLElement).style.display = isEquippable ? "" : "none";
           }
+          const actionsWrap = popup.querySelector(".item-popup-actions");
+          if (actionsWrap) (actionsWrap as HTMLElement).style.display = "";
           const gameEl = document.querySelector(DOM.game) as HTMLElement;
           if (gameEl) {
             gameEl.querySelectorAll("[id=item-stats-popup]").forEach((el) => { if (el !== popup) el.remove(); });
@@ -2464,6 +2575,8 @@ export function eventConfigs() {
         const popup = document.getElementById("item-stats-popup");
         const picker = document.getElementById("equip-picker-popup");
         if (!popup || !picker) return;
+        const tt = document.getElementById("equip-slot-tooltip");
+        if (tt) { tt.hidden = true; tt.classList.remove("equip-slot-tooltip-visible"); }
         const json = (popup as HTMLElement).dataset.itemJson;
         const idxStr = (popup as HTMLElement).dataset.itemIndex;
         if (!json) return;
@@ -3252,8 +3365,9 @@ export function eventConfigs() {
     market: () => marketEventConfig,
     troopsScreen: () => troopsScreenEventConfig,
     missionsScreen: () => missionsScreenEventConfig,
-    rosterScreen: () => rosterScreenEventConfig.concat(equipPickerEventConfig),
-    inventoryScreen: () => inventoryScreenEventConfig.concat(equipPickerEventConfig),
+    rosterScreen: () => rosterScreenEventConfig,
+    inventoryScreen: () => inventoryScreenEventConfig,
+    equipPicker: () => equipPickerEventConfig,
     suppliesScreen: () => suppliesScreenEventConfig,
     weaponsScreen: () => weaponsScreenEventConfig,
     armorScreen: () => armorScreenEventConfig,

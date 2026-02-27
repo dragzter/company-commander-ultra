@@ -1,6 +1,7 @@
 import { companyHeaderPartial, companyActionsTemplate } from "./game-setup-template.ts";
 import { Partial } from "./partials/partial.ts";
 import { equipPickerTemplate } from "./equip-picker-template.ts";
+import { itemStatsPopupHtml } from "./inventory-template.ts";
 import type { Soldier } from "../entities/types.ts";
 import { usePlayerCompanyStore } from "../../store/ui-store.ts";
 import { getActiveSlots, getReserveSlots, getFormationSlots, getSoldierById } from "../../constants/company-slots.ts";
@@ -40,6 +41,7 @@ export function rosterTemplate(): string {
   return `
 <div id="roster-screen" class="roster-root troops-market-root">
   ${equipPickerHtml}
+  ${itemStatsPopupHtml()}
   ${companyHeaderPartial("Company Roster")}
   <div class="roster-main">
     <div class="roster-section">
