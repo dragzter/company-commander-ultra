@@ -1,7 +1,7 @@
 import type { Soldier } from "../entities/types.ts";
 import type { Item } from "../../constants/items/types.ts";
 import { getItemIconUrl } from "../../utils/item-utils.ts";
-import { formatDisplayName } from "../../utils/name-utils.ts";
+import { formatDesignation, formatDisplayName, getSoldierPortraitUrl } from "../../utils/name-utils.ts";
 import { usePlayerCompanyStore } from "../../store/ui-store.ts";
 import { MAX_EQUIPMENT_SLOTS } from "../../constants/inventory-slots.ts";
 import { getLevelFromExperience } from "../../constants/economy.ts";
@@ -67,12 +67,12 @@ function soldierRow(s: Soldier, isActive: boolean): string {
 <div class="equip-picker-soldier entity-card designation-${des}" data-soldier-id="${s.id}" data-soldier-json="${escapeAttr(JSON.stringify(s))}">
   <div class="equip-picker-soldier-header">
     <div class="equip-picker-avatar-wrap">
-      <img class="equip-picker-avatar" src="/images/green-portrait/${s.avatar}" alt="" width="48" height="48">
+      <img class="equip-picker-avatar" src="${getSoldierPortraitUrl(s.avatar, s.designation)}" alt="" width="48" height="48">
       <span class="equip-picker-soldier-level">Lv${level}</span>
       ${statusBadge}
     </div>
     <div class="equip-picker-name-block">
-      <span class="equip-picker-role equip-picker-role-${des || "rifleman"}" data-role="${des || "rifleman"}"><span class="equip-picker-role-initial">${((s.designation ?? "Rifleman")[0] ?? "R").toUpperCase()}</span><span class="equip-picker-role-text">${s.designation ?? "Rifleman"}</span></span>
+      <span class="equip-picker-role equip-picker-role-${des || "rifleman"}" data-role="${des || "rifleman"}">${formatDesignation(s.designation)}</span>
       <span class="equip-picker-name">${formatDisplayName(s.name)}</span>
     </div>
   </div>

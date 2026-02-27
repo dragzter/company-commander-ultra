@@ -5,7 +5,7 @@ import type { Item } from "../../constants/items/types.ts";
 import type { Mission } from "../../constants/missions.ts";
 import { getActiveSlots, getReserveSlots, getFormationSlots, getSoldierById } from "../../constants/company-slots.ts";
 import { usePlayerCompanyStore } from "../../store/ui-store.ts";
-import { formatDisplayName } from "../../utils/name-utils.ts";
+import { formatDesignation, formatDisplayName, getSoldierPortraitUrl } from "../../utils/name-utils.ts";
 import { getItemIconUrl } from "../../utils/item-utils.ts";
 import { Partial } from "./partials/partial.ts";
 import { getBaseAndGearStats } from "../../utils/soldier-stats-utils.ts";
@@ -66,9 +66,9 @@ function readyRoomSoldierCard(s: Soldier, slotIndex: number, isActive: boolean):
   <div class="ready-room-card-inner">
     <div class="ready-room-left">
       <div class="ready-room-avatar-wrap">
-        <img class="ready-room-avatar" src="/images/green-portrait/${s.avatar}" alt="">
+        <img class="ready-room-avatar" src="${getSoldierPortraitUrl(s.avatar, s.designation)}" alt="">
         <span class="ready-room-level-badge item-level-badge rarity-${levelRarity}">Lv${lvl}</span>
-        <span class="ready-room-role-badge market-weapon-role-badge role-${des}">${s.designation ?? "Rifleman"}</span>
+        <span class="ready-room-role-badge market-weapon-role-badge role-${des}">${formatDesignation(s.designation)}</span>
       </div>
       <div class="ready-room-hp-wrap">
         <div class="ready-room-hp-bar" style="width: 100%"></div>

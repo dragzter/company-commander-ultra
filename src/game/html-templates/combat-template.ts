@@ -1,5 +1,5 @@
 import { companyHeaderPartial } from "./game-setup-template.ts";
-import { formatDisplayName } from "../../utils/name-utils.ts";
+import { formatDisplayName, getSoldierPortraitUrl } from "../../utils/name-utils.ts";
 import type { Mission } from "../../constants/missions.ts";
 import type { Combatant } from "../combat/types.ts";
 
@@ -18,7 +18,7 @@ function roleBadge(designation: string | undefined): string {
 
 function combatCard(c: Combatant, portraitDir: "player" | "enemy"): string {
   const imgSrc = portraitDir === "player"
-    ? `/images/green-portrait/${c.avatar}`
+    ? getSoldierPortraitUrl(c.avatar ?? "default.png", c.designation)
     : `/images/red-portrait/${c.avatar}`;
   const weaponIcon = c.weaponIconUrl ?? "";
   const pct = Math.max(0, Math.min(100, (c.hp / c.maxHp) * 100));
@@ -108,7 +108,6 @@ export function combatTemplate(
     <button type="button" id="combat-begin" class="combat-begin-floating combat-begin-poppy">Begin</button>
   </div>
   <div class="combat-footer troops-market-footer combat-footer-layout">
-    <button type="button" id="combat-reset" class="game-btn game-btn-sm game-btn-blue">Reset</button>
     <button type="button" id="combat-mission-details" class="game-btn game-btn-sm game-btn-blue">Details</button>
     <button type="button" id="combat-quit" class="game-btn game-btn-sm game-btn-red">Quit</button>
   </div>
@@ -116,15 +115,15 @@ export function combatTemplate(
     <div class="combat-mission-details-inner">
       <h4 id="combat-mission-details-title">Details</h4>
       <div id="combat-mission-details-body"></div>
-      <button type="button" id="combat-mission-details-close" class="mbtn blue mbtn-sm">Close</button>
+      <button type="button" id="combat-mission-details-close" class="game-btn game-btn-md game-btn-blue">Close</button>
     </div>
   </div>
   <div id="combat-quit-confirm-popup" class="combat-quit-confirm-popup" role="dialog" aria-modal="true" hidden>
     <div class="combat-quit-confirm-inner">
       <p>Quit combat? Progress will be lost.</p>
       <div class="combat-quit-confirm-actions">
-        <button type="button" id="combat-quit-confirm-yes" class="mbtn red mbtn-sm">Yes, Quit</button>
-        <button type="button" id="combat-quit-confirm-no" class="mbtn green mbtn-sm">Cancel</button>
+        <button type="button" id="combat-quit-confirm-yes" class="game-btn game-btn-md game-btn-red">Yes, Quit</button>
+        <button type="button" id="combat-quit-confirm-no" class="game-btn game-btn-md game-btn-green">Cancel</button>
       </div>
     </div>
   </div>

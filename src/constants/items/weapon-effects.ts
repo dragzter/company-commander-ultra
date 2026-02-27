@@ -96,7 +96,7 @@ export const WEAPON_EFFECTS: Record<WeaponEffectId, WeaponEffect> = {
   carnage: {
     id: "carnage",
     name: "Carnage",
-    description: "8% chance to deal 5 extra damage",
+    description: "8% chance to deal 5 extra damage per shot",
     modifiers: {},
     proc: { chance: 0.08, type: "carnage", damage: 5 },
   },

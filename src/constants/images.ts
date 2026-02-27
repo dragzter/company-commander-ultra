@@ -157,6 +157,11 @@ for (let i = 0; i < blackPortraitCount; i++) {
   black_portrait["p_" + i] = `black_portrait_${i}.png`;
 }
 
+const medic_portrait: Record<string, string> = {};
+for (let i = 0; i < 18; i++) {
+  medic_portrait["m_" + i] = `medic_${i}.png`;
+}
+
 export const Images = {
   bg,
   btn,
@@ -165,6 +170,7 @@ export const Images = {
   player_patch,
   cpu_patch,
   portrait,
+  medic_portrait,
   red_portrait,
   sand_portrait,
   blue_portrait,

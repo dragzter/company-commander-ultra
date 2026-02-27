@@ -64,7 +64,6 @@ export const DOM = {
   },
   combat: {
     beginBtn: "#combat-begin",
-    resetBtn: "#combat-reset",
     missionDetailsBtn: "#combat-mission-details",
     quitBtn: "#combat-quit",
     quitConfirmPopup: "#combat-quit-confirm-popup",

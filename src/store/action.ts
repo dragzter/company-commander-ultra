@@ -183,6 +183,7 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
         totalMenInCompany: 0,
         totalInventoryCapacity: DEFAULT_INVENTORY_CAPACITY,
         companyLevel: 1,
+        companyExperience: 0,
         company: {
           level: 1,
           experience: 0,
@@ -351,6 +352,7 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
         },
         totalMenInCompany: initial.length,
         companyLevel: companyBase.level,
+        companyExperience: companyBase.experience ?? 0,
       };
     }),
   /** Add starter armory items when inventory is empty (new game). */
@@ -813,7 +815,8 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
     set((s: CompanyStore) => ({ creditBalance: s.creditBalance + credits }));
 
     /* Add XP and level up. Apply ~10% penalty if soldiers died. */
-    let xpGain = mission.xpReward ?? 20 * (mission.difficulty ?? 1);
+    const difficulty = typeof mission.difficulty === "number" && !Number.isNaN(mission.difficulty) ? Math.max(1, mission.difficulty) : 1;
+    let xpGain = mission.xpReward ?? 20 * difficulty;
     if ((kiaCount ?? 0) > 0) xpGain = Math.max(1, Math.floor(xpGain * 0.9));
     const stateAfterCredits = get();
     const oldLevel = stateAfterCredits.company?.level ?? stateAfterCredits.companyLevel ?? 1;

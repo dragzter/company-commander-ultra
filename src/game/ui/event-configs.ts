@@ -40,6 +40,7 @@ import {
   applyBurnTicks,
   applyBleedTicks,
   clearExpiredEffects,
+  clearCombatantEffectsOnDeath,
   getIncapacitationChance,
   removeTargetsForCombatantInCover,
   resolveAttack,
@@ -564,10 +565,11 @@ export function eventConfigs() {
         const timerHtml = isSuppress && suppressOnCooldown
           ? `<span class="combat-ability-cooldown-timer" data-ability-cooldown="suppress">${suppressRemainingSec}</span>`
           : "";
+        const labelHtml = isTakeCover ? "" : `<span class="combat-ability-label">${a.name}</span>`;
         return `<button type="button" class="combat-ability-icon-slot ${wrapClass}${usedClass}${cooldownClass}" data-ability-id="${a.id}" data-soldier-id="${combatant.id}" ${disabled ? "disabled" : ""} title="${a.name}" aria-label="${a.name}">
             <img src="${a.icon}" alt="" width="48" height="48">
             ${timerHtml}
-            <span class="combat-ability-label">${a.name}</span>
+            ${labelHtml}
           </button>`;
       }).join("");
 
@@ -640,10 +642,11 @@ export function eventConfigs() {
           const timerHtml = isSuppress && suppressOnCooldown
             ? `<span class="combat-ability-cooldown-timer" data-ability-cooldown="suppress">${suppressRemainingSec}</span>`
             : "";
+          const labelHtml = isTakeCover ? "" : `<span class="combat-ability-label">${a.name}</span>`;
           return `<button type="button" class="combat-ability-icon-slot ${wrapClass}${usedClass}${cooldownClass}" data-ability-id="${a.id}" data-soldier-id="${c.id}" ${disabled ? "disabled" : ""} title="${a.name}" aria-label="${a.name}">
             <img src="${a.icon}" alt="" width="48" height="48">
             ${timerHtml}
-            <span class="combat-ability-label">${a.name}</span>
+            ${labelHtml}
           </button>`;
         }).join("");
         listEl.innerHTML = btns + buildEquipmentHtml(c);
@@ -886,6 +889,8 @@ export function eventConfigs() {
           if (hpValue) hpValue.textContent = `${Math.floor(c.hp)}/${Math.floor(c.maxHp)}`;
           const isDown = Boolean(c.hp <= 0 || c.downState);
           cardEl.classList.toggle("combat-card-down", isDown);
+          const isLowHealth = c.side === "player" && c.hp > 0 && !c.downState && c.maxHp > 0 && (c.hp / c.maxHp) < 0.2;
+          cardEl.classList.toggle("combat-card-low-health", isLowHealth);
         }
       }
     }
@@ -918,7 +923,7 @@ export function eventConfigs() {
         animateProjectile(attackerCard, targetCard, BULLET_ICON, ATTACK_PROJECTILE_MS, 10);
         if (result.damage > 0) {
           const popup = document.createElement("span");
-          popup.className = "combat-damage-popup";
+          popup.className = "combat-damage-popup combat-suppress-damage-popup";
           popup.textContent = String(result.damage);
           targetCard.appendChild(popup);
           setTimeout(() => popup.remove(), 1500);
@@ -939,6 +944,8 @@ export function eventConfigs() {
         }
         if (target.hp <= 0) {
           target.downState = target.side === "player" && Math.random() < getIncapacitationChance(target) ? "incapacitated" : "kia";
+          if (target.downState === "kia") target.killedBy = user.name;
+          clearCombatantEffectsOnDeath(target);
         }
       };
 
@@ -980,7 +987,9 @@ export function eventConfigs() {
         const card = document.querySelector(`[data-combatant-id="${id}"]`);
         if (card && damage > 0) {
           const popup = document.createElement("span");
-          popup.className = "combat-damage-popup";
+          popup.className = isThrowingKnife
+            ? "combat-damage-popup combat-knife-damage-popup"
+            : "combat-damage-popup combat-grenade-damage-popup";
           popup.textContent = String(damage);
           card.appendChild(popup);
           setTimeout(() => popup.remove(), 1500);
@@ -1046,6 +1055,8 @@ export function eventConfigs() {
           if (hpValue) hpValue.textContent = `${Math.floor(c.hp)}/${Math.floor(c.maxHp)}`;
           const isDown = Boolean(c.hp <= 0 || c.downState);
           card.classList.toggle("combat-card-down", isDown);
+          const isLowHealth = c.side === "player" && c.hp > 0 && !c.downState && c.maxHp > 0 && (c.hp / c.maxHp) < 0.2;
+          card.classList.toggle("combat-card-low-health", isLowHealth);
         }
       };
 
@@ -1238,6 +1249,8 @@ export function eventConfigs() {
         if (hpValue) hpValue.textContent = `${Math.floor(c.hp)}/${Math.floor(c.maxHp)}`;
         const isDown = Boolean(c.hp <= 0 || c.downState);
         card.classList.toggle("combat-card-down", isDown);
+        const isLowHealth = c.side === "player" && c.hp > 0 && !c.downState && c.maxHp > 0 && (c.hp / c.maxHp) < 0.2;
+        card.classList.toggle("combat-card-low-health", isLowHealth);
       }
     }
 
@@ -1501,7 +1514,15 @@ export function eventConfigs() {
               xpEarnedBySoldier.set(id, Math.round(xp * 10) / 10);
             }
             const soldiersAfterCombat = new Map(usePlayerCompanyStore.getState().company?.soldiers?.filter((s) => players.some((p) => p.id === s.id)).map((s) => [s.id, s]) ?? []);
-            const summaryData = buildCombatSummaryData(victory, mission, players, playerKills, leveledUpIds.size, rewardItems, lootItems, leveledUpIds, newLevels, soldiersAfterCombat, xpEarnedBySoldier);
+            let companyXpEarned = 0;
+            if (victory && mission) {
+              companyXpEarned = mission.xpReward ?? 20 * (mission.difficulty ?? 1);
+              if (kiaCount > 0) companyXpEarned = Math.max(1, Math.floor(companyXpEarned * 0.9));
+            }
+            const st = usePlayerCompanyStore.getState();
+            const companyExpTotal = st.company?.experience ?? st.companyExperience ?? 0;
+            const companyLvlTotal = st.company?.level ?? st.companyLevel ?? 1;
+            const summaryData = buildCombatSummaryData(victory, mission, players, playerKills, leveledUpIds.size, rewardItems, lootItems, leveledUpIds, newLevels, soldiersAfterCombat, xpEarnedBySoldier, companyXpEarned, companyExpTotal, companyLvlTotal);
             const container = document.getElementById("combat-summary-container");
             if (container) {
               container.innerHTML = combatSummaryTemplate(summaryData);
@@ -1525,7 +1546,7 @@ export function eventConfigs() {
           if (!didAttack && due <= now) {
             const targetId = targets.get(c.id);
             const target = all.find((x) => x.id === targetId);
-            if (target && target.hp > 0 && !target.downState) {
+            if (target && target.hp > 0 && !target.downState && !isInCover(target, now)) {
               const result = resolveAttack(c, target, now);
               if (c.side === "player") {
                 if (target.side === "enemy" && (target.hp <= 0 || target.downState === "kia")) {
@@ -1657,6 +1678,7 @@ export function eventConfigs() {
             combatant.takeCoverUntil = now + TAKE_COVER_DURATION_MS;
             combatant.takeCoverUsed = true;
             removeTargetsForCombatantInCover(targets, combatant.id);
+            assignTargets(players, enemies, targets, now);
             closeAbilitiesPopup();
             updateCombatUI();
             return;
@@ -1682,11 +1704,14 @@ export function eventConfigs() {
         selector: DOM.combat.battleArea,
         eventType: "click",
         callback: (e: Event) => {
-          if (grenadeTargetingMode || medTargetingMode || suppressTargetingMode) return;
-          const popup = document.getElementById("combat-abilities-popup");
           const target = e.target as HTMLElement;
+          const popup = document.getElementById("combat-abilities-popup");
           if (popup?.contains(target)) return;
           if (target.closest(".combat-card")) return;
+          if (grenadeTargetingMode || medTargetingMode || suppressTargetingMode) {
+            closeAbilitiesPopup();
+            return;
+          }
           closeAbilitiesPopup();
         },
       },
@@ -1694,12 +1719,15 @@ export function eventConfigs() {
         selector: "#combat-screen",
         eventType: "click",
         callback: (e: Event) => {
-          if (grenadeTargetingMode || medTargetingMode || suppressTargetingMode) return;
+          const target = e.target as HTMLElement;
           const popup = document.getElementById("combat-abilities-popup");
           if (popup?.getAttribute("aria-hidden") === "true") return;
-          const target = e.target as HTMLElement;
           if (popup?.contains(target)) return;
           if (target.closest(".combat-card")) return;
+          if (grenadeTargetingMode || medTargetingMode || suppressTargetingMode) {
+            closeAbilitiesPopup();
+            return;
+          }
           closeAbilitiesPopup();
         },
       },
@@ -1708,9 +1736,12 @@ export function eventConfigs() {
         eventType: "click",
         callback: (e: Event) => {
           e.stopPropagation();
+          const card = (e.currentTarget as HTMLElement).closest(".combat-card") as HTMLElement | null;
           if (medTargetingMode) {
-            const card = (e.currentTarget as HTMLElement).closest(".combat-card") as HTMLElement | null;
-            if (!card || card.dataset.side !== "player" || card.classList.contains("combat-card-down")) return;
+            if (!card || card.dataset.side !== "player" || card.classList.contains("combat-card-down")) {
+              closeAbilitiesPopup();
+              return;
+            }
             const targetId = card.dataset.combatantId;
             if (!targetId) return;
             const target = players.find((c) => c.id === targetId);
@@ -1719,8 +1750,10 @@ export function eventConfigs() {
             return;
           }
           if (suppressTargetingMode) {
-            const card = (e.currentTarget as HTMLElement).closest(".combat-card") as HTMLElement | null;
-            if (!card || card.dataset.side !== "enemy" || card.classList.contains("combat-card-down")) return;
+            if (!card || card.dataset.side !== "enemy" || card.classList.contains("combat-card-down")) {
+              closeAbilitiesPopup();
+              return;
+            }
             const targetId = card.dataset.combatantId;
             if (!targetId) return;
             const target = enemies.find((c) => c.id === targetId);
@@ -1729,8 +1762,10 @@ export function eventConfigs() {
             return;
           }
           if (grenadeTargetingMode) {
-            const card = (e.currentTarget as HTMLElement).closest(".combat-card") as HTMLElement | null;
-            if (!card || card.dataset.side !== "enemy" || card.classList.contains("combat-card-down")) return;
+            if (!card || card.dataset.side !== "enemy" || card.classList.contains("combat-card-down")) {
+              closeAbilitiesPopup();
+              return;
+            }
             const targetId = card.dataset.combatantId;
             if (!targetId) return;
             const target = enemies.find((c) => c.id === targetId);
@@ -1739,7 +1774,6 @@ export function eventConfigs() {
             return;
           }
 
-          const card = (e.currentTarget as HTMLElement).closest(".combat-card") as HTMLElement | null;
           if (!card || card.classList.contains("combat-card-down")) return;
           const id = card.dataset.combatantId;
           if (!id) return;
@@ -1767,27 +1801,6 @@ export function eventConfigs() {
           const btn = s_(DOM.combat.beginBtn) as HTMLButtonElement | null;
           if (btn) btn.setAttribute("hidden", "");
           startCombatLoop();
-        },
-      },
-      {
-        selector: DOM.combat.resetBtn,
-        eventType: "click",
-        callback: () => {
-          if (combatTickId != null) {
-            clearTimeout(combatTickId);
-            combatTickId = null;
-          }
-          const screen = document.getElementById("combat-screen");
-          const missionJson = screen?.getAttribute("data-mission-json");
-          let mission: Mission | null = null;
-          if (missionJson) {
-            try {
-              mission = JSON.parse(missionJson.replace(/&quot;/g, '"'));
-            } catch {
-              //
-            }
-          }
-          UiManager.renderCombatScreen(mission);
         },
       },
       {

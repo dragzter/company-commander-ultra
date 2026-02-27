@@ -71,7 +71,7 @@ function SoldierManager() {
     applyEquipmentBonuses(soldier, armor, weapon);
 
     soldier.name = generateName();
-    soldier.avatar = getSoldierAvatar();
+    soldier.avatar = getSoldierAvatar(designation);
     soldier.inventory = inventory;
     soldier.level = lvl;
     soldier.id = uuidv4();
@@ -205,7 +205,12 @@ function SoldierManager() {
     }
   }
 
-  function getSoldierAvatar() {
+  function getSoldierAvatar(designation?: Designation) {
+    const des = String(designation ?? "").toLowerCase();
+    if (des === SOLDIER_DESIGNATION.medic) {
+      const key = getRandomPortraitImage(Images.medic_portrait);
+      return Images.medic_portrait[key];
+    }
     const key = getRandomPortraitImage(Images.portrait);
     return Images.portrait[key];
   }

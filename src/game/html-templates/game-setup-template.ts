@@ -385,6 +385,12 @@ export const companyHomePageTemplate = () => {
   const totalInventoryCapacity = getTotalArmorySlots(companyLvl);
   const totalItemsInInventory = company?.inventory?.length ?? storeItems ?? 0;
 
+  const xpFloor = companyLvl <= 1 ? 0 : getXpRequiredForLevel(companyLvl - 1);
+  const xpCeiling = getXpRequiredForLevel(companyLvl + 1);
+  const xpInLevel = Math.max(1, xpCeiling - xpFloor);
+  const progressInLevel = Math.max(0, companyExperience - xpFloor);
+  const xpFillPct = companyLvl >= 20 ? 100 : Math.max(0, Math.min(100, (progressInLevel / xpInLevel) * 100));
+
   const memorialCodexRow = `
     <div class="company-home-buttons-row flex align-center justify-center gap-2">
       <button id="company-stats-memorial" class="game-btn game-btn-md game-btn-blue codex-memorial-btn">Memorial Wall</button>
@@ -433,11 +439,11 @@ export const companyHomePageTemplate = () => {
       <div class="company-xp-header">
         <span class="company-level-badge">Lv ${companyLevel}</span>
         ${companyLvl < 20
-          ? `<span class="company-xp-text"><span class="company-xp-current">${companyExperience}</span> / <span class="company-xp-required">${getXpRequiredForLevel(companyLvl + 1)}</span> XP</span>`
+          ? `<span class="company-xp-text"><span class="company-xp-current">${Math.round(progressInLevel)}</span> / <span class="company-xp-required">${xpInLevel}</span> XP</span>`
           : '<span class="company-xp-max">MAX LEVEL</span>'}
       </div>
       <div class="company-level-progress">
-        <div class="company-xp-fill" style="width: ${companyLvl >= 20 ? 100 : Math.max(0, ((companyExperience - getXpRequiredForLevel(companyLvl)) / Math.max(1, getXpRequiredForLevel(companyLvl + 1) - getXpRequiredForLevel(companyLvl))) * 100)}%"></div>
+        <div class="company-xp-fill" style="width: ${xpFillPct}%"></div>
         ${companyLvl < 20 ? '<div class="company-xp-shine"></div>' : ""}
       </div>
     </div>

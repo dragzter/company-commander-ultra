@@ -3,7 +3,7 @@ import { getRecruitCost } from "../../../constants/economy.ts";
 import { soldierXpBar } from "../components/soldier-xp-bar.ts";
 import { formatPctOneDecimal, getSoldierAttackIntervalMs, getBaseAndGearStats, formatStatBaseAndGear } from "../../../utils/soldier-stats-utils.ts";
 import { UiServiceManager } from "../../../services/ui/ui-service.ts";
-import { formatDisplayName } from "../../../utils/name-utils.ts";
+import { formatDesignation, formatDisplayName, getSoldierPortraitUrl } from "../../../utils/name-utils.ts";
 
 /**
  * Creates HTML partials
@@ -39,10 +39,10 @@ function Partial() {
 			<div data-troopercard="${trooper.id}" class="entity-card designation-${trooper.designation}${disabledClass}" >
 				<div class="card-body">
 					<div class="card-row card-row-1">
-						<img class="card-image" src="/images/green-portrait/${trooper.avatar}" alt="Trooper Image">
+						<img class="card-image" src="${getSoldierPortraitUrl(trooper.avatar, trooper.designation)}" alt="Trooper Image">
 						<div class="card-title-block">
 							<span class="card-name">${formatDisplayName(trooper.name)}</span>
-							<span class="equip-picker-role equip-picker-role-${(trooper.designation ?? "rifleman").toLowerCase()}" data-role="${trooper.designation ?? "rifleman"}"><span class="equip-picker-role-initial">${((trooper.designation ?? "Rifleman")[0] ?? "R").toUpperCase()}</span><span class="equip-picker-role-text">${trooper.designation ?? "Rifleman"}</span></span>
+							<span class="equip-picker-role equip-picker-role-${(trooper.designation ?? "rifleman").toLowerCase()}" data-role="${trooper.designation ?? "rifleman"}">${formatDesignation(trooper.designation)}</span>
 						</div>
 					</div>
 					<div class="card-row card-row-2">
@@ -99,6 +99,7 @@ function Partial() {
     const awr = formatStatBaseAndGear(bg.awr.base, bg.awr.gear);
     const dex = formatStatBaseAndGear(bg.dex.base, bg.dex.gear);
     const avatar = soldier.avatar ?? "default.png";
+    const portraitUrl = getSoldierPortraitUrl(avatar, soldier.designation);
     const spdMs = getSoldierAttackIntervalMs(soldier);
     const spdRow = spdMs != null ? `<div class="detail-item"><span class="stat-label">Spd</span><span class="stat-value">${(spdMs / 1000).toFixed(1)}s</span></div>` : "";
     return `
@@ -106,7 +107,7 @@ function Partial() {
   <div class="card-body">
     <div class="card-row card-row-1">
       <div class="roster-left">
-        <img class="card-image" src="/images/green-portrait/${avatar}" alt="">
+        <img class="card-image" src="${portraitUrl}" alt="">
         <div class="roster-hp-wrap">
           <div class="roster-hp-bar" style="width: 100%"></div>
           <span class="roster-hp-value">HP ${bg.hp.base}${bg.hp.gear > 0 ? `+<span class="stat-gear">${bg.hp.gear}</span>` : ""}</span>
@@ -114,7 +115,7 @@ function Partial() {
       </div>
       <div class="card-title-block">
         <span class="card-name">${formatDisplayName(soldier.name)}</span>
-        <span class="equip-picker-role equip-picker-role-${(soldier.designation ?? "rifleman").toLowerCase()}" data-role="${soldier.designation ?? "rifleman"}"><span class="equip-picker-role-initial">${((soldier.designation ?? "Rifleman")[0] ?? "R").toUpperCase()}</span><span class="equip-picker-role-text">${soldier.designation ?? "Rifleman"}</span></span>
+        <span class="equip-picker-role equip-picker-role-${(soldier.designation ?? "rifleman").toLowerCase()}" data-role="${soldier.designation ?? "rifleman"}">${formatDesignation(soldier.designation)}</span>
       </div>
     </div>
     <div class="card-row card-row-2">
@@ -155,8 +156,8 @@ function Partial() {
     <div data-staged-soldier-id="${soldier.id}" class="staged-trooper-card designation-${des}">
         <button type="button" data-soldier-id="${soldier.id}" class="staged-trooper-remove remove-from-staging" title="Remove from selection" aria-label="Remove from selection">&times;</button>
         <div class="staged-trooper-avatar-wrap">
-            <img src="/images/green-portrait/${soldier.avatar}" alt="Staged Trooper" class="staged-trooper-avatar">
-            <span class="staged-trooper-role">${(soldier.designation ?? "Rifleman").toUpperCase()}</span>
+            <img src="${getSoldierPortraitUrl(soldier.avatar, soldier.designation)}" alt="Staged Trooper" class="staged-trooper-avatar">
+            <span class="staged-trooper-role">${formatDesignation(soldier.designation)}</span>
         </div>
         <span class="staged-trooper-level">${soldier.level}</span>
         ${soldierXpBar(soldier)}

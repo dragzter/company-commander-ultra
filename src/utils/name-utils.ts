@@ -64,4 +64,21 @@ export function formatDisplayName(name: string | null | undefined): string {
   return `${parts[0]} ${initial}.`;
 }
 
+/** Format designation for display: "Rifleman", "Support", "Medic" */
+export function formatDesignation(designation: string | null | undefined): string {
+  const d = (designation ?? "rifleman").toString().toLowerCase();
+  if (!d) return "Rifleman";
+  return d.charAt(0).toUpperCase() + d.slice(1);
+}
+
+/** Portrait URL for soldier avatars. Medics use /images/medics/, others use /images/green-portrait/. */
+export function getSoldierPortraitUrl(avatar: string, designation?: string): string {
+  const av = avatar || "default.png";
+  const isMedic = designation?.toLowerCase() === "medic" || av.startsWith("medic_");
+  const folder = isMedic ? "medics" : "green-portrait";
+  // Medics must use medic_*.png; fallback for legacy/buggy data with wrong avatar
+  const filename = isMedic && !av.startsWith("medic_") ? "medic_0.png" : av;
+  return `/images/${folder}/${filename}`;
+}
+
 export { generateName };

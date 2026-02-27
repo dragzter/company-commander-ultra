@@ -5,7 +5,7 @@ import type { Soldier } from "../entities/types.ts";
 import type { Item } from "../../constants/items/types.ts";
 import { getActiveSlots, getReserveSlots, getFormationSlots, getSoldierById } from "../../constants/company-slots.ts";
 import { usePlayerCompanyStore } from "../../store/ui-store.ts";
-import { formatDisplayName } from "../../utils/name-utils.ts";
+import { formatDesignation, formatDisplayName, getSoldierPortraitUrl } from "../../utils/name-utils.ts";
 import { getItemIconUrl } from "../../utils/item-utils.ts";
 import { getBaseAndGearStats } from "../../utils/soldier-stats-utils.ts";
 
@@ -58,9 +58,9 @@ function formationSoldierCard(
   <div class="formation-card-inner">
     <div class="formation-left">
       <div class="formation-avatar-wrap">
-        <img class="formation-avatar" src="/images/green-portrait/${s.avatar}" alt="">
+        <img class="formation-avatar" src="${getSoldierPortraitUrl(s.avatar, s.designation)}" alt="">
         <span class="formation-level-badge item-level-badge rarity-${levelRarity}">Lv${lvl}</span>
-        <span class="formation-role-badge market-weapon-role-badge role-${des}">${s.designation ?? "Rifleman"}</span>
+        <span class="formation-role-badge market-weapon-role-badge role-${des}">${formatDesignation(s.designation)}</span>
       </div>
       <div class="formation-hp-wrap">
         <div class="formation-hp-bar" style="width: 100%"></div>

@@ -1,5 +1,5 @@
 import { computeFinalDamage } from "../../game/combat/combat-damage.ts";
-import { getIncapacitationChance } from "../../game/combat/combat-loop.ts";
+import { clearCombatantEffectsOnDeath, getIncapacitationChance } from "../../game/combat/combat-loop.ts";
 import type { Combatant } from "../../game/combat/types.ts";
 import type { Item } from "../../constants/items/types.ts";
 
@@ -64,9 +64,12 @@ function applyDownState(c: Combatant, newHp: number, killedBy?: string): boolean
     const rollIncap = Math.random() < chance;
     c.downState = rollIncap ? "incapacitated" : "kia";
     if (c.downState === "kia" && killedBy) c.killedBy = killedBy;
+    clearCombatantEffectsOnDeath(c);
     return rollIncap;
   }
   c.downState = "kia";
+  if (killedBy) c.killedBy = killedBy;
+  clearCombatantEffectsOnDeath(c);
   return null;
 }
 

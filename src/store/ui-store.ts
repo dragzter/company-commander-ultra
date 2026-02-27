@@ -160,6 +160,15 @@ export const usePlayerCompanyStore = createStore<CompanyStore>()(
           }
           const mtl = merged.marketTierLevel as number | undefined;
           if (typeof mtl !== "number" || mtl < 0) merged.marketTierLevel = 0;
+          /* Sync companyExperience with company.experience (avoid drift from old saves or partial updates) */
+          const companyExp = merged.company?.experience ?? merged.companyExperience ?? 0;
+          if (typeof merged.company === "object") {
+            merged.company = { ...merged.company, experience: companyExp };
+          }
+          merged.companyExperience = companyExp;
+          if (typeof merged.companyLevel !== "number" || merged.companyLevel < 1) {
+            merged.companyLevel = merged.company?.level ?? 1;
+          }
           return merged;
         },
       })

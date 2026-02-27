@@ -24,9 +24,9 @@ function canAttack(c: Combatant | undefined, now: number): boolean {
   return c != null && c.hp > 0 && !c.downState && !isInCover(c, now) && !isStunned(c, now) && !isSuppressed(c, now);
 }
 
-/** Can this combatant be targeted by attacks? (Stunned and in-cover units can still be shot at.) */
-function canBeTargeted(c: Combatant | undefined): boolean {
-  return c != null && c.hp > 0 && !c.downState;
+/** Can this combatant be targeted by attacks? In-cover soldiers cannot be targeted; enemies must pick different targets. */
+function canBeTargeted(c: Combatant | undefined, now: number): boolean {
+  return c != null && c.hp > 0 && !c.downState && !isInCover(c, now);
 }
 
 /** @deprecated Use canAttack/canBeTargeted. Kept for any external callers. */
@@ -34,7 +34,7 @@ export function isValidTarget(c: Combatant | undefined, now: number): boolean {
   return canAttack(c, now);
 }
 
-/** Assign targets: enemies target players, players target enemies. Preserves existing targets until dead; only reassigns when needed. Stunned/in-cover units can be targeted but cannot attack. */
+/** Assign targets: enemies target players, players target enemies. In-cover soldiers cannot be targeted. Preserves existing targets until invalid; reassigns with equal distribution across remaining targets. */
 export function assignTargets(
   players: Combatant[],
   enemies: Combatant[],
@@ -43,29 +43,30 @@ export function assignTargets(
 ): void {
   const attackingPlayers = players.filter((p) => canAttack(p, now));
   const attackingEnemies = enemies.filter((e) => canAttack(e, now));
-  const targetablePlayers = players.filter((p) => canBeTargeted(p));
-  const targetableEnemies = enemies.filter((e) => canBeTargeted(e));
+  const targetablePlayers = players.filter((p) => canBeTargeted(p, now));
+  const targetableEnemies = enemies.filter((e) => canBeTargeted(e, now));
 
-  // Remove invalid assignments (target dead/down, or attacker can no longer attack)
+  // Remove invalid assignments (target dead/down/in-cover, or attacker can no longer attack)
   const toDelete: string[] = [];
   for (const [attackerId, targetId] of targets) {
     const attacker = [...players, ...enemies].find((c) => c.id === attackerId);
     const target = [...players, ...enemies].find((c) => c.id === targetId);
-    if (!canAttack(attacker, now) || !canBeTargeted(target)) toDelete.push(attackerId);
+    if (!canAttack(attacker, now) || !canBeTargeted(target, now)) toDelete.push(attackerId);
   }
   for (const id of toDelete) targets.delete(id);
 
-  // Assign new targets only for those who need one (prefer targets with fewer attackers)
+  // Assign new targets for those who need one; prefer targets with fewer attackers (equal distribution)
   const assignFor = (attackers: Combatant[], pool: Combatant[]) => {
     const targetCount = new Map<string, number>();
     for (const t of pool) targetCount.set(t.id, 0);
-    for (const [_, tid] of targets) targetCount.set(tid, (targetCount.get(tid) ?? 0) + 1);
+    for (const [_, tid] of targets) {
+      if (pool.some((p) => p.id === tid)) targetCount.set(tid, (targetCount.get(tid) ?? 0) + 1);
+    }
 
     for (const attacker of attackers) {
-      if (targets.has(attacker.id)) continue;
-      const current = targets.get(attacker.id);
-      const t = pool.find((p) => p.id === current);
-      if (t && canBeTargeted(t)) continue;
+      const currentTargetId = targets.get(attacker.id);
+      const currentTarget = currentTargetId ? pool.find((p) => p.id === currentTargetId) : null;
+      if (currentTarget && canBeTargeted(currentTarget, now)) continue;
 
       if (pool.length === 0) continue;
       const sorted = [...pool].sort((a, b) => (targetCount.get(a.id) ?? 0) - (targetCount.get(b.id) ?? 0));
@@ -117,6 +118,7 @@ export function applyBurnTicks(
     if (newHp <= 0) {
       c.downState = c.side === "player" && Math.random() < getIncapacitationChance(c) ? "incapacitated" : "kia";
       if (c.downState === "kia") c.killedBy = "Burning";
+      clearCombatantEffectsOnDeath(c);
     }
     c.burnTicksRemaining! -= 1;
     if (c.burnTicksRemaining! <= 0) {
@@ -149,6 +151,7 @@ export function applyBleedTicks(
     if (newHp <= 0) {
       c.downState = c.side === "player" && Math.random() < getIncapacitationChance(c) ? "incapacitated" : "kia";
       if (c.downState === "kia") c.killedBy = "Bleeding";
+      clearCombatantEffectsOnDeath(c);
     }
     c.bleedTicksRemaining! -= 1;
     if (c.bleedTicksRemaining! <= 0) {
@@ -192,6 +195,32 @@ export function clearExpiredEffects(combatants: Combatant[], now: number): void 
       delete c.attackSpeedBuffMultiplier;
     }
   }
+}
+
+/** Clear all effect timers and markers when a combatant dies (KIA/down). */
+export function clearCombatantEffectsOnDeath(c: Combatant): void {
+  delete c.takeCoverUntil;
+  delete c.takeCoverUsed;
+  delete c.suppressCooldownUntil;
+  delete c.suppressedUntil;
+  delete c.grenadeCooldownUntil;
+  delete c.smokedUntil;
+  delete c.stunUntil;
+  delete c.panicUntil;
+  delete c.burningUntil;
+  delete c.burnTickDamage;
+  delete c.burnTicksRemaining;
+  delete c.burnIgnoresMitigation;
+  delete c.bleedingUntil;
+  delete c.bleedTickDamage;
+  delete c.bleedTicksRemaining;
+  delete c.blindedUntil;
+  delete c.accuracyDebuffUntil;
+  delete c.accuracyDebuffPct;
+  delete c.toughnessReducedUntil;
+  delete c.toughnessReductionPct;
+  delete c.attackSpeedBuffUntil;
+  delete c.attackSpeedBuffMultiplier;
 }
 
 /** Remove attackers whose target went into cover; they will be reassigned next tick */
@@ -297,6 +326,7 @@ export function resolveAttack(
   if (target.hp <= 0) {
     target.downState = target.side === "player" && Math.random() < getIncapacitationChance(target) ? "incapacitated" : "kia";
     if (target.downState === "kia") target.killedBy = attacker.name;
+    clearCombatantEffectsOnDeath(target);
   }
 
   return {

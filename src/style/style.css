@@ -431,10 +431,13 @@ p, a, button, h1, h2, h3, h4, h5, h6, span, li, ul {
 }
 
 
-/* Setup/confirm/menu: flat gradient buttons (market style) */
+/* Setup/confirm/menu/combat: flat gradient buttons (market style) */
 .setup-game-wrapper .game-btn,
 .confirm-screen-root .game-btn,
-#g-menu-wrapper .menu-btn {
+#g-menu-wrapper .menu-btn,
+.combat-quit-confirm-inner .game-btn,
+.combat-footer .game-btn,
+#combat-mission-details-popup .game-btn {
 	background-image: none;
 	border: 2px solid transparent;
 	box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
@@ -442,7 +445,10 @@ p, a, button, h1, h2, h3, h4, h5, h6, span, li, ul {
 
 .setup-game-wrapper .game-btn-green,
 .confirm-screen-root .game-btn-green,
-#g-menu-wrapper .game-btn-green {
+#g-menu-wrapper .game-btn-green,
+.combat-quit-confirm-inner .game-btn-green,
+.combat-footer .game-btn-green,
+#combat-mission-details-popup .game-btn-green {
 	background-image: none;
 	background:
 		radial-gradient(ellipse 80% 60% at 30% 30%, rgba(255, 255, 255, 0.08) 0%, transparent 50%),
@@ -453,7 +459,10 @@ p, a, button, h1, h2, h3, h4, h5, h6, span, li, ul {
 }
 
 .setup-game-wrapper .game-btn-red,
-.confirm-screen-root .game-btn-red {
+.confirm-screen-root .game-btn-red,
+.combat-quit-confirm-inner .game-btn-red,
+.combat-footer .game-btn-red,
+#combat-mission-details-popup .game-btn-red {
 	background-image: none;
 	background:
 		radial-gradient(ellipse 70% 50% at 25% 25%, rgba(255, 255, 255, 0.1) 0%, transparent 50%),
@@ -473,7 +482,10 @@ p, a, button, h1, h2, h3, h4, h5, h6, span, li, ul {
 	border-color: rgba(120, 120, 120, 0.7);
 }
 
-#g-menu-wrapper .game-btn-blue {
+#g-menu-wrapper .game-btn-blue,
+.combat-quit-confirm-inner .game-btn-blue,
+.combat-footer .game-btn-blue,
+#combat-mission-details-popup .game-btn-blue {
 	background-image: none;
 	background:
 		radial-gradient(ellipse 80% 60% at 25% 25%, rgba(255, 255, 255, 0.12) 0%, transparent 50%),
@@ -485,7 +497,10 @@ p, a, button, h1, h2, h3, h4, h5, h6, span, li, ul {
 
 .setup-game-wrapper .game-btn:hover:not(:disabled),
 .confirm-screen-root .game-btn:hover:not(:disabled),
-#g-menu-wrapper .menu-btn:hover {
+#g-menu-wrapper .menu-btn:hover,
+.combat-quit-confirm-inner .game-btn:hover,
+.combat-footer .game-btn:hover,
+#combat-mission-details-popup .game-btn:hover {
 	transform: translateY(-2px);
 	filter: brightness(1.1);
 }
@@ -4654,8 +4669,7 @@ button.mbtn {
 	gap: 4px;
 	padding: 2px 5px 2px 4px;
 	font-size: 0.68rem;
-	text-transform: uppercase;
-	letter-spacing: 0.1em;
+	letter-spacing: 0.05em;
 	font-weight: 900;
 	border-radius: 3px;
 	border: 1px solid;
@@ -5314,24 +5328,29 @@ button.mbtn {
 	text-transform: uppercase;
 	color: #fff;
 	background: linear-gradient(180deg, #22c022 0%, #18a018 40%, #128812 100%);
-	border: 2px solid rgba(100, 255, 100, 0.7);
+	border: 2px solid rgba(100, 255, 100, 0.8);
 	border-radius: 8px;
-	box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), 0 0 30px rgba(50, 220, 50, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.4);
 	text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
 	cursor: pointer;
-	transition: transform 0.15s, box-shadow 0.2s;
-	animation: combat-begin-pulse 2s ease-in-out infinite;
+	transition: transform 0.15s;
+	animation: combat-begin-pulse 1.5s ease-in-out infinite;
 }
 .combat-begin-poppy:hover {
 	transform: translateX(-50%) scale(1.05);
-	box-shadow: 0 6px 28px rgba(0, 0, 0, 0.5), 0 0 45px rgba(80, 255, 80, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+	box-shadow: 0 6px 28px rgba(0, 0, 0, 0.5), 0 0 60px rgba(100, 255, 100, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.5);
 }
 .combat-begin-poppy:active {
 	transform: translateX(-50%) scale(0.97);
 }
 @keyframes combat-begin-pulse {
-	0%, 100% { box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), 0 0 30px rgba(50, 220, 50, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.4); }
-	50% { box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5), 0 0 40px rgba(80, 255, 80, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.4); }
+	0%, 100% {
+		box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), 0 0 25px rgba(50, 220, 50, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+		transform: translateX(-50%) scale(1);
+	}
+	50% {
+		box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5), 0 0 50px rgba(100, 255, 100, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+		transform: translateX(-50%) scale(1.03);
+	}
 }
 
 .combat-arena {
@@ -5453,7 +5472,7 @@ button.mbtn {
 	align-items: center;
 	gap: 2px;
 	cursor: pointer;
-	overflow: hidden;
+	overflow: visible;
 }
 
 .combat-card:hover {
@@ -5618,7 +5637,7 @@ button.mbtn {
 .combat-evade-popup {
 	position: absolute;
 	left: 50%;
-	top: 50%;
+	top: 35%;
 	transform: translate(-50%, -50%);
 	font-size: 0.82rem;
 	font-weight: 800;
@@ -5634,7 +5653,7 @@ button.mbtn {
 .combat-miss-popup {
 	position: absolute;
 	left: 50%;
-	top: 50%;
+	top: 35%;
 	transform: translate(-50%, -50%);
 	font-size: 0.82rem;
 	font-weight: 800;
@@ -5651,7 +5670,7 @@ button.mbtn {
 .combat-throw-evaded-popup {
 	position: absolute;
 	left: 50%;
-	top: 50%;
+	top: 35%;
 	transform: translate(-50%, -50%);
 	font-size: 0.78rem;
 	font-weight: 800;
@@ -5672,7 +5691,7 @@ button.mbtn {
 @keyframes combat-combat-text-pop {
 	0% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
 	15% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
-	100% { opacity: 0; transform: translate(-50%, -60px) scale(1.05); }
+	100% { opacity: 0; transform: translate(-50%, -70px) scale(1.05); }
 }
 
 @keyframes combat-evade-float {
@@ -5736,6 +5755,20 @@ button.mbtn {
 	animation: combat-card-suppressed-flash 1.5s ease-in-out infinite;
 }
 
+/* Low health (< 20%): thin pulsing red glow on player soldiers */
+.combat-card-low-health {
+	animation: combat-card-low-health-pulse 1s ease-in-out infinite;
+}
+
+@keyframes combat-card-low-health-pulse {
+	0%, 100% {
+		box-shadow: 0 0 0 1px rgba(248, 113, 113, 0.6), 0 0 8px 1px rgba(239, 68, 68, 0.4);
+	}
+	50% {
+		box-shadow: 0 0 0 2px rgba(248, 113, 113, 0.9), 0 0 12px 2px rgba(239, 68, 68, 0.6);
+	}
+}
+
 @keyframes combat-card-suppressed-flash {
 	0%, 100% { box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.3); }
 	50% { box-shadow: 0 0 12px 4px rgba(234, 179, 8, 0.15); }
@@ -5744,7 +5777,7 @@ button.mbtn {
 .combat-card-suppress-arrow-wrap {
 	position: absolute;
 	left: 50%;
-	top: -24px;
+	top: -2px;
 	transform: translateX(-50%);
 	z-index: 5;
 	pointer-events: none;
@@ -5752,9 +5785,9 @@ button.mbtn {
 
 .combat-card-suppress-arrow {
 	color: rgba(255, 220, 80, 1);
-	font-size: 24px;
+	font-size: 29px;
 	line-height: 1;
-	text-shadow: 0 0 6px rgba(234, 179, 8, 0.9), 0 0 12px rgba(234, 179, 8, 0.5);
+	text-shadow: 0 0 12px rgba(234, 179, 8, 0.9), 0 0 24px rgba(234, 179, 8, 0.5);
 	animation: combat-card-suppress-arrow-bounce 0.45s ease-in-out infinite;
 }
 
@@ -5764,7 +5797,7 @@ button.mbtn {
 		opacity: 1;
 	}
 	50% {
-		transform: translateY(10px);
+		transform: translateY(7px);
 		opacity: 0.85;
 	}
 }
@@ -5784,7 +5817,7 @@ button.mbtn {
 
 .combat-suppress-popup {
 	position: absolute;
-	top: 50%;
+	top: 35%;
 	left: 50%;
 	transform: translate(-50%, -50%);
 	padding: 4px 10px;
@@ -5916,7 +5949,7 @@ button.mbtn {
 .combat-effect-evaded-popup {
 	position: absolute;
 	left: 50%;
-	top: 50%;
+	top: 35%;
 	transform: translate(-50%, -50%);
 	font-size: 1rem;
 	font-weight: 800;
@@ -5932,7 +5965,7 @@ button.mbtn {
 .combat-smoke-popup {
 	position: absolute;
 	left: 50%;
-	top: 50%;
+	top: 35%;
 	transform: translate(-50%, -50%);
 	font-size: 1rem;
 	font-weight: 800;
@@ -6479,7 +6512,7 @@ button.mbtn {
 .combat-summary-xp-bar {
 	position: relative;
 	flex: 1;
-	min-width: 0;
+	min-width: 48px;
 	height: 12px;
 	background: linear-gradient(90deg, rgba(15, 18, 12, 0.95) 0%, rgba(28, 24, 18, 0.92) 100%);
 	border: 1px solid rgba(90, 80, 60, 0.35);
@@ -6519,10 +6552,85 @@ button.mbtn {
 	margin-top: 1px;
 }
 
+/* Combat summary: Company XP bar (blue) - below Soldiers */
+.combat-summary-company-xp-section {
+	margin-top: 4px;
+	width: 100%;
+	align-self: stretch;
+}
+.combat-summary-company-xp-bar-wrap {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	width: 100%;
+}
+.combat-summary-company-xp-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 10px;
+}
+.combat-summary-company-level-badge {
+	font-size: 0.85rem;
+	font-weight: 800;
+	letter-spacing: 0.08em;
+	padding: 3px 10px;
+	border-radius: 6px;
+	background: linear-gradient(135deg, var(--accent-cyan-1) 0%, #3d8099 100%);
+	color: #0a0f12;
+	box-shadow: 0 2px 6px rgba(60, 140, 200, 0.4);
+}
+.combat-summary-company-xp-earned {
+	font-size: 0.9rem;
+	font-weight: 800;
+	color: #60b8e8;
+	text-shadow: 0 0 8px rgba(96, 184, 232, 0.5);
+}
+.combat-summary-company-xp-bar {
+	position: relative;
+	width: 100%;
+	height: 22px;
+	background: linear-gradient(90deg, rgba(15, 18, 12, 0.95) 0%, rgba(28, 24, 18, 0.92) 100%);
+	border: 1px solid rgba(90, 80, 60, 0.35);
+	border-radius: 4px;
+	overflow: hidden;
+	box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+.combat-summary-company-xp-fill {
+	position: absolute;
+	top: 0;
+	left: 0;
+	bottom: 0;
+	background: linear-gradient(90deg, #2a7ab8 0%, #4a9fd8 50%, #6bc4f0 100%);
+	box-shadow: 0 0 8px rgba(96, 184, 232, 0.6);
+	border-radius: 3px;
+	transition: width 0.3s ease-out;
+}
+.combat-summary-company-xp-text {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 0.75rem;
+	font-weight: 700;
+	color: var(--camo-tan-1);
+	text-shadow: 0 0 2px #000, 0 1px 2px #000, 1px 0 2px #000, -1px 0 2px #000, 0 -1px 2px #000;
+	pointer-events: none;
+	z-index: 2;
+}
+
+.combat-summary-rewards-section,
+.combat-summary-loot-section {
+	width: 100%;
+	align-self: flex-start;
+	text-align: left;
+}
 .combat-summary-rewards {
 	display: flex;
 	flex-direction: column;
 	gap: 4px;
+	align-items: flex-start;
 }
 
 .combat-summary-reward-row {
@@ -6627,6 +6735,8 @@ button.mbtn {
 	grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
 	gap: 8px;
 	margin-top: 6px;
+	width: 100%;
+	justify-items: start;
 }
 .combat-summary-item-slot {
 	cursor: default;
@@ -6706,7 +6816,6 @@ button.mbtn {
 /* Combat summary: new-style button (market style) */
 .combat-summary-inner #combat-summary-return {
 	width: 100%;
-	max-width: 280px;
 	height: 44px;
 	margin-top: 4px;
 	font-size: 0.9rem;
@@ -6752,7 +6861,7 @@ button.mbtn {
 
 .combat-heal-popup {
 	position: absolute;
-	top: 50%;
+	top: 35%;
 	left: 50%;
 	transform: translate(-50%, -50%);
 	font-size: 1.1rem;
@@ -6931,16 +7040,22 @@ button.mbtn {
 	pointer-events: none;
 }
 
-/* Grenade targeting highlight */
+/* Grenade targeting highlight - glow and pulse */
 .combat-card-grenade-target {
 	outline: 2px solid var(--accent-magenta-1);
 	outline-offset: 2px;
-	animation: combat-grenade-target-pulse 1s ease-in-out infinite;
+	animation: combat-grenade-target-pulse 1.2s ease-in-out infinite;
 }
 
 @keyframes combat-grenade-target-pulse {
-	0%, 100% { outline-color: var(--accent-magenta-1); }
-	50% { outline-color: var(--accent-magenta-2); }
+	0%, 100% {
+		outline-color: var(--accent-magenta-1);
+		box-shadow: 0 0 8px 2px rgba(245, 86, 122, 0.5), 0 0 20px 4px rgba(234, 62, 101, 0.3);
+	}
+	50% {
+		outline-color: var(--accent-magenta-2);
+		box-shadow: 0 0 14px 4px rgba(245, 86, 122, 0.8), 0 0 28px 6px rgba(234, 62, 101, 0.5);
+	}
 }
 
 @keyframes combat-ability-selected-pulse {
@@ -6983,32 +7098,84 @@ button.mbtn {
 
 .combat-damage-popup {
 	position: absolute;
-	top: 50%;
+	top: 35%;
 	left: 50%;
 	transform: translate(-50%, -50%);
 	font-size: 1.1rem;
 	font-weight: 800;
 	letter-spacing: 0.05em;
-	color: #ff4444;
-	text-shadow: 0 0 10px #000, 0 2px 6px rgba(0,0,0,0.9), 0 0 24px rgba(255, 60, 60, 0.6);
+	color: #ffffff;
+	text-shadow:
+		0 0 4px #000,
+		0 0 8px #000,
+		0 1px 3px rgba(0, 0, 0, 1),
+		0 2px 6px rgba(0, 0, 0, 0.95),
+		0 0 16px rgba(255, 255, 255, 0.6);
 	animation: combat-damage-popup-anim 1.5s ease-out forwards;
 	pointer-events: none;
 	z-index: 10;
 }
 
-.combat-burn-popup {
-	color: #ff6633;
-	text-shadow: 0 0 10px #000, 0 2px 6px rgba(0,0,0,0.9), 0 0 24px rgba(255, 100, 50, 0.6);
+/* Special damage: bigger font */
+.combat-suppress-damage-popup {
+	font-size: 1.5rem;
+	color: #ffcc44;
+	text-shadow:
+		0 0 4px #000,
+		0 0 8px #000,
+		0 1px 4px rgba(0, 0, 0, 1),
+		0 2px 8px rgba(0, 0, 0, 0.95),
+		0 0 24px rgba(255, 200, 80, 0.9);
 }
+
+.combat-grenade-damage-popup {
+	font-size: 1.5rem;
+	color: #ff8844;
+	text-shadow:
+		0 0 4px #000,
+		0 0 8px #000,
+		0 1px 4px rgba(0, 0, 0, 1),
+		0 2px 8px rgba(0, 0, 0, 0.95),
+		0 0 24px rgba(255, 140, 60, 0.9);
+}
+
+.combat-knife-damage-popup {
+	font-size: 1.5rem;
+	color: #44ddff;
+	text-shadow:
+		0 0 4px #000,
+		0 0 8px #000,
+		0 1px 4px rgba(0, 0, 0, 1),
+		0 2px 8px rgba(0, 0, 0, 0.95),
+		0 0 24px rgba(80, 200, 255, 0.9);
+}
+
+.combat-burn-popup {
+	font-size: 1.5rem;
+	color: #dd66ff;
+	text-shadow:
+		0 0 4px #000,
+		0 0 8px #000,
+		0 1px 4px rgba(0, 0, 0, 1),
+		0 2px 8px rgba(0, 0, 0, 0.95),
+		0 0 24px rgba(200, 100, 255, 0.9);
+}
+
 .combat-bleed-popup {
-	color: #cc2244;
-	text-shadow: 0 0 10px #000, 0 2px 6px rgba(0,0,0,0.9), 0 0 24px rgba(200, 40, 60, 0.6);
+	font-size: 1.5rem;
+	color: #ff2222;
+	text-shadow:
+		0 0 4px #000,
+		0 0 8px #000,
+		0 1px 4px rgba(0, 0, 0, 1),
+		0 2px 8px rgba(0, 0, 0, 0.95),
+		0 0 24px rgba(255, 40, 40, 0.95);
 }
 
 @keyframes combat-damage-popup-anim {
 	0% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
 	12% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
-	100% { opacity: 0; transform: translate(-50%, -60px) scale(1.05); }
+	100% { opacity: 0; transform: translate(-50%, -70px) scale(1.05); }
 }
 
 .combat-card-shake {
