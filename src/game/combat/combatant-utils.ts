@@ -120,6 +120,7 @@ export function createEnemyCombatant(
   const c = soldierToCombatant(soldier);
   c.id = `enemy-${index}-${Date.now()}`;
   c.side = "enemy";
+  c.enemySlotIndex = index;
   const isEnemyMedic = (c.designation ?? "").toLowerCase() === "medic";
   if (isEnemyMedic) {
     const medkit = (soldier.inventory ?? []).find((item) => item.id === "standard_medkit");

@@ -63,6 +63,7 @@ import {
 import type { MemorialEntry } from "../game/entities/memorial-types.ts";
 import { getStarterArmoryItems } from "../constants/starter-armory.ts";
 import { generateMissions, MISSION_BOARD_SCHEMA_VERSION } from "../services/missions/mission-generator.ts";
+import { SOLDIER_DESIGNATION, type Designation } from "../game/entities/types.ts";
 
 function pickReplacementMission(
   completed: Mission,
@@ -89,6 +90,87 @@ function pickReplacementMission(
   }
 
   return null;
+}
+
+const RECRUIT_ROLE_TARGETS: Record<Designation, number> = {
+  [SOLDIER_DESIGNATION.rifleman]: 6,
+  [SOLDIER_DESIGNATION.medic]: 2,
+  [SOLDIER_DESIGNATION.support]: 2,
+};
+
+const RECRUIT_ROLE_ORDER: Designation[] = [
+  SOLDIER_DESIGNATION.rifleman,
+  SOLDIER_DESIGNATION.medic,
+  SOLDIER_DESIGNATION.support,
+];
+
+function shuffleSoldiers(soldiers: Soldier[]): Soldier[] {
+  const arr = soldiers.slice();
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const t = arr[i];
+    arr[i] = arr[j];
+    arr[j] = t;
+  }
+  return arr;
+}
+
+function getEnemyBaseLevelFromCompany(company: Company | null | undefined): number {
+  const soldiers = company?.soldiers ?? [];
+  if (soldiers.length === 0) return 1;
+
+  const companyRef = company ?? null;
+  const slots = getFormationSlots(companyRef);
+  const activeCount = getActiveSlots(companyRef);
+  const soldierById = new Map(soldiers.map((s) => [s.id, s]));
+  let activeSoldiers = slots
+    .slice(0, activeCount)
+    .map((id) => (id ? soldierById.get(id) ?? null : null))
+    .filter((s): s is Soldier => s != null);
+  if (activeSoldiers.length === 0) activeSoldiers = soldiers;
+
+  const levelCounts = new Map<number, number>();
+  for (const s of activeSoldiers) {
+    const lvl = Math.max(1, Math.floor(s.level ?? 1));
+    levelCounts.set(lvl, (levelCounts.get(lvl) ?? 0) + 1);
+  }
+
+  let majorityLevel = 1;
+  let majorityCount = 0;
+  for (const [lvl, count] of levelCounts) {
+    if (count > majorityCount) {
+      majorityCount = count;
+      majorityLevel = lvl;
+    }
+  }
+  if (majorityCount > activeSoldiers.length / 2) return Math.max(1, Math.min(20, majorityLevel));
+
+  const sum = activeSoldiers.reduce((a, s) => a + (s.level ?? 1), 0);
+  return Math.max(1, Math.min(20, Math.ceil(sum / activeSoldiers.length)));
+}
+
+function getRecruitLevelFromCompany(company: Company | null | undefined): number {
+  const enemyBaseLevel = getEnemyBaseLevelFromCompany(company);
+  return Math.max(1, Math.min(20, enemyBaseLevel - 1));
+}
+
+function generateRecruitByRole(role: Designation, level: number): Soldier {
+  if (role === SOLDIER_DESIGNATION.medic) return SoldierManager.getNewMedic(level);
+  if (role === SOLDIER_DESIGNATION.support) return SoldierManager.getNewSupportMan(level);
+  return SoldierManager.getNewRifleman(level);
+}
+
+function normalizeRecruitMarketPool(pool: Soldier[], recruitLevel: number): Soldier[] {
+  const normalized: Soldier[] = [];
+  for (const role of RECRUIT_ROLE_ORDER) {
+    const target = RECRUIT_ROLE_TARGETS[role];
+    const existing = pool.filter((s) => s.designation === role).slice(0, target);
+    normalized.push(...existing);
+    for (let i = existing.length; i < target; i++) {
+      normalized.push(generateRecruitByRole(role, recruitLevel));
+    }
+  }
+  return shuffleSoldiers(normalized);
 }
 
 export const StoreActions = (set: any, get: () => CompanyStore) => ({
@@ -365,22 +447,33 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
       const currentSlots = getFormationSlots(state.company);
       const idsToPlace = [...added.map((s) => s.id)];
       const newFormationSlots = currentSlots.map((slot) => (slot != null ? slot : idsToPlace.shift() ?? null));
+      const nextCompany = {
+        ...state.company,
+        soldiers: newSoldiers,
+        formationSlots: newFormationSlots,
+      };
+      const recruitLevel = getRecruitLevelFromCompany(nextCompany);
+      const replacements = added.map((s) => generateRecruitByRole(s.designation, recruitLevel));
+      const nextMarket = normalizeRecruitMarketPool(
+        [...state.marketAvailableTroops, ...returned, ...replacements],
+        recruitLevel,
+      );
       return {
         creditBalance: state.creditBalance - totalCost,
         recruitStaging: returned,
         totalMenInCompany: newSoldiers.length,
-        company: {
-          ...state.company,
-          soldiers: newSoldiers,
-          formationSlots: newFormationSlots,
-        },
-        marketAvailableTroops: [...state.marketAvailableTroops, ...returned],
+        company: nextCompany,
+        marketAvailableTroops: nextMarket,
       };
     }),
   onCompanyLevelUp: () => {
-    set((s: CompanyStore) => ({ rerollCounter: 6 }));
-    const soldiers = SoldierManager.generateTroopList(1);
-    get().setMarketAvailableTroops(soldiers);
+    const state = get();
+    const recruitLevel = getRecruitLevelFromCompany(state.company);
+    const nextMarket = normalizeRecruitMarketPool(state.marketAvailableTroops ?? [], recruitLevel);
+    set((s: CompanyStore) => ({
+      rerollCounter: (s.rerollCounter ?? 0) + 6,
+      marketAvailableTroops: nextMarket,
+    }));
   },
   addInitialTroopsIfEmpty: () =>
     set((state: CompanyStore) => {
@@ -930,7 +1023,9 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
       companyExperience: exp,
     }));
     if (lvl > oldLevel) {
-      get().onCompanyLevelUp();
+      for (let i = oldLevel + 1; i <= lvl; i++) {
+        get().onCompanyLevelUp();
+      }
     }
 
     const rewardIds = mission.rewardItems ?? [];

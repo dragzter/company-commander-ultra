@@ -5972,7 +5972,7 @@ button.mbtn {
 
 .combat-enemies .combat-formation,
 .combat-players .combat-formation {
-	transform: translateY(-40px);
+	transform: translateY(-70px);
 }
 
 .combat-cards-row {
@@ -5984,9 +5984,27 @@ button.mbtn {
 	min-width: 0;
 }
 
+.combat-slot {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.combat-enemy-slot {
+	width: 72px;
+	min-width: 72px;
+	max-width: 72px;
+	min-height: 84px;
+	flex-shrink: 0;
+}
+
 .combat-cards-row.combat-formation-front,
 .combat-cards-row.combat-formation-back {
 	min-width: 0;
+}
+
+.combat-cards-row:empty {
+	display: none;
 }
 
 .combat-card {
@@ -6205,6 +6223,87 @@ button.mbtn {
 	font-weight: 700;
 	color: #4ade80;
 	z-index: 2;
+}
+
+.combat-card-setting-up {
+	filter: saturate(0.88) brightness(0.96);
+}
+
+.combat-card-setup-timer {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	padding: 2px 6px;
+	border-radius: 4px;
+	font-size: 0.55rem;
+	font-weight: 900;
+	letter-spacing: 0.05em;
+	color: #fff7d4;
+	background: rgba(36, 28, 14, 0.9);
+	border: 1px solid rgba(255, 210, 120, 0.45);
+	box-shadow: 0 1px 6px rgba(0, 0, 0, 0.45);
+	z-index: 4;
+	pointer-events: none;
+}
+
+.combat-card-reinforce-arrival {
+	position: relative;
+	animation: combat-reinforce-card-pop 0.45s ease-out;
+}
+
+.combat-card-reinforce-arrival::before {
+	content: "";
+	position: absolute;
+	top: 38%;
+	left: 50%;
+	width: 26px;
+	height: 26px;
+	transform: translate(-50%, -50%);
+	border-radius: 50%;
+	border: 2px solid rgba(255, 204, 140, 0.95);
+	box-shadow:
+		0 0 0 3px rgba(255, 120, 80, 0.2),
+		inset 0 0 0 1px rgba(255, 240, 214, 0.95),
+		0 0 12px rgba(255, 128, 88, 0.55);
+	background:
+		linear-gradient(to right, transparent 46%, rgba(255, 240, 214, 0.95) 46%, rgba(255, 240, 214, 0.95) 54%, transparent 54%),
+		linear-gradient(to bottom, transparent 46%, rgba(255, 240, 214, 0.95) 46%, rgba(255, 240, 214, 0.95) 54%, transparent 54%);
+	pointer-events: none;
+	z-index: 8;
+	animation: combat-reinforce-reticle 0.8s ease-out forwards;
+}
+
+.combat-card-reinforce-arrival::after {
+	content: "";
+	position: absolute;
+	top: 38%;
+	left: 50%;
+	width: 58px;
+	height: 58px;
+	transform: translate(-50%, -50%);
+	border-radius: 50%;
+	border: 2px solid rgba(255, 170, 125, 0.75);
+	background: radial-gradient(circle, rgba(255, 132, 88, 0.08) 0%, transparent 70%);
+	pointer-events: none;
+	z-index: 7;
+	animation: combat-reinforce-ring 0.9s ease-out forwards;
+}
+
+@keyframes combat-reinforce-card-pop {
+	0% { transform: scale(0.94); filter: brightness(1.25); }
+	100% { transform: scale(1); filter: brightness(1); }
+}
+
+@keyframes combat-reinforce-reticle {
+	0% { opacity: 0; transform: translate(-50%, -50%) scale(0.72); }
+	35% { opacity: 1; transform: translate(-50%, -50%) scale(1.05); }
+	100% { opacity: 0; transform: translate(-50%, -50%) scale(1.12); }
+}
+
+@keyframes combat-reinforce-ring {
+	0% { opacity: 0.86; transform: translate(-50%, -50%) scale(0.55); }
+	100% { opacity: 0; transform: translate(-50%, -50%) scale(1.2); }
 }
 
 .combat-evade-popup {
@@ -6872,6 +6971,42 @@ button.mbtn {
 .combat-targeting-hint[aria-hidden="false"] {
 	visibility: visible;
 	opacity: 1;
+}
+
+.combat-objective-timer {
+	position: absolute;
+	top: 8px;
+	left: 50%;
+	transform: translateX(-50%);
+	padding: 6px 14px;
+	font-size: 0.86rem;
+	font-weight: 900;
+	color: #fff2c5;
+	letter-spacing: 0.09em;
+	background:
+		radial-gradient(ellipse at 50% 20%, rgba(255, 238, 170, 0.24) 0%, rgba(255, 238, 170, 0) 65%),
+		linear-gradient(180deg, rgba(50, 34, 14, 0.95) 0%, rgba(26, 18, 8, 0.96) 100%);
+	border: 2px solid rgba(255, 214, 128, 0.7);
+	border-radius: 7px;
+	box-shadow:
+		0 3px 14px rgba(0, 0, 0, 0.5),
+		0 0 20px rgba(255, 188, 86, 0.24),
+		inset 0 1px 0 rgba(255, 255, 255, 0.22);
+	text-shadow: 0 1px 2px rgba(0, 0, 0, 0.65), 0 0 12px rgba(255, 220, 132, 0.35);
+	z-index: 110;
+	pointer-events: none;
+	animation: combat-objective-timer-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes combat-objective-timer-pulse {
+	0%, 100% {
+		transform: translateX(-50%) scale(1);
+		filter: brightness(1);
+	}
+	50% {
+		transform: translateX(-50%) scale(1.02);
+		filter: brightness(1.06);
+	}
 }
 
 .combat-abilities-list {
@@ -7611,7 +7746,6 @@ button.mbtn {
 }
 
 .combat-ability-selected,
-.combat-grenade-item.combat-ability-selected,
 .combat-med-item.combat-ability-selected,
 .combat-ability-icon-slot.combat-ability-selected {
 	outline: 2px solid var(--accent-magenta-1);
@@ -7621,9 +7755,44 @@ button.mbtn {
 	animation: combat-ability-selected-pulse 1s ease-in-out infinite;
 }
 
+.combat-grenade-item.combat-ability-selected {
+	outline: none;
+	background:
+		linear-gradient(145deg, rgba(38, 19, 8, 0.95) 0%, rgba(64, 24, 12, 0.96) 52%, rgba(26, 10, 7, 0.95) 100%) !important;
+	border: 1px solid rgba(255, 187, 115, 0.9);
+	box-shadow:
+		0 0 0 1px rgba(255, 130, 76, 0.7),
+		0 0 0 3px rgba(255, 74, 54, 0.34),
+		0 0 16px rgba(255, 116, 69, 0.5);
+	animation: combat-grenade-selected-pulse 0.92s ease-in-out infinite;
+}
+
+.combat-grenade-item.combat-ability-selected::before {
+	content: "";
+	position: absolute;
+	inset: 5px;
+	border-radius: 4px;
+	border: 1px dashed rgba(255, 217, 176, 0.95);
+	pointer-events: none;
+	animation: combat-grenade-selected-dash 1.25s linear infinite;
+}
+
+.combat-grenade-item.combat-ability-selected::after {
+	inset: -5px;
+	border-radius: 9px;
+	background: conic-gradient(
+		from 0deg,
+		rgba(255, 156, 88, 0.8),
+		rgba(255, 86, 66, 0.16),
+		rgba(255, 156, 88, 0.8)
+	);
+	mask: radial-gradient(circle, transparent 70%, black 72%);
+	-webkit-mask: radial-gradient(circle, transparent 70%, black 72%);
+	animation: combat-grenade-selected-ring 1.2s linear infinite;
+}
+
 /* Pulse ring via pseudo-element - avoids conflicts with rarity/other styles */
 .combat-ability-selected::after,
-.combat-grenade-item.combat-ability-selected::after,
 .combat-med-item.combat-ability-selected::after,
 .combat-ability-icon-slot.combat-ability-selected::after {
 	content: "";
@@ -7732,6 +7901,22 @@ button.mbtn {
 	50% {
 		box-shadow: 0 0 0 3px var(--accent-magenta-2), 0 0 14px 2px rgba(234, 62, 101, 0.5);
 	}
+}
+
+@keyframes combat-grenade-selected-pulse {
+	0%, 100% { transform: translateZ(0) scale(1); }
+	50% { transform: translateZ(0) scale(1.03); }
+}
+
+@keyframes combat-grenade-selected-ring {
+	from { transform: rotate(0deg); opacity: 0.94; }
+	to { transform: rotate(360deg); opacity: 0.94; }
+}
+
+@keyframes combat-grenade-selected-dash {
+	0% { opacity: 0.85; }
+	50% { opacity: 0.45; }
+	100% { opacity: 0.85; }
 }
 
 /* Attack lines SVG (behind projectiles) */

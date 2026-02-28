@@ -78,6 +78,14 @@ export interface Combatant {
   isManhuntTarget?: boolean;
   /** Weapon effect for proc checks (fire, blind, stun) */
   weaponEffect?: string;
+  /** Enemy formation slot index (0..7) used by defend reinforcements. */
+  enemySlotIndex?: number;
+  /** Reinforcement setup phase end (ms); enemy cannot attack until this expires. */
+  setupUntil?: number;
+  /** Defend mission: timestamp when death was first noticed for fade/removal staging. */
+  deathNoticedAt?: number;
+  /** Defend mission: true once enemy has been faded out and removed from the board. */
+  removedFromCombat?: boolean;
   /** Immunities from armor or traits */
   immuneToStun?: boolean;
   immuneToPanic?: boolean;

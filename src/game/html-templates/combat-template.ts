@@ -36,8 +36,11 @@ function combatCard(c: Combatant, portraitDir: "player" | "enemy"): string {
   const des = (c.designation ?? "rifleman").toLowerCase();
   const epicEliteClass = c.isEpicElite ? " combat-card-epic-elite" : "";
   const manhuntTargetClass = c.isManhuntTarget ? " combat-card-manhunt-target" : "";
+  const enemySlotAttr = c.side === "enemy" && c.enemySlotIndex != null
+    ? ` data-enemy-slot="${c.enemySlotIndex}"`
+    : "";
   return `
-<div class="combat-card designation-${des}${downClass}${epicEliteClass}${manhuntTargetClass}" data-combatant-id="${c.id}" data-side="${c.side}">
+<div class="combat-card designation-${des}${downClass}${epicEliteClass}${manhuntTargetClass}" data-combatant-id="${c.id}" data-side="${c.side}"${enemySlotAttr}>
   <div class="combat-card-inner">
     <div class="combat-card-avatar-wrap">
       <span class="combat-card-level-badge">${lvl}</span>
@@ -66,19 +69,26 @@ export function combatTemplate(
   const enemiesData = escapeAttr(JSON.stringify(enemies));
 
   const playerCards = players.map((p) => combatCard(p, "player"));
-  const enemyCards = enemies.map((e) => combatCard(e, "enemy"));
+  const enemyBySlot = new Map<number, string>();
+  enemies.forEach((e, idx) => {
+    const slot = e.enemySlotIndex ?? idx;
+    if (slot >= 0 && slot < 8 && !enemyBySlot.has(slot)) {
+      enemyBySlot.set(slot, combatCard(e, "enemy"));
+    }
+  });
+  const enemySlotCell = (slot: number) =>
+    `<div class="combat-slot combat-enemy-slot" data-enemy-slot-cell="${slot}">${enemyBySlot.get(slot) ?? ""}</div>`;
 
   const frontCount = 5;
   const playerFront = playerCards.slice(0, frontCount);
   const playerBack = playerCards.slice(frontCount);
-  const enemyFront = enemyCards.slice(0, frontCount);
-  const enemyBack = enemyCards.slice(frontCount);
 
   return `
 <div id="combat-screen" class="combat-root" data-mission-json="${missionData}" data-players-json="${playersData}" data-enemies-json="${enemiesData}">
   ${companyHeaderPartial(missionName)}
   <div class="combat-main combat-main-with-drawer">
     <div id="combat-targeting-hint" class="combat-targeting-hint" aria-hidden="true"></div>
+    <div id="combat-objective-timer" class="combat-objective-timer" hidden>Hold: 2:00</div>
     <div id="combat-battle-area" class="combat-battle-area">
       <svg id="combat-attack-lines-svg" class="combat-attack-lines-svg" aria-hidden="true">
         <defs>
@@ -94,8 +104,18 @@ export function combatTemplate(
       <svg id="combat-projectiles-svg" class="combat-projectiles-svg" aria-hidden="true"><g id="combat-projectiles-g"></g></svg>
       <div class="combat-row combat-enemies">
         <div class="combat-formation" id="combat-enemies-grid">
-          ${enemyBack.length ? `<div class="combat-cards-row combat-formation-back">${enemyBack.join("")}</div>` : ""}
-          <div class="combat-cards-row combat-formation-front">${enemyFront.join("")}</div>
+          <div class="combat-cards-row combat-formation-back" id="combat-enemies-back-row">
+            ${enemySlotCell(4)}
+            ${enemySlotCell(5)}
+            ${enemySlotCell(6)}
+            ${enemySlotCell(7)}
+          </div>
+          <div class="combat-cards-row combat-formation-front" id="combat-enemies-front-row">
+            ${enemySlotCell(0)}
+            ${enemySlotCell(1)}
+            ${enemySlotCell(2)}
+            ${enemySlotCell(3)}
+          </div>
         </div>
       </div>
       <div class="combat-divider"></div>

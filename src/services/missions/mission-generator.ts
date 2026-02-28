@@ -9,7 +9,7 @@ import {
 } from "./mission-reward-policy.ts";
 
 /** Bump this when mission generation output changes and old boards should be regenerated. */
-export const MISSION_BOARD_SCHEMA_VERSION = 5;
+export const MISSION_BOARD_SCHEMA_VERSION = 6;
 
 const LOCATIONS = [
   "the narrow pass",

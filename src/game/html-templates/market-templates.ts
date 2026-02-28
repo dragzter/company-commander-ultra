@@ -507,15 +507,21 @@ export const troopsMarketTemplate = (
   const roleBreakdownHtml = totalMaxPill + rolePills;
 
   const formattedCredits = creditBalance.toLocaleString();
+  const roleRank: Record<string, number> = { rifleman: 0, support: 1, medic: 2 };
+  const orderedTroops = [...troops].sort((a, b) => {
+    const ar = roleRank[(a.designation ?? "rifleman").toLowerCase()] ?? 99;
+    const br = roleRank[(b.designation ?? "rifleman").toLowerCase()] ?? 99;
+    return ar - br;
+  });
 
   return `
 <div id="troops-market" class="troops-market-root" data-troops-screen="v2">
 	<div id="troops-recruit-error" class="troops-recruit-error" role="alert" aria-live="polite"></div>
-	${companyHeaderPartial("Available Troops")}
-	<div class="troops-market-main">
-		<div class="troops-list">
-			${troops.map((t) => Partial.create.trooper(t, canAffordSoldier(t), rerolls > 0)).join("")}
-		</div>
+		${companyHeaderPartial("Available Troops")}
+		<div class="troops-market-main">
+			<div class="troops-list">
+				${orderedTroops.map((t) => Partial.create.trooper(t, canAffordSoldier(t), rerolls > 0)).join("")}
+			</div>
 		<div id="recruit-staging-area" class="recruit-staging-area">
 			<p class="recruit-staging-label">Selected ${slotsLeft > 0 ? `(${recruitStaging.length}/${slotsLeft})` : ""}</p>
 			<div class="recruit-staging-reroll reroll-counter${rerolls <= 0 ? " reroll-empty" : ""}">Rerolls: ${rerolls}</div>

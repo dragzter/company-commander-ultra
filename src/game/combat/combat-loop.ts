@@ -27,7 +27,9 @@ function canAttack(c: Combatant | undefined, now: number): boolean {
 
 /** Can this combatant be targeted by attacks? In-cover soldiers cannot be targeted; enemies must pick different targets. */
 function canBeTargeted(c: Combatant | undefined, now: number): boolean {
-  return c != null && c.hp > 0 && !c.downState && !isInCover(c, now);
+  if (c == null || c.hp <= 0 || c.downState || isInCover(c, now)) return false;
+  if (c.side === "enemy" && c.setupUntil != null && now < c.setupUntil) return false;
+  return true;
 }
 
 /** @deprecated Use canAttack/canBeTargeted. Kept for any external callers. */

@@ -80,6 +80,31 @@ function ScreenManager() {
     return Math.max(1, Math.ceil(sum / activeSoldiers.length));
   }
 
+  function getRecruitLevelFromCompany(company: import("../entities/company/company.ts").Company | null | undefined): number {
+    const companyRef = company ?? null;
+    const slots = getFormationSlots(companyRef);
+    const activeCount = getActiveSlots(company ?? null);
+    const activeSoldiers = slots
+      .slice(0, activeCount)
+      .map((id) => (id ? getSoldierById(companyRef, id) : null))
+      .filter((s): s is Soldier => s != null);
+    const source = activeSoldiers.length > 0 ? activeSoldiers : (company?.soldiers ?? []);
+    const enemyBase = getEnemyLevelFromActiveSquad(source);
+    return Math.max(1, Math.min(20, enemyBase - 1));
+  }
+
+  function hasValidRecruitMarketComposition(soldiers: Soldier[]): boolean {
+    if (soldiers.length !== 10) return false;
+    const rifle = soldiers.filter((s) => s.designation === "rifleman").length;
+    const medic = soldiers.filter((s) => s.designation === "medic").length;
+    const support = soldiers.filter((s) => s.designation === "support").length;
+    return rifle === 6 && medic === 2 && support === 2;
+  }
+
+  function hasExpectedRecruitLevel(soldiers: Soldier[], expectedLevel: number): boolean {
+    return soldiers.every((s) => (s.level ?? 1) === expectedLevel);
+  }
+
   function createSetupScreen() {
     const steps = parseHTML(gameSetupTemplate);
     center.appendChild(steps as Element);
@@ -199,9 +224,12 @@ function ScreenManager() {
       mission?.kind === "manhunt" && enemyCount > 0
         ? Math.floor(Math.random() * enemyCount)
         : undefined;
-    const enemies = Array.from({ length: enemyCount }, (_, i) =>
-      createEnemyCombatant(i, enemyCount, enemyBaseLevel, isEpicMission, mission?.kind, manhuntTargetIndex),
-    );
+    const ENEMY_SLOT_ORDER = [0, 1, 2, 3, 5, 6, 4, 7];
+    const enemies = Array.from({ length: enemyCount }, (_, i) => {
+      const c = createEnemyCombatant(i, enemyCount, enemyBaseLevel, isEpicMission, mission?.kind, manhuntTargetIndex);
+      c.enemySlotIndex = ENEMY_SLOT_ORDER[i] ?? (i % 8);
+      return c;
+    });
     const content = parseHTML(combatTemplate(mission ?? null, players, enemies));
     center.appendChild(content as Element);
     DomEventManager.initEventArray(ec().companyHome().concat(ec().combatScreen(players, enemies)));
@@ -211,13 +239,18 @@ function ScreenManager() {
 
   function createTroopsPage() {
     UiManager.clear.center();
-    const { marketAvailableTroops, setMarketAvailableTroops } =
+    const { marketAvailableTroops, setMarketAvailableTroops, company } =
       usePlayerCompanyStore.getState();
 
     let soldiers: Soldier[];
+    const recruitLevel = getRecruitLevelFromCompany(company);
 
-    if (!marketAvailableTroops.length) {
-      soldiers = SoldierManager.generateTroopList();
+    if (
+      !marketAvailableTroops.length
+      || !hasValidRecruitMarketComposition(marketAvailableTroops)
+      || !hasExpectedRecruitLevel(marketAvailableTroops, recruitLevel)
+    ) {
+      soldiers = SoldierManager.generateTroopList(recruitLevel);
       setMarketAvailableTroops(soldiers);
     } else {
       soldiers = marketAvailableTroops;

@@ -37,14 +37,15 @@ function SoldierManager() {
   const experienceIncreaseBase = 100;
   const experienceMultiplier = 1.52;
 
-  function buildInitialInventory(designation: Designation, inventory: Item[]): Item[] {
-    const inv = inventory.map((item) => ({ ...item }));
+  function buildInitialInventory(designation: Designation, inventory: Item[], level: number): Item[] {
+    const tier = Math.max(1, Math.min(20, level)) as import("../../../constants/items/types.ts").GearLevel;
+    const inv = inventory.map((item) => ({ ...item, level: tier }));
     if (designation !== SOLDIER_DESIGNATION.medic) return inv;
 
     const hasMedkit = inv.some((item) => item.id === "standard_medkit");
     if (hasMedkit) return inv;
 
-    return [{ ...MedicalItems.common.standard_medkit }, ...inv];
+    return [{ ...MedicalItems.common.standard_medkit, level: tier }, ...inv];
   }
 
   /**
@@ -62,8 +63,9 @@ function SoldierManager() {
       JSON.stringify(SOLDIER_BASE),
     ) as Soldier;
 
-    soldier.weapon = weapon;
-    soldier.armor = armor;
+    const tier = Math.max(1, Math.min(20, lvl)) as import("../../../constants/items/types.ts").GearLevel;
+    soldier.weapon = { ...weapon, level: tier };
+    soldier.armor = { ...armor, level: tier };
 
     for (let i = 1; lvl > i; i++) {
       const definition = ATTRIBUTES_INCREASES_BY_LEVEL[i];
@@ -83,7 +85,7 @@ function SoldierManager() {
 
     soldier.name = generateName();
     soldier.avatar = getSoldierAvatar(designation);
-    soldier.inventory = buildInitialInventory(designation, inventory);
+    soldier.inventory = buildInitialInventory(designation, inventory, lvl);
     soldier.level = lvl;
     soldier.id = uuidv4();
     soldier.designation = designation;
@@ -312,22 +314,25 @@ function SoldierManager() {
   }
 
   function generateTroopList(lvl = 1): Soldier[] {
-    return [
+    const troops = [
       getNewSoldier(lvl, SOLDIER_DESIGNATION.rifleman),
       getNewSoldier(lvl, SOLDIER_DESIGNATION.rifleman),
       getNewSoldier(lvl, SOLDIER_DESIGNATION.rifleman),
       getNewSoldier(lvl, SOLDIER_DESIGNATION.rifleman),
       getNewSoldier(lvl, SOLDIER_DESIGNATION.rifleman),
       getNewSoldier(lvl, SOLDIER_DESIGNATION.rifleman),
-      getNewSoldier(lvl, SOLDIER_DESIGNATION.rifleman),
-      getNewSoldier(lvl, SOLDIER_DESIGNATION.rifleman),
-      getNewSoldier(lvl, SOLDIER_DESIGNATION.support),
-      getNewSoldier(lvl, SOLDIER_DESIGNATION.support),
       getNewSoldier(lvl, SOLDIER_DESIGNATION.support),
       getNewSoldier(lvl, SOLDIER_DESIGNATION.support),
       getNewSoldier(lvl, SOLDIER_DESIGNATION.medic),
       getNewSoldier(lvl, SOLDIER_DESIGNATION.medic),
     ];
+    for (let i = troops.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      const t = troops[i];
+      troops[i] = troops[j];
+      troops[j] = t;
+    }
+    return troops;
   }
 
   return {

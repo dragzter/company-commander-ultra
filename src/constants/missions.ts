@@ -18,6 +18,12 @@ export interface MissionKindDefinition {
   epicWeight?: number;
 }
 
+export const ACTIVE_MISSION_KINDS: MissionKind[] = [
+  MISSION_KINDS.defend_objective,
+  MISSION_KINDS.seek_and_destroy, // Shown as "Skirmish"
+  MISSION_KINDS.manhunt,
+];
+
 /**
  * Central mission registry.
  * Add a new mission type here and generation/template flows will pick it up.
@@ -44,8 +50,8 @@ export const MISSION_KIND_DEFINITIONS: MissionKindDefinition[] = [
       "Lie in wait at {LOC}. Strike when they least expect it.",
     ],
     displayOrder: 2,
-    regularWeight: 1,
-    epicWeight: 1,
+    regularWeight: 0,
+    epicWeight: 0,
   },
   {
     kind: MISSION_KINDS.attack_objective,
@@ -56,13 +62,13 @@ export const MISSION_KIND_DEFINITIONS: MissionKindDefinition[] = [
       "Take {LOC} by force. No quarter.",
     ],
     displayOrder: 3,
-    regularWeight: 1,
-    epicWeight: 1,
+    regularWeight: 0,
+    epicWeight: 0,
   },
   {
     kind: MISSION_KINDS.seek_and_destroy,
-    name: "Seek and Destroy",
-    description: "Eliminate high-value targets.",
+    name: "Skirmish",
+    description: "Standard deathmatch against hostile forces.",
     flavorTemplates: [
       "A high-value target is holed up at {LOC}. Eliminate them.",
       "Neutralize the target at {LOC}.",
@@ -95,6 +101,7 @@ export const MISSION_KIND_META: Record<MissionKind, { name: string; description:
   );
 
 export const MISSION_KIND_ORDER: MissionKind[] = [...MISSION_KIND_DEFINITIONS]
+  .filter((d) => ACTIVE_MISSION_KINDS.includes(d.kind))
   .sort((a, b) => a.displayOrder - b.displayOrder)
   .map((d) => d.kind);
 
@@ -106,7 +113,7 @@ export function getMissionKindDefinition(kind: MissionKind): MissionKindDefiniti
 
 export function getMissionKindsForGeneration(mode: "regular" | "epic"): MissionKind[] {
   const weightedKinds: MissionKind[] = [];
-  for (const def of MISSION_KIND_DEFINITIONS) {
+  for (const def of MISSION_KIND_DEFINITIONS.filter((d) => ACTIVE_MISSION_KINDS.includes(d.kind))) {
     const weight = mode === "epic" ? (def.epicWeight ?? 1) : (def.regularWeight ?? 1);
     const copies = Math.max(0, Math.floor(weight));
     for (let i = 0; i < copies; i++) weightedKinds.push(def.kind);
