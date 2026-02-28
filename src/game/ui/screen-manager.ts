@@ -143,6 +143,7 @@ function ScreenManager() {
 
   function createReadyRoomPage(mission?: Mission | null) {
     UiManager.clear.center();
+    usePlayerCompanyStore.getState().moveZeroEnergySoldiersToReserve();
     const content = parseHTML(readyRoomTemplate(mission ?? null));
     center.appendChild(content as Element);
     setTimeout(clearLastEquipMoveSoldierIds, 450);

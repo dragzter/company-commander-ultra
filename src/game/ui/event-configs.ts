@@ -25,6 +25,7 @@ import { Styler } from "../../utils/styler-manager.ts";
 import { UiManager } from "./ui-manager.ts";
 import {
   getSoldierAbilities,
+  getSoldierAbilityById,
   getSoldierGrenades,
   getSoldierMedItems,
   FLAME_ICON,
@@ -555,18 +556,17 @@ export function eventConfigs() {
         return true;
       });
       const abilityButtons = abilities.map((a) => {
-        const isTakeCover = a.id === "take_cover";
-        const isSuppress = a.id === "suppress";
-        const suppressDisabled = isSuppress && suppressOnCooldown;
+        const isTakeCover = a.actionId === "take_cover";
+        const isSuppress = a.actionId === "suppress";
         const disabled = isTakeCover ? (used || !canUse) : isSuppress ? (!canUse || suppressOnCooldown) : !canUse;
         const usedClass = isTakeCover && used ? " combat-ability-used" : "";
-        const cooldownClass = suppressOnCooldown ? " combat-ability-cooldown" : "";
-        const wrapClass = isTakeCover ? "combat-ability-take-cover-wrap" : isSuppress ? "combat-ability-suppress-wrap" : "";
+        const cooldownClass = isSuppress && suppressOnCooldown ? " combat-ability-cooldown" : "";
+        const slotClass = a.slotClassName ? ` ${a.slotClassName}` : "";
         const timerHtml = isSuppress && suppressOnCooldown
           ? `<span class="combat-ability-cooldown-timer" data-ability-cooldown="suppress">${suppressRemainingSec}</span>`
           : "";
         const labelHtml = isTakeCover ? "" : `<span class="combat-ability-label">${a.name}</span>`;
-        return `<button type="button" class="combat-ability-icon-slot ${wrapClass}${usedClass}${cooldownClass}" data-ability-id="${a.id}" data-soldier-id="${combatant.id}" ${disabled ? "disabled" : ""} title="${a.name}" aria-label="${a.name}">
+        return `<button type="button" class="combat-ability-icon-slot${slotClass}${usedClass}${cooldownClass}" data-ability-id="${a.id}" data-soldier-id="${combatant.id}" ${disabled ? "disabled" : ""} title="${a.name}" aria-label="${a.name}">
             <img src="${a.icon}" alt="" width="48" height="48">
             ${timerHtml}
             ${labelHtml}
@@ -633,17 +633,17 @@ export function eventConfigs() {
           return true;
         });
         const btns = abils.map((a) => {
-          const isTakeCover = a.id === "take_cover";
-          const isSuppress = a.id === "suppress";
+          const isTakeCover = a.actionId === "take_cover";
+          const isSuppress = a.actionId === "suppress";
           const disabled = isTakeCover ? (used || !canUse) : isSuppress ? (!canUse || suppressOnCooldown) : !canUse;
           const usedClass = isTakeCover && used ? " combat-ability-used" : "";
-          const cooldownClass = suppressOnCooldown ? " combat-ability-cooldown" : "";
-          const wrapClass = isTakeCover ? "combat-ability-take-cover-wrap" : isSuppress ? "combat-ability-suppress-wrap" : "";
+          const cooldownClass = isSuppress && suppressOnCooldown ? " combat-ability-cooldown" : "";
+          const slotClass = a.slotClassName ? ` ${a.slotClassName}` : "";
           const timerHtml = isSuppress && suppressOnCooldown
             ? `<span class="combat-ability-cooldown-timer" data-ability-cooldown="suppress">${suppressRemainingSec}</span>`
             : "";
           const labelHtml = isTakeCover ? "" : `<span class="combat-ability-label">${a.name}</span>`;
-          return `<button type="button" class="combat-ability-icon-slot ${wrapClass}${usedClass}${cooldownClass}" data-ability-id="${a.id}" data-soldier-id="${c.id}" ${disabled ? "disabled" : ""} title="${a.name}" aria-label="${a.name}">
+          return `<button type="button" class="combat-ability-icon-slot${slotClass}${usedClass}${cooldownClass}" data-ability-id="${a.id}" data-soldier-id="${c.id}" ${disabled ? "disabled" : ""} title="${a.name}" aria-label="${a.name}">
             <img src="${a.icon}" alt="" width="48" height="48">
             ${timerHtml}
             ${labelHtml}
@@ -702,9 +702,10 @@ export function eventConfigs() {
     }
 
     function highlightSelectedAbility(
-      type: "grenade" | "med" | "suppress",
+      type: "grenade" | "med" | "ability",
       soldierId: string,
       inventoryIndex?: number,
+      abilityId?: string,
     ) {
       clearSelectedHighlight();
       const popup = document.getElementById("combat-abilities-popup");
@@ -714,7 +715,7 @@ export function eventConfigs() {
         const sel = type === "grenade" ? ".combat-grenade-item" : ".combat-med-item";
         btn = popup.querySelector(`${sel}[data-soldier-id="${soldierId}"][data-inventory-index="${String(inventoryIndex)}"]`) as HTMLElement | null;
       } else {
-        btn = popup.querySelector(`.combat-ability-suppress-wrap[data-soldier-id="${soldierId}"]`) as HTMLElement | null;
+        btn = popup.querySelector(`.combat-ability-icon-slot[data-soldier-id="${soldierId}"][data-ability-id="${abilityId ?? ""}"]`) as HTMLElement | null;
       }
       if (btn) btn.classList.add("combat-ability-selected");
     }
@@ -732,7 +733,7 @@ export function eventConfigs() {
       if (!hintEl) return;
       hintEl.textContent = "Click an enemy to suppress";
       hintEl.setAttribute("aria-hidden", "false");
-      highlightSelectedAbility("suppress", user.id);
+      highlightSelectedAbility("ability", user.id, undefined, "suppress");
     }
 
     function showMedTargetingHint(user: Combatant, medItem: SoldierMedItem) {
@@ -1605,6 +1606,40 @@ export function eventConfigs() {
       combatTickId = window.setTimeout(tick, 50);
     }
 
+    function handleTakeCoverAbility(combatant: Combatant): void {
+      if (combatant.takeCoverUsed || combatant.hp <= 0 || combatant.downState) return;
+      playerAbilitiesUsed.set(combatant.id, (playerAbilitiesUsed.get(combatant.id) ?? 0) + 1);
+      const now = Date.now();
+      combatant.takeCoverUntil = now + TAKE_COVER_DURATION_MS;
+      combatant.takeCoverUsed = true;
+      removeTargetsForCombatantInCover(targets, combatant.id);
+      assignTargets(players, enemies, targets, now);
+      closeAbilitiesPopup();
+      updateCombatUI();
+    }
+
+    function handleSuppressAbility(combatant: Combatant): void {
+      const onCooldown = (combatant.suppressCooldownUntil ?? 0) > Date.now();
+      if (combatant.hp <= 0 || combatant.downState || onCooldown) return;
+      suppressTargetingMode = { user: combatant };
+      showSuppressTargetingHint(combatant);
+      document.querySelectorAll("#combat-enemies-grid .combat-card:not(.combat-card-down)").forEach((card) => {
+        card.classList.add("combat-card-grenade-target");
+      });
+    }
+
+    function executeAbilityAction(abilityId: string, soldierId: string): void {
+      const ability = getSoldierAbilityById(abilityId);
+      if (!ability) return;
+      const combatant = players.find((p) => p.id === soldierId);
+      if (!combatant) return;
+      if (ability.actionId === "take_cover") {
+        handleTakeCoverAbility(combatant);
+      } else if (ability.actionId === "suppress") {
+        handleSuppressAbility(combatant);
+      }
+    }
+
     return [
       {
         selector: DOM.combat.abilitiesPopup,
@@ -1666,36 +1701,13 @@ export function eventConfigs() {
             });
             return;
           }
-          if (abilityBtn?.classList.contains("combat-ability-take-cover-wrap") && !(abilityBtn as HTMLButtonElement).disabled) {
+          if (abilityBtn && !(abilityBtn as HTMLButtonElement).disabled) {
             e.preventDefault();
             e.stopPropagation();
             const soldierId = (abilityBtn as HTMLElement).dataset.soldierId;
-            if (!soldierId) return;
-            const combatant = players.find((p) => p.id === soldierId);
-            if (!combatant || combatant.takeCoverUsed || combatant.hp <= 0 || combatant.downState) return;
-            playerAbilitiesUsed.set(combatant.id, (playerAbilitiesUsed.get(combatant.id) ?? 0) + 1);
-            const now = Date.now();
-            combatant.takeCoverUntil = now + TAKE_COVER_DURATION_MS;
-            combatant.takeCoverUsed = true;
-            removeTargetsForCombatantInCover(targets, combatant.id);
-            assignTargets(players, enemies, targets, now);
-            closeAbilitiesPopup();
-            updateCombatUI();
-            return;
-          }
-          if (abilityBtn?.classList.contains("combat-ability-suppress-wrap") && !(abilityBtn as HTMLButtonElement).disabled) {
-            e.preventDefault();
-            e.stopPropagation();
-            const soldierId = (abilityBtn as HTMLElement).dataset.soldierId;
-            if (!soldierId) return;
-            const combatant = players.find((p) => p.id === soldierId);
-            const onCooldown = combatant && (combatant.suppressCooldownUntil ?? 0) > Date.now();
-            if (!combatant || combatant.hp <= 0 || combatant.downState || onCooldown) return;
-            suppressTargetingMode = { user: combatant };
-            showSuppressTargetingHint(combatant);
-            document.querySelectorAll("#combat-enemies-grid .combat-card:not(.combat-card-down)").forEach((card) => {
-              card.classList.add("combat-card-grenade-target");
-            });
+            const abilityId = (abilityBtn as HTMLElement).dataset.abilityId;
+            if (!soldierId || !abilityId) return;
+            executeAbilityAction(abilityId, soldierId);
             return;
           }
         },
@@ -1863,6 +1875,8 @@ export function eventConfigs() {
             combatTickId = null;
           }
           closeAbilitiesPopup();
+          const store = usePlayerCompanyStore.getState();
+          store.deductQuitMissionEnergy(players.map((p) => p.id));
           const popup = document.getElementById("combat-quit-confirm-popup");
           if (popup) popup.setAttribute("hidden", "");
           UiManager.renderMissionsScreen();

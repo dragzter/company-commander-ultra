@@ -1,6 +1,6 @@
 import { companyHeaderPartial, companyActionsTemplate } from "./game-setup-template.ts";
 import type { Mission, MissionKind } from "../../constants/missions.ts";
-import { DIFFICULTY_LABELS, MISSION_KIND_META, MISSION_KINDS } from "../../constants/missions.ts";
+import { DIFFICULTY_LABELS, MISSION_KIND_META, MISSION_KIND_ORDER } from "../../constants/missions.ts";
 import { getRewardItemById } from "../../utils/reward-utils.ts";
 import { getItemIconUrl } from "../../utils/item-utils.ts";
 
@@ -90,14 +90,6 @@ function missionCard(m: Mission): string {
 function sortMissionsByDifficulty(ms: Mission[]): Mission[] {
   return [...ms].sort((a, b) => a.difficulty - b.difficulty);
 }
-
-const MISSION_KIND_ORDER: MissionKind[] = [
-  MISSION_KINDS.defend_objective,
-  MISSION_KINDS.ambush,
-  MISSION_KINDS.attack_objective,
-  MISSION_KINDS.seek_and_destroy,
-  MISSION_KINDS.manhunt,
-];
 
 function missionSectionByKind(missions: Mission[], kind: MissionKind): string {
   const meta = MISSION_KIND_META[kind];

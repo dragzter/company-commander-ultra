@@ -8,6 +8,10 @@ export type SoldierAbility = {
   description?: string;
   icon?: string;
   cooldown?: number;
+  /** Maps ability action to combat handler lookup. */
+  actionId: "take_cover" | "suppress";
+  /** Additional CSS class for specific visual treatment. */
+  slotClassName?: string;
   /** Restrict to specific designation (e.g. "support" for Suppress) */
   designationRestrict?: "rifleman" | "support" | "medic";
 };
@@ -34,6 +38,8 @@ export const SOLDIER_ABILITIES: SoldierAbility[] = [
     description: "Increase evasion until next turn.",
     icon: TAKE_COVER_ICON,
     cooldown: 3,
+    actionId: "take_cover",
+    slotClassName: "combat-ability-take-cover-wrap",
   },
   {
     id: "suppress",
@@ -42,6 +48,8 @@ export const SOLDIER_ABILITIES: SoldierAbility[] = [
     icon: SUPPRESS_ICON,
     designationRestrict: "support",
     cooldown: 60,
+    actionId: "suppress",
+    slotClassName: "combat-ability-suppress-wrap",
   },
 ];
 
@@ -86,4 +94,8 @@ export function getSoldierMedItems(inventory: Item[] | undefined): SoldierMedIte
 /** Get base abilities every soldier has. */
 export function getSoldierAbilities(): SoldierAbility[] {
   return [...SOLDIER_ABILITIES];
+}
+
+export function getSoldierAbilityById(id: string): SoldierAbility | undefined {
+  return SOLDIER_ABILITIES.find((ability) => ability.id === id);
 }

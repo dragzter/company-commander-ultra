@@ -8,31 +8,111 @@ export const MISSION_KINDS = {
 
 export type MissionKind = keyof typeof MISSION_KINDS;
 
-export const MISSION_KIND_META: Record<
-  MissionKind,
-  { name: string; description: string }
-> = {
-  defend_objective: {
+export interface MissionKindDefinition {
+  kind: MissionKind;
+  name: string;
+  description: string;
+  flavorTemplates: string[];
+  displayOrder: number;
+  regularWeight?: number;
+  epicWeight?: number;
+}
+
+/**
+ * Central mission registry.
+ * Add a new mission type here and generation/template flows will pick it up.
+ */
+export const MISSION_KIND_DEFINITIONS: MissionKindDefinition[] = [
+  {
+    kind: MISSION_KINDS.defend_objective,
     name: "Defend Objective",
     description: "Hold the position against enemy assault.",
+    flavorTemplates: [
+      "Enemy forces are assaulting {LOC}. Hold the line at all costs.",
+      "Defend {LOC} against the advancing hostiles.",
+    ],
+    displayOrder: 1,
+    regularWeight: 1,
+    epicWeight: 1,
   },
-  ambush: {
+  {
+    kind: MISSION_KINDS.ambush,
     name: "Ambush",
     description: "Set up a surprise attack on enemy forces.",
+    flavorTemplates: [
+      "Set up an ambush at {LOC}. The enemy won't see it coming.",
+      "Lie in wait at {LOC}. Strike when they least expect it.",
+    ],
+    displayOrder: 2,
+    regularWeight: 1,
+    epicWeight: 1,
   },
-  attack_objective: {
+  {
+    kind: MISSION_KINDS.attack_objective,
     name: "Attack Objective",
     description: "Assault and neutralize enemy positions.",
+    flavorTemplates: [
+      "Assault {LOC} and neutralize all resistance.",
+      "Take {LOC} by force. No quarter.",
+    ],
+    displayOrder: 3,
+    regularWeight: 1,
+    epicWeight: 1,
   },
-  seek_and_destroy: {
+  {
+    kind: MISSION_KINDS.seek_and_destroy,
     name: "Seek and Destroy",
     description: "Eliminate high-value targets.",
+    flavorTemplates: [
+      "A high-value target is holed up at {LOC}. Eliminate them.",
+      "Neutralize the target at {LOC}.",
+    ],
+    displayOrder: 4,
+    regularWeight: 1,
+    epicWeight: 1,
   },
-  manhunt: {
+  {
+    kind: MISSION_KINDS.manhunt,
     name: "Manhunt",
     description: "Track and eliminate a priority target.",
+    flavorTemplates: [
+      "The target is fleeing through {LOC}. Don't let them escape.",
+      "Track the priority target to {LOC} and eliminate them.",
+    ],
+    displayOrder: 5,
+    regularWeight: 1,
+    epicWeight: 1,
   },
-};
+];
+
+export const MISSION_KIND_META: Record<MissionKind, { name: string; description: string }> =
+  MISSION_KIND_DEFINITIONS.reduce(
+    (acc, def) => {
+      acc[def.kind] = { name: def.name, description: def.description };
+      return acc;
+    },
+    {} as Record<MissionKind, { name: string; description: string }>,
+  );
+
+export const MISSION_KIND_ORDER: MissionKind[] = [...MISSION_KIND_DEFINITIONS]
+  .sort((a, b) => a.displayOrder - b.displayOrder)
+  .map((d) => d.kind);
+
+export function getMissionKindDefinition(kind: MissionKind): MissionKindDefinition {
+  const found = MISSION_KIND_DEFINITIONS.find((d) => d.kind === kind);
+  if (found) return found;
+  throw new Error(`Mission kind definition missing for '${kind}'`);
+}
+
+export function getMissionKindsForGeneration(mode: "regular" | "epic"): MissionKind[] {
+  const weightedKinds: MissionKind[] = [];
+  for (const def of MISSION_KIND_DEFINITIONS) {
+    const weight = mode === "epic" ? (def.epicWeight ?? 1) : (def.regularWeight ?? 1);
+    const copies = Math.max(0, Math.floor(weight));
+    for (let i = 0; i < copies; i++) weightedKinds.push(def.kind);
+  }
+  return weightedKinds.length > 0 ? weightedKinds : MISSION_KIND_ORDER;
+}
 
 export const DIFFICULTY_LABELS: Record<number, string> = {
   1: "Trivial",

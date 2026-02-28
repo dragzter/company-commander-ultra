@@ -31,10 +31,21 @@ import {
   toFNum,
 } from "../../../utils/math.ts";
 import { Images } from "../../../constants/images.ts";
+import { MedicalItems } from "../../../constants/items/medical-items.ts";
 
 function SoldierManager() {
   const experienceIncreaseBase = 100;
   const experienceMultiplier = 1.52;
+
+  function buildInitialInventory(designation: Designation, inventory: Item[]): Item[] {
+    const inv = inventory.map((item) => ({ ...item }));
+    if (designation !== SOLDIER_DESIGNATION.medic) return inv;
+
+    const hasMedkit = inv.some((item) => item.id === "standard_medkit");
+    if (hasMedkit) return inv;
+
+    return [{ ...MedicalItems.common.standard_medkit }, ...inv];
+  }
 
   /**
    * Generate a soldier
@@ -72,7 +83,7 @@ function SoldierManager() {
 
     soldier.name = generateName();
     soldier.avatar = getSoldierAvatar(designation);
-    soldier.inventory = inventory;
+    soldier.inventory = buildInitialInventory(designation, inventory);
     soldier.level = lvl;
     soldier.id = uuidv4();
     soldier.designation = designation;

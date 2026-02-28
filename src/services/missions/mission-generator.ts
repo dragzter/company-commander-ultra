@@ -1,5 +1,9 @@
 import type { Mission, MissionKind } from "../../constants/missions.ts";
-import { MISSION_KINDS, MISSION_KIND_META } from "../../constants/missions.ts";
+import {
+  MISSION_KIND_META,
+  getMissionKindDefinition,
+  getMissionKindsForGeneration,
+} from "../../constants/missions.ts";
 import { randomInt } from "../../utils/math.ts";
 
 const LOCATIONS = [
@@ -15,61 +19,32 @@ const LOCATIONS = [
   "the bridgehead",
 ];
 
-const FLAVOR_TEMPLATES: Record<MissionKind, string[]> = {
-  defend_objective: [
-    "Enemy forces are assaulting {LOC}. Hold the line at all costs.",
-    "Defend {LOC} against the advancing hostiles.",
-  ],
-  ambush: [
-    "Set up an ambush at {LOC}. The enemy won't see it coming.",
-    "Lie in wait at {LOC}. Strike when they least expect it.",
-  ],
-  attack_objective: [
-    "Assault {LOC} and neutralize all resistance.",
-    "Take {LOC} by force. No quarter.",
-  ],
-  seek_and_destroy: [
-    "A high-value target is holed up at {LOC}. Eliminate them.",
-    "Neutralize the target at {LOC}.",
-  ],
-  manhunt: [
-    "The target is fleeing through {LOC}. Don't let them escape.",
-    "Track the priority target to {LOC} and eliminate them.",
-  ],
-};
-
 function pick<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
 function generateFlavorText(kind: MissionKind): string {
   const loc = pick(LOCATIONS);
-  const template = pick(FLAVOR_TEMPLATES[kind]);
+  const template = pick(getMissionKindDefinition(kind).flavorTemplates);
   return template.replace("{LOC}", loc);
 }
 
 const CREDIT_BASE = 100;
 const CREDIT_SCALE = 70;
 
-const MISSION_KIND_LIST: MissionKind[] = [
-  "defend_objective",
-  "ambush",
-  "attack_objective",
-  "seek_and_destroy",
-  "manhunt",
-];
-
 export function generateMissions(_seed?: number): Mission[] {
   const missions: Mission[] = [];
   const regularCount = 10;
   const epicCount = 4;
+  const regularKindPool = getMissionKindsForGeneration("regular");
+  const epicKindPool = getMissionKindsForGeneration("epic");
 
   const rareIndices = new Set<number>();
   while (rareIndices.size < 3) {
     rareIndices.add(Math.floor(Math.random() * regularCount));
   }
   for (let i = 0; i < regularCount; i++) {
-    const kind = pick(MISSION_KIND_LIST);
+    const kind = pick(regularKindPool);
     const difficulty = randomInt(1, 4);
     const meta = MISSION_KIND_META[kind];
     const enemyCount = Math.min(
@@ -95,9 +70,8 @@ export function generateMissions(_seed?: number): Mission[] {
     });
   }
 
-  const epicKinds = Object.keys(MISSION_KINDS) as MissionKind[];
   for (let i = 0; i < epicCount; i++) {
-    const kind = epicKinds[i % epicKinds.length];
+    const kind = epicKindPool[i % epicKindPool.length];
     const meta = MISSION_KIND_META[kind];
     const difficulty = randomInt(4, 5);
     const enemyCount = Math.min(

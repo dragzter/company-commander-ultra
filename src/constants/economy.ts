@@ -105,6 +105,8 @@ export const ENERGY_COST_BASE = 5;
 export const ENERGY_COST_CASUALTY = 5;
 /** Extra energy cost (once) if mission is failed */
 export const ENERGY_COST_FAIL = 10;
+/** Energy deducted from each participant when quitting a mission (to min 0) */
+export const ENERGY_COST_QUIT = 50;
 /** Energy recovered by soldiers who did not participate in the mission */
 export const ENERGY_RECOVERY_REST = 20;
 

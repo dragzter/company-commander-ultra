@@ -4,6 +4,7 @@
 import { WEAPON_EFFECTS } from "../../constants/items/weapon-effects.ts";
 import { computeFinalDamage } from "./combat-damage.ts";
 import type { Combatant, TargetMap } from "./types.ts";
+import { applyWeaponProcEffect } from "../../services/combat/weapon-proc-registry.ts";
 
 export const TAKE_COVER_DURATION_MS = 3000;
 
@@ -297,29 +298,12 @@ export function resolveAttack(
   if (proc && target.hp > 0 && !target.downState) {
     const roll = Math.random();
     if (roll < proc.chance) {
-      if (proc.type === "fire" && proc.damage != null && !target.immuneToBurning) {
-        procFireDamage = Math.max(1, Math.floor(proc.damage));
-        target.hp = Math.max(0, Math.floor(target.hp - procFireDamage));
-        totalDamage += procFireDamage;
-      } else if (proc.type === "carnage" && proc.damage != null) {
-        const carnageDmg = computeFinalDamage(proc.damage, target);
-        target.hp = Math.max(0, Math.floor(target.hp - carnageDmg));
-        totalDamage += carnageDmg;
-      } else if (proc.type === "overwhelm" && proc.durationMs != null && proc.hitChanceReduction != null) {
-        target.accuracyDebuffUntil = now + proc.durationMs;
-        target.accuracyDebuffPct = proc.hitChanceReduction;
-      } else if (proc.type === "blind" && proc.durationMs != null) {
-        target.blindedUntil = now + proc.durationMs;
-        procBlind = true;
-      } else if (proc.type === "stun" && proc.durationMs != null && !target.immuneToStun) {
-        target.stunUntil = now + proc.durationMs;
-        procStun = true;
-      } else if (proc.type === "bleed" && proc.damage != null && proc.durationMs != null) {
-        const ticks = Math.max(1, Math.floor(proc.durationMs / 1000));
-        target.bleedTickDamage = Math.max(1, Math.floor(proc.damage));
-        target.bleedTicksRemaining = ticks;
-        target.bleedingUntil = now + proc.durationMs;
-      }
+      const procResult = applyWeaponProcEffect({ attacker, target, now, proc });
+      const extraDamage = procResult.extraDamage ?? 0;
+      if (extraDamage > 0) totalDamage += extraDamage;
+      if (proc.type === "fire") procFireDamage = extraDamage;
+      if (procResult.appliedFlags?.includes("blind")) procBlind = true;
+      if (procResult.appliedFlags?.includes("stun")) procStun = true;
     }
   }
 

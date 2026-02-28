@@ -115,6 +115,7 @@ export function readyRoomTemplate(mission: Mission | null): string {
 
   const missionTitle = mission?.name ?? "Ready Room";
   const missionData = mission ? escapeAttr(JSON.stringify(mission)) : "";
+  const activeSoldierCount = formationSlots.slice(0, activeCount).filter((id) => id != null).length;
 
   const roleCounts = soldiers.reduce((acc, s) => {
     const r = s.designation?.toLowerCase() ?? "rifleman";
@@ -169,7 +170,7 @@ export function readyRoomTemplate(mission: Mission | null): string {
   <div class="ready-room-footer troops-market-footer">
     <div class="footer-banner">
       <div class="roster-footer-actions">
-        <button type="button" id="ready-room-proceed" class="equip-troops-btn ${soldiers.length === 0 ? "disabled" : ""}">Proceed to Mission</button>
+        <button type="button" id="ready-room-proceed" class="equip-troops-btn ${activeSoldierCount === 0 ? "disabled" : ""}">Proceed to Mission</button>
       </div>
     </div>
     ${companyActionsTemplate()}

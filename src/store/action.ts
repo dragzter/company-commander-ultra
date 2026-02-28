@@ -30,6 +30,7 @@ import {
   ENERGY_COST_BASE,
   ENERGY_COST_CASUALTY,
   ENERGY_COST_FAIL,
+  ENERGY_COST_QUIT,
   ENERGY_RECOVERY_REST,
 } from "../constants/economy.ts";
 import {
@@ -804,6 +805,38 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
     });
   },
 
+  /** Move soldiers with 0 energy from active slots to reserve; fill active with soldiers who have energy. */
+  moveZeroEnergySoldiersToReserve: () => {
+    set((s: CompanyStore) => {
+      const company = s.company;
+      const slots = getFormationSlots(company);
+      const activeCount = getActiveSlots(company);
+      const reserveCount = getReserveSlots(company);
+      const total = activeCount + reserveCount;
+      if (slots.length !== total) return {};
+      const soldierById = new Map((company?.soldiers ?? []).map((s) => [s.id, s]));
+      const eligible: (string | null)[] = [];
+      const ineligible: (string | null)[] = [];
+      for (const id of slots) {
+        if (id == null) continue;
+        const soldier = soldierById.get(id);
+        const energy = Math.max(0, soldier?.energy ?? ENERGY_MAX);
+        if (energy > 0) eligible.push(id);
+        else ineligible.push(id);
+      }
+      const newSlots: (string | null)[] = [];
+      let ei = 0;
+      let ii = 0;
+      for (let i = 0; i < activeCount; i++) {
+        newSlots[i] = ei < eligible.length ? eligible[ei++] : null;
+      }
+      for (let i = 0; i < reserveCount; i++) {
+        newSlots[activeCount + i] = ii < ineligible.length ? ineligible[ii++] : ei < eligible.length ? eligible[ei++] : null;
+      }
+      return { company: { ...company, formationSlots: newSlots } };
+    });
+  },
+
   /** Grant mission rewards: credits on victory, XP/level-up, items (armory or holding if full). Respects per-category caps. Updates mission stats. Applies ~10% XP penalty when soldiers died. Returns reward items (guaranteed) and loot items (random drops) for summary display. Uses missionLevel (same derivation as enemy soldiers) for item tiers when provided. */
   grantMissionRewards: (mission: Mission | null, victory: boolean, kiaCount?: number, missionLevel?: number): { rewardItems: Item[]; lootItems: Item[] } => {
     set((s: CompanyStore) => ({
@@ -984,6 +1017,21 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
           SoldierManager.refreshCombatProfile(soldier);
         }
         return soldier;
+      });
+      return { company: { ...state.company, soldiers: newSoldiers } };
+    });
+  },
+
+  /** Deduct 50 energy from each participant when quitting a mission (min 0). */
+  deductQuitMissionEnergy: (participantIds: string[]) => {
+    if (participantIds.length === 0) return;
+    set((state: CompanyStore) => {
+      const soldiers = state.company?.soldiers ?? [];
+      const participantSet = new Set(participantIds);
+      const newSoldiers = soldiers.map((s) => {
+        if (!participantSet.has(s.id)) return s;
+        const current = Math.max(0, Math.min(ENERGY_MAX, s.energy ?? ENERGY_MAX));
+        return { ...s, energy: Math.max(0, current - ENERGY_COST_QUIT) };
       });
       return { company: { ...state.company, soldiers: newSoldiers } };
     });

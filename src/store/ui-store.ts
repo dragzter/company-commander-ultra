@@ -105,7 +105,9 @@ export type CompanyStore = {
     playerKills?: Map<string, number>,
     kiaKilledBy?: Map<string, string>,
   ) => void;
+  deductQuitMissionEnergy: (participantIds: string[]) => void;
   deductMissionEnergy: (survivorIds: string[], participantCount: number, hasCasualty: boolean, failed: boolean) => void;
+  moveZeroEnergySoldiersToReserve: () => void;
   syncCombatHpToSoldiers: (playerCombatants: { id: string; hp: number }[]) => void;
   claimHoldingInventory: () => void;
   moveItemBetweenSlots: (op: {
