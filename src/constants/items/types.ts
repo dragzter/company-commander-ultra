@@ -62,6 +62,8 @@ export type WeaponEffectModifiers = {
   chanceToEvade?: number;
   mitigateDamage?: number;
   damagePercent?: number;
+  /** Increases medkit healing effectiveness (0.1 = +10%). */
+  medkitHealPercent?: number;
   /** Multiplier for attack interval (0.95 = 5% faster). */
   attackIntervalMultiplier?: number;
   /** Ignores this fraction of target's avoidance (0.6 = ignores 60% of it). */
@@ -75,6 +77,7 @@ export type WeaponEffectId =
   | "heavy_caliber"
   | "steady_grip"
   | "quick_cycle"
+  | "trauma_surgeon"
   | "firebreaker"
   | "eye_for_an_eye"
   | "stormhammer"

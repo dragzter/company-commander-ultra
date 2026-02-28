@@ -36,7 +36,7 @@ import { abilitiesTemplate } from "../html-templates/abilities-template.ts";
 import { combatTemplate } from "../html-templates/combat-template.ts";
 import { soldierToCombatant, createEnemyCombatant } from "../combat/combatant-utils.ts";
 import { getActiveSlots, getFormationSlots, getSoldierById } from "../../constants/company-slots.ts";
-import { getAverageCompanyLevel, getMaxSoldierLevel } from "../../utils/company-utils.ts";
+import { getMaxSoldierLevel } from "../../utils/company-utils.ts";
 import { Styler } from "../../utils/styler-manager.ts";
 import { SoldierManager } from "../entities/soldier/soldier-manager.ts";
 import type { Soldier } from "../entities/types.ts";
@@ -54,6 +54,31 @@ function ScreenManager() {
 
   const { gameBoard, parseHTML } = _UiServiceManager;
   const { show, hide, center, g_menu } = gameBoard();
+
+  function getEnemyLevelFromActiveSquad(activeSoldiers: Soldier[]): number {
+    if (activeSoldiers.length === 0) return 1;
+
+    const levelCounts = new Map<number, number>();
+    for (const s of activeSoldiers) {
+      const lvl = Math.max(1, Math.floor(s.level ?? 1));
+      levelCounts.set(lvl, (levelCounts.get(lvl) ?? 0) + 1);
+    }
+
+    let majorityLevel = -1;
+    let majorityCount = 0;
+    for (const [lvl, count] of levelCounts) {
+      if (count > majorityCount) {
+        majorityCount = count;
+        majorityLevel = lvl;
+      }
+    }
+
+    // Clear majority: more than half the active squad shares one level.
+    if (majorityCount > activeSoldiers.length / 2) return majorityLevel;
+
+    const sum = activeSoldiers.reduce((a, s) => a + (s.level ?? 1), 0);
+    return Math.max(1, Math.ceil(sum / activeSoldiers.length));
+  }
 
   function createSetupScreen() {
     const steps = parseHTML(gameSetupTemplate);
@@ -168,10 +193,14 @@ function ScreenManager() {
       .filter((s): s is NonNullable<typeof s> => s != null);
     const players = activeSoldiers.map((s) => soldierToCombatant(s));
     const enemyCount = mission?.enemyCount ?? 3;
-    const avgSoldierLevel = getAverageCompanyLevel(company);
+    const enemyBaseLevel = getEnemyLevelFromActiveSquad(activeSoldiers);
     const isEpicMission = !!(mission?.isEpic ?? mission?.rarity === "epic");
+    const manhuntTargetIndex =
+      mission?.kind === "manhunt" && enemyCount > 0
+        ? Math.floor(Math.random() * enemyCount)
+        : undefined;
     const enemies = Array.from({ length: enemyCount }, (_, i) =>
-      createEnemyCombatant(i, enemyCount, avgSoldierLevel, isEpicMission, mission?.kind),
+      createEnemyCombatant(i, enemyCount, enemyBaseLevel, isEpicMission, mission?.kind, manhuntTargetIndex),
     );
     const content = parseHTML(combatTemplate(mission ?? null, players, enemies));
     center.appendChild(content as Element);

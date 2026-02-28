@@ -1,4 +1,4 @@
-import { computeAttackIntervalMs, ENEMY_DAMAGE_MULTIPLIER, ENEMY_HP_MULTIPLIER, WEAPON_DAMAGE_MULTIPLIER } from "../../constants/combat";
+import { computeAttackIntervalMs, ENEMY_DAMAGE_MULTIPLIER, ENEMY_HP_MULTIPLIER } from "../../constants/combat";
 import type { WeaponEffectId } from "../../constants/items/types.ts";
 import { WEAPON_EFFECTS } from "../../constants/items/weapon-effects.ts";
 import { RARE_ARMOR_BASES } from "../../constants/items/rare-armor-bases.ts";
@@ -60,8 +60,8 @@ export function soldierToCombatant(soldier: Soldier): Combatant {
   let dmgMax = weapon?.damage_max ?? dmg;
   const effect = weapon?.weaponEffect ? WEAPON_EFFECTS[weapon.weaponEffect] : undefined;
   const damageMult = effect?.modifiers?.damagePercent != null ? 1 + effect.modifiers.damagePercent : 1;
-  dmgMin = Math.round(dmgMin * damageMult * WEAPON_DAMAGE_MULTIPLIER);
-  dmgMax = Math.round(dmgMax * damageMult * WEAPON_DAMAGE_MULTIPLIER);
+  dmgMin = Math.round(dmgMin * damageMult);
+  dmgMax = Math.round(dmgMax * damageMult);
   let attackIntervalMs = computeAttackIntervalMs(weapon, soldier.attributes?.dexterity ?? 0);
   const intervalMult = effect?.modifiers?.attackIntervalMultiplier ?? 1;
   attackIntervalMs = intervalMult < 1 ? Math.floor(attackIntervalMs * intervalMult) : Math.round(attackIntervalMs * intervalMult);
@@ -107,6 +107,7 @@ export function createEnemyCombatant(
   companyLevel: number,
   isEpicMission = false,
   missionKind?: MissionKind,
+  manhuntTargetIndex?: number,
 ): Combatant {
   const eliteBonus = isEpicMission ? (Math.random() < 0.5 ? 1 : 2) : 0;
   const level = Math.max(1, Math.min(20, companyLevel + eliteBonus));
@@ -119,28 +120,44 @@ export function createEnemyCombatant(
   const c = soldierToCombatant(soldier);
   c.id = `enemy-${index}-${Date.now()}`;
   c.side = "enemy";
+  const isEnemyMedic = (c.designation ?? "").toLowerCase() === "medic";
+  if (isEnemyMedic) {
+    const medkit = (soldier.inventory ?? []).find((item) => item.id === "standard_medkit");
+    c.enemyMedkitUses = medkit ? Math.min(2, (medkit.uses ?? medkit.quantity ?? 1)) : 0;
+    c.enemyMedkitLevel = Math.max(1, Math.min(20, (medkit?.level ?? level)));
+  } else {
+    c.enemyMedkitUses = 0;
+    c.enemyMedkitLevel = undefined;
+  }
   c.soldierRef = undefined;
   const isEpicElite = isEpicMission && index === 0;
-  const isManhuntTarget = missionKind === "manhunt" && index === 0;
+  const resolvedManhuntTargetIndex = manhuntTargetIndex ?? 0;
+  const isManhuntTarget = missionKind === "manhunt" && index === resolvedManhuntTargetIndex;
   if (isEpicElite) {
     c.isEpicElite = true;
   }
   if (isManhuntTarget) {
     c.isManhuntTarget = true;
   }
-  if (isEpicElite || isManhuntTarget) {
-    // Elite/target units keep full HP; all other enemies get baseline HP handicap.
+  if (isEpicMission || isManhuntTarget) {
+    // Elite missions and manhunt target units keep full base HP.
     c.hp = Math.max(1, Math.floor(c.hp));
   } else {
     c.hp = Math.max(1, Math.floor(c.hp * ENEMY_HP_MULTIPLIER));
   }
   if (isManhuntTarget) {
-    // Manhunt target gets a 10% HP buff from level-derived base HP.
-    c.hp = Math.max(1, Math.floor(c.hp * 1.1));
+    // Manhunt target gets a 10% HP buff from level-derived base HP (round up).
+    c.hp = Math.max(1, Math.ceil(c.hp * 1.1));
   }
   c.maxHp = c.hp;
-  c.damageMin = Math.max(1, Math.floor((c.damageMin ?? 4) * ENEMY_DAMAGE_MULTIPLIER));
-  c.damageMax = Math.max(1, Math.floor((c.damageMax ?? 6) * ENEMY_DAMAGE_MULTIPLIER));
+  if (isEpicMission || isManhuntTarget) {
+    // Elite missions and manhunt target: no enemy damage handicap.
+    c.damageMin = Math.max(1, Math.floor(c.damageMin ?? 4));
+    c.damageMax = Math.max(1, Math.floor(c.damageMax ?? 6));
+  } else {
+    c.damageMin = Math.max(1, Math.floor((c.damageMin ?? 4) * ENEMY_DAMAGE_MULTIPLIER));
+    c.damageMax = Math.max(1, Math.floor((c.damageMax ?? 6) * ENEMY_DAMAGE_MULTIPLIER));
+  }
   c.avatar = Images.red_portrait[RED_PORTRAIT_KEYS[index % RED_PORTRAIT_KEYS.length] as keyof typeof Images.red_portrait];
   return c;
 }

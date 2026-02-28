@@ -60,6 +60,12 @@ export const WEAPON_EFFECTS: Record<WeaponEffectId, WeaponEffect> = {
     description: "Attacks 10% faster",
     modifiers: { attackIntervalMultiplier: 0.9 },
   },
+  trauma_surgeon: {
+    id: "trauma_surgeon",
+    name: "Trauma Surgeon",
+    description: "Improves MedKit effectiveness by 10%",
+    modifiers: { medkitHealPercent: 0.1 },
+  },
   firebreaker: {
     id: "firebreaker",
     name: "Firebreaker",

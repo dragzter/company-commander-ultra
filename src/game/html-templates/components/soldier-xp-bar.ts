@@ -2,6 +2,7 @@ import type { Soldier } from "../../entities/types.ts";
 import {
   getLevelFromExperience,
   getSoldierXpRequiredForLevel,
+  MAX_SOLDIER_LEVEL,
   ENERGY_MAX,
 } from "../../../constants/economy.ts";
 
@@ -17,10 +18,11 @@ export function soldierXpBar(soldier: Soldier): string {
   const next = getSoldierXpRequiredForLevel(lvl + 1);
   const xpToNext = next - current;
   const progressInLevel = Math.round(Math.min(Math.max(0, exp - current), xpToNext) * 10) / 10;
-  const pct = lvl >= 20 ? 100 : Math.max(0, Math.min(100, (progressInLevel / Math.max(1, xpToNext)) * 100));
-  const xpText = lvl >= 20 ? `${exp} XP (max)` : `${progressInLevel} / ${xpToNext} XP to Lvl ${lvl + 1}`;
-  const progressLabel = lvl >= 20 ? "max" : `${progressInLevel}/${xpToNext}`;
-  const nextLvlLabel = lvl >= 20 ? "" : `<span class="soldier-xp-next">Lv ${lvl + 1}</span>`;
+  const atMaxLevel = lvl >= MAX_SOLDIER_LEVEL;
+  const pct = atMaxLevel ? 100 : Math.max(0, Math.min(100, (progressInLevel / Math.max(1, xpToNext)) * 100));
+  const xpText = atMaxLevel ? `${exp} XP (max)` : `${progressInLevel} / ${xpToNext} XP to Lvl ${lvl + 1}`;
+  const progressLabel = atMaxLevel ? "max" : `${progressInLevel}/${xpToNext}`;
+  const nextLvlLabel = atMaxLevel ? "" : `<span class="soldier-xp-next">Lv ${lvl + 1}</span>`;
   const barFill = `<div class="soldier-xp-fill" style="width:${pct}%"></div>`;
   const barTrack = `<div class="soldier-xp-bar">${barFill}<span class="soldier-xp-progress-inline">${progressLabel}</span></div>`;
 

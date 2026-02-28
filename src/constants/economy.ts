@@ -74,15 +74,32 @@ const SOLDIER_XP_FOR_LEVEL = [
   4699, 5864, 7285, 9019, 11134, 13714, 16862, 20703, 25389,
 ];
 
+export const MAX_SOLDIER_LEVEL = 999;
+const SOLDIER_XP_STEP_GROWTH = 1.22;
+
+const SOLDIER_XP_THRESHOLDS: number[] = (() => {
+  // index 0 => level 1 threshold, index n => level n+1 threshold
+  const thresholds: number[] = SOLDIER_XP_FOR_LEVEL.slice();
+  let total = thresholds[thresholds.length - 1];
+  let lastStep = thresholds[thresholds.length - 1] - thresholds[thresholds.length - 2];
+  for (let lvl = 21; lvl <= MAX_SOLDIER_LEVEL; lvl++) {
+    lastStep = Math.max(1, Math.round(lastStep * SOLDIER_XP_STEP_GROWTH));
+    total += lastStep;
+    thresholds.push(total);
+  }
+  return thresholds;
+})();
+
 export function getSoldierXpRequiredForLevel(level: number): number {
-  if (level < 1 || level > 20) return level <= 1 ? 0 : SOLDIER_XP_FOR_LEVEL[19];
-  return SOLDIER_XP_FOR_LEVEL[level - 1] ?? 0;
+  if (level <= 1) return 0;
+  if (level >= MAX_SOLDIER_LEVEL) return SOLDIER_XP_THRESHOLDS[MAX_SOLDIER_LEVEL - 1];
+  return SOLDIER_XP_THRESHOLDS[level - 1] ?? 0;
 }
 
 /** Derive level from total XP (RPG-style: level is calculated from XP). */
 export function getLevelFromExperience(totalXp: number): number {
   let lvl = 1;
-  for (let i = 2; i <= 20; i++) {
+  for (let i = 2; i <= MAX_SOLDIER_LEVEL; i++) {
     if (totalXp >= getSoldierXpRequiredForLevel(i)) lvl = i;
     else break;
   }

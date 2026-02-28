@@ -19,11 +19,11 @@ export interface WeaponBase {
 }
 
 export const WEAPON_BASES: WeaponBase[] = [
-  { baseId: "m5_assault_rifle", name: "M5 Assault Rifle", description: "Standard-issue. Every soldier knows how to use one.", icon: "weapon_57.png", damageMinBase: 6, damageMaxBase: 10, damagePerLevel: 1, speed_base: 5, damage_type: "ballistic", restrictRole: "any" },
+  { baseId: "m5_assault_rifle", name: "M5 Assault Rifle", description: "Standard-issue. Every soldier knows how to use one.", icon: "weapon_57.png", damageMinBase: 7, damageMaxBase: 10, damagePerLevel: 21 / 19, speed_base: 5, damage_type: "ballistic", restrictRole: "any" },
   { baseId: "s44_galt", name: "S44 Galt Carbine", description: "Developed in former Belgium, a staple for light infantry.", icon: "weapon_29.png", damageMinBase: 4, damageMaxBase: 7, damagePerLevel: 1, speed_base: 7, damage_type: "ballistic", restrictRole: "rifleman" },
-  { baseId: "war_rifle", name: "Old War Rifle", description: "This baby has seen some action.", icon: "weapon_39.png", damageMinBase: 11, damageMaxBase: 14, damagePerLevel: 1, speed_base: 2, damage_type: "ballistic", restrictRole: "rifleman" },
+  { baseId: "war_rifle", name: "Old War Rifle", description: "This baby has seen some action.", icon: "weapon_39.png", damageMinBase: 12, damageMaxBase: 16, damagePerLevel: 21 / 19, speed_base: 2, damage_type: "ballistic", restrictRole: "rifleman" },
   { baseId: "double_barrel_shotgun", name: "Double Barrel Shotgun", description: "Not very practical on the modern battlefield, but it packs a punch.", icon: "weapon_43.png", damageMinBase: 11, damageMaxBase: 19, damagePerLevel: 2, speed_base: 1, damage_type: "ballistic", restrictRole: "rifleman" },
-  { baseId: "m42_pistol_carbine", name: "M42 Pistol Carbine", description: "A staple in the spec ops community.", icon: "weapon_2.png", damageMinBase: 2, damageMaxBase: 6, damagePerLevel: 1, speed_base: 9, damage_type: "ballistic", restrictRole: "any" },
+  { baseId: "m42_pistol_carbine", name: "M42 Pistol Carbine", description: "A staple in the spec ops community.", icon: "weapon_2.png", damageMinBase: 2, damageMaxBase: 5, damagePerLevel: 18 / 19, speed_base: 9, damage_type: "ballistic", restrictRole: "any" },
   { baseId: "lsaw_guardsman", name: "LSAW Guardsman Rifle", description: "For the professional on the move.", icon: "weapon_34.png", damageMinBase: 11, damageMaxBase: 16, damagePerLevel: 2, speed_base: 2, damage_type: "ballistic", restrictRole: "rifleman" },
   { baseId: "akpd_assault", name: "AK PD-2 Assault", description: "Based on the venerable AK-47 lineage.", icon: "weapon_14.png", damageMinBase: 2, damageMaxBase: 7, damagePerLevel: 1, speed_base: 8, damage_type: "ballistic", restrictRole: "rifleman" },
   { baseId: "m240_delta", name: "M240 Delta Pattern MG", description: "Tried and true squad assault weapon.", icon: "weapon_45.png", damageMinBase: 12, damageMaxBase: 17, damagePerLevel: 2, speed_base: 4, damage_type: "ballistic", restrictRole: "support" },
@@ -38,8 +38,8 @@ export function scaleWeapon(base: WeaponBase, tier: GearLevel) {
 export function createWeapon(base: WeaponBase, level: GearLevel) {
   const tier = Math.max(1, Math.min(20, level)) as GearLevel;
   const add = (tier - 1) * base.damagePerLevel;
-  const damageMin = base.damageMinBase + add;
-  const damageMax = base.damageMaxBase + add;
+  const damageMin = Math.round(base.damageMinBase + add);
+  const damageMax = Math.round(base.damageMaxBase + add);
   const damage = Math.round((damageMin + damageMax) / 2);
   return {
     id: `${base.baseId}_${level}`,

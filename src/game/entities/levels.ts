@@ -63,7 +63,7 @@ export function getEquipmentLoadoutForLevel(level: number, designation: Designat
   const armor = createArmor(armorBase, tier);
   const inventory =
     designation === "medic"
-      ? [MedicalItems.common.standard_medkit]
+      ? [{ ...MedicalItems.common.standard_medkit, level: tier as import("../../constants/items/types.ts").GearLevel }]
       : designation === "support"
         ? [ThrowableItems.common.mk18_smoke]
         : [ThrowableItems.common.m3_frag_grenade];
@@ -72,7 +72,7 @@ export function getEquipmentLoadoutForLevel(level: number, designation: Designat
 
 const ATTRIBUTES_INCREASES_BY_LEVEL: Attributes[] = [
   {
-    hit_points: 100,
+    hit_points: 140,
     morale: 50,
     dexterity: 50,
     toughness: 35,
@@ -80,7 +80,7 @@ const ATTRIBUTES_INCREASES_BY_LEVEL: Attributes[] = [
     level: 1,
   },
   {
-    hit_points: 10,
+    hit_points: 20,
     dexterity: 1,
     morale: 1,
     toughness: 2,
@@ -88,7 +88,7 @@ const ATTRIBUTES_INCREASES_BY_LEVEL: Attributes[] = [
     level: 2,
   },
   {
-    hit_points: 10,
+    hit_points: 20,
     dexterity: 1,
     morale: 1,
     toughness: 3,
@@ -96,7 +96,7 @@ const ATTRIBUTES_INCREASES_BY_LEVEL: Attributes[] = [
     level: 3,
   },
   {
-    hit_points: 15,
+    hit_points: 25,
     dexterity: 1,
     morale: 1,
     toughness: 3,
@@ -104,7 +104,7 @@ const ATTRIBUTES_INCREASES_BY_LEVEL: Attributes[] = [
     level: 4,
   },
   {
-    hit_points: 10,
+    hit_points: 25,
     dexterity: 1,
     morale: 1,
     toughness: 3,
@@ -120,7 +120,7 @@ const ATTRIBUTES_INCREASES_BY_LEVEL: Attributes[] = [
     level: 6,
   },
   {
-    hit_points: 15,
+    hit_points: 30,
     dexterity: 0,
     morale: 3,
     toughness: 2,
@@ -128,7 +128,7 @@ const ATTRIBUTES_INCREASES_BY_LEVEL: Attributes[] = [
     level: 7,
   },
   {
-    hit_points: 15,
+    hit_points: 30,
     dexterity: 1,
     morale: 3,
     toughness: 4,
@@ -136,29 +136,37 @@ const ATTRIBUTES_INCREASES_BY_LEVEL: Attributes[] = [
     level: 8,
   },
   {
-    hit_points: 15,
+    hit_points: 30,
     dexterity: 0,
     morale: 2,
     toughness: 5,
     awareness: 6,
     level: 9,
   },
-  { hit_points: 20, dexterity: 0, morale: 4, toughness: 10, awareness: 10, level: 10 },
-  { hit_points: 20, dexterity: 1, morale: 2, toughness: 4, awareness: 4, level: 11 },
-  { hit_points: 25, dexterity: 1, morale: 2, toughness: 6, awareness: 5, level: 12 },
-  { hit_points: 20, dexterity: 1, morale: 3, toughness: 5, awareness: 5, level: 13 },
-  { hit_points: 25, dexterity: 0, morale: 2, toughness: 6, awareness: 7, level: 14 },
-  { hit_points: 25, dexterity: 1, morale: 3, toughness: 6, awareness: 6, level: 15 },
-  { hit_points: 30, dexterity: 1, morale: 3, toughness: 6, awareness: 6, level: 16 },
-  { hit_points: 25, dexterity: 2, morale: 4, toughness: 6, awareness: 6, level: 17 },
-  { hit_points: 30, dexterity: 1, morale: 3, toughness: 7, awareness: 8, level: 18 },
-  { hit_points: 30, dexterity: 2, morale: 4, toughness: 7, awareness: 7, level: 19 },
-  { hit_points: 35, dexterity: 0, morale: 5, toughness: 10, awareness: 10, level: 20 },
+  { hit_points: 35, dexterity: 0, morale: 4, toughness: 10, awareness: 10, level: 10 },
+  { hit_points: 35, dexterity: 1, morale: 2, toughness: 4, awareness: 4, level: 11 },
+  { hit_points: 35, dexterity: 1, morale: 2, toughness: 6, awareness: 5, level: 12 },
+  { hit_points: 35, dexterity: 1, morale: 3, toughness: 5, awareness: 5, level: 13 },
+  { hit_points: 40, dexterity: 0, morale: 2, toughness: 6, awareness: 7, level: 14 },
+  { hit_points: 40, dexterity: 1, morale: 3, toughness: 6, awareness: 6, level: 15 },
+  { hit_points: 45, dexterity: 1, morale: 3, toughness: 6, awareness: 6, level: 16 },
+  { hit_points: 45, dexterity: 2, morale: 4, toughness: 6, awareness: 6, level: 17 },
+  { hit_points: 45, dexterity: 1, morale: 3, toughness: 7, awareness: 8, level: 18 },
+  { hit_points: 20, dexterity: 2, morale: 4, toughness: 7, awareness: 7, level: 19 },
+  { hit_points: 25, dexterity: 0, morale: 5, toughness: 10, awareness: 10, level: 20 },
 ];
 
 function getStatsForLevel(lvl: number) {
-  if (lvl < 1 || lvl > 20) return;
-  return ATTRIBUTES_INCREASES_BY_LEVEL[lvl - 1];
+  if (lvl < 1 || lvl > 999) return;
+  if (lvl <= 20) return ATTRIBUTES_INCREASES_BY_LEVEL[lvl - 1];
+  return {
+    hit_points: 5,
+    dexterity: 0,
+    morale: 0,
+    toughness: 0,
+    awareness: 0,
+    level: lvl,
+  };
 }
 
 const SOLDIER_BASE: Soldier = {

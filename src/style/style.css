@@ -612,7 +612,7 @@ p, a, button, h1, h2, h3, h4, h5, h6, span, li, ul {
 		width: 120px;
 		height: 38px;
 		font-size: 13px;
-		padding: 8px 10px;
+		padding: 6px 7px;
 	}
 }
 
@@ -1356,8 +1356,8 @@ button.mbtn {
 #equip-picker-popup .equip-picker-soldier.entity-card .card-footer {
 	min-width: 0;
 	overflow: visible;
-	margin: 8px -10px 0 -10px;
-	padding: 8px 10px;
+	margin: 6px -7px 0 -7px;
+	padding: 6px 7px;
 	border-radius: 0 0 8px 8px;
 }
 #equip-picker-popup .equip-picker-soldier.entity-card .card-footer .soldier-xp-bar {
@@ -1373,6 +1373,7 @@ button.mbtn {
 	min-width: 0;
 	width: 100%;
 	max-width: 100%;
+	margin-bottom: 0;
 	flex-shrink: 1;
 	overflow: hidden;
 	box-sizing: border-box;
@@ -2356,6 +2357,7 @@ button.mbtn {
 .ready-room-soldier-card {
 	display: flex;
 	flex-direction: column;
+	min-height: 126px;
 	background: linear-gradient(165deg, rgba(32, 42, 32, 0.88) 0%, rgba(22, 32, 22, 0.92) 100%);
 	border: 1px solid rgba(100, 140, 80, 0.6);
 	border-radius: 6px;
@@ -2370,14 +2372,62 @@ button.mbtn {
 	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(120, 180, 90, 0.2);
 }
 .ready-room-soldier-card.ready-room-slot-selected {
-	border-color: rgba(255, 210, 80, 0.9);
-	box-shadow: 0 0 0 3px rgba(255, 200, 50, 0.6), 0 0 16px rgba(255, 220, 100, 0.35), inset 0 0 16px rgba(255, 230, 150, 0.1);
+	position: relative;
+	z-index: 3;
+	border-color: rgba(255, 224, 120, 0.98) !important;
+	outline: 3px solid rgba(255, 214, 76, 0.95);
+	outline-offset: 1px;
+	box-shadow:
+		0 0 0 2px rgba(255, 190, 40, 0.9),
+		0 0 14px rgba(255, 210, 70, 0.38),
+		inset 0 0 12px rgba(255, 224, 120, 0.12);
+	transform: translateY(-1px) scale(1.01);
+	animation: slot-selected-border-pulse 0.9s ease-in-out infinite;
+}
+.ready-room-soldier-card.ready-room-slot-selected::after {
+	content: "MOVING";
+	position: absolute;
+	top: 4px;
+	right: 8px;
+	padding: 2px 8px;
+	border-radius: 4px;
+	font-size: 0.62rem;
+	font-weight: 900;
+	letter-spacing: 0.07em;
+	color: #2a1600;
+	background: linear-gradient(180deg, rgba(255, 235, 150, 1) 0%, rgba(255, 195, 70, 1) 100%);
+	border: 1px solid rgba(255, 235, 170, 0.95);
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45), 0 0 10px rgba(255, 205, 90, 0.7);
+	pointer-events: none;
 }
 .ready-room-soldier-card.ready-room-drop-zone {
+	position: relative;
 	cursor: pointer;
-	border-color: rgba(100, 180, 255, 0.7);
-	box-shadow: 0 0 0 2px rgba(70, 150, 255, 0.5), 0 0 12px rgba(80, 170, 255, 0.25), inset 0 0 20px rgba(100, 180, 255, 0.08);
-	animation: formation-drop-pulse 1.2s ease-in-out infinite;
+	z-index: 2;
+	border-color: rgba(125, 224, 255, 0.98) !important;
+	outline: 3px solid rgba(72, 200, 255, 0.9);
+	outline-offset: 1px;
+	box-shadow:
+		0 0 0 2px rgba(66, 184, 255, 0.88),
+		0 0 14px rgba(94, 210, 255, 0.4),
+		inset 0 0 14px rgba(120, 225, 255, 0.12);
+	animation: slot-drop-border-pulse 0.85s ease-in-out infinite;
+}
+.ready-room-soldier-card.ready-room-drop-zone::after {
+	content: "SWAP";
+	position: absolute;
+	top: 4px;
+	left: 8px;
+	padding: 2px 8px;
+	border-radius: 4px;
+	font-size: 0.62rem;
+	font-weight: 900;
+	letter-spacing: 0.08em;
+	color: #032436;
+	background: linear-gradient(180deg, rgba(180, 247, 255, 1) 0%, rgba(88, 210, 255, 1) 100%);
+	border: 1px solid rgba(205, 248, 255, 0.95);
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45), 0 0 10px rgba(98, 220, 255, 0.7);
+	pointer-events: none;
 }
 .ready-room-soldier-card.designation-rifleman {
 	background: linear-gradient(165deg, rgba(50, 68, 38, 0.9) 0%, rgba(38, 56, 28, 0.94) 100%);
@@ -2564,7 +2614,7 @@ button.mbtn {
 }
 .ready-room-empty-slot {
 	cursor: pointer;
-	min-height: 60px;
+	min-height: 126px;
 	background: linear-gradient(165deg, rgba(35, 50, 35, 0.5) 0%, rgba(25, 40, 25, 0.55) 100%);
 	border-style: dashed;
 	border-color: rgba(90, 140, 70, 0.5);
@@ -2575,15 +2625,25 @@ button.mbtn {
 	box-shadow: inset 0 0 20px rgba(80, 140, 60, 0.08);
 }
 .ready-room-empty-slot .ready-room-card-inner {
+	position: relative;
+	flex: 1;
+	width: 100%;
+	height: 100%;
 	justify-content: center;
 	flex-direction: column;
 	gap: 4px;
 }
 .ready-room-empty-label {
+	position: absolute;
+	left: 50%;
+	top: 50%;
+	transform: translate(-50%, -50%);
 	font-size: 0.7rem;
 	color: rgba(140, 180, 120, 0.9);
 	text-transform: uppercase;
 	letter-spacing: 0.05em;
+	text-align: center;
+	white-space: nowrap;
 }
 
 /* Formation screen: 2-col layout, Active/Reserve, select-then-swap */
@@ -2629,6 +2689,7 @@ button.mbtn {
 .formation-soldier-card {
 	display: flex;
 	flex-direction: column;
+	min-height: 126px;
 	background: linear-gradient(165deg, rgba(32, 42, 32, 0.88) 0%, rgba(22, 32, 22, 0.92) 100%);
 	border: 1px solid rgba(100, 140, 80, 0.6);
 	border-radius: 6px;
@@ -2643,18 +2704,102 @@ button.mbtn {
 	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(120, 180, 90, 0.2);
 }
 .formation-soldier-card.formation-slot-selected {
-	border-color: rgba(255, 210, 80, 0.9);
-	box-shadow: 0 0 0 3px rgba(255, 200, 50, 0.6), 0 0 16px rgba(255, 220, 100, 0.35), inset 0 0 16px rgba(255, 230, 150, 0.1);
+	position: relative;
+	z-index: 3;
+	border-color: rgba(255, 224, 120, 0.98) !important;
+	outline: 3px solid rgba(255, 214, 76, 0.95);
+	outline-offset: 1px;
+	box-shadow:
+		0 0 0 2px rgba(255, 190, 40, 0.9),
+		0 0 14px rgba(255, 210, 70, 0.38),
+		inset 0 0 12px rgba(255, 224, 120, 0.12);
+	transform: translateY(-1px) scale(1.01);
+	animation: slot-selected-border-pulse 0.9s ease-in-out infinite;
+}
+.formation-soldier-card.formation-slot-selected::after {
+	content: "MOVING";
+	position: absolute;
+	top: 4px;
+	right: 8px;
+	padding: 2px 8px;
+	border-radius: 4px;
+	font-size: 0.62rem;
+	font-weight: 900;
+	letter-spacing: 0.07em;
+	color: #2a1600;
+	background: linear-gradient(180deg, rgba(255, 235, 150, 1) 0%, rgba(255, 195, 70, 1) 100%);
+	border: 1px solid rgba(255, 235, 170, 0.95);
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45), 0 0 10px rgba(255, 205, 90, 0.7);
+	pointer-events: none;
 }
 .formation-soldier-card.formation-drop-zone {
+	position: relative;
 	cursor: pointer;
-	border-color: rgba(100, 180, 255, 0.7);
-	box-shadow: 0 0 0 2px rgba(70, 150, 255, 0.5), 0 0 12px rgba(80, 170, 255, 0.25), inset 0 0 20px rgba(100, 180, 255, 0.08);
-	animation: formation-drop-pulse 1.2s ease-in-out infinite;
+	z-index: 2;
+	border-color: rgba(125, 224, 255, 0.98) !important;
+	outline: 3px solid rgba(72, 200, 255, 0.9);
+	outline-offset: 1px;
+	box-shadow:
+		0 0 0 2px rgba(66, 184, 255, 0.88),
+		0 0 14px rgba(94, 210, 255, 0.4),
+		inset 0 0 14px rgba(120, 225, 255, 0.12);
+	animation: slot-drop-border-pulse 0.85s ease-in-out infinite;
+}
+.formation-soldier-card.formation-drop-zone::after {
+	content: "SWAP";
+	position: absolute;
+	top: 4px;
+	left: 8px;
+	padding: 2px 8px;
+	border-radius: 4px;
+	font-size: 0.62rem;
+	font-weight: 900;
+	letter-spacing: 0.08em;
+	color: #032436;
+	background: linear-gradient(180deg, rgba(180, 247, 255, 1) 0%, rgba(88, 210, 255, 1) 100%);
+	border: 1px solid rgba(205, 248, 255, 0.95);
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45), 0 0 10px rgba(98, 220, 255, 0.7);
+	pointer-events: none;
 }
 @keyframes formation-drop-pulse {
 	0%, 100% { box-shadow: 0 0 0 2px rgba(70, 150, 255, 0.5), 0 0 12px rgba(80, 170, 255, 0.25), inset 0 0 20px rgba(100, 180, 255, 0.08); }
 	50% { box-shadow: 0 0 0 3px rgba(100, 190, 255, 0.7), 0 0 18px rgba(100, 200, 255, 0.4), inset 0 0 24px rgba(120, 200, 255, 0.12); }
+}
+@keyframes slot-selected-border-pulse {
+	0%, 100% {
+		outline-color: rgba(255, 214, 76, 0.85);
+		border-color: rgba(255, 224, 120, 0.9);
+		box-shadow:
+			0 0 0 2px rgba(255, 190, 40, 0.85),
+			0 0 9px rgba(255, 210, 70, 0.4),
+			inset 0 0 10px rgba(255, 224, 120, 0.1);
+	}
+	50% {
+		outline-color: rgba(255, 214, 76, 1);
+		border-color: rgba(255, 234, 150, 1);
+		box-shadow:
+			0 0 0 2px rgba(255, 205, 70, 1),
+			0 0 16px rgba(255, 224, 110, 0.62),
+			inset 0 0 14px rgba(255, 238, 155, 0.18);
+	}
+}
+@keyframes slot-drop-border-pulse {
+	0%, 100% {
+		outline-color: rgba(72, 200, 255, 0.82);
+		border-color: rgba(125, 224, 255, 0.9);
+		box-shadow:
+			0 0 0 2px rgba(66, 184, 255, 0.82),
+			0 0 9px rgba(94, 210, 255, 0.4),
+			inset 0 0 10px rgba(120, 225, 255, 0.1);
+	}
+	50% {
+		outline-color: rgba(98, 220, 255, 1);
+		border-color: rgba(162, 238, 255, 1);
+		box-shadow:
+			0 0 0 2px rgba(102, 220, 255, 1),
+			0 0 16px rgba(118, 230, 255, 0.62),
+			inset 0 0 14px rgba(150, 235, 255, 0.16);
+	}
 }
 .formation-soldier-card.designation-rifleman {
 	background: linear-gradient(165deg, rgba(50, 68, 38, 0.9) 0%, rgba(38, 56, 28, 0.94) 100%);
@@ -2875,7 +3020,7 @@ button.mbtn {
 }
 .formation-empty-slot {
 	cursor: pointer;
-	min-height: 60px;
+	min-height: 126px;
 	background: linear-gradient(165deg, rgba(35, 50, 35, 0.5) 0%, rgba(25, 40, 25, 0.55) 100%);
 	border-style: dashed;
 	border-color: rgba(90, 140, 70, 0.5);
@@ -2886,15 +3031,25 @@ button.mbtn {
 	box-shadow: inset 0 0 20px rgba(80, 140, 60, 0.08);
 }
 .formation-empty-slot .formation-card-inner {
+	position: relative;
+	flex: 1;
+	width: 100%;
+	height: 100%;
 	justify-content: center;
 	flex-direction: column;
 	gap: 4px;
 }
 .formation-empty-label {
+	position: absolute;
+	left: 50%;
+	top: 50%;
+	transform: translate(-50%, -50%);
 	font-size: 0.7rem;
 	color: rgba(140, 180, 120, 0.9);
 	text-transform: uppercase;
 	letter-spacing: 0.05em;
+	text-align: center;
+	white-space: nowrap;
 }
 
 .ready-room-footer {
@@ -3089,7 +3244,7 @@ button.mbtn {
 .roster-card-body {
 	display: flex;
 	gap: 10px;
-	padding: 8px 10px;
+	padding: 6px 7px;
 	align-items: center;
 	flex: 1;
 	min-height: 0;
@@ -3220,7 +3375,7 @@ button.mbtn {
 	display: flex;
 	align-items: center;
 	gap: 10px;
-	padding: 8px 10px;
+	padding: 6px 7px;
 	background: rgba(0,0,0,0.3);
 	border: 1px solid var(--gray-5);
 	border-radius: 6px;
@@ -3985,7 +4140,7 @@ button.mbtn {
 	background: rgba(0, 0, 0, 0.3);
 	border: 1px solid rgba(120, 255, 255, 0.15);
 	border-radius: 8px;
-	padding: 8px 10px;
+	padding: 6px 7px;
 	margin-top: 10px;
 }
 /* Buy/Equip button in item popup - full width, overrides mbtn */
@@ -4290,7 +4445,7 @@ button.mbtn {
 	flex-direction: column;
 	gap: 4px;
 	align-items: stretch;
-	padding: 8px 10px;
+	padding: 6px 7px;
 	border-radius: 6px;
 	background: rgba(0, 0, 0, 0.25);
 	border-left: 3px solid transparent;
@@ -4740,7 +4895,7 @@ button.mbtn {
 	overflow-x: hidden;
 	overflow-y: auto;
 	gap: 6px;
-	padding: 14px 16px;
+	padding: 10px 11px;
 	width: 100%;
 	max-width: 100%;
 	box-sizing: border-box;
@@ -4748,7 +4903,7 @@ button.mbtn {
 .equip-picker-soldiers-list {
 	display: flex;
 	flex-direction: column;
-	gap: 6px;
+	gap: 3px;
 	min-width: 0;
 	width: 100%;
 }
@@ -4847,7 +5002,7 @@ button.mbtn {
 	position: relative;
 	background: linear-gradient(135deg, rgba(20, 24, 20, 0.95) 0%, rgba(8, 10, 8, 0.98) 100%);
 	border-radius: 8px;
-	padding: 8px 10px 0;
+	padding: 6px 7px 0;
 	border: 1px solid rgba(103, 86, 69, 0.25);
 	box-shadow: 0 2px 12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.03) inset;
 	transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
@@ -4868,6 +5023,7 @@ button.mbtn {
 		radial-gradient(ellipse 80% 60% at 50% 0%, rgba(255, 255, 255, 0.04) 0%, transparent 60%);
 	pointer-events: none;
 	border-radius: 8px;
+	z-index: 0;
 }
 .equip-picker-soldier::after {
 	content: "";
@@ -4876,6 +5032,11 @@ button.mbtn {
 	background-image: radial-gradient(circle at 2px 2px, rgba(0, 0, 0, 0.1) 0.5px, transparent 0.5px);
 	background-size: 5px 5px;
 	pointer-events: none;
+	z-index: 0;
+}
+.equip-picker-soldier > * {
+	position: relative;
+	z-index: 1;
 }
 .equip-picker-soldier:hover {
 	box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05) inset;
@@ -4919,21 +5080,33 @@ button.mbtn {
 .equip-picker-soldier.designation-medic:hover {
 	border-color: rgba(230, 90, 85, 0.55);
 }
-.equip-picker-soldier-header {
+.equip-picker-soldier-top-row {
 	display: flex;
 	align-items: center;
-	gap: 8px;
+	justify-content: flex-start;
+	gap: 6px;
 	margin-bottom: 6px;
 	min-width: 0;
-	overflow: hidden;
+}
+.equip-picker-soldier-bottom-row {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	min-width: 0;
+}
+.equip-picker-slots-wrap {
+	flex: 1;
+	min-width: 0;
+	display: flex;
+	justify-content: center;
 }
 .equip-picker-avatar-wrap {
 	position: relative;
 	display: inline-block;
 }
 .equip-picker-avatar {
-	width: 48px;
-	height: 48px;
+	width: 54px;
+	height: 54px;
 	border-radius: 6px;
 	object-fit: cover;
 }
@@ -4954,21 +5127,22 @@ button.mbtn {
 }
 .equip-picker-status-badge {
 	position: absolute;
-	bottom: 2px;
-	left: 50%;
-	transform: translateX(-50%);
-	font-size: 0.52rem;
+	top: 0;
+	right: 0;
+	transform: none;
+	font-size: 0.74rem;
 	font-weight: 800;
 	letter-spacing: 0.1em;
 	text-transform: uppercase;
-	padding: 2px 6px 3px;
-	border-radius: 4px;
+	padding: 4px 10px 5px;
+	border-radius: 0 8px 0 8px;
 	line-height: 1;
 	white-space: nowrap;
-	max-width: calc(100% - 4px);
+	max-width: calc(100% - 8px);
 	overflow: hidden;
 	text-overflow: ellipsis;
 	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+	z-index: 3;
 }
 .equip-picker-status-active {
 	background: linear-gradient(180deg, #3db84d 0%, #2a8a38 50%, #1e6b28 100%);
@@ -4984,24 +5158,25 @@ button.mbtn {
 	border: 1px solid rgba(180, 150, 220, 0.5);
 	box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5), 0 0 10px rgba(100, 70, 140, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
-.equip-picker-name-block {
-	display: flex;
-	flex-direction: column;
-	gap: 4px;
-	align-items: flex-start;
-	min-width: 0;
-	flex: 1;
-}
 .equip-picker-name {
 	font-weight: 800;
-	font-size: 0.8rem;
+	font-size: 0.76rem;
 	letter-spacing: 0.04em;
 	color: #fff;
 	text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6), 0 0 12px rgba(255, 255, 255, 0.15);
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
-	max-width: 100%;
+	max-width: 52%;
+	flex: 0 1 auto;
+}
+.equip-picker-name-role-sep {
+	color: rgba(236, 214, 154, 0.85);
+	font-size: 0.72rem;
+	font-weight: 800;
+	line-height: 1;
+	text-shadow: 0 0 6px rgba(236, 214, 154, 0.35);
+	flex: 0 0 auto;
 }
 .equip-picker-role {
 	display: inline-flex;
@@ -5087,14 +5262,16 @@ button.mbtn {
 
 .equip-picker-slots {
 	display: flex;
-	flex-wrap: wrap;
-	gap: 8px;
+	flex-wrap: nowrap;
+	gap: 5px;
 	min-width: 0;
 	max-width: 100%;
+	flex: 0 0 auto;
+	justify-content: center;
 	overflow: visible;
 }
 .equip-picker-slots-1x5 {
-	flex-wrap: wrap;
+	flex-wrap: nowrap;
 	gap: 5px;
 	min-width: 0;
 }
@@ -5107,10 +5284,10 @@ button.mbtn {
 	flex-wrap: wrap;
 }
 .equip-unequip-all-btn {
-	width: 48px;
-	height: 48px;
-	min-width: 48px;
-	min-height: 48px;
+	width: 44px;
+	height: 44px;
+	min-width: 44px;
+	min-height: 44px;
 	border: 2px solid rgba(180, 140, 70, 0.65);
 	border-radius: 6px;
 	background: linear-gradient(165deg, rgba(65, 52, 32, 0.9) 0%, rgba(42, 35, 22, 0.95) 50%, rgba(35, 28, 18, 1) 100%);
@@ -5138,11 +5315,14 @@ button.mbtn {
 	box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6), inset 0 2px 6px rgba(0, 0, 0, 0.3);
 }
 .equip-unequip-icon {
-	font-size: 1.15rem;
+	font-size: 1rem;
 	line-height: 1;
+	font-family: "Helvetica Neue", Arial, sans-serif;
+	font-weight: 900;
+	font-variant-emoji: text;
 }
 .equip-unequip-label {
-	font-size: 0.6rem;
+	font-size: 0.54rem;
 	text-transform: uppercase;
 	letter-spacing: 0.1em;
 	font-weight: 800;
@@ -5153,10 +5333,10 @@ button.mbtn {
 	min-width: 24px;
 }
 .equip-slot {
-	width: 48px;
-	height: 48px;
-	min-width: 48px;
-	min-height: 48px;
+	width: 49px;
+	height: 49px;
+	min-width: 49px;
+	min-height: 49px;
 	border: 1px solid rgba(103, 86, 69, 0.3);
 	border-radius: 6px;
 	padding: 1px;
@@ -5278,16 +5458,16 @@ button.mbtn {
 .equip-slot-unequip-wrap {
 	position: absolute;
 	z-index: 10;
-	width: 48px;
-	height: 48px;
+	width: 49px;
+	height: 49px;
 	left: 0;
 	top: 0;
 }
 .equip-slot-unequip-btn {
-	width: 48px;
-	height: 48px;
-	min-width: 48px;
-	min-height: 48px;
+	width: 49px;
+	height: 49px;
+	min-width: 49px;
+	min-height: 49px;
 	padding: 0;
 	display: flex;
 	flex-direction: column;
@@ -5331,9 +5511,18 @@ button.mbtn {
 	justify-content: center;
 }
 .equip-slot img {
-	width: 44px;
-	height: 44px;
+	width: 39px;
+	height: 39px;
 	object-fit: contain;
+}
+
+@media (max-width: 880px) {
+	.equip-picker-name {
+		font-size: 0.72rem;
+	}
+	.equip-picker-role {
+		font-size: 0.64rem;
+	}
 }
 .equip-slot-placeholder {
 	color: var(--gray-6);
@@ -5475,7 +5664,7 @@ button.mbtn {
 	z-index: 100;
 	background: linear-gradient(180deg, rgba(15, 18, 12, 0.97) 0%, #0a0c0a 100%);
 	border-top: 1px solid rgba(103, 86, 69, 0.5);
-	padding: 8px 10px;
+	padding: 6px 7px;
 	max-height: 45%;
 	min-height: 86px;
 	display: flex;
@@ -5947,6 +6136,34 @@ button.mbtn {
 	opacity: 0.6;
 }
 
+.combat-card-down-state {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	padding: 2px 8px;
+	border-radius: 4px;
+	font-size: 0.62rem;
+	font-weight: 900;
+	letter-spacing: 0.08em;
+	z-index: 4;
+	pointer-events: none;
+	text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.combat-card-down-kia {
+	color: #fff2f2;
+	background: linear-gradient(180deg, rgba(200, 42, 42, 0.95) 0%, rgba(138, 18, 18, 0.98) 100%);
+	border: 1px solid rgba(255, 130, 130, 0.8);
+}
+
+.combat-card-down-incap {
+	color: #fffde6;
+	background: linear-gradient(180deg, rgba(220, 148, 26, 0.95) 0%, rgba(166, 102, 6, 0.98) 100%);
+	border: 1px solid rgba(255, 206, 120, 0.85);
+}
+
 .combat-card-in-cover {
 	transform: translateY(14px) scale(0.92);
 	border-color: #0a0a0a;
@@ -6414,6 +6631,43 @@ button.mbtn {
 @keyframes combat-weapon-hit-flash {
 	0% { opacity: 1; }
 	100% { opacity: 0; }
+}
+
+.combat-card-hit-flash-player,
+.combat-card-hit-flash-enemy {
+	position: relative;
+}
+
+.combat-card-hit-flash-player::after,
+.combat-card-hit-flash-enemy::after {
+	content: "";
+	position: absolute;
+	inset: -2px;
+	border-radius: 10px;
+	pointer-events: none;
+	border: 3px solid transparent;
+	animation: combat-card-hit-border-pulse 0.22s ease-out forwards;
+}
+
+.combat-card-hit-flash-player::after {
+	border-color: rgba(115, 225, 255, 0.9);
+	box-shadow: 0 0 12px 2px rgba(115, 225, 255, 0.45);
+}
+
+.combat-card-hit-flash-enemy::after {
+	border-color: rgba(255, 140, 120, 0.9);
+	box-shadow: 0 0 12px 2px rgba(255, 110, 110, 0.45);
+}
+
+@keyframes combat-card-hit-border-pulse {
+	0% {
+		opacity: 0.95;
+		transform: scale(0.98);
+	}
+	100% {
+		opacity: 0;
+		transform: scale(1.04);
+	}
 }
 
 .combat-card-frag-flash {
@@ -7396,21 +7650,73 @@ button.mbtn {
 	pointer-events: none;
 }
 
-/* Grenade targeting highlight - glow and pulse */
+/* Grenade/suppress targeting marker (mobile-first): center reticle + base ring */
 .combat-card-grenade-target {
-	outline: 2px solid var(--accent-magenta-1);
-	outline-offset: 2px;
-	animation: combat-grenade-target-pulse 1.2s ease-in-out infinite;
+	position: relative;
+	cursor: pointer;
 }
 
-@keyframes combat-grenade-target-pulse {
+.combat-card-grenade-target::before {
+	content: "";
+	position: absolute;
+	top: 33%;
+	left: 50%;
+	width: 36px;
+	height: 36px;
+	transform: translate(-50%, -50%);
+	border-radius: 50%;
+	border: 3px solid rgba(255, 168, 176, 0.98);
+	box-shadow:
+		0 0 0 4px rgba(255, 55, 90, 0.24),
+		inset 0 0 0 2px rgba(255, 226, 232, 0.9),
+		0 0 16px rgba(255, 72, 104, 0.6);
+	background:
+		radial-gradient(circle at center, rgba(255, 210, 218, 0.9) 0 9%, transparent 10%),
+		linear-gradient(to right, transparent 47%, rgba(255, 226, 232, 0.98) 47%, rgba(255, 226, 232, 0.98) 53%, transparent 53%),
+		linear-gradient(to bottom, transparent 47%, rgba(255, 226, 232, 0.98) 47%, rgba(255, 226, 232, 0.98) 53%, transparent 53%);
+	pointer-events: none;
+	animation: combat-grenade-reticle-pulse 1s ease-in-out infinite;
+	z-index: 6;
+}
+
+.combat-card-grenade-target::after {
+	content: "";
+	position: absolute;
+	left: 50%;
+	top: 33%;
+	width: 62px;
+	height: 62px;
+	transform: translate(-50%, -50%);
+	border-radius: 50%;
+	border: 2px solid rgba(255, 132, 138, 0.76);
+	background: radial-gradient(circle, rgba(255, 44, 82, 0.08) 0%, rgba(255, 44, 82, 0.02) 60%, transparent 70%);
+	box-shadow:
+		0 0 14px rgba(255, 72, 104, 0.45),
+		inset 0 0 8px rgba(255, 164, 180, 0.32);
+	pointer-events: none;
+	animation: combat-grenade-ring-pulse 1s ease-in-out infinite;
+	z-index: 6;
+}
+
+@keyframes combat-grenade-reticle-pulse {
 	0%, 100% {
-		outline-color: var(--accent-magenta-1);
-		box-shadow: 0 0 8px 2px rgba(245, 86, 122, 0.5), 0 0 20px 4px rgba(234, 62, 101, 0.3);
+		opacity: 0.92;
+		transform: translate(-50%, -50%) scale(0.98);
 	}
 	50% {
-		outline-color: var(--accent-magenta-2);
-		box-shadow: 0 0 14px 4px rgba(245, 86, 122, 0.8), 0 0 28px 6px rgba(234, 62, 101, 0.5);
+		opacity: 1;
+		transform: translate(-50%, -50%) scale(1.05);
+	}
+}
+
+@keyframes combat-grenade-ring-pulse {
+	0%, 100% {
+		opacity: 0.82;
+		transform: translate(-50%, -50%) scale(0.95);
+	}
+	50% {
+		opacity: 1;
+		transform: translate(-50%, -50%) scale(1.02);
 	}
 }
 
@@ -8002,7 +8308,7 @@ button.mbtn {
 		align-items: center;
 		gap: 6px;
 		margin-top: 8px;
-		padding: 8px 10px;
+		padding: 6px 7px;
 		font-weight: 900;
 		background: rgba(0, 0, 0, 0.85);
 		border-top: 2px solid rgba(103, 86, 69, 0.6);
@@ -8615,6 +8921,20 @@ button.mbtn {
 		max-width: 56px;
 		font-size: 0.55rem;
 	}
+	.equip-picker-avatar {
+		width: 49px !important;
+		height: 49px !important;
+	}
+	.equip-slot {
+		width: 44px;
+		height: 44px;
+		min-width: 44px;
+		min-height: 44px;
+	}
+	.equip-slot img {
+		width: 35px;
+		height: 35px;
+	}
 }
 
 /* Role tags: 0.6rem until 390px, then 0.68rem max - must come after base role rules */
@@ -8639,7 +8959,7 @@ button.mbtn {
 	#troops-market .troops-list .entity-card img.card-image { width: 90px !important; height: 90px !important; }
 	.formation-left { --formation-avatar-size: 66px; }
 	.ready-room-left { --ready-room-avatar-size: 66px; }
-	.equip-picker-avatar { width: 56px !important; height: 56px !important; }
+	.equip-picker-avatar { width: 62px !important; height: 62px !important; }
 }
 @media (max-width: 390px) {
 	.entity-card.roster-card .roster-left { --roster-avatar-size: 52px; }
@@ -9076,7 +9396,7 @@ button.mbtn {
 	background: linear-gradient(145deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.02) 100%);
 	border: 1px solid rgba(255, 255, 255, 0.1);
 	border-radius: 4px;
-	padding: 8px 10px;
+	padding: 6px 7px;
 	transition: border-color 0.2s, box-shadow 0.2s;
 }
 

@@ -60,26 +60,28 @@ function soldierRow(s: Soldier, isActive: boolean): string {
   for (let i = eqSlots.length; i < MAX_EQUIPMENT_SLOTS; i++) {
     eqSlots.push(slotHtml(s.id, "equipment", undefined, i, des));
   }
-  const unequipBtn = `<button type="button" class="equip-unequip-all-btn" data-soldier-id="${s.id}" title="Unequip all to armory"><span class="equip-unequip-icon">⬇</span><span class="equip-unequip-label">All</span></button>`;
+  const unequipBtn = `<button type="button" class="equip-unequip-all-btn" data-soldier-id="${s.id}" title="Unequip all to armory"><span class="equip-unequip-icon">&#8595;&#65038;</span><span class="equip-unequip-label">All</span></button>`;
+  const coreSlots = `${weaponSlot}${armorSlot}${eqSlots.join("")}`;
   const level = getLevelFromExperience(s.experience ?? 0);
   const statusBadge = `<span class="equip-picker-status-badge ${isActive ? "equip-picker-status-active" : "equip-picker-status-reserve"}">${isActive ? "Active" : "Reserve"}</span>`;
   return `
 <div class="equip-picker-soldier entity-card designation-${des}" data-soldier-id="${s.id}" data-soldier-json="${escapeAttr(JSON.stringify(s))}">
-  <div class="equip-picker-soldier-header">
+  ${statusBadge}
+  <div class="equip-picker-soldier-top-row">
+    <span class="equip-picker-name">${formatDisplayName(s.name)}</span>
+    <span class="equip-picker-name-role-sep" aria-hidden="true">|</span>
+    <span class="equip-picker-role equip-picker-role-${des || "rifleman"}" data-role="${des || "rifleman"}">${formatDesignation(s.designation)}</span>
+  </div>
+  <div class="equip-picker-soldier-bottom-row">
     <div class="equip-picker-avatar-wrap">
       <img class="equip-picker-avatar" src="${getSoldierPortraitUrl(s.avatar, s.designation)}" alt="" width="48" height="48">
       <span class="equip-picker-soldier-level">Lv${level}</span>
-      ${statusBadge}
     </div>
-    <div class="equip-picker-name-block">
-      <span class="equip-picker-role equip-picker-role-${des || "rifleman"}" data-role="${des || "rifleman"}">${formatDesignation(s.designation)}</span>
-      <span class="equip-picker-name">${formatDisplayName(s.name)}</span>
+    <div class="equip-picker-slots-wrap">
+      <div class="equip-picker-slots equip-picker-slots-1x5">
+        ${coreSlots}
+      </div>
     </div>
-  </div>
-  <div class="equip-picker-slots equip-picker-slots-1x5">
-    ${weaponSlot}
-    ${armorSlot}
-    ${eqSlots.join("")}
     ${unequipBtn}
   </div>
   <div class="card-footer">

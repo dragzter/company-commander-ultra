@@ -26,6 +26,7 @@ import {
   SOLDIER_XP_PER_DAMAGE_TAKEN,
   SOLDIER_XP_PER_KILL,
   SOLDIER_XP_PER_ABILITY_USE,
+  MAX_SOLDIER_LEVEL,
   ENERGY_MAX,
   ENERGY_COST_BASE,
   ENERGY_COST_CASUALTY,
@@ -1079,7 +1080,7 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
         const xpGain = baseXp + dmg * SOLDIER_XP_PER_DAMAGE + dmgTaken * SOLDIER_XP_PER_DAMAGE_TAKEN + kills * SOLDIER_XP_PER_KILL + abilitiesUsed * SOLDIER_XP_PER_ABILITY_USE;
         let exp = Math.round(((s.experience ?? 0) + xpGain) * 10) / 10;
         let lvl = s.level ?? 1;
-        const maxLevel = 20;
+        const maxLevel = MAX_SOLDIER_LEVEL;
         while (lvl < maxLevel && exp >= getSoldierXpRequiredForLevel(lvl + 1)) {
           lvl += 1;
         }

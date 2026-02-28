@@ -32,6 +32,10 @@ export interface Combatant {
   suppressCooldownUntil?: number;
   /** Timestamp (ms) when grenade cooldown ends (per-soldier, 5s after throwing) */
   grenadeCooldownUntil?: number;
+  /** Enemy AI: number of medkit uses available this combat. */
+  enemyMedkitUses?: number;
+  /** Enemy AI: medkit tier level (1-20) for heal scaling. */
+  enemyMedkitLevel?: number;
   /** Timestamp (ms) when smoke effect ends */
   smokedUntil?: number;
   /** Timestamp (ms) when stun ends */

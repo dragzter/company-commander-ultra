@@ -8,6 +8,7 @@ import { formatDisplayName, getSoldierPortraitUrl } from "../../utils/name-utils
 import {
   getLevelFromExperience,
   getSoldierXpRequiredForLevel,
+  MAX_SOLDIER_LEVEL,
   getXpRequiredForLevel,
 } from "../../constants/economy.ts";
 
@@ -113,13 +114,13 @@ function summaryXpBar(soldier: Soldier | undefined, xpEarned: number): string {
   const progressInLevel =
     Math.round(Math.min(Math.max(0, exp - current), xpToNext) * 10) / 10;
   const pct =
-    lvl >= 20
+    lvl >= MAX_SOLDIER_LEVEL
       ? 100
       : Math.max(
           0,
           Math.min(100, (progressInLevel / Math.max(1, xpToNext)) * 100),
         );
-  const progressLabel = lvl >= 20 ? "max" : `${progressInLevel}/${xpToNext}`;
+  const progressLabel = lvl >= MAX_SOLDIER_LEVEL ? "max" : `${progressInLevel}/${xpToNext}`;
   const fillStyle = pct > 0 && pct < 100 ? `width:${pct}%;min-width:4px` : `width:${pct}%`;
   const xpEarnedHtml =
     xpEarned > 0

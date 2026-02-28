@@ -6,14 +6,15 @@ import type { Soldier } from "../entities/types.ts";
 import { usePlayerCompanyStore } from "../../store/ui-store.ts";
 import { getActiveSlots, getReserveSlots, getFormationSlots, getSoldierById } from "../../constants/company-slots.ts";
 
-function rosterSoldierCard(s: Soldier, index: number, isActive: boolean): string {
-  return Partial.create.rosterCard(s, index, isActive);
+function rosterSoldierCard(s: Soldier, index: number, isActive: boolean, hpScaleMax: number): string {
+  return Partial.create.rosterCard(s, index, isActive, hpScaleMax);
 }
 
 export function rosterTemplate(): string {
   const store = usePlayerCompanyStore.getState();
   const company = store.company;
   const soldiers = company?.soldiers ?? [];
+  const hpScaleMax = Math.max(1, ...soldiers.map((s) => Math.max(0, s.attributes?.hit_points ?? 0)));
   const formationSlots = getFormationSlots(company);
   const activeCount = getActiveSlots(company);
   const reserveCount = getReserveSlots(company);
@@ -50,7 +51,7 @@ export function rosterTemplate(): string {
         <span class="roster-section-count">${activeEntries.length} / ${activeCount}</span>
       </div>
       <div class="roster-grid" id="roster-active-grid">
-        ${activeEntries.map((e) => rosterSoldierCard(e.soldier, e.slotIndex, true)).join("")}
+        ${activeEntries.map((e) => rosterSoldierCard(e.soldier, e.slotIndex, true, hpScaleMax)).join("")}
       </div>
     </div>
     <div class="roster-section">
@@ -59,7 +60,7 @@ export function rosterTemplate(): string {
         <span class="roster-section-count">${reserveEntries.length} / ${reserveCount}</span>
       </div>
       <div class="roster-grid" id="roster-reserve-grid">
-        ${reserveEntries.map((e) => rosterSoldierCard(e.soldier, e.slotIndex, false)).join("")}
+        ${reserveEntries.map((e) => rosterSoldierCard(e.soldier, e.slotIndex, false, hpScaleMax)).join("")}
       </div>
     </div>
   </div>

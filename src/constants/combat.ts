@@ -3,14 +3,11 @@
  * All attack interval / weapon speed logic is centralized here.
  */
 
-/** Enemy HP multiplier. Enemies have this fraction of their base HP (from gear, level, etc). 0.55 = 55% HP (reduced from 50%). */
-export const ENEMY_HP_MULTIPLIER = 0.55;
+/** Enemy HP multiplier. Enemies have this fraction of their base HP (from gear, level, etc). 0.70 = 70% HP. */
+export const ENEMY_HP_MULTIPLIER = 0.7;
 
 /** Enemy damage multiplier. Enemies deal this fraction of their base damage vs players. 0.7 = 70%. */
-export const ENEMY_DAMAGE_MULTIPLIER = 0.7;
-
-/** Global weapon damage multiplier. Applied to all weapon damage. 0.95 = 5% reduction. */
-export const WEAPON_DAMAGE_MULTIPLIER = 0.95;
+export const ENEMY_DAMAGE_MULTIPLIER = 0.73;
 
 // ─── Attack interval (weapon speed) ─────────────────────────────────────────
 // Formula: interval = max(MIN, round((BASE - speed*FACTOR) * MULT * dexMult))

@@ -51,6 +51,7 @@ import type { TargetMap } from "../combat/types.ts";
 import { getItemIconUrl } from "../../utils/item-utils.ts";
 import { weaponWieldOk, itemFitsSlot, canEquipItemLevel, getWeaponRestrictRole } from "../../utils/equip-utils.ts";
 import { resolveGrenadeThrow } from "../../services/combat/grenade-resolver.ts";
+import { WEAPON_EFFECTS } from "../../constants/items/weapon-effects.ts";
 import type { Combatant } from "../combat/types.ts";
 import type { Mission } from "../../constants/missions.ts";
 import { MISSION_KIND_META, DIFFICULTY_LABELS } from "../../constants/missions.ts";
@@ -854,6 +855,41 @@ export function eventConfigs() {
       animateProjectile(attackerCard, targetCard, iconUrl, durationMs, 28, true);
     }
 
+    function getCombatantById(id: string): Combatant | undefined {
+      return [...players, ...enemies].find((c) => c.id === id);
+    }
+
+    function isCombatantDownNow(id: string): boolean {
+      const c = getCombatantById(id);
+      return c == null || c.hp <= 0 || Boolean(c.downState);
+    }
+
+    function shouldShowCombatFeedback(id: string): boolean {
+      return !isCombatantDownNow(id);
+    }
+
+    function updateCombatCardDownBadge(card: Element, c: Combatant): void {
+      const existing = card.querySelector(".combat-card-down-state");
+      const isDown = Boolean(c.hp <= 0 || c.downState);
+      if (!isDown) {
+        existing?.remove();
+        return;
+      }
+      const label = c.downState === "incapacitated" ? "INCAP" : "KIA";
+      const cls = c.downState === "incapacitated" ? "combat-card-down-incap" : "combat-card-down-kia";
+      if (existing) {
+        existing.textContent = label;
+        (existing as HTMLElement).className = `combat-card-down-state ${cls}`;
+        return;
+      }
+      const badge = document.createElement("span");
+      badge.className = `combat-card-down-state ${cls}`;
+      badge.textContent = label;
+      const avatarWrap = card.querySelector(".combat-card-avatar-wrap");
+      if (avatarWrap) avatarWrap.appendChild(badge);
+      else card.appendChild(badge);
+    }
+
     function executeMedicalUse(user: Combatant, target: Combatant, medItem: SoldierMedItem) {
       playerAbilitiesUsed.set(user.id, (playerAbilitiesUsed.get(user.id) ?? 0) + 1);
       const isStimPack = medItem.item.id === "stim_pack";
@@ -892,6 +928,13 @@ export function eventConfigs() {
         } else {
           healAmount = baseHeal;
         }
+        const userWeaponEffect = user.weaponEffect as keyof typeof WEAPON_EFFECTS | undefined;
+        const medkitHealPercent = userWeaponEffect
+          ? WEAPON_EFFECTS[userWeaponEffect]?.modifiers?.medkitHealPercent ?? 0
+          : 0;
+        if (medkitHealPercent > 0) {
+          healAmount = Math.round(healAmount * (1 + medkitHealPercent));
+        }
         const newHp = Math.min(target.maxHp, Math.floor(target.hp) + healAmount);
         target.hp = newHp;
         if (target.downState === "incapacitated") delete target.downState;
@@ -914,10 +957,49 @@ export function eventConfigs() {
           if (hpValue) hpValue.textContent = `${Math.floor(c.hp)}/${Math.floor(c.maxHp)}`;
           const isDown = Boolean(c.hp <= 0 || c.downState);
           cardEl.classList.toggle("combat-card-down", isDown);
+          updateCombatCardDownBadge(cardEl, c);
           const isLowHealth = c.side === "player" && c.hp > 0 && !c.downState && c.maxHp > 0 && (c.hp / c.maxHp) < 0.2;
           cardEl.classList.toggle("combat-card-low-health", isLowHealth);
         }
       }
+    }
+
+    function executeEnemyMedicUse(user: Combatant, target: Combatant): boolean {
+      if ((user.designation ?? "").toLowerCase() !== "medic") return false;
+      const uses = user.enemyMedkitUses ?? 0;
+      if (uses <= 0 || target.hp <= 0 || target.downState) return false;
+
+      // Enemy medic uses level-appropriate medkit tier scaling.
+      const medLevel = Math.max(1, Math.min(20, user.enemyMedkitLevel ?? user.level ?? 1));
+      const t = Math.max(0, Math.min(1, (medLevel - 1) / 19));
+      const healAmount = Math.round(50 + 50 * t);
+      const newHp = Math.min(target.maxHp, Math.floor(target.hp) + healAmount);
+      if (newHp <= target.hp) return false;
+
+      target.hp = newHp;
+      if (target.downState === "incapacitated") delete target.downState;
+      user.enemyMedkitUses = Math.max(0, uses - 1);
+
+      const card = document.querySelector(`[data-combatant-id="${target.id}"]`);
+      if (card) {
+        const popup = document.createElement("span");
+        popup.className = "combat-heal-popup";
+        popup.textContent = `+${healAmount}`;
+        card.appendChild(popup);
+        setTimeout(() => popup.remove(), 1500);
+      }
+      return true;
+    }
+
+    function applyAutoAttackHitFlash(targetCard: Element, target: Combatant) {
+      targetCard.classList.add("combat-card-weapon-hit-flash");
+      setTimeout(() => targetCard.classList.remove("combat-card-weapon-hit-flash"), 180);
+
+      const sideClass = target.side === "player"
+        ? "combat-card-hit-flash-player"
+        : "combat-card-hit-flash-enemy";
+      targetCard.classList.add(sideClass);
+      setTimeout(() => targetCard.classList.remove(sideClass), 220);
     }
 
     const SUPPRESS_DURATION_MS = 8000;
@@ -946,7 +1028,7 @@ export function eventConfigs() {
         const result = resolveAttack(user, target, now);
         if (result.hit && !result.evaded) anyHit = true;
         animateProjectile(attackerCard, targetCard, BULLET_ICON, ATTACK_PROJECTILE_MS, 10);
-        if (result.damage > 0) {
+        if (result.damage > 0 && shouldShowCombatFeedback(target.id)) {
           const popup = document.createElement("span");
           popup.className = "combat-damage-popup combat-suppress-damage-popup";
           popup.textContent = String(result.damage);
@@ -954,13 +1036,13 @@ export function eventConfigs() {
           setTimeout(() => popup.remove(), 1500);
           targetCard.classList.add("combat-card-shake");
           setTimeout(() => targetCard.classList.remove("combat-card-shake"), 350);
-        } else if (result.hit && result.evaded) {
+        } else if (result.hit && result.evaded && shouldShowCombatFeedback(target.id)) {
           const popup = document.createElement("span");
           popup.className = "combat-evade-popup";
           popup.textContent = "Evade";
           targetCard.appendChild(popup);
           setTimeout(() => popup.remove(), 1500);
-        } else if (!result.hit) {
+        } else if (!result.hit && shouldShowCombatFeedback(target.id)) {
           const popup = document.createElement("span");
           popup.className = "combat-miss-popup";
           popup.textContent = "MISS";
@@ -971,6 +1053,13 @@ export function eventConfigs() {
           target.downState = target.side === "player" && Math.random() < getIncapacitationChance(target) ? "incapacitated" : "kia";
           if (target.downState === "kia") target.killedBy = user.name;
           clearCombatantEffectsOnDeath(target);
+          const pct = Math.max(0, Math.min(100, (target.hp / target.maxHp) * 100));
+          const hpBar = targetCard.querySelector(".combat-card-hp-bar") as HTMLElement | null;
+          if (hpBar) hpBar.style.width = `${pct}%`;
+          const hpValue = targetCard.querySelector(".combat-card-hp-value");
+          if (hpValue) hpValue.textContent = `${Math.floor(target.hp)}/${Math.floor(target.maxHp)}`;
+          targetCard.classList.add("combat-card-down");
+          updateCombatCardDownBadge(targetCard, target);
         }
       };
 
@@ -1010,8 +1099,6 @@ export function eventConfigs() {
       const resetTargetingUi = options?.resetTargetingUi ?? true;
       const isThrowingKnife = grenade.item.id === "tk21_throwing_knife";
       if (!isThrowingKnife) thrower.grenadeCooldownUntil = Date.now() + GRENADE_COOLDOWN_MS;
-      const aliveTargetPool = (options?.targetPool ?? enemies).filter((c) => c.hp > 0 && !c.downState);
-      const result = resolveGrenadeThrow(thrower, target, grenade.item, aliveTargetPool);
 
       const throwerCard = document.querySelector(`[data-combatant-id="${thrower.id}"]`);
       const targetCard = document.querySelector(`[data-combatant-id="${target.id}"]`);
@@ -1022,6 +1109,7 @@ export function eventConfigs() {
       }
 
       const showDamage = (id: string, damage: number) => {
+        if (!shouldShowCombatFeedback(id)) return;
         const card = document.querySelector(`[data-combatant-id="${id}"]`);
         if (card && damage > 0) {
           const popup = document.createElement("span");
@@ -1037,6 +1125,7 @@ export function eventConfigs() {
       };
 
       const showEvaded = (id: string, isKnife: boolean) => {
+        if (!shouldShowCombatFeedback(id)) return;
         const card = document.querySelector(`[data-combatant-id="${id}"]`);
         if (!card) return;
         const popup = document.createElement("span");
@@ -1047,6 +1136,7 @@ export function eventConfigs() {
       };
 
       const showThrowMiss = (id: string, isKnife: boolean) => {
+        if (!shouldShowCombatFeedback(id)) return;
         const card = document.querySelector(`[data-combatant-id="${id}"]`);
         if (!card) return;
         const popup = document.createElement("span");
@@ -1057,6 +1147,7 @@ export function eventConfigs() {
       };
 
       const showSmokeEffect = (id: string, pct: number) => {
+        if (!shouldShowCombatFeedback(id)) return;
         const card = document.querySelector(`[data-combatant-id="${id}"]`);
         if (card) {
           const popup = document.createElement("span");
@@ -1093,12 +1184,33 @@ export function eventConfigs() {
           if (hpValue) hpValue.textContent = `${Math.floor(c.hp)}/${Math.floor(c.maxHp)}`;
           const isDown = Boolean(c.hp <= 0 || c.downState);
           card.classList.toggle("combat-card-down", isDown);
+          updateCombatCardDownBadge(card, c);
           const isLowHealth = c.side === "player" && c.hp > 0 && !c.downState && c.maxHp > 0 && (c.hp / c.maxHp) < 0.2;
           card.classList.toggle("combat-card-low-health", isLowHealth);
         }
       };
 
       setTimeout(() => {
+        const aliveTargetPool = (options?.targetPool ?? enemies).filter((c) => c.hp > 0 && !c.downState);
+        const impactPrimaryTarget =
+          target.hp > 0 && !target.downState
+            ? target
+            : aliveTargetPool.length > 0
+              ? aliveTargetPool[0]
+              : null;
+        if (!impactPrimaryTarget) {
+          if (consumeThrowable) {
+            usePlayerCompanyStore.getState().consumeSoldierThrowable(thrower.id, grenade.inventoryIndex);
+          }
+          if (resetTargetingUi) {
+            grenadeTargetingMode = null;
+            document.querySelectorAll(".combat-card-grenade-target").forEach((el) => el.classList.remove("combat-card-grenade-target"));
+            closeAbilitiesPopup();
+          }
+          return;
+        }
+        const result = resolveGrenadeThrow(thrower, impactPrimaryTarget, grenade.item, aliveTargetPool);
+        const impactTargetCard = document.querySelector(`[data-combatant-id="${result.primary.targetId}"]`);
         const isThrowingKnife = grenade.item.id === "tk21_throwing_knife";
         const isStun = (grenade.item.tags as string[] | undefined)?.includes("stun") || grenade.item.id === "m84_flashbang";
         const isIncendiary = grenade.item.id === "incendiary_grenade";
@@ -1108,11 +1220,11 @@ export function eventConfigs() {
           : isStun ? "stun"
           : isIncendiary ? "incendiary"
           : "explosion";
-        if (targetCard) addGrenadeOverlay(targetCard, overlayType);
+        if (impactTargetCard && shouldShowCombatFeedback(result.primary.targetId)) addGrenadeOverlay(impactTargetCard, overlayType);
         for (const s of result.splash) {
           if (!s.evaded && s.hit) {
             const splashCard = document.querySelector(`[data-combatant-id="${s.targetId}"]`);
-            if (splashCard) addGrenadeOverlay(splashCard, overlayType);
+            if (splashCard && shouldShowCombatFeedback(s.targetId)) addGrenadeOverlay(splashCard, overlayType);
           }
         }
         const flashHit = (id: string) => {
@@ -1134,18 +1246,22 @@ export function eventConfigs() {
           }
         };
         if (result.primary.hit && !result.primary.evaded) {
-          flashHit(result.primary.targetId);
-          shakeTargetCard(result.primary.targetId);
+          if (shouldShowCombatFeedback(result.primary.targetId)) {
+            flashHit(result.primary.targetId);
+            shakeTargetCard(result.primary.targetId);
+          }
         }
         for (const s of result.splash) {
           if (s.hit && !s.evaded) {
-            flashHit(s.targetId);
-            shakeTargetCard(s.targetId);
+            if (shouldShowCombatFeedback(s.targetId)) {
+              flashHit(s.targetId);
+              shakeTargetCard(s.targetId);
+            }
           }
         }
-        if (targetCard && isFrag && result.primary.damageDealt > 0) {
-          targetCard.classList.add("combat-card-frag-flash");
-          setTimeout(() => targetCard.classList.remove("combat-card-frag-flash"), 150);
+        if (impactTargetCard && isFrag && result.primary.damageDealt > 0 && shouldShowCombatFeedback(result.primary.targetId)) {
+          impactTargetCard.classList.add("combat-card-frag-flash");
+          setTimeout(() => impactTargetCard.classList.remove("combat-card-frag-flash"), 150);
         }
         const isSmoke = (grenade.item.tags as string[] | undefined)?.includes("smoke") || grenade.item.id === "mk18_smoke";
         if (!result.primary.hit) showThrowMiss(result.primary.targetId, isThrowingKnife);
@@ -1281,20 +1397,21 @@ export function eventConfigs() {
     }
 
     function updateHpBarsAll() {
-      for (const c of [...players, ...enemies]) {
-        const card = document.querySelector(`[data-combatant-id="${c.id}"]`);
-        if (!card) continue;
+        for (const c of [...players, ...enemies]) {
+          const card = document.querySelector(`[data-combatant-id="${c.id}"]`);
+          if (!card) continue;
         const pct = Math.max(0, Math.min(100, (c.hp / c.maxHp) * 100));
         const hpBar = card.querySelector(".combat-card-hp-bar") as HTMLElement;
         if (hpBar) hpBar.style.width = `${pct}%`;
-        const hpValue = card.querySelector(".combat-card-hp-value");
-        if (hpValue) hpValue.textContent = `${Math.floor(c.hp)}/${Math.floor(c.maxHp)}`;
-        const isDown = Boolean(c.hp <= 0 || c.downState);
-        card.classList.toggle("combat-card-down", isDown);
-        const isLowHealth = c.side === "player" && c.hp > 0 && !c.downState && c.maxHp > 0 && (c.hp / c.maxHp) < 0.2;
-        card.classList.toggle("combat-card-low-health", isLowHealth);
+          const hpValue = card.querySelector(".combat-card-hp-value");
+          if (hpValue) hpValue.textContent = `${Math.floor(c.hp)}/${Math.floor(c.maxHp)}`;
+          const isDown = Boolean(c.hp <= 0 || c.downState);
+          card.classList.toggle("combat-card-down", isDown);
+          updateCombatCardDownBadge(card, c);
+          const isLowHealth = c.side === "player" && c.hp > 0 && !c.downState && c.maxHp > 0 && (c.hp / c.maxHp) < 0.2;
+          card.classList.toggle("combat-card-low-health", isLowHealth);
+        }
       }
-    }
 
     function updateCombatUI() {
       const now = Date.now();
@@ -1475,6 +1592,14 @@ export function eventConfigs() {
       let nextManhuntGrenadeCheckAt = canUseManhuntGrenade
         ? now + 3500 + Math.floor(Math.random() * 6000)
         : Number.POSITIVE_INFINITY;
+      const enemyMedicState = new Map<string, { threshold: number; nextCheckAt: number }>();
+      for (const e of enemies) {
+        if ((e.designation ?? "").toLowerCase() !== "medic") continue;
+        enemyMedicState.set(e.id, {
+          threshold: 0.3 + Math.random() * 0.3, // 30%..60% randomized per medic
+          nextCheckAt: now + 1500 + Math.floor(Math.random() * 2000),
+        });
+      }
       lastBurnTickTimeRef.current = now;
       lastBleedTickTimeRef.current = now;
       for (const c of [...players, ...enemies]) {
@@ -1485,6 +1610,7 @@ export function eventConfigs() {
         const burnEvents = applyBurnTicks([...players, ...enemies], now, lastBurnTickTimeRef);
         const bleedEvents = applyBleedTicks([...players, ...enemies], now, lastBleedTickTimeRef);
         for (const ev of burnEvents) {
+          if (!shouldShowCombatFeedback(ev.targetId)) continue;
           const card = document.querySelector(`[data-combatant-id="${ev.targetId}"]`);
           if (card) {
             const popup = document.createElement("span");
@@ -1495,6 +1621,7 @@ export function eventConfigs() {
           }
         }
         for (const ev of bleedEvents) {
+          if (!shouldShowCombatFeedback(ev.targetId)) continue;
           const card = document.querySelector(`[data-combatant-id="${ev.targetId}"]`);
           if (card) {
             const popup = document.createElement("span");
@@ -1589,6 +1716,46 @@ export function eventConfigs() {
         let nextDue = Infinity;
         let didAttack = false;
 
+        // Enemy medic support: heal a low-health ally with randomized trigger threshold/timing.
+        if (!didAttack) {
+          for (const medic of enemies) {
+            if ((medic.designation ?? "").toLowerCase() !== "medic") continue;
+            if ((medic.enemyMedkitUses ?? 0) <= 0) continue;
+            if (medic.hp <= 0 || medic.downState || isInCover(medic, now) || isStunned(medic, now)) continue;
+            const st = enemyMedicState.get(medic.id);
+            if (!st || now < st.nextCheckAt) continue;
+
+            const dynamicThreshold = Math.max(0.3, Math.min(0.6, st.threshold + (Math.random() * 0.1 - 0.05)));
+            const allies = enemies.filter((a) => a.id !== medic.id && a.hp > 0 && !a.downState && a.maxHp > 0);
+            const candidates = allies
+              .filter((a) => (a.hp / a.maxHp) <= dynamicThreshold)
+              .sort((a, b) => (a.hp / a.maxHp) - (b.hp / b.maxHp));
+            if (candidates.length === 0) {
+              st.nextCheckAt = now + 700 + Math.floor(Math.random() * 1100);
+              continue;
+            }
+
+            // Not deterministic: second heal is intentionally less likely than the first.
+            const usesLeft = medic.enemyMedkitUses ?? 0;
+            const healChance = usesLeft >= 2 ? 0.55 : 0.3;
+            if (Math.random() > healChance) {
+              st.nextCheckAt = now + 600 + Math.floor(Math.random() * 1200);
+              continue;
+            }
+
+            const healTarget = candidates[0];
+            const didHeal = executeEnemyMedicUse(medic, healTarget);
+            if (!didHeal) {
+              st.nextCheckAt = now + 900 + Math.floor(Math.random() * 1200);
+              continue;
+            }
+            st.nextCheckAt = now + 2200 + Math.floor(Math.random() * 2800);
+            nextAttackAt.set(medic.id, getNextAttackAt(medic, now));
+            didAttack = true;
+            break;
+          }
+        }
+
         // Manhunt target: one random grenade throw at some point during combat.
         if (!didAttack && canUseManhuntGrenade && !manhuntGrenadeUsed && now >= nextManhuntGrenadeCheckAt) {
           const thrower = enemies.find((e) => e.isManhuntTarget && e.hp > 0 && !e.downState);
@@ -1646,6 +1813,7 @@ export function eventConfigs() {
               }
               const showAttackResult = () => {
                 if (!targetCard) return;
+                if (!shouldShowCombatFeedback(result.targetId)) return;
                 if (!result.hit) {
                   const popup = document.createElement("span");
                   popup.className = "combat-miss-popup";
@@ -1666,8 +1834,7 @@ export function eventConfigs() {
                   setTimeout(() => popup.remove(), 1500);
                   targetCard.classList.add("combat-card-shake");
                   setTimeout(() => targetCard.classList.remove("combat-card-shake"), 350);
-                  targetCard.classList.add("combat-card-weapon-hit-flash");
-                  setTimeout(() => targetCard.classList.remove("combat-card-weapon-hit-flash"), 200);
+                  applyAutoAttackHitFlash(targetCard, target);
                 }
               };
               setTimeout(showAttackResult, ATTACK_PROJECTILE_MS - 20);
