@@ -401,13 +401,21 @@ export const companyHomePageTemplate = () => {
   const statRow = (label: string, value: string | number, type: "positive" | "neutral" | "accent" = "neutral") =>
     `<div class="company-stat-row"><span class="company-stat-label">${label}</span><span class="company-stat-value company-stat-${type}">${value}</span></div>`;
 
+  const totalMissions = (totalMissionsCompleted ?? 0) + (totalMissionsFailed ?? 0);
+  const winRatePct = totalMissions > 0 ? Math.round(((totalMissionsCompleted ?? 0) / totalMissions) * 100) : 0;
+  const killLossRatio = totalMenLostAllTime > 0
+    ? (totalEnemiesKilledAllTime / totalMenLostAllTime).toFixed(2)
+    : `${totalEnemiesKilledAllTime > 0 ? totalEnemiesKilledAllTime : 0}.00`;
+
   const statsBlockExciting = totalMenInCompany > 0
     ? `
     <div class="company-stats-grid">
       ${statRow("Total Men", totalMenInCompany, "positive")}
       ${statRow("Enemies Killed", totalEnemiesKilledAllTime, "positive")}
+      ${statRow("K/L Ratio", killLossRatio, "positive")}
       ${statRow("Missions Done", totalMissionsCompleted, "positive")}
       ${statRow("Missions Failed", totalMissionsFailed, "neutral")}
+      ${statRow("Win Rate", `${winRatePct}%`, "accent")}
       ${statRow("Men Lost", totalMenLostAllTime, "neutral")}
       ${statRow("Credits", `$${creditBalance.toLocaleString()}`, "accent")}
       ${statRow("Armory", `${totalItemsInInventory} / ${totalInventoryCapacity}`, "neutral")}

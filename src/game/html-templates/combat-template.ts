@@ -35,8 +35,9 @@ function combatCard(c: Combatant, portraitDir: "player" | "enemy"): string {
   const lvl = c.level ?? 1;
   const des = (c.designation ?? "rifleman").toLowerCase();
   const epicEliteClass = c.isEpicElite ? " combat-card-epic-elite" : "";
+  const manhuntTargetClass = c.isManhuntTarget ? " combat-card-manhunt-target" : "";
   return `
-<div class="combat-card designation-${des}${downClass}${epicEliteClass}" data-combatant-id="${c.id}" data-side="${c.side}">
+<div class="combat-card designation-${des}${downClass}${epicEliteClass}${manhuntTargetClass}" data-combatant-id="${c.id}" data-side="${c.side}">
   <div class="combat-card-inner">
     <div class="combat-card-avatar-wrap">
       <span class="combat-card-level-badge">${lvl}</span>

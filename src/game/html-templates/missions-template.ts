@@ -4,8 +4,6 @@ import { DIFFICULTY_LABELS, MISSION_KIND_META, MISSION_KIND_ORDER } from "../../
 import { getRewardItemById } from "../../utils/reward-utils.ts";
 import { getItemIconUrl } from "../../utils/item-utils.ts";
 
-const READ_MORE_THRESHOLD = 55;
-
 const ENEMY_COUNT_ICON = `<img src="/images/soldier_count.png" alt="" class="mission-enemies-icon" aria-hidden="true" width="14" height="18">`;
 
 function escapeHtml(s: string): string {
@@ -51,7 +49,6 @@ function missionCard(m: Mission): string {
   const rarity = m.rarity ?? (m.isEpic ? "epic" : "normal");
   const epicClass = rarity === "epic" ? " mission-card-epic" : "";
   const flavorText = m.flavorText ?? meta.description;
-  const showReadMore = flavorText.length > READ_MORE_THRESHOLD;
   const rewards = buildRewardsEntries(m);
   const rewardsHtml = rewards
     .map((e) => {
@@ -69,21 +66,22 @@ function missionCard(m: Mission): string {
   <div class="mission-card-kind-badge">${meta.name}</div>
   <h4 class="mission-card-name">${escapeHtml(m.name)}</h4>
   <div class="mission-card-body">
-    <p class="mission-card-desc${showReadMore ? " mission-card-desc-truncate" : ""}"${showReadMore ? ` data-full-text="${escapeAttr(flavorText)}"` : ""}>${escapeHtml(flavorText)}</p>
-    ${showReadMore ? '<button type="button" class="mission-card-read-more" aria-label="Read full mission text">Read more</button>' : ""}
+    <p class="mission-card-desc">${escapeHtml(flavorText)}</p>
   </div>
   <div class="mission-card-difficulty" title="${diffLabel}" aria-label="${diffLabel}">
-    <span class="mission-diff-bars"><span class="mission-diff-fill" style="width: ${(m.difficulty / 5) * 100}%"></span></span>
+    <div class="mission-card-difficulty-row">
+      <span class="mission-diff-bars"><span class="mission-diff-fill" style="width: ${(m.difficulty / 5) * 100}%"></span></span>
+      <span class="mission-card-enemies" data-kind="${m.kind}">${ENEMY_COUNT_ICON}<span class="mission-enemies-count">× ${m.enemyCount}</span></span>
+    </div>
     <span class="mission-diff-label">${diffLabel}</span>
   </div>
-  <div class="mission-card-rewards" aria-label="Rewards">
-    <span class="mission-rewards-label">Rewards:</span>
-    <span class="mission-rewards-list">${rewardsHtml}</span>
+  <div class="mission-card-footer">
+    <div class="mission-card-rewards" aria-label="Rewards">
+      <span class="mission-rewards-label">Rewards:</span>
+      <span class="mission-rewards-list">${rewardsHtml}</span>
+    </div>
+    <button type="button" class="game-btn game-btn-sm game-btn-red mission-launch-btn" data-mission-id="${m.id}">Launch</button>
   </div>
-  <div class="mission-card-meta">
-    <span class="mission-card-enemies" data-kind="${m.kind}">${ENEMY_COUNT_ICON}<span class="mission-enemies-count">× ${m.enemyCount}</span></span>
-  </div>
-  <button type="button" class="game-btn game-btn-md game-btn-red mission-launch-btn" data-mission-id="${m.id}">Launch</button>
 </div>`;
 }
 
@@ -104,27 +102,68 @@ function missionSectionByKind(missions: Mission[], kind: MissionKind): string {
     </div>`;
 }
 
-export function missionsTemplate(missions: Mission[], companyLevel = 1): string {
+export function missionsTemplate(
+  missions: Mission[],
+  companyLevel = 1,
+  activeMode: "menu" | "normal" | "epic" = "menu",
+): string {
   const regular = missions.filter((m) => (m.rarity ?? (m.isEpic ? "epic" : "normal")) !== "epic");
   const epic = missions.filter((m) => (m.rarity ?? (m.isEpic ? "epic" : "normal")) === "epic");
-  const showEpic = companyLevel >= 4;
+  const mode = activeMode;
+  const showEpic = companyLevel >= 2;
+  const mainClass = mode === "menu" ? "missions-main missions-main-menu" : "missions-main";
   const regularSections = MISSION_KIND_ORDER.map((k) => missionSectionByKind(regular, k)).filter(Boolean).join("");
-  const epicSection = showEpic
-    ? `
+  const epicSection = `
     <div class="missions-section missions-section-epic">
       <div class="missions-kind-banner missions-kind-banner-epic">Epic Missions</div>
       <div class="missions-grid missions-grid-epic">
         ${sortMissionsByDifficulty(epic).map((m) => missionCard(m)).join("")}
       </div>
-    </div>`
-    : "";
+    </div>`;
+  const emptyState = mode === "epic"
+    ? '<div class="missions-empty-state">No epic missions available.</div>'
+    : '<div class="missions-empty-state">No normal missions available.</div>';
+  const modeContent = mode === "epic"
+    ? showEpic
+      ? (epic.length > 0 ? epicSection : emptyState)
+      : '<div class="missions-empty-state">Epic missions unlock at Company Level 2.</div>'
+    : mode === "normal"
+      ? (regularSections || emptyState)
+      : `
+      <div class="missions-mode-menu">
+        <button id="missions-mode-normal" class="game-btn game-btn-lg game-btn-green missions-mode-menu-btn missions-mode-menu-btn-normal" type="button">
+          <span class="missions-mode-icon-block">
+            <img src="/images/normal_m.png" alt="" width="56" height="56" aria-hidden="true">
+          </span>
+          <span class="missions-mode-divider" aria-hidden="true"></span>
+          <span class="missions-mode-label">Normal Missions</span>
+        </button>
+        <button id="missions-mode-epic" class="game-btn game-btn-lg game-btn-red missions-mode-menu-btn missions-mode-menu-btn-elite" type="button" ${showEpic ? "" : "disabled"}>
+          <span class="missions-mode-icon-block">
+            <img src="/images/elite_m.png" alt="" width="56" height="56" aria-hidden="true">
+          </span>
+          <span class="missions-mode-divider" aria-hidden="true"></span>
+          <span class="missions-mode-label">Elite Missions</span>
+        </button>
+        <button id="missions-mode-career" class="game-btn game-btn-lg game-btn-blue missions-mode-menu-btn missions-mode-menu-btn-career" type="button">
+          <span class="missions-mode-icon-block">
+            <img src="/images/career_m.png" alt="" width="56" height="56" aria-hidden="true">
+          </span>
+          <span class="missions-mode-divider" aria-hidden="true"></span>
+          <span class="missions-mode-label">Career</span>
+        </button>
+        ${
+          showEpic
+            ? '<p class="missions-mode-helper">Elite missions available.</p>'
+            : `<p class="missions-mode-helper">Elite missions unlock at Company Level 2. Current Level: ${companyLevel}.</p>`
+        }
+      </div>`;
   return `
 <div id="missions-screen" class="missions-root troops-market-root">
   ${companyHeaderPartial("Missions")}
-  <div class="missions-main">
+  <div class="${mainClass}">
     <div class="missions-sections-wrapper">
-      ${regularSections}
-      ${epicSection}
+      ${modeContent}
     </div>
   </div>
   ${companyActionsTemplate()}

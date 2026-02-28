@@ -37,7 +37,6 @@ import { combatTemplate } from "../html-templates/combat-template.ts";
 import { soldierToCombatant, createEnemyCombatant } from "../combat/combatant-utils.ts";
 import { getActiveSlots, getFormationSlots, getSoldierById } from "../../constants/company-slots.ts";
 import { getAverageCompanyLevel, getMaxSoldierLevel } from "../../utils/company-utils.ts";
-import { generateMissions } from "../../services/missions/mission-generator.ts";
 import { Styler } from "../../utils/styler-manager.ts";
 import { SoldierManager } from "../entities/soldier/soldier-manager.ts";
 import type { Soldier } from "../entities/types.ts";
@@ -129,11 +128,15 @@ function ScreenManager() {
     Styler.setCenterBG("bg_store_88.jpg", true);
   }
 
-  function createMissionsPage() {
+  function createMissionsPage(mode?: "menu" | "normal" | "epic") {
     UiManager.clear.center();
-    const missions = generateMissions();
+    const store = usePlayerCompanyStore.getState();
+    store.setMissionsViewMode(mode ?? "menu");
+    store.ensureMissionBoard();
+    const missions = usePlayerCompanyStore.getState().missionBoard ?? [];
     const companyLevel = usePlayerCompanyStore.getState().companyLevel ?? 1;
-    const content = parseHTML(missionsTemplate(missions, companyLevel));
+    const activeMode = usePlayerCompanyStore.getState().missionsViewMode ?? "menu";
+    const content = parseHTML(missionsTemplate(missions, companyLevel, activeMode));
     center.appendChild(content as Element);
     DomEventManager.initEventArray(ec().companyHome().concat(ec().missionsScreen()));
     UiManager.selectCompanyHomeButton(DOM.company.missions);
@@ -168,7 +171,7 @@ function ScreenManager() {
     const avgSoldierLevel = getAverageCompanyLevel(company);
     const isEpicMission = !!(mission?.isEpic ?? mission?.rarity === "epic");
     const enemies = Array.from({ length: enemyCount }, (_, i) =>
-      createEnemyCombatant(i, enemyCount, avgSoldierLevel, isEpicMission),
+      createEnemyCombatant(i, enemyCount, avgSoldierLevel, isEpicMission, mission?.kind),
     );
     const content = parseHTML(combatTemplate(mission ?? null, players, enemies));
     center.appendChild(content as Element);

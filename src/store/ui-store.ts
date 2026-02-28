@@ -7,6 +7,7 @@ import type { Soldier } from "../game/entities/types.ts";
 import type { MemorialEntry } from "../game/entities/memorial-types.ts";
 import { StoreActions } from "./action.ts";
 import { STARTING_CREDITS } from "../constants/economy.ts";
+import type { Mission } from "../constants/missions.ts";
 
 const { nocache } = URLReader(document.location.search);
 const skipPersistence = nocache === "true";
@@ -45,6 +46,9 @@ export type CompanyStore = {
   rerollCounter: number;
   /** Selected gear tier (1–20) for market browsing. 0 = unset, defaults to max soldier level on first open. */
   marketTierLevel: number;
+  missionBoard: Mission[];
+  missionBoardSchemaVersion: number;
+  missionsViewMode: "menu" | "normal" | "epic";
 
   // Setters
   setMarketAvailableTroops: (soldiers: Soldier[]) => void;
@@ -56,6 +60,9 @@ export type CompanyStore = {
   setCompanyName: (companyName: string) => void;
   setGameStep: (step: GameStep) => void;
   setMarketTierLevel: (n: number) => void;
+  setMissionsViewMode: (mode: "menu" | "normal" | "epic") => void;
+  ensureMissionBoard: () => void;
+  refreshMissionBoard: () => void;
   addSoldierToCompany: (soldier: Soldier) => void;
   addToRecruitStaging: (soldier: Soldier) => void;
   tryAddToRecruitStaging: (soldier: Soldier) => { success: boolean; reason?: "capacity" | "afford" };
@@ -162,6 +169,11 @@ export const usePlayerCompanyStore = createStore<CompanyStore>()(
           }
           const mtl = merged.marketTierLevel as number | undefined;
           if (typeof mtl !== "number" || mtl < 0) merged.marketTierLevel = 0;
+          if (!Array.isArray(merged.missionBoard)) merged.missionBoard = [];
+          if (typeof merged.missionBoardSchemaVersion !== "number") merged.missionBoardSchemaVersion = 0;
+          if (merged.missionsViewMode !== "menu" && merged.missionsViewMode !== "normal" && merged.missionsViewMode !== "epic") {
+            merged.missionsViewMode = "menu";
+          }
           /* Sync companyExperience with company.experience (avoid drift from old saves or partial updates) */
           const companyExp = merged.company?.experience ?? merged.companyExperience ?? 0;
           if (typeof merged.company === "object") {

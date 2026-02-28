@@ -6,6 +6,7 @@ import { EPIC_ARMOR_BASES } from "../../constants/items/epic-armor-bases.ts";
 import type { ArmorImmunity } from "../../constants/items/epic-armor-bases.ts";
 import { getItemSpecialEffect } from "../../constants/item-special-effects.ts";
 import { Images } from "../../constants/images.ts";
+import type { MissionKind } from "../../constants/missions.ts";
 import { getItemIconUrl } from "../../utils/item-utils.ts";
 import type { Soldier } from "../entities/types.ts";
 import { SoldierManager } from "../entities/soldier/soldier-manager.ts";
@@ -105,8 +106,10 @@ export function createEnemyCombatant(
   enemyCount: number,
   companyLevel: number,
   isEpicMission = false,
+  missionKind?: MissionKind,
 ): Combatant {
-  const level = Math.max(1, Math.min(20, companyLevel));
+  const eliteBonus = isEpicMission ? (Math.random() < 0.5 ? 1 : 2) : 0;
+  const level = Math.max(1, Math.min(20, companyLevel + eliteBonus));
   const soldier =
     index === 0 && enemyCount >= 1
       ? SoldierManager.getNewSupportMan(level)
@@ -118,10 +121,22 @@ export function createEnemyCombatant(
   c.side = "enemy";
   c.soldierRef = undefined;
   const isEpicElite = isEpicMission && index === 0;
+  const isManhuntTarget = missionKind === "manhunt" && index === 0;
   if (isEpicElite) {
     c.isEpicElite = true;
+  }
+  if (isManhuntTarget) {
+    c.isManhuntTarget = true;
+  }
+  if (isEpicElite || isManhuntTarget) {
+    // Elite/target units keep full HP; all other enemies get baseline HP handicap.
+    c.hp = Math.max(1, Math.floor(c.hp));
   } else {
     c.hp = Math.max(1, Math.floor(c.hp * ENEMY_HP_MULTIPLIER));
+  }
+  if (isManhuntTarget) {
+    // Manhunt target gets a 10% HP buff from level-derived base HP.
+    c.hp = Math.max(1, Math.floor(c.hp * 1.1));
   }
   c.maxHp = c.hp;
   c.damageMin = Math.max(1, Math.floor((c.damageMin ?? 4) * ENEMY_DAMAGE_MULTIPLIER));

@@ -54,6 +54,9 @@ export const DOM = {
     cancel: "#cancel-game-setup",
   },
   missions: {
+    modeNormalBtn: "#missions-mode-normal",
+    modeEpicBtn: "#missions-mode-epic",
+    modeCareerBtn: "#missions-mode-career",
     launchBtn: ".mission-launch-btn",
     readMoreBtn: ".mission-card-read-more",
     flavorPopup: "#mission-flavor-popup",

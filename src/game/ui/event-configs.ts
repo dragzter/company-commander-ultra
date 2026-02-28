@@ -58,6 +58,7 @@ import {
   combatSummaryTemplate,
   buildCombatSummaryData,
 } from "../html-templates/combat-summary-template.ts";
+import { ThrowableItems } from "../../constants/items/throwable.ts";
 
 /**
  * Contains definitions for the events of all html templates.
@@ -413,6 +414,29 @@ export function eventConfigs() {
   ];
 
   const missionsScreenEventConfig: HandlerInitConfig[] = [
+    {
+      selector: DOM.missions.modeNormalBtn,
+      eventType: "click",
+      callback: () => {
+        UiManager.renderMissionsScreen("normal");
+      },
+    },
+    {
+      selector: DOM.missions.modeEpicBtn,
+      eventType: "click",
+      callback: () => {
+        const level = usePlayerCompanyStore.getState().companyLevel ?? 1;
+        if (level < 2) return;
+        UiManager.renderMissionsScreen("epic");
+      },
+    },
+    {
+      selector: DOM.missions.modeCareerBtn,
+      eventType: "click",
+      callback: () => {
+        UiManager.renderCompanyHomePage();
+      },
+    },
     {
       selector: DOM.missions.launchBtn,
       eventType: "click",
@@ -970,11 +994,24 @@ export function eventConfigs() {
 
     const GRENADE_COOLDOWN_MS = 5000;
 
-    function executeGrenadeThrow(thrower: Combatant, target: Combatant, grenade: SoldierGrenade) {
+    function executeGrenadeThrow(
+      thrower: Combatant,
+      target: Combatant,
+      grenade: SoldierGrenade,
+      options?: {
+        consumeThrowable?: boolean;
+        trackPlayerStats?: boolean;
+        targetPool?: Combatant[];
+        resetTargetingUi?: boolean;
+      },
+    ) {
+      const consumeThrowable = options?.consumeThrowable ?? true;
+      const trackPlayerStats = options?.trackPlayerStats ?? true;
+      const resetTargetingUi = options?.resetTargetingUi ?? true;
       const isThrowingKnife = grenade.item.id === "tk21_throwing_knife";
       if (!isThrowingKnife) thrower.grenadeCooldownUntil = Date.now() + GRENADE_COOLDOWN_MS;
-      const aliveEnemies = enemies.filter((e) => e.hp > 0 && !e.downState);
-      const result = resolveGrenadeThrow(thrower, target, grenade.item, aliveEnemies);
+      const aliveTargetPool = (options?.targetPool ?? enemies).filter((c) => c.hp > 0 && !c.downState);
+      const result = resolveGrenadeThrow(thrower, target, grenade.item, aliveTargetPool);
 
       const throwerCard = document.querySelector(`[data-combatant-id="${thrower.id}"]`);
       const targetCard = document.querySelector(`[data-combatant-id="${target.id}"]`);
@@ -1089,9 +1126,7 @@ export function eventConfigs() {
             setTimeout(() => card.classList.remove("combat-card-grenade-hit-flash"), 450);
           }
         };
-        const shakeEnemy = (id: string) => {
-          const c = allCombatants.find((x) => x.id === id);
-          if (c?.side !== "enemy") return;
+        const shakeTargetCard = (id: string) => {
           const card = document.querySelector(`[data-combatant-id="${id}"]`);
           if (card) {
             card.classList.add("combat-card-shake");
@@ -1100,12 +1135,12 @@ export function eventConfigs() {
         };
         if (result.primary.hit && !result.primary.evaded) {
           flashHit(result.primary.targetId);
-          shakeEnemy(result.primary.targetId);
+          shakeTargetCard(result.primary.targetId);
         }
         for (const s of result.splash) {
           if (s.hit && !s.evaded) {
             flashHit(s.targetId);
-            shakeEnemy(s.targetId);
+            shakeTargetCard(s.targetId);
           }
         }
         if (targetCard && isFrag && result.primary.damageDealt > 0) {
@@ -1122,10 +1157,14 @@ export function eventConfigs() {
           else if (isSmoke && s.hit) showSmokeEffect(s.targetId, 10);
           else if (s.damageDealt > 0) showDamage(s.targetId, s.damageDealt);
         }
-        usePlayerCompanyStore.getState().consumeSoldierThrowable(thrower.id, grenade.inventoryIndex);
-        grenadeTargetingMode = null;
-        document.querySelectorAll(".combat-card-grenade-target").forEach((el) => el.classList.remove("combat-card-grenade-target"));
-        closeAbilitiesPopup();
+        if (consumeThrowable) {
+          usePlayerCompanyStore.getState().consumeSoldierThrowable(thrower.id, grenade.inventoryIndex);
+        }
+        if (resetTargetingUi) {
+          grenadeTargetingMode = null;
+          document.querySelectorAll(".combat-card-grenade-target").forEach((el) => el.classList.remove("combat-card-grenade-target"));
+          closeAbilitiesPopup();
+        }
         updateHpBars();
 
         let killsFromGrenade = 0;
@@ -1133,13 +1172,15 @@ export function eventConfigs() {
         for (const s of result.splash) {
           if (s.targetDown) killsFromGrenade++;
         }
-        playerAbilitiesUsed.set(thrower.id, (playerAbilitiesUsed.get(thrower.id) ?? 0) + 1);
-        if (killsFromGrenade > 0) {
-          playerKills.set(thrower.id, (playerKills.get(thrower.id) ?? 0) + killsFromGrenade);
-        }
-        const grenadeDmg = result.primary.damageDealt + result.splash.reduce((a, s) => a + s.damageDealt, 0);
-        if (grenadeDmg > 0) {
-          playerDamage.set(thrower.id, (playerDamage.get(thrower.id) ?? 0) + grenadeDmg);
+        if (trackPlayerStats) {
+          playerAbilitiesUsed.set(thrower.id, (playerAbilitiesUsed.get(thrower.id) ?? 0) + 1);
+          if (killsFromGrenade > 0) {
+            playerKills.set(thrower.id, (playerKills.get(thrower.id) ?? 0) + killsFromGrenade);
+          }
+          const grenadeDmg = result.primary.damageDealt + result.splash.reduce((a, s) => a + s.damageDealt, 0);
+          if (grenadeDmg > 0) {
+            playerDamage.set(thrower.id, (playerDamage.get(thrower.id) ?? 0) + grenadeDmg);
+          }
         }
       }, 400);
     }
@@ -1428,6 +1469,12 @@ export function eventConfigs() {
     const lastBleedTickTimeRef = { current: 0 };
     function startCombatLoop() {
       const now = Date.now();
+      const manhuntTargetEnemy = enemies.find((e) => e.isManhuntTarget);
+      const canUseManhuntGrenade = !!manhuntTargetEnemy;
+      let manhuntGrenadeUsed = false;
+      let nextManhuntGrenadeCheckAt = canUseManhuntGrenade
+        ? now + 3500 + Math.floor(Math.random() * 6000)
+        : Number.POSITIVE_INFINITY;
       lastBurnTickTimeRef.current = now;
       lastBleedTickTimeRef.current = now;
       for (const c of [...players, ...enemies]) {
@@ -1541,6 +1588,36 @@ export function eventConfigs() {
         const all = [...players, ...enemies];
         let nextDue = Infinity;
         let didAttack = false;
+
+        // Manhunt target: one random grenade throw at some point during combat.
+        if (!didAttack && canUseManhuntGrenade && !manhuntGrenadeUsed && now >= nextManhuntGrenadeCheckAt) {
+          const thrower = enemies.find((e) => e.isManhuntTarget && e.hp > 0 && !e.downState);
+          const alivePlayers = players.filter((p) => p.hp > 0 && !p.downState);
+          const throwerCanAct = !!thrower && !isInCover(thrower, now) && !isStunned(thrower, now);
+          if (!throwerCanAct || alivePlayers.length === 0) {
+            nextManhuntGrenadeCheckAt = now + 1200;
+          } else if (Math.random() < 0.35) {
+            const target = alivePlayers[Math.floor(Math.random() * alivePlayers.length)];
+            const grenadePool = [
+              ThrowableItems.common.m3_frag_grenade,
+              ThrowableItems.common.m84_flashbang,
+              ThrowableItems.common.incendiary_grenade,
+            ];
+            const grenadeItem = { ...grenadePool[Math.floor(Math.random() * grenadePool.length)] };
+            executeGrenadeThrow(
+              thrower,
+              target,
+              { item: grenadeItem, inventoryIndex: -1 },
+              { consumeThrowable: false, trackPlayerStats: false, targetPool: alivePlayers, resetTargetingUi: false },
+            );
+            nextAttackAt.set(thrower.id, getNextAttackAt(thrower, now));
+            manhuntGrenadeUsed = true;
+            didAttack = true;
+          } else {
+            nextManhuntGrenadeCheckAt = now + 900 + Math.floor(Math.random() * 1400);
+          }
+        }
+
         for (const c of all) {
           if (c.hp <= 0 || c.downState || isInCover(c, now) || isStunned(c, now)) continue;
           const due = nextAttackAt.get(c.id) ?? now;
@@ -1604,6 +1681,38 @@ export function eventConfigs() {
         if (!combatWinner) combatTickId = window.setTimeout(tick, Math.min(50, Math.max(0, nextDue - now)));
       }
       combatTickId = window.setTimeout(tick, 50);
+    }
+
+    function processQuitMissionOutcome() {
+      if (!combatStarted) return;
+      const screen = document.getElementById("combat-screen");
+      const missionJson = screen?.getAttribute("data-mission-json");
+      let mission: Mission | null = null;
+      if (missionJson) {
+        try {
+          mission = JSON.parse(missionJson.replace(/&quot;/g, '"')) as Mission;
+        } catch {
+          mission = null;
+        }
+      }
+      const kiaIds = players.filter((p) => p.downState === "kia").map((p) => p.id);
+      const missionName = mission?.name ?? "Unknown";
+      const kiaKilledBy = new Map<string, string>();
+      for (const p of players) {
+        if (p.downState === "kia" && p.killedBy) kiaKilledBy.set(p.id, p.killedBy);
+      }
+      const survivorIds = players.filter((p) => !kiaIds.includes(p.id)).map((p) => p.id);
+      const store = usePlayerCompanyStore.getState();
+      store.processCombatKIA(kiaIds, missionName, playerKills, kiaKilledBy);
+      store.grantSoldierCombatXP(
+        survivorIds,
+        playerDamage,
+        playerDamageTaken,
+        playerKills,
+        playerAbilitiesUsed,
+        false,
+      );
+      store.grantMissionRewards(mission, false, kiaIds.length);
     }
 
     function handleTakeCoverAbility(combatant: Combatant): void {
@@ -1875,6 +1984,7 @@ export function eventConfigs() {
             combatTickId = null;
           }
           closeAbilitiesPopup();
+          processQuitMissionOutcome();
           const store = usePlayerCompanyStore.getState();
           store.deductQuitMissionEnergy(players.map((p) => p.id));
           const popup = document.getElementById("combat-quit-confirm-popup");

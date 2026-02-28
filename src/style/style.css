@@ -1705,6 +1705,131 @@ button.mbtn {
 	min-height: 0;
 }
 
+.missions-main.missions-main-menu {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding-bottom: 0;
+}
+
+.missions-main.missions-main-menu .missions-sections-wrapper {
+	width: 100%;
+}
+
+.missions-mode-menu {
+	display: flex;
+	flex-direction: column;
+	gap: 28px;
+	max-width: 320px;
+	margin: 0 auto;
+}
+
+.missions-mode-menu-btn {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	justify-content: flex-start;
+	padding: 10px 14px 10px 10px;
+	width: 100%;
+	min-width: 0;
+	height: 88px;
+	border-radius: 10px;
+	font-size: 1.12rem;
+	font-weight: 800;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	text-align: left;
+}
+
+.missions-mode-icon-block {
+	flex: 0 0 78px;
+	align-self: stretch;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 8px;
+}
+
+.missions-mode-menu-btn img {
+	width: 52px;
+	height: 52px;
+	border-radius: 8px;
+	padding: 4px;
+	border: 2px solid rgba(250, 255, 225, 0.95);
+	box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.65), 0 2px 8px rgba(0, 0, 0, 0.35);
+	background: rgba(0, 0, 0, 0.28);
+}
+
+.missions-mode-divider {
+	flex: 0 0 2px;
+	align-self: stretch;
+	background: linear-gradient(180deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0.75) 48%, rgba(255, 255, 255, 0.2) 100%);
+	border-radius: 2px;
+}
+
+.missions-mode-label {
+	flex: 1 1 auto;
+	line-height: 1.1;
+	padding-left: 4px;
+}
+
+.missions-mode-menu-btn:disabled {
+	opacity: 0.55;
+	filter: grayscale(0.2);
+}
+
+.missions-mode-helper {
+	margin: -4px 2px 0;
+	font-size: 0.78rem;
+	line-height: 1.3;
+	color: rgba(220, 228, 214, 0.92);
+	text-align: center;
+}
+
+.missions-mode-menu .game-btn {
+	background-image: none;
+	border: 3px solid transparent;
+	box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.missions-mode-menu .game-btn-green {
+	background:
+		radial-gradient(ellipse 80% 60% at 30% 30%, rgba(255, 255, 255, 0.08) 0%, transparent 50%),
+		radial-gradient(ellipse 60% 80% at 70% 70%, rgba(0, 0, 0, 0.15) 0%, transparent 50%),
+		linear-gradient(145deg, #608848 0%, #4a6b2e 30%, #526d38 60%, #46642a 100%);
+	color: #f0ffe0;
+	border-color: rgba(160, 220, 120, 0.9);
+}
+
+.missions-mode-menu .game-btn-red {
+	background:
+		radial-gradient(ellipse 70% 50% at 25% 25%, rgba(255, 255, 255, 0.1) 0%, transparent 50%),
+		radial-gradient(ellipse 50% 70% at 75% 75%, rgba(0, 0, 0, 0.25) 0%, transparent 50%),
+		linear-gradient(145deg, #e85454 0%, #b81c1c 35%, #c92a2a 65%, #9a1414 100%);
+	color: #fff;
+	border-color: rgba(255, 140, 140, 0.85);
+}
+
+.missions-mode-menu .game-btn-blue {
+	background:
+		radial-gradient(ellipse 80% 60% at 25% 25%, rgba(255, 255, 255, 0.12) 0%, transparent 50%),
+		radial-gradient(ellipse 60% 80% at 75% 75%, rgba(0, 0, 0, 0.2) 0%, transparent 50%),
+		linear-gradient(145deg, #4a8cd8 0%, #2e5bb5 35%, #3a6cc4 65%, #2549a0 100%);
+	color: #fff;
+	border-color: rgba(120, 180, 255, 0.9);
+}
+
+.missions-mode-menu .game-btn:hover:not(:disabled) {
+	transform: translateY(-2px);
+	filter: brightness(1.1);
+	box-shadow: 0 7px 24px rgba(0, 0, 0, 0.45), 0 0 18px rgba(190, 220, 180, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+.missions-mode-menu .game-btn:active:not(:disabled) {
+	transform: translateY(0) scale(0.985);
+	filter: brightness(0.98);
+}
+
 .missions-section {
 	margin-bottom: 12px;
 }
@@ -1764,12 +1889,22 @@ button.mbtn {
 
 .missions-grid {
 	display: grid;
-	grid-template-columns: repeat(2, minmax(0, 1fr));
-	gap: 8px;
+	grid-template-columns: minmax(0, 1fr);
+	gap: 12px;
+}
+
+.missions-empty-state {
+	padding: 14px 12px;
+	border: 1px solid rgba(208, 219, 196, 0.25);
+	border-radius: 8px;
+	background: linear-gradient(180deg, rgba(34, 42, 36, 0.9) 0%, rgba(27, 34, 29, 0.96) 100%);
+	color: rgba(220, 228, 214, 0.9);
+	font-size: 0.8rem;
+	text-align: center;
 }
 
 .missions-grid-epic {
-	grid-template-columns: repeat(2, minmax(0, 1fr));
+	grid-template-columns: minmax(0, 1fr);
 }
 
 .mission-card {
@@ -1779,7 +1914,7 @@ button.mbtn {
 	background: linear-gradient(145deg, rgba(28, 45, 28, 0.96) 0%, rgba(18, 30, 18, 0.98) 50%, rgba(12, 22, 12, 0.99) 100%);
 	border: 1px solid rgba(95, 115, 60, 0.5);
 	border-radius: 6px;
-	padding: 6px 8px;
+	padding: 10px 12px;
 	min-height: 0;
 	min-width: 0;
 	overflow: hidden;
@@ -1924,7 +2059,7 @@ button.mbtn {
 
 .mission-card-body {
 	flex: 1;
-	margin-bottom: 4px;
+	margin-bottom: 6px;
 	min-height: 0;
 	position: relative;
 	z-index: 1;
@@ -1932,49 +2067,32 @@ button.mbtn {
 
 .mission-card-desc {
 	margin: 0;
-	font-size: 0.68rem;
-	line-height: 1.4;
+	font-size: 0.78rem;
+	line-height: 1.48;
 	color: rgba(225, 220, 210, 0.9);
-	display: -webkit-box;
-	-webkit-line-clamp: 2;
-	-webkit-box-orient: vertical;
-	overflow: hidden;
 	text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
-}
-
-.mission-card-desc-truncate {
-	cursor: default;
-}
-
-.mission-card-read-more {
-	background: none;
-	border: none;
-	color: var(--accent-cyan-2);
-	font-size: 0.64rem;
-	font-weight: 600;
-	cursor: pointer;
-	padding: 2px 0;
-	margin-top: 2px;
-}
-
-.mission-card-read-more:hover {
-	text-decoration: underline;
 }
 
 .mission-card-difficulty {
 	display: flex;
 	flex-direction: column;
 	gap: 3px;
-	margin-bottom: 4px;
+	margin-bottom: 8px;
 	font-size: 0.76rem;
 	width: 100%;
 	position: relative;
 	z-index: 1;
 }
 
+.mission-card-difficulty-row {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
 .mission-diff-bars {
-	width: 100%;
-	height: 6px;
+	flex: 1 1 auto;
+	height: 16px;
 	background: rgba(0, 0, 0, 0.6);
 	border-radius: 4px;
 	overflow: hidden;
@@ -2013,13 +2131,15 @@ button.mbtn {
 	align-items: baseline;
 	gap: 4px 6px;
 	font-size: 0.72rem;
-	margin-top: 6px;
+	margin-top: 0;
 	padding: 6px 8px;
 	background: linear-gradient(135deg, rgba(40, 55, 30, 0.6) 0%, rgba(25, 38, 18, 0.75) 100%);
 	border: 1px solid rgba(100, 180, 80, 0.25);
 	border-radius: 4px;
 	position: relative;
 	z-index: 1;
+	flex: 1 1 auto;
+	min-width: 0;
 }
 .mission-rewards-label {
 	font-weight: 700;
@@ -2054,27 +2174,18 @@ button.mbtn {
 	color: #f0d85c;
 	text-shadow: 0 0 6px rgba(240, 216, 92, 0.4);
 }
-.mission-card-meta {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	font-size: 0.68rem;
-	margin-top: auto;
-	padding-top: 4px;
-	border-top: 1px solid rgba(255, 255, 255, 0.08);
-	position: relative;
-	z-index: 1;
-}
-
 .mission-card-enemies {
 	display: flex;
 	align-items: center;
 	gap: 4px;
+	flex: 0 0 auto;
+	font-size: 0.88rem;
 }
 
 .mission-enemies-count {
 	margin-left: 2px;
 	font-weight: 700;
+	font-size: 1.02em;
 	font-variant-numeric: tabular-nums;
 	letter-spacing: 0.05em;
 	text-shadow: 0 0 8px currentColor, 0 1px 3px rgba(0, 0, 0, 0.6);
@@ -2099,6 +2210,8 @@ button.mbtn {
 
 .mission-enemies-icon {
 	opacity: 0.95;
+	width: 18px;
+	height: 24px;
 	filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
 }
 
@@ -2109,17 +2222,29 @@ button.mbtn {
 }
 
 .mission-launch-btn {
-	margin-top: 4px;
-	width: 100%;
-	min-width: 0;
-	max-width: 100%;
+	margin-top: 0;
+	width: auto;
+	min-width: 108px;
 	position: relative;
 	z-index: 1;
 	flex-shrink: 0;
 }
-.mission-launch-btn.game-btn-md {
-	min-width: 0;
-	width: 100%;
+.mission-launch-btn.game-btn-sm { min-width: 108px; }
+
+.mission-card-footer {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 10px;
+	margin-top: auto;
+	padding-top: 6px;
+	border-top: 1px solid rgba(255, 255, 255, 0.08);
+	position: relative;
+	z-index: 1;
+}
+
+.mission-card-footer .mission-rewards-list {
+	align-items: center;
 }
 
 /* Mission flavor popup - contained within #game */
@@ -5656,6 +5781,11 @@ button.mbtn {
 	min-width: 0;
 }
 
+.combat-enemies .combat-formation,
+.combat-players .combat-formation {
+	transform: translateY(-40px);
+}
+
 .combat-cards-row {
 	display: flex;
 	flex-wrap: nowrap;
@@ -5673,11 +5803,11 @@ button.mbtn {
 .combat-card {
 	transition: transform 0.2s ease, box-shadow 0.2s ease;
 	position: relative;
-	width: 60px;
-	min-width: 60px;
-	max-width: 60px;
+	width: 72px;
+	min-width: 72px;
+	max-width: 72px;
 	flex-shrink: 0;
-	min-height: 72px;
+	min-height: 84px;
 	background: linear-gradient(165deg, #151915 0%, #0a0d0a 100%);
 	border: 1px solid rgba(60, 65, 55, 0.4);
 	border-radius: 6px;
@@ -5704,6 +5834,16 @@ button.mbtn {
 .combat-card-epic-elite:hover {
 	border-color: rgba(255, 215, 0, 0.9);
 	box-shadow: 0 2px 10px rgba(0,0,0,0.45), inset 0 0 0 1px rgba(255, 215, 0, 0.2), 0 0 14px rgba(212, 175, 55, 0.35);
+}
+
+.combat-card-manhunt-target {
+	border: 2px solid rgba(255, 215, 90, 0.95);
+	box-shadow: 0 2px 10px rgba(0,0,0,0.45), inset 0 0 0 1px rgba(255, 231, 148, 0.35), 0 0 16px rgba(255, 208, 70, 0.45);
+}
+
+.combat-card-manhunt-target:hover {
+	border-color: rgba(255, 235, 145, 1);
+	box-shadow: 0 2px 12px rgba(0,0,0,0.45), inset 0 0 0 1px rgba(255, 241, 180, 0.45), 0 0 20px rgba(255, 220, 120, 0.6);
 }
 
 .combat-card-inner {
@@ -5735,8 +5875,8 @@ button.mbtn {
 	left: 2px;
 	background: rgba(0, 0, 0, 0.85);
 	border-radius: 3px;
-	padding: 0 3px;
-	font-size: 0.6rem;
+	padding: 1px 4px;
+	font-size: 0.66rem;
 	font-weight: 800;
 	color: var(--camo-tan-1);
 	z-index: 1;
@@ -5782,7 +5922,7 @@ button.mbtn {
 .combat-card-hp-wrap {
 	position: relative;
 	width: 100%;
-	height: 10px;
+	height: 13px;
 	background: #333;
 	border-radius: 3px;
 	overflow: hidden;
@@ -6353,7 +6493,7 @@ button.mbtn {
 }
 
 .combat-card-name {
-	font-size: 0.58rem;
+	font-size: calc(0.58rem + 1px);
 	font-weight: 600;
 	text-align: center;
 	line-height: 1.2;
@@ -6373,8 +6513,8 @@ button.mbtn {
 	position: absolute;
 	top: -2px;
 	right: -2px;
-	width: 18px;
-	height: 18px;
+	width: 20px;
+	height: 20px;
 	object-fit: contain;
 }
 

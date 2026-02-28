@@ -61,6 +61,34 @@ import {
 } from "../constants/missions.ts";
 import type { MemorialEntry } from "../game/entities/memorial-types.ts";
 import { getStarterArmoryItems } from "../constants/starter-armory.ts";
+import { generateMissions, MISSION_BOARD_SCHEMA_VERSION } from "../services/missions/mission-generator.ts";
+
+function pickReplacementMission(
+  completed: Mission,
+  companyLevel: number,
+  existingBoard: Mission[],
+): Mission | null {
+  const wantedEpic = !!(completed.isEpic ?? completed.rarity === "epic");
+  const wantedRarity = wantedEpic ? "epic" : "normal";
+  const wantedKind = completed.kind;
+  const usedTitles = new Set(existingBoard.filter((m) => m.id !== completed.id).map((m) => m.name));
+
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const pool = generateMissions(companyLevel);
+    const candidate = pool.find((m) => {
+      const isEpic = !!(m.isEpic ?? m.rarity === "epic");
+      const rarity = isEpic ? "epic" : (m.rarity ?? "normal");
+      return m.kind === wantedKind && isEpic === wantedEpic && rarity === wantedRarity && !usedTitles.has(m.name);
+    }) ?? pool.find((m) => {
+      const isEpic = !!(m.isEpic ?? m.rarity === "epic");
+      const rarity = isEpic ? "epic" : (m.rarity ?? "normal");
+      return m.kind === wantedKind && isEpic === wantedEpic && rarity === wantedRarity;
+    });
+    if (candidate) return candidate;
+  }
+
+  return null;
+}
 
 export const StoreActions = (set: any, get: () => CompanyStore) => ({
   companyName: "",
@@ -85,6 +113,9 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
   companyExperience: 0,
   company: {} as Company,
   marketTierLevel: 0,
+  missionBoard: [],
+  missionBoardSchemaVersion: MISSION_BOARD_SCHEMA_VERSION,
+  missionsViewMode: "menu",
 
   // Actions
   rerollSoldier: async (id: string) => {
@@ -185,6 +216,9 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
         totalInventoryCapacity: DEFAULT_INVENTORY_CAPACITY,
         companyLevel: 1,
         companyExperience: 0,
+        missionBoard: [],
+        missionBoardSchemaVersion: MISSION_BOARD_SCHEMA_VERSION,
+        missionsViewMode: "menu",
         company: {
           level: 1,
           experience: 0,
@@ -226,6 +260,30 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
     })),
   setGameStep: (step: GameStep) => set({ gameStep: step }),
   setMarketTierLevel: (n: number) => set({ marketTierLevel: n }),
+  setMissionsViewMode: (mode: "menu" | "normal" | "epic") => set({ missionsViewMode: mode }),
+  ensureMissionBoard: () => {
+    const state = get();
+    const existing = state.missionBoard ?? [];
+    const schemaMismatch = (state.missionBoardSchemaVersion ?? 0) !== MISSION_BOARD_SCHEMA_VERSION;
+    if (existing.length > 0) {
+      const hasRare = existing.some((m) => (m.rarity ?? (m.isEpic ? "epic" : "normal")) === "rare");
+      const hasLegacyTitles = existing.some((m) => /#\d+\s*$/.test(m.name ?? "") || /^Epic:\s+/i.test(m.name ?? ""));
+      if (!hasRare && !hasLegacyTitles && !schemaMismatch) return;
+    }
+    const companyLevel = state.company?.level ?? state.companyLevel ?? 1;
+    set({
+      missionBoard: generateMissions(companyLevel),
+      missionBoardSchemaVersion: MISSION_BOARD_SCHEMA_VERSION,
+    });
+  },
+  refreshMissionBoard: () => {
+    const state = get();
+    const companyLevel = state.company?.level ?? state.companyLevel ?? 1;
+    set({
+      missionBoard: generateMissions(companyLevel),
+      missionBoardSchemaVersion: MISSION_BOARD_SCHEMA_VERSION,
+    });
+  },
   setCompanyUnitPatch: (url: string) => set({ companyUnitPatchURL: url }),
   setCompanyName: (n: string) =>
     set((state: CompanyStore) => ({
@@ -956,6 +1014,23 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
         holding_inventory: holding,
       },
     }));
+
+    // Replace only the completed mission with a fresh one; keep all others unchanged.
+    set((s: CompanyStore) => {
+      if (!mission) return {};
+      const board = s.missionBoard ?? [];
+      const idx = board.findIndex((m) => m.id === mission.id);
+      if (idx < 0) return {};
+      const replacement = pickReplacementMission(mission, lvl, board);
+      if (!replacement) return {};
+      const next = board.slice();
+      next[idx] = replacement;
+      return {
+        missionBoard: next,
+        missionBoardSchemaVersion: MISSION_BOARD_SCHEMA_VERSION,
+      };
+    });
+
     return { rewardItems, lootItems };
   },
 

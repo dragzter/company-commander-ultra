@@ -70,6 +70,8 @@ export interface Combatant {
   attackSpeedBuffMultiplier?: number;
   /** Epic mission elite: no HP handicap, gold frame */
   isEpicElite?: boolean;
+  /** Manhunt high-value target: no HP handicap, gold frame */
+  isManhuntTarget?: boolean;
   /** Weapon effect for proc checks (fire, blind, stun) */
   weaponEffect?: string;
   /** Immunities from armor or traits */

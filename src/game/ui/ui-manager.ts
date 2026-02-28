@@ -195,8 +195,8 @@ function UiManager() {
     _ScreenManager.generate.createTrainingPage();
   }
 
-  function renderMissionsScreen() {
-    _ScreenManager.generate.createMissionsPage();
+  function renderMissionsScreen(mode?: "menu" | "normal" | "epic") {
+    _ScreenManager.generate.createMissionsPage(mode);
   }
 
   function renderReadyRoomScreen(mission?: Mission | null) {
