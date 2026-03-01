@@ -2659,33 +2659,29 @@ button.mbtn {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	min-height: 24px;
-	padding: 3px 10px;
-	border-radius: 5px;
+	min-height: 0;
+	padding: 0;
+	border-radius: 0;
 	font-size: 0.72rem;
 	font-weight: 900;
 	letter-spacing: 0.06em;
 	text-transform: uppercase;
-	border: 1px solid transparent;
-	box-shadow: 0 1px 5px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+	border: none;
+	background: transparent;
+	box-shadow: none;
+	text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
 }
 
 .role-pill-rifleman {
-	color: #f2f8e6;
-	background: linear-gradient(180deg, rgba(70, 108, 58, 0.95) 0%, rgba(45, 76, 36, 0.98) 100%);
-	border-color: rgba(158, 214, 136, 0.55);
+	color: #9ed688;
 }
 
 .role-pill-support {
-	color: #fff4dd;
-	background: linear-gradient(180deg, rgba(128, 94, 40, 0.96) 0%, rgba(92, 63, 21, 0.98) 100%);
-	border-color: rgba(255, 197, 95, 0.62);
+	color: #ffc55f;
 }
 
 .role-pill-medic {
-	color: #ffe9e7;
-	background: linear-gradient(180deg, rgba(112, 52, 52, 0.95) 0%, rgba(78, 31, 31, 0.99) 100%);
-	border-color: rgba(255, 145, 145, 0.58);
+	color: #ff9191;
 }
 
 .ready-room-root .ready-room-main {
@@ -3443,9 +3439,9 @@ button.mbtn {
 #ready-room-screen #ready-room-proceed {
 	position: relative;
 	overflow: hidden;
-	min-height: 36px;
-	padding: 6px 16px;
-	font-size: 0.78rem;
+	min-height: 42px;
+	padding: 8px 22px;
+	font-size: 0.84rem;
 	font-weight: 800;
 	letter-spacing: 0.08em;
 	color: #fff;
@@ -3453,10 +3449,10 @@ button.mbtn {
 	background:
 		radial-gradient(ellipse 78% 58% at 25% 22%, rgba(255, 255, 255, 0.14) 0%, transparent 52%),
 		radial-gradient(ellipse 58% 78% at 78% 78%, rgba(0, 0, 0, 0.25) 0%, transparent 52%),
-		linear-gradient(145deg, #e85454 0%, #b81c1c 40%, #c92a2a 100%);
-	border: 2px solid rgba(255, 140, 140, 0.9);
-	border-radius: 6px;
-	box-shadow: 0 4px 16px rgba(220, 38, 38, 0.36), inset -2px -2px 4px rgba(0, 0, 0, 0.4), inset 2px 2px 3px rgba(255, 255, 255, 0.1), 0 0 12px rgba(255, 100, 100, 0.3);
+		linear-gradient(145deg, #5dbb71 0%, #2f8f4d 40%, #43a95f 100%);
+	border: 2px solid rgba(145, 235, 168, 0.9);
+	border-radius: 7px;
+	box-shadow: 0 4px 16px rgba(36, 153, 86, 0.36), inset -2px -2px 4px rgba(0, 0, 0, 0.4), inset 2px 2px 3px rgba(255, 255, 255, 0.12), 0 0 12px rgba(99, 232, 145, 0.32);
 	transition: transform 0.15s, box-shadow 0.2s, filter 0.2s, border-color 0.2s;
 }
 
@@ -3468,7 +3464,7 @@ button.mbtn {
 	width: 40%;
 	height: 184%;
 	transform: skewX(-22deg);
-	background: linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, rgba(255, 234, 234, 0.76) 50%, rgba(255, 255, 255, 0) 100%);
+	background: linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, rgba(236, 255, 242, 0.78) 50%, rgba(255, 255, 255, 0) 100%);
 	animation: ready-room-proceed-sheen 2.2s linear infinite;
 	pointer-events: none;
 }
@@ -3476,8 +3472,8 @@ button.mbtn {
 #ready-room-screen #ready-room-proceed:hover {
 	transform: translateY(-2px);
 	filter: brightness(1.1);
-	border-color: rgba(255, 180, 180, 1);
-	box-shadow: 0 6px 22px rgba(220, 38, 38, 0.48), inset -2px -2px 4px rgba(0, 0, 0, 0.34), inset 2px 2px 4px rgba(255, 255, 255, 0.16), 0 0 18px rgba(255, 100, 100, 0.42);
+	border-color: rgba(181, 255, 199, 1);
+	box-shadow: 0 6px 22px rgba(36, 153, 86, 0.48), inset -2px -2px 4px rgba(0, 0, 0, 0.34), inset 2px 2px 4px rgba(255, 255, 255, 0.16), 0 0 18px rgba(122, 255, 170, 0.44);
 }
 
 #ready-room-screen #ready-room-proceed:active {
@@ -12324,4 +12320,89 @@ input[type="text"] {
 }
 .xp-tooltip-wrap:focus {
 	outline: none;
+}
+
+/* Semantic action colors: navigation (blue), confirm (green), utility (amber), destructive (red), dismiss (neutral) */
+.popup-close-btn.game-btn.game-btn-red {
+	background:
+		radial-gradient(ellipse 72% 52% at 25% 25%, rgba(255, 255, 255, 0.12) 0%, transparent 50%),
+		radial-gradient(ellipse 55% 70% at 75% 75%, rgba(0, 0, 0, 0.38) 0%, transparent 55%),
+		linear-gradient(145deg, #3d4d64 0%, #29394f 44%, #203046 100%) !important;
+	border-color: rgba(136, 176, 224, 0.78) !important;
+	box-shadow: 0 2px 10px rgba(30, 55, 88, 0.38), inset -2px -2px 3px rgba(0, 0, 0, 0.35), inset 2px 2px 2px rgba(255, 255, 255, 0.08), 0 0 9px rgba(95, 156, 224, 0.26) !important;
+}
+.popup-close-btn.game-btn.game-btn-red:hover {
+	border-color: rgba(164, 203, 255, 0.95) !important;
+	box-shadow: 0 4px 14px rgba(30, 55, 88, 0.48), inset -2px -2px 3px rgba(0, 0, 0, 0.3), inset 2px 2px 3px rgba(255, 255, 255, 0.11), 0 0 12px rgba(108, 176, 255, 0.36) !important;
+}
+
+#rest-popup-send-btn.equip-troops-btn {
+	background: linear-gradient(135deg, rgba(53, 137, 93, 0.98) 0%, rgba(30, 103, 71, 0.98) 100%);
+	border-color: rgba(126, 229, 168, 0.66);
+	box-shadow: 0 2px 8px rgba(41, 122, 86, 0.36), inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 0 14px rgba(92, 190, 136, 0.25);
+}
+#rest-popup-send-btn.equip-troops-btn:hover:not(:disabled) {
+	background: linear-gradient(135deg, rgba(66, 159, 109, 0.99) 0%, rgba(38, 121, 84, 0.99) 100%);
+	box-shadow: 0 4px 12px rgba(41, 122, 86, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 0 18px rgba(110, 216, 157, 0.35);
+}
+
+#market-sell-open.equip-troops-btn {
+	background: linear-gradient(135deg, rgba(179, 116, 45, 0.98) 0%, rgba(145, 90, 24, 0.98) 100%);
+	border-color: rgba(255, 198, 112, 0.72);
+	box-shadow: 0 2px 8px rgba(145, 90, 24, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 0 12px rgba(255, 175, 74, 0.22);
+}
+#market-sell-open.equip-troops-btn:hover {
+	background: linear-gradient(135deg, rgba(203, 132, 54, 1) 0%, rgba(168, 102, 28, 1) 100%);
+	box-shadow: 0 4px 12px rgba(145, 90, 24, 0.48), inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 0 18px rgba(255, 192, 96, 0.32);
+}
+
+#troops-market .card-actions-recruit .troop-recruit-reroll {
+	background: linear-gradient(135deg, #71571f 0%, #5d4316 100%);
+	border: 1px solid rgba(235, 197, 120, 0.65);
+	box-shadow: 0 2px 8px rgba(85, 62, 20, 0.35);
+}
+#troops-market .card-actions-recruit .troop-recruit-reroll:hover:not(:disabled) {
+	background: linear-gradient(135deg, #866527 0%, #6f4f1a 100%);
+	border-color: rgba(255, 214, 132, 0.85);
+	box-shadow: 0 3px 12px rgba(85, 62, 20, 0.45);
+}
+
+.company-action-btn {
+	border: 1px solid rgba(120, 150, 185, 0.22);
+	border-radius: 10px;
+	padding: 2px;
+	background: linear-gradient(180deg, rgba(44, 57, 73, 0.55) 0%, rgba(28, 37, 50, 0.55) 100%);
+	box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 2px 8px rgba(0, 0, 0, 0.22);
+}
+.company-action-btn.company-action-home,
+.company-action-btn.company-action-roster,
+.company-action-btn.company-action-armory {
+	border-color: rgba(114, 180, 242, 0.44);
+	background: linear-gradient(180deg, rgba(47, 87, 132, 0.38) 0%, rgba(28, 58, 95, 0.42) 100%);
+}
+.company-action-btn.company-action-missions {
+	border-color: rgba(126, 222, 157, 0.5);
+	background: linear-gradient(180deg, rgba(44, 113, 77, 0.4) 0%, rgba(26, 78, 54, 0.44) 100%);
+}
+.company-action-btn.company-action-market,
+.company-action-btn.company-action-tactics {
+	border-color: rgba(236, 194, 121, 0.48);
+	background: linear-gradient(180deg, rgba(121, 84, 33, 0.36) 0%, rgba(86, 58, 18, 0.42) 100%);
+}
+.company-action-btn:hover {
+	transform: translateY(-1px);
+	filter: brightness(1.18);
+}
+
+.company-action-item:has(.company-action-btn.company-action-home) .company-action-label,
+.company-action-item:has(.company-action-btn.company-action-roster) .company-action-label,
+.company-action-item:has(.company-action-btn.company-action-armory) .company-action-label {
+	color: rgba(182, 220, 255, 0.95);
+}
+.company-action-item:has(.company-action-btn.company-action-missions) .company-action-label {
+	color: rgba(176, 240, 192, 0.96);
+}
+.company-action-item:has(.company-action-btn.company-action-market) .company-action-label,
+.company-action-item:has(.company-action-btn.company-action-tactics) .company-action-label {
+	color: rgba(244, 220, 178, 0.96);
 }

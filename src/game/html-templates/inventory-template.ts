@@ -34,7 +34,7 @@ export function itemStatsPopupHtml(): string {
     </div>
     <div id="item-stats-popup-body" class="item-stats-popup-body supplies-buy-body"></div>
     <div class="item-popup-actions item-market-purchase item-popup-equip-only">
-      <button type="button" id="item-stats-popup-equip" class="mbtn blue equipment-buy-btn-full" style="display:none">Equip</button>
+      <button type="button" id="item-stats-popup-equip" class="mbtn green equipment-buy-btn-full" style="display:none">Equip</button>
       <button type="button" id="item-stats-popup-sell" class="mbtn red equipment-buy-btn-full" style="display:none">${CREDIT_SYMBOL} Sell 0</button>
     </div>
   </div>
@@ -445,7 +445,7 @@ export function inventoryTemplate(): string {
       <h4 class="inventory-section-title market-section-title">Items Waiting (Armory Full)</h4>
       <p class="inventory-holding-hint">Mission rewards are waiting. Make room in your armory to claim them.</p>
       <div class="inventory-holding-actions">
-        <button type="button" id="claim-holding-inventory-btn" class="mbtn blue mbtn-sm">Claim to Armory</button>
+        <button type="button" id="claim-holding-inventory-btn" class="mbtn green mbtn-sm">Claim to Armory</button>
       </div>
       <div class="inventory-grid" id="inventory-holding">
         ${holding.map((item) => holdingItemCard(item)).join("")}

@@ -103,7 +103,13 @@ export type CompanyStore = {
     equipmentIndex?: number,
   ) => { success: boolean; reason?: string };
   emptySoldierToCompanyInventory: (soldierId: string) => { success: boolean; reason?: string };
-  grantMissionRewards: (mission: import("../constants/missions.ts").Mission | null, victory: boolean, kiaCount?: number, missionLevel?: number) => { rewardItems: import("../constants/items/types.ts").Item[]; lootItems: import("../constants/items/types.ts").Item[] };
+  grantMissionRewards: (
+    mission: import("../constants/missions.ts").Mission | null,
+    victory: boolean,
+    kiaCount?: number,
+    missionLevel?: number,
+    companyXpGainOverride?: number,
+  ) => { rewardItems: import("../constants/items/types.ts").Item[]; lootItems: import("../constants/items/types.ts").Item[] };
   syncSoldierLevelsFromExperience: () => void;
   grantSoldierCombatXP: (
     survivorIds: string[],

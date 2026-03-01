@@ -1051,8 +1051,14 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
     });
   },
 
-  /** Grant mission rewards: credits on victory, XP/level-up, items (armory or holding if full). Respects per-category caps. Updates mission stats. Applies ~10% XP penalty when soldiers died. Returns reward items (guaranteed) and loot items (random drops) for summary display. Uses missionLevel (same derivation as enemy soldiers) for item tiers when provided. */
-  grantMissionRewards: (mission: Mission | null, victory: boolean, kiaCount?: number, missionLevel?: number): { rewardItems: Item[]; lootItems: Item[] } => {
+  /** Grant mission rewards: credits on victory, XP/level-up, items (armory or holding if full). Respects per-category caps. Updates mission stats. Returns reward items (guaranteed) and loot items (random drops) for summary display. Uses missionLevel (same derivation as enemy soldiers) for item tiers when provided. */
+  grantMissionRewards: (
+    mission: Mission | null,
+    victory: boolean,
+    _kiaCount?: number,
+    missionLevel?: number,
+    companyXpGainOverride?: number,
+  ): { rewardItems: Item[]; lootItems: Item[] } => {
     set((s: CompanyStore) => ({
       totalMissionsCompleted: (s.totalMissionsCompleted ?? 0) + (victory ? 1 : 0),
       totalMissionsFailed: (s.totalMissionsFailed ?? 0) + (victory ? 0 : 1),
@@ -1061,10 +1067,10 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
     const credits = mission.creditReward ?? 0;
     set((s: CompanyStore) => ({ creditBalance: s.creditBalance + credits }));
 
-    /* Add XP and level up. Apply ~10% penalty if soldiers died. */
+    /* Add XP and level up. Prefer caller-provided combat-derived XP model. */
     const difficulty = typeof mission.difficulty === "number" && !Number.isNaN(mission.difficulty) ? Math.max(1, mission.difficulty) : 1;
-    let xpGain = mission.xpReward ?? 20 * difficulty;
-    if ((kiaCount ?? 0) > 0) xpGain = Math.max(1, Math.floor(xpGain * 0.9));
+    const fallbackXp = mission.xpReward ?? 20 * difficulty;
+    const xpGain = Number.isFinite(companyXpGainOverride) ? Math.max(0, Math.floor(companyXpGainOverride ?? 0)) : fallbackXp;
     const stateAfterCredits = get();
     const oldLevel = stateAfterCredits.company?.level ?? stateAfterCredits.companyLevel ?? 1;
     let exp = (stateAfterCredits.company?.experience ?? stateAfterCredits.companyExperience ?? 0) + xpGain;

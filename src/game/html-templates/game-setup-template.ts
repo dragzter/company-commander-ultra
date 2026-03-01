@@ -365,22 +365,21 @@ export const marketCreditsPartial = (creditBalance: number) => {
 
 export const companyActionsTemplate = () => {
   const actions = [
-    ["company-go-home", "Home", Images.btn.sq_home],
-    ["company-go-market", "Market", Images.btn.sq_market],
-    ["company-go-roster", "Roster", Images.btn.sq_list_1],
-    // ["company-go-training", "Training", Images.btn.sq_training],
-    ["company-go-missions", "Missions", Images.btn.sq_mission],
-    ["company-go-inventory", "Armory", Images.btn.sq_inventory],
+    ["company-go-home", "Home", Images.btn.sq_home, "company-action-home"],
+    ["company-go-missions", "Missions", Images.btn.sq_mission, "company-action-missions"],
+    ["company-go-roster", "Roster", Images.btn.sq_list_1, "company-action-roster"],
+    ["company-go-inventory", "Armory", Images.btn.sq_inventory, "company-action-armory"],
+    ["company-go-market", "Market", Images.btn.sq_market, "company-action-market"],
     // ["company-go-memorial", "Memorial Wall", Images.btn.sq_heroes],
-    ["company-go-abilities", "Tactics", "list_2_button.png"],
+    ["company-go-abilities", "Tactics", "list_2_button.png", "company-action-tactics"],
   ];
   return `
   <div class="company-actions grid grid-6-col">
       ${actions
         .map(
-          ([id, label, img]) => `
+          ([id, label, img, styleClass]) => `
         <div class="company-action-item">
-          <button id="${id}" class="mbtn icon-btn company-action-btn" data-tooltip="${label}">
+          <button id="${id}" class="mbtn icon-btn company-action-btn ${styleClass}" data-tooltip="${label}">
             <img class="grid-img-fit" src="/images/ui/square/${img}" alt="${label}" />
           </button>
           <span class="company-action-label">${label}</span>

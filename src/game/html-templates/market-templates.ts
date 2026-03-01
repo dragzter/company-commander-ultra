@@ -37,9 +37,9 @@ export const marketTemplate = () => {
 		<div class="text-center">
 			<h1>Market</h1>
 			<div class="flex column align-center justify-between">
-				<button id="${c(market.marketTroopsLink)}" class="green mbtn mb-3">Troops</button>
+				<button id="${c(market.marketTroopsLink)}" class="blue mbtn mb-3">Troops</button>
 				<button id="${c(market.marketArmorLink)}" class="blue mbtn mb-3">Body Armor</button>
-				<button id="${c(market.marketWeaponsLink)}" class="red mbtn mb-3">Weapons</button>
+				<button id="${c(market.marketWeaponsLink)}" class="blue mbtn mb-3">Weapons</button>
 				<button id="${c(market.marketSuppliesLink)}" class="blue mbtn mb-3">Supplies</button>
 				<button id="${c(market.marketDevCatalogLink)}" class="gray mbtn market-dev-btn" title="Developer: view all weapons and armor">Dev Catalog</button>
 			</div>

@@ -2273,8 +2273,27 @@ export function eventConfigs() {
               store.syncCombatHpToSoldiers(players.map((p) => ({ id: p.id, hp: p.maxHp })));
             }
             const kiaCount = kiaIds.length;
+            const baseXp = victory ? SOLDIER_XP_BASE_SURVIVE_VICTORY : SOLDIER_XP_BASE_SURVIVE_DEFEAT;
+            const xpEarnedBySoldier = new Map<string, number>();
+            for (const id of participantIds) {
+              const dmg = playerDamage.get(id) ?? 0;
+              const dmgTaken = playerDamageTaken.get(id) ?? 0;
+              const kills = playerKills.get(id) ?? 0;
+              const abilitiesUsed = playerAbilitiesUsed.get(id) ?? 0;
+              const xp = baseXp + dmg * SOLDIER_XP_PER_DAMAGE + dmgTaken * SOLDIER_XP_PER_DAMAGE_TAKEN + kills * SOLDIER_XP_PER_KILL + abilitiesUsed * SOLDIER_XP_PER_ABILITY_USE;
+              xpEarnedBySoldier.set(id, Math.round(xp * 10) / 10);
+            }
+            let companyXpEarned = 0;
+            if (!isDevTest && victory && mission) {
+              let totalSoldierXp = 0;
+              xpEarnedBySoldier.forEach((xp) => {
+                totalSoldierXp += Math.max(0, xp);
+              });
+              const companyDivisor = mission.kind === "defend_objective" ? 6 : 5;
+              companyXpEarned = Math.max(1, Math.floor(totalSoldierXp / companyDivisor));
+            }
             const { rewardItems, lootItems } = !isDevTest && victory && mission
-              ? store.grantMissionRewards(mission, true, kiaCount, missionLevel)
+              ? store.grantMissionRewards(mission, true, kiaCount, missionLevel, companyXpEarned)
               : { rewardItems: [] as import("../../constants/items/types.ts").Item[], lootItems: [] as import("../../constants/items/types.ts").Item[] };
             const newLevels = isDevTest
               ? new Map<string, number>()
@@ -2283,24 +2302,9 @@ export function eventConfigs() {
             for (const id of survivorIds) {
               if ((newLevels.get(id) ?? 1) > (oldLevels.get(id) ?? 1)) leveledUpIds.add(id);
             }
-            const baseXp = victory ? SOLDIER_XP_BASE_SURVIVE_VICTORY : SOLDIER_XP_BASE_SURVIVE_DEFEAT;
-            const xpEarnedBySoldier = new Map<string, number>();
-            for (const id of survivorIds) {
-              const dmg = playerDamage.get(id) ?? 0;
-              const dmgTaken = playerDamageTaken.get(id) ?? 0;
-              const kills = playerKills.get(id) ?? 0;
-              const abilitiesUsed = playerAbilitiesUsed.get(id) ?? 0;
-              const xp = baseXp + dmg * SOLDIER_XP_PER_DAMAGE + dmgTaken * SOLDIER_XP_PER_DAMAGE_TAKEN + kills * SOLDIER_XP_PER_KILL + abilitiesUsed * SOLDIER_XP_PER_ABILITY_USE;
-              xpEarnedBySoldier.set(id, Math.round(xp * 10) / 10);
-            }
             const soldiersAfterCombat = isDevTest
               ? new Map<string, import("../entities/types.ts").Soldier>()
               : new Map(usePlayerCompanyStore.getState().company?.soldiers?.filter((s) => players.some((p) => p.id === s.id)).map((s) => [s.id, s]) ?? []);
-            let companyXpEarned = 0;
-            if (!isDevTest && victory && mission) {
-              companyXpEarned = mission.xpReward ?? 20 * (mission.difficulty ?? 1);
-              if (kiaCount > 0) companyXpEarned = Math.max(1, Math.floor(companyXpEarned * 0.9));
-            }
             const st = usePlayerCompanyStore.getState();
             const companyExpTotal = st.company?.experience ?? st.companyExperience ?? 0;
             const companyLvlTotal = st.company?.level ?? st.companyLevel ?? 1;
