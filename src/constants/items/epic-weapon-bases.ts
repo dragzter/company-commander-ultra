@@ -48,7 +48,7 @@ export function createEpicWeapon(base: EpicWeaponBase, level: GearLevel) {
   let damageMin = Math.round(base.damageMinBase + add);
   let damageMax = Math.round(base.damageMaxBase + add);
   if (tier > BASE_GEAR_LEVEL_CAP) {
-    const boosted = applyPostCapWeaponDamage(damageMin, damageMax, tier);
+    const boosted = applyPostCapWeaponDamage(damageMin, damageMax, tier, { rarity: RARITY.epic, baseId: base.baseId });
     damageMin = boosted.min;
     damageMax = boosted.max;
   }

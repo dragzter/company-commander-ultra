@@ -68,6 +68,10 @@ export interface Soldier {
   combatProfile: CombatProfile;
 
   // History
+  /** Lifetime missions fully completed (excludes quit). */
+  missionsCompleted?: number;
+  /** Lifetime total enemy kills across all missions. */
+  totalKills?: number;
   inventory: Item[];
   events: []; // a way to track history, wounded, killed, record battles.
 }

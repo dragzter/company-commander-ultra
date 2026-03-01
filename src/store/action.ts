@@ -1212,6 +1212,30 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
     });
   },
 
+  /** Persist lifetime soldier combat stats for all participants (including KIA). */
+  recordSoldierCombatStats: (
+    participantIds: string[],
+    killsBySoldier: Map<string, number>,
+    missionCompleted: boolean,
+  ) => {
+    if (participantIds.length === 0) return;
+    const participantSet = new Set(participantIds);
+    set((state: CompanyStore) => {
+      const soldiers = state.company?.soldiers ?? [];
+      if (soldiers.length === 0) return state;
+      const newSoldiers = soldiers.map((s) => {
+        if (!participantSet.has(s.id)) return s;
+        const missionKills = Math.max(0, Math.floor(killsBySoldier.get(s.id) ?? 0));
+        return {
+          ...s,
+          totalKills: Math.max(0, Math.floor(s.totalKills ?? 0)) + missionKills,
+          missionsCompleted: Math.max(0, Math.floor(s.missionsCompleted ?? 0)) + (missionCompleted ? 1 : 0),
+        };
+      });
+      return { company: { ...state.company, soldiers: newSoldiers } };
+    });
+  },
+
   /** Deduct 50 energy from each participant when quitting a mission (min 0). */
   deductQuitMissionEnergy: (participantIds: string[]) => {
     if (participantIds.length === 0) return;
@@ -1346,6 +1370,9 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
         role: (s.designation ?? "Rifleman") as string,
         missionName: mission,
         enemiesKilled: playerKills?.get(s.id) ?? 0,
+        missionKills: playerKills?.get(s.id) ?? 0,
+        totalKills: s.totalKills ?? 0,
+        missionsCompleted: s.missionsCompleted ?? 0,
         killedBy: kiaKilledBy?.get(s.id),
       }));
       const memorialFallen = [...(state.memorialFallen ?? []), ...entries];

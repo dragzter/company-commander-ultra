@@ -186,6 +186,8 @@ const SOLDIER_BASE: Soldier = {
     mitigateDamage: 0.02,
   } as CombatProfile,
   trait_profile: {} as TraitDict,
+  missionsCompleted: 0,
+  totalKills: 0,
   inventory: [],
   events: [],
 };

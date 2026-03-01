@@ -2103,7 +2103,9 @@ export function eventConfigs() {
             for (const p of players) {
               if (p.downState === "kia" && p.killedBy) kiaKilledBy.set(p.id, p.killedBy);
             }
+            const participantIds = players.map((p) => p.id);
             if (!isDevTest) {
+              usePlayerCompanyStore.getState().recordSoldierCombatStats(participantIds, playerKills, true);
               usePlayerCompanyStore.getState().processCombatKIA(kiaIds, missionName, playerKills, kiaKilledBy);
             }
             const survivorIds = players.filter((p) => !kiaIds.includes(p.id)).map((p) => p.id);
@@ -2356,8 +2358,10 @@ export function eventConfigs() {
         if (p.downState === "kia" && p.killedBy) kiaKilledBy.set(p.id, p.killedBy);
       }
       const survivorIds = players.filter((p) => !kiaIds.includes(p.id)).map((p) => p.id);
+      const participantIds = players.map((p) => p.id);
       const store = usePlayerCompanyStore.getState();
       if (!mission?.isDevTest) {
+        store.recordSoldierCombatStats(participantIds, playerKills, false);
         store.processCombatKIA(kiaIds, missionName, playerKills, kiaKilledBy);
         store.grantSoldierCombatXP(
           survivorIds,

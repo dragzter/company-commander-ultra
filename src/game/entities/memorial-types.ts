@@ -4,7 +4,14 @@ export interface MemorialEntry {
   level: number;
   role?: string;
   missionName: string;
+  /** Kills recorded in the final mission (legacy label support). */
   enemiesKilled: number;
+  /** Lifetime missions completed at time of death. */
+  missionsCompleted?: number;
+  /** Lifetime total kills at time of death. */
+  totalKills?: number;
+  /** Kills recorded in the final mission where soldier died. */
+  missionKills?: number;
   killedBy?: string;
 }
 
@@ -23,6 +30,9 @@ export function toMemorialEntry(
     role: (item as MemorialEntry).role,
     missionName,
     enemiesKilled: (item as MemorialEntry).enemiesKilled ?? enemiesKilled,
+    missionsCompleted: (item as MemorialEntry).missionsCompleted ?? 0,
+    totalKills: (item as MemorialEntry).totalKills ?? ((item as MemorialEntry).enemiesKilled ?? enemiesKilled),
+    missionKills: (item as MemorialEntry).missionKills ?? ((item as MemorialEntry).enemiesKilled ?? enemiesKilled),
     killedBy: (item as MemorialEntry).killedBy,
   };
 }

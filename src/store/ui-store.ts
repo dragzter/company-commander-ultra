@@ -108,6 +108,11 @@ export type CompanyStore = {
     abilitiesUsedBySoldier: Map<string, number>,
     victory: boolean,
   ) => void;
+  recordSoldierCombatStats: (
+    participantIds: string[],
+    killsBySoldier: Map<string, number>,
+    missionCompleted: boolean,
+  ) => void;
   processCombatKIA: (
     kiaSoldierIds: string[],
     missionName?: string,
@@ -159,9 +164,26 @@ export const usePlayerCompanyStore = createStore<CompanyStore>()(
           }
           if (!Array.isArray(merged.memorialFallen)) merged.memorialFallen = [];
           merged.memorialFallen = merged.memorialFallen.map((item: unknown) => {
-            if (item && typeof item === "object" && "missionName" in item) return item as MemorialEntry;
+            if (item && typeof item === "object" && "missionName" in item) {
+              const e = item as MemorialEntry;
+              return {
+                ...e,
+                enemiesKilled: Math.max(0, Math.floor(e.enemiesKilled ?? 0)),
+                missionKills: Math.max(0, Math.floor(e.missionKills ?? e.enemiesKilled ?? 0)),
+                missionsCompleted: Math.max(0, Math.floor(e.missionsCompleted ?? 0)),
+                totalKills: Math.max(0, Math.floor(e.totalKills ?? e.enemiesKilled ?? 0)),
+              } as MemorialEntry;
+            }
             const s = item as { name?: string; level?: number };
-            return { name: s?.name ?? "Unknown", level: s?.level ?? 1, missionName: "Unknown", enemiesKilled: 0 };
+            return {
+              name: s?.name ?? "Unknown",
+              level: s?.level ?? 1,
+              missionName: "Unknown",
+              enemiesKilled: 0,
+              missionKills: 0,
+              missionsCompleted: 0,
+              totalKills: 0,
+            };
           });
           if (!Array.isArray(merged.company?.holding_inventory)) merged.company = { ...merged.company, holding_inventory: [] };
           /* Sync totalMenInCompany with company.soldiers - avoid showing count when soldiers array is missing */
@@ -178,7 +200,12 @@ export const usePlayerCompanyStore = createStore<CompanyStore>()(
             merged.company = {
               ...merged.company,
               soldiers: merged.company!.soldiers!.map((s: Soldier) =>
-                typeof s.energy !== "number" ? { ...s, energy: 100 } : s,
+                ({
+                  ...s,
+                  energy: typeof s.energy === "number" ? s.energy : 100,
+                  missionsCompleted: typeof s.missionsCompleted === "number" ? s.missionsCompleted : 0,
+                  totalKills: typeof s.totalKills === "number" ? s.totalKills : 0,
+                }),
               ),
             };
           }

@@ -1,4 +1,4 @@
-import type { ArmorBonus, GearLevel, WeaponBonus } from "./types.ts";
+import type { ArmorBonus, GearLevel, Rarity, WeaponBonus } from "./types.ts";
 import { BASE_GEAR_LEVEL_CAP, MAX_GEAR_LEVEL, MIN_GEAR_LEVEL } from "./types.ts";
 
 export function clampGearLevel(level: number): GearLevel {
@@ -7,6 +7,65 @@ export function clampGearLevel(level: number): GearLevel {
 
 export function getPostCapGearSteps(level: number): number {
   return Math.max(0, clampGearLevel(level) - BASE_GEAR_LEVEL_CAP);
+}
+
+const POST20_BASE_WEAPON_GAIN_BY_RARITY: Record<Rarity, number> = {
+  common: 0.30,
+  rare: 0.30 * 1.15,
+  epic: 0.45,
+};
+
+const POST20_LATE_SEGMENT_MULT = 0.6;
+const POST20_TOTAL_OUTPUT_MULT = 1.2;
+
+/**
+ * Per-weapon post-cap slope multipliers (first-pass rebalance sheet).
+ * 1.0 = default rarity slope, <1.0 slower growth, >1.0 catch-up growth.
+ */
+const WEAPON_POST20_SLOPE_MULT: Record<string, number> = {
+  // Common
+  m5_assault_rifle: 1.1,
+  s44_galt: 1.0,
+  war_rifle: 1.3,
+  double_barrel_shotgun: 1.05,
+  m42_pistol_carbine: 0.75,
+  lsaw_guardsman: 0.95,
+  akpd_assault: 0.85,
+  m240_delta: 0.8,
+  compact_smg: 1.0,
+  r99_battle_rifle: 1.25,
+  // Rare
+  storm_carbine: 0.95,
+  veteran_war_rifle: 1.0,
+  stinger_smg: 0.8,
+  marksman_dmr: 1.0,
+  suppressor_mg: 0.68,
+  field_medic_smg: 0.78,
+  // Epic
+  titan_slam: 0.98,
+  phantom_rifle: 0.92,
+  predator_rifle: 1.05,
+  reaper_hmg: 0.9,
+  savior_smg: 0.9,
+  wrath_carbine: 0.95,
+  executioner_lmg: 0.9,
+  nullifier_lmg: 0.9,
+  guardian_smg: 0.9,
+  m17_rifle: 0.9,
+  pulse_rifle: 1.08,
+  hm45_assault_carbine: 1.05,
+  the_butcher: 0.9,
+};
+
+function getWeaponPost20SlopeMult(baseId: string | undefined): number {
+  if (!baseId) return 1;
+  return WEAPON_POST20_SLOPE_MULT[baseId] ?? 1;
+}
+
+function normalizeWeaponPost20SlopeMult(rarity: Rarity, slopeMult: number): number {
+  if (rarity === "epic") return Math.max(0.9, slopeMult);
+  if (rarity === "rare") return Math.min(1, slopeMult);
+  return slopeMult;
 }
 
 /**
@@ -57,14 +116,32 @@ export function scaleWeaponBonusesToPreCapLevel(baseBonuses: WeaponBonus[] | und
 
 /**
  * Weapon post-cap growth:
- * - Levels 1-20 use each base weapon's original curve.
- * - Levels 21+ add +0.4 min and +0.4 max damage per level.
+ * - Levels 1-20 keep each weapon's base identity curve untouched.
+ * - Levels 21-100 use rarity slope * weapon multiplier.
+ * - Levels 101+ keep growing at 60% of the 21-100 slope (prevents runaway compression/outliers).
  */
-export function applyPostCapWeaponDamage(level20Min: number, level20Max: number, level: number): { min: number; max: number } {
+export function applyPostCapWeaponDamage(
+  level20Min: number,
+  level20Max: number,
+  level: number,
+  options: { rarity: Rarity; baseId?: string },
+): { min: number; max: number } {
   const postCap = getPostCapGearSteps(level);
+  if (postCap <= 0) return { min: level20Min, max: level20Max };
+
+  const tier = clampGearLevel(level);
+  const earlySteps = Math.max(0, Math.min(tier, 100) - BASE_GEAR_LEVEL_CAP);
+  const lateSteps = Math.max(0, tier - 100);
+  const rarityGain = POST20_BASE_WEAPON_GAIN_BY_RARITY[options.rarity] ?? POST20_BASE_WEAPON_GAIN_BY_RARITY.common;
+  const slopeMult = normalizeWeaponPost20SlopeMult(options.rarity, getWeaponPost20SlopeMult(options.baseId));
+  const gainPerSide =
+    (earlySteps * rarityGain + lateSteps * rarityGain * POST20_LATE_SEGMENT_MULT) *
+    slopeMult;
+  const scaledMin = (level20Min + gainPerSide) * POST20_TOTAL_OUTPUT_MULT;
+  const scaledMax = (level20Max + gainPerSide) * POST20_TOTAL_OUTPUT_MULT;
   return {
-    min: level20Min + postCap * 0.4,
-    max: level20Max + postCap * 0.4,
+    min: scaledMin,
+    max: scaledMax,
   };
 }
 

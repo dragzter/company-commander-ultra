@@ -40,7 +40,7 @@ export function createRareWeapon(base: RareWeaponBase, level: GearLevel) {
   let damageMin = Math.round(base.damageMinBase + add);
   let damageMax = Math.round(base.damageMaxBase + add);
   if (tier > BASE_GEAR_LEVEL_CAP) {
-    const boosted = applyPostCapWeaponDamage(damageMin, damageMax, tier);
+    const boosted = applyPostCapWeaponDamage(damageMin, damageMax, tier, { rarity: RARITY.rare, baseId: base.baseId });
     damageMin = boosted.min;
     damageMax = boosted.max;
   }

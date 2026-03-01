@@ -18,8 +18,29 @@ export function memorialTemplate(): string {
           .map(
             (e) => {
               const role = e.role ? escapeHtml(e.role) : "";
-              const killed = e.killedBy ? ` · Killed by ${escapeHtml(e.killedBy)}` : "";
-              return `<div class="memorial-fallen-row"><span class="memorial-fallen-name">${escapeHtml(e.name)}</span><span class="memorial-fallen-meta">Lv${e.level}${role ? ` · ${role}` : ""} · ${escapeHtml(e.missionName)} · ${e.enemiesKilled} kills${killed}</span></div>`;
+              const roleBadge = role ? `<span class="memorial-badge memorial-badge-role">${role}</span>` : "";
+              const killedBy = e.killedBy ? `<div class="memorial-fallen-killedby-row"><span class="memorial-fallen-killedby">Killed by ${escapeHtml(e.killedBy)}</span></div>` : "";
+              const missionsCompleted = Math.max(0, Math.floor(e.missionsCompleted ?? 0));
+              const totalKills = Math.max(0, Math.floor(e.totalKills ?? e.enemiesKilled ?? 0));
+              const missionKills = Math.max(0, Math.floor(e.missionKills ?? e.enemiesKilled ?? 0));
+              return `<div class="memorial-fallen-row">
+  <div class="memorial-fallen-top">
+    <span class="memorial-fallen-name">${escapeHtml(e.name)}</span>
+    <span class="memorial-fallen-badges">
+      <span class="memorial-badge memorial-badge-level">Lv ${e.level}</span>
+      ${roleBadge}
+    </span>
+  </div>
+  <div class="memorial-fallen-meta">
+    <span class="memorial-fallen-mission">${escapeHtml(e.missionName)}</span>
+    <span class="memorial-fallen-kills">Mission Kills ${missionKills}</span>
+  </div>
+  <div class="memorial-fallen-career">
+    <span class="memorial-fallen-career-item">Missions Completed ${missionsCompleted}</span>
+    <span class="memorial-fallen-career-item">Total Kills ${totalKills}</span>
+  </div>
+  ${killedBy}
+</div>`;
             },
           )
           .join("");

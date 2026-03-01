@@ -185,14 +185,36 @@ export function memorialPopupTemplate(): string {
           .map(
             (e) => {
               const role = e.role ? escapeHtml(e.role) : "";
-              const killed = e.killedBy ? ` · Killed by ${escapeHtml(e.killedBy)}` : "";
-              return `<div class="memorial-fallen-row"><span class="memorial-fallen-name">${escapeHtml(e.name)}</span><span class="memorial-fallen-meta">Lv${e.level}${role ? ` · ${role}` : ""} · ${escapeHtml(e.missionName)} · ${e.enemiesKilled} kills${killed}</span></div>`;
+              const roleBadge = role ? `<span class="memorial-badge memorial-badge-role">${role}</span>` : "";
+              const killedBy = e.killedBy ? `<div class="memorial-fallen-killedby-row"><span class="memorial-fallen-killedby">Killed by ${escapeHtml(e.killedBy)}</span></div>` : "";
+              const missionsCompleted = Math.max(0, Math.floor(e.missionsCompleted ?? 0));
+              const totalKills = Math.max(0, Math.floor(e.totalKills ?? e.enemiesKilled ?? 0));
+              const missionKills = Math.max(0, Math.floor(e.missionKills ?? e.enemiesKilled ?? 0));
+              return `
+<div class="memorial-fallen-row">
+  <div class="memorial-fallen-top">
+    <span class="memorial-fallen-name">${escapeHtml(e.name)}</span>
+    <span class="memorial-fallen-badges">
+      <span class="memorial-badge memorial-badge-level">Lv ${e.level}</span>
+      ${roleBadge}
+    </span>
+  </div>
+  <div class="memorial-fallen-meta">
+    <span class="memorial-fallen-mission">${escapeHtml(e.missionName)}</span>
+    <span class="memorial-fallen-kills">Mission Kills ${missionKills}</span>
+  </div>
+  <div class="memorial-fallen-career">
+    <span class="memorial-fallen-career-item">Missions Completed ${missionsCompleted}</span>
+    <span class="memorial-fallen-career-item">Total Kills ${totalKills}</span>
+  </div>
+  ${killedBy}
+</div>`;
             },
           )
           .join("");
   return `
   <div id="memorial-popup" class="codex-popup memorial-popup" role="dialog" aria-modal="true" hidden>
-    <div class="codex-popup-inner">
+    <div class="codex-popup-inner memorial-popup-inner">
       <button type="button" class="game-btn game-btn-md game-btn-red codex-popup-close" id="memorial-popup-close" aria-label="Close">Close</button>
       <h4 class="codex-popup-title">Memorial Wall</h4>
       <p class="memorial-count">Total lost in combat: <strong>${menLost}</strong></p>
@@ -390,6 +412,7 @@ export const companyHomePageTemplate = () => {
   const xpInLevel = Math.max(1, xpCeiling - xpFloor);
   const progressInLevel = Math.max(0, companyExperience - xpFloor);
   const xpFillPct = companyLvl >= 20 ? 100 : Math.max(0, Math.min(100, (progressInLevel / xpInLevel) * 100));
+  const nextLevel = Math.min(20, companyLvl + 1);
 
   const memorialCodexRow = `
     <div class="company-home-buttons-row flex align-center justify-center gap-2">
@@ -472,10 +495,13 @@ export const companyHomePageTemplate = () => {
 
 	    <div class="company-level-bar-wrapper">
 	      <div class="company-xp-header">
-	        <span class="company-level-badge">Lv ${companyLvl}</span>
+	        <span class="company-level-badge${companyLvl === 2 ? " company-level-badge-lv2" : ""}">Lv ${companyLvl}</span>
 	        ${companyLvl < 20
 	          ? `<span class="company-xp-text"><span class="company-xp-current">${Math.round(progressInLevel)}</span> / <span class="company-xp-required">${xpInLevel}</span> XP</span>`
 	          : '<span class="company-xp-max">MAX LEVEL</span>'}
+          ${companyLvl < 20
+            ? `<span class="company-level-badge company-level-badge-target${nextLevel === 2 ? " company-level-badge-lv2" : ""}">Lv ${nextLevel}</span>`
+            : '<span class="company-xp-header-spacer" aria-hidden="true"></span>'}
 	      </div>
       <div class="company-level-progress">
         <div class="company-xp-fill" style="width: ${xpFillPct}%"></div>

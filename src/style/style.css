@@ -3700,24 +3700,155 @@ button.mbtn {
 }
 
 .memorial-fallen-list {
-	margin-top: 12px;
-	max-height: 200px;
+	margin-top: 8px;
+	flex: 1;
+	min-height: 0;
 	overflow-y: auto;
+	padding-right: 3px;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
 }
 
 .memorial-fallen-row {
-	padding: 4px 0;
-	border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+	padding: 9px 10px;
+	border: 1px solid rgba(180, 165, 125, 0.26);
+	border-radius: 8px;
+	background: linear-gradient(160deg, rgba(26, 19, 16, 0.85) 0%, rgba(18, 13, 11, 0.92) 100%);
+	box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 6px 16px rgba(0, 0, 0, 0.24);
+}
+
+.memorial-fallen-top {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 10px;
 }
 
 .memorial-fallen-name {
-	color: var(--camo-tan-1);
+	color: #f2dfb2;
+	font-size: 0.9rem;
+	font-weight: 900;
+	letter-spacing: 0.02em;
+	text-shadow: 0 0 10px rgba(238, 205, 122, 0.24);
+}
+
+.memorial-fallen-badges {
+	display: inline-flex;
+	gap: 6px;
+	flex-wrap: wrap;
+	justify-content: flex-end;
+}
+
+.memorial-badge {
+	display: inline-flex;
+	align-items: center;
+	padding: 3px 7px;
+	font-size: 0.61rem;
+	font-weight: 800;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	border-radius: 4px;
+	border: 1px solid transparent;
+}
+
+.memorial-badge-level {
+	background: rgba(64, 132, 212, 0.22);
+	border-color: rgba(95, 170, 255, 0.45);
+	color: #a7d4ff;
+}
+
+.memorial-badge-role {
+	background: rgba(192, 152, 82, 0.18);
+	border-color: rgba(220, 185, 115, 0.38);
+	color: #efd6a2;
 }
 .memorial-fallen-meta {
-	display: block;
-	font-size: 0.85rem;
-	color: var(--gray-4);
-	margin-top: 2px;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	margin-top: 6px;
+	font-size: 0.72rem;
+	letter-spacing: 0.02em;
+}
+
+.memorial-fallen-mission {
+	display: inline-flex;
+	align-items: center;
+	padding: 2px 7px 3px;
+	border-radius: 4px;
+	border: 1px solid rgba(178, 162, 126, 0.34);
+	background: rgba(125, 110, 82, 0.14);
+	color: #e1d2b4;
+	font-weight: 800;
+	font-size: 0.64rem;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+}
+
+.memorial-fallen-kills {
+	display: inline-flex;
+	align-items: center;
+	padding: 2px 7px 3px;
+	border-radius: 4px;
+	border: 1px solid rgba(125, 212, 98, 0.4);
+	background: rgba(70, 132, 56, 0.16);
+	color: #b2f0a6;
+	font-weight: 800;
+	font-size: 0.64rem;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	text-shadow: 0 0 7px rgba(118, 214, 92, 0.25);
+}
+
+.memorial-fallen-killedby {
+	color: #ffaaa0;
+	font-weight: 700;
+}
+
+.memorial-fallen-killedby-row {
+	margin-top: 4px;
+}
+
+.memorial-fallen-career {
+	margin-top: 6px;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+}
+
+.memorial-fallen-career-item {
+	display: inline-flex;
+	align-items: center;
+	padding: 3px 8px;
+	font-size: 0.66rem;
+	font-weight: 800;
+	letter-spacing: 0.05em;
+	border-radius: 4px;
+	background: rgba(84, 118, 172, 0.18);
+	border: 1px solid rgba(126, 168, 232, 0.34);
+	color: #b9d8ff;
+	text-transform: uppercase;
+}
+
+.memorial-popup-inner {
+	height: min(86vh, 86dvh, 680px);
+	max-height: 680px;
+	min-height: 430px;
+	display: flex;
+	flex-direction: column;
+}
+
+.memorial-count {
+	margin: 0;
+	font-size: 0.8rem;
+	color: #d9ccb2;
+	padding: 2px 0 2px;
+}
+
+.memorial-count strong {
+	color: #ffd37c;
+	font-size: 0.92rem;
 }
 .memorial-popup[hidden] {
 	display: none;
@@ -9099,9 +9230,9 @@ button.mbtn {
 #campaign-home-screen {
 
 	.company-xp-header {
-		display: flex;
+		display: grid;
+		grid-template-columns: auto 1fr auto;
 		align-items: center;
-		justify-content: space-between;
 		gap: 10px;
 		margin-bottom: 8px;
 	}
@@ -9117,7 +9248,15 @@ button.mbtn {
 		box-shadow: 0 2px 6px rgba(60, 140, 200, 0.4);
 	}
 
+	.company-level-badge-lv2 {
+		background: linear-gradient(135deg, #8ff05d 0%, #47b335 100%);
+		color: #07200a;
+		box-shadow: 0 2px 8px rgba(88, 196, 68, 0.55), 0 0 10px rgba(138, 238, 101, 0.35);
+	}
+
 	.company-xp-text {
+		justify-self: center;
+		text-align: center;
 		font-size: 0.8rem;
 		color: var(--camo-tan-1);
 		font-weight: 600;
@@ -9136,11 +9275,18 @@ button.mbtn {
 	}
 
 	.company-xp-max {
+		justify-self: center;
+		text-align: center;
 		font-size: 0.75rem;
 		font-weight: 800;
 		letter-spacing: 0.12em;
 		color: #9ade8a;
 		text-shadow: 0 0 10px rgba(120, 200, 90, 0.6);
+	}
+
+	.company-xp-header-spacer {
+		width: 54px;
+		height: 1px;
 	}
 
 	.company-level-progress {
@@ -9151,6 +9297,10 @@ button.mbtn {
 		border-radius: 6px;
 		overflow: hidden;
 		border: 1px solid rgba(255, 255, 255, 0.06);
+	}
+
+	.company-level-badge-target {
+		justify-self: end;
 	}
 
 	.company-xp-fill {
