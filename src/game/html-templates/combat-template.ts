@@ -79,7 +79,7 @@ export function combatTemplate(
   const enemySlotCell = (slot: number) =>
     `<div class="combat-slot combat-enemy-slot" data-enemy-slot-cell="${slot}">${enemyBySlot.get(slot) ?? ""}</div>`;
 
-  const frontCount = 5;
+  const frontCount = 4;
   const playerFront = playerCards.slice(0, frontCount);
   const playerBack = playerCards.slice(frontCount);
 
