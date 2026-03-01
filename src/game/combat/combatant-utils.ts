@@ -128,7 +128,7 @@ export function createEnemyCombatant(
   const isEnemyMedic = (c.designation ?? "").toLowerCase() === "medic";
   if (isEnemyMedic) {
     const medkit = (soldier.inventory ?? []).find((item) => item.id === "standard_medkit");
-    c.enemyMedkitUses = medkit ? Math.min(2, (medkit.uses ?? medkit.quantity ?? 1)) : 0;
+    c.enemyMedkitUses = Math.random() < 0.5 ? 1 : 2;
     c.enemyMedkitLevel = Math.max(1, Math.min(20, (medkit?.level ?? level)));
   } else {
     c.enemyMedkitUses = 0;

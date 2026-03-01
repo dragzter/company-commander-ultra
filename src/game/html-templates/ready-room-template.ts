@@ -3,7 +3,13 @@ import type { Soldier } from "../entities/types.ts";
 import { getLevelFromExperience } from "../../constants/economy.ts";
 import type { Item } from "../../constants/items/types.ts";
 import type { Mission } from "../../constants/missions.ts";
-import { getActiveSlots, getReserveSlots, getFormationSlots, getSoldierById } from "../../constants/company-slots.ts";
+import {
+  getActiveSlots,
+  getReserveSlots,
+  getFormationSlots,
+  getSoldierById,
+  getActiveRoleCounts,
+} from "../../constants/company-slots.ts";
 import { usePlayerCompanyStore } from "../../store/ui-store.ts";
 import { formatDesignation, formatDisplayName, getSoldierPortraitUrl } from "../../utils/name-utils.ts";
 import { getItemIconUrl } from "../../utils/item-utils.ts";
@@ -108,7 +114,6 @@ function readyRoomEmptySlot(slotIndex: number, isActive: boolean): string {
 export function readyRoomTemplate(mission: Mission | null): string {
   const store = usePlayerCompanyStore.getState();
   const company = store.company;
-  const soldiers = company?.soldiers ?? [];
   const formationSlots = getFormationSlots(company);
   const activeCount = getActiveSlots(company);
   const reserveCount = getReserveSlots(company);
@@ -117,14 +122,12 @@ export function readyRoomTemplate(mission: Mission | null): string {
   const missionData = mission ? escapeAttr(JSON.stringify(mission)) : "";
   const activeSoldierCount = formationSlots.slice(0, activeCount).filter((id) => id != null).length;
 
-  const roleCounts = soldiers.reduce((acc, s) => {
-    const r = s.designation?.toLowerCase() ?? "rifleman";
-    acc[r] = (acc[r] ?? 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
-  const roleBreakdown = ["rifleman", "support", "medic"]
-    .map((r) => `${r.charAt(0).toUpperCase() + r.slice(1)} ${roleCounts[r] ?? 0}`)
-    .join(" · ");
+  const roleCounts = getActiveRoleCounts(company);
+  const roleBreakdown = `
+    <span class="role-pill role-pill-rifleman">${roleCounts.rifleman}/${roleCounts.activeCapacity} Rifleman</span>
+    <span class="role-pill role-pill-support">${roleCounts.support}/${roleCounts.maxSupport} Support</span>
+    <span class="role-pill role-pill-medic">${roleCounts.medic}/${roleCounts.maxMedic} Medic</span>
+  `;
 
   const activeSlots: string[] = [];
   for (let i = 0; i < activeCount; i++) {

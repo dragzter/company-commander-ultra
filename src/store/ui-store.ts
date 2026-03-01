@@ -80,6 +80,8 @@ export type CompanyStore = {
   onCompanyLevelUp: () => void;
   releaseSoldier: (soldierId: string) => void;
   destroyCompanyItem: (index: number) => void;
+  sellCompanyItem: (index: number) => { success: boolean; credits: number };
+  sellCompanyItems: (indices: number[]) => { success: boolean; soldCount: number; credits: number };
   consumeSoldierMedical: (soldierId: string, inventoryIndex: number) => boolean;
   addItemsToCompanyInventory: (
     items: import("../constants/items/types.ts").Item[],

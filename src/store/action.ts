@@ -64,6 +64,7 @@ import type { MemorialEntry } from "../game/entities/memorial-types.ts";
 import { getStarterArmoryItems } from "../constants/starter-armory.ts";
 import { generateMissions, MISSION_BOARD_SCHEMA_VERSION } from "../services/missions/mission-generator.ts";
 import { SOLDIER_DESIGNATION, type Designation } from "../game/entities/types.ts";
+import { getItemSellPrice } from "../utils/sell-pricing.ts";
 
 function pickReplacementMission(
   completed: Mission,
@@ -555,6 +556,53 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
         company: { ...state.company, inventory: newInv },
       };
     }),
+  sellCompanyItem: (index: number) => {
+    let sold = { success: false, credits: 0 };
+    set((state: CompanyStore) => {
+      const inventory = state.company?.inventory ?? [];
+      if (index < 0 || index >= inventory.length) return {};
+      const item = inventory[index];
+      if (!item) return {};
+      const level = state.company?.level ?? state.companyLevel ?? 1;
+      const credits = getItemSellPrice(item, level);
+      const newInv = inventory.slice();
+      newInv.splice(index, 1);
+      sold = { success: true, credits };
+      return {
+        creditBalance: state.creditBalance + credits,
+        company: { ...state.company, inventory: newInv },
+      };
+    });
+    return sold;
+  },
+  sellCompanyItems: (indices: number[]) => {
+    const unique = Array.from(new Set(indices.filter((n) => Number.isInteger(n) && n >= 0)));
+    if (unique.length === 0) return { success: false, soldCount: 0, credits: 0 };
+    let result = { success: false, soldCount: 0, credits: 0 };
+    set((state: CompanyStore) => {
+      const inventory = state.company?.inventory ?? [];
+      const sorted = unique.filter((i) => i < inventory.length).sort((a, b) => b - a);
+      if (sorted.length === 0) return {};
+      const level = state.company?.level ?? state.companyLevel ?? 1;
+      const keep = inventory.slice();
+      let credits = 0;
+      let soldCount = 0;
+      for (const idx of sorted) {
+        const item = keep[idx];
+        if (!item) continue;
+        credits += getItemSellPrice(item, level);
+        keep.splice(idx, 1);
+        soldCount += 1;
+      }
+      result = { success: soldCount > 0, soldCount, credits };
+      if (soldCount <= 0) return {};
+      return {
+        creditBalance: state.creditBalance + credits,
+        company: { ...state.company, inventory: keep },
+      };
+    });
+    return result;
+  },
 
   canProceedToLaunch: () => {
     const state = get();

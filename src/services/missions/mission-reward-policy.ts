@@ -66,7 +66,7 @@ export function computeMissionEnemyCount(
 ): number {
   const d = clampDifficulty(difficulty);
   const activeSlots = getActiveSlotsByLevel(companyLevel);
-  const minEnemies = 3;
+  const minEnemies = 4;
   const maxEnemies = Math.max(6, activeSlots + 2); // L1 active=4 => max 6
   const epicBonus = rarity === "epic" ? 2 : 0;
   const target = d + 2 + epicBonus;

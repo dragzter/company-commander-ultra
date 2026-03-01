@@ -20,6 +20,7 @@ import { getItemSpecialEffect } from "../../constants/item-special-effects.ts";
 import { getWeaponRestrictRole } from "../../utils/equip-utils.ts";
 import { ThrowableItems } from "../../constants/items/throwable.ts";
 import { getScaledThrowableLevel20Damage } from "../../constants/items/throwable-scaling.ts";
+import { getItemSellPrice } from "../../utils/sell-pricing.ts";
 
 /** Shared item stats popup markup – used by inventory and roster (equip picker from roster needs it). */
 export function itemStatsPopupHtml(): string {
@@ -33,6 +34,7 @@ export function itemStatsPopupHtml(): string {
     <div id="item-stats-popup-body" class="item-stats-popup-body supplies-buy-body"></div>
     <div class="item-popup-actions item-market-purchase item-popup-equip-only">
       <button type="button" id="item-stats-popup-equip" class="mbtn blue equipment-buy-btn-full" style="display:none">Equip</button>
+      <button type="button" id="item-stats-popup-sell" class="mbtn red equipment-buy-btn-full" style="display:none">$ Sell 0</button>
     </div>
   </div>
 </div>`;
@@ -383,18 +385,25 @@ export function inventoryTemplate(): string {
   const company = store.company;
   const items = company?.inventory ?? [];
   const holding = company?.holding_inventory ?? [];
-  const weapons = filterByType(items, ITEM_TYPES.ballistic_weapon);
-  const armor = filterByType(items, ITEM_TYPES.armor);
-  const equipment = items.filter((i) => {
+  const companyLevel = store.company?.level ?? store.companyLevel ?? 1;
+  const sortByValueAsc = (list: Item[]) =>
+    [...list].sort((a, b) => {
+      const pa = getItemSellPrice(a, companyLevel);
+      const pb = getItemSellPrice(b, companyLevel);
+      if (pa !== pb) return pa - pb;
+      return (a.name ?? "").localeCompare(b.name ?? "");
+    });
+  const weapons = sortByValueAsc(filterByType(items, ITEM_TYPES.ballistic_weapon));
+  const armor = sortByValueAsc(filterByType(items, ITEM_TYPES.armor));
+  const equipment = sortByValueAsc(items.filter((i) => {
     const t = i.type as string;
     return t === ITEM_TYPES.throwable || t === ITEM_TYPES.medical || t === ITEM_TYPES.gear;
-  });
+  }));
 
   const weaponIndices = weapons.map((w) => items.indexOf(w));
   const armorIndices = armor.map((a) => items.indexOf(a));
   const equipmentIndices = equipment.map((e) => items.indexOf(e));
 
-  const companyLevel = store.company?.level ?? store.companyLevel ?? 1;
   const weaponSlots = getWeaponArmorySlots(companyLevel);
   const armorSlots = getArmorArmorySlots(companyLevel);
   const equipmentSlots = getEquipmentArmorySlots(companyLevel);
@@ -420,7 +429,7 @@ export function inventoryTemplate(): string {
       .join("");
     return `
     <div class="inventory-section market-section">
-      <h4 class="inventory-section-title market-section-title">${sectionTitle} <span class="inventory-section-cap">${itemsInCategory.length} / ${capacity}</span></h4>
+      <h4 class="inventory-section-title market-section-title">${sectionTitle} <span class="inventory-section-sort">Value ↑</span> <span class="inventory-section-cap">${itemsInCategory.length} / ${capacity}</span></h4>
       <div class="inventory-grid market-grid market-grid-2col" id="${sectionId}">
         ${gridItems}
       </div>

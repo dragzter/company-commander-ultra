@@ -27,6 +27,7 @@ import { getItemIconUrl } from "../../utils/item-utils.ts";
 import { getWeaponRestrictRole } from "../../utils/equip-utils.ts";
 import { getMaxSoldierLevel } from "../../utils/company-utils.ts";
 import { MAX_GEAR_LEVEL } from "../../constants/items/types.ts";
+import { getItemSellPrice } from "../../utils/sell-pricing.ts";
 
 export const marketTemplate = () => {
   const { market } = DOM;
@@ -127,6 +128,49 @@ function marketItemCard(
 </div>`;
 }
 
+function marketSellItemCard(item: import("../../constants/items/types.ts").Item, index: number, companyLevel: number): string {
+  const iconUrl = getItemIconUrl(item);
+  const rarity = item.rarity ?? "common";
+  const level = item.level ?? 1;
+  const noLevel = (item as { noLevel?: boolean }).noLevel;
+  const uses = item.uses ?? item.quantity;
+  const sellValue = getItemSellPrice(item, companyLevel);
+  const levelBadgeHtml = !noLevel ? `<span class="item-level-badge rarity-${rarity}">Lv${level}</span>` : "";
+  const usesBadgeHtml = uses != null ? `<span class="market-item-uses-badge">×${uses}</span>` : "";
+  return `
+<button type="button" class="market-sell-item${rarity !== "common" ? ` rarity-${rarity}` : ""}" data-item-index="${index}" data-item-rarity="${rarity}" data-sell-value="${sellValue}">
+  <span class="market-sell-item-left">
+    <span class="market-sell-item-icon-wrap">
+      ${iconUrl ? `<img class="market-sell-item-icon" src="${iconUrl}" alt="">` : ""}
+      ${levelBadgeHtml}
+      ${usesBadgeHtml}
+    </span>
+    <span class="market-sell-item-name">${item.name}</span>
+  </span>
+  <span class="market-sell-item-value">$${sellValue}</span>
+</button>`;
+}
+
+function marketSellPopupHtml(companyLevel: number, inventory: import("../../constants/items/types.ts").Item[]): string {
+  const sorted = inventory
+    .map((item, index) => ({ item, index, sellValue: getItemSellPrice(item, companyLevel) }))
+    .sort((a, b) => (a.sellValue - b.sellValue) || a.item.name.localeCompare(b.item.name));
+  return `
+  <div id="market-sell-popup" class="supplies-buy-popup market-sell-popup" role="dialog" aria-modal="true" hidden>
+    <div class="supplies-buy-popup-inner market-sell-popup-inner">
+      <div class="gear-buy-title-wrap">
+        <h4 class="supplies-buy-title">Sell Items</h4>
+        <button type="button" id="market-sell-close" class="game-btn game-btn-md game-btn-red popup-close-btn">Close</button>
+      </div>
+      <p class="market-sell-hint">Tap items to select. Tap again to deselect.</p>
+      <div id="market-sell-grid" class="market-sell-grid">
+        ${sorted.map((entry) => marketSellItemCard(entry.item, entry.index, companyLevel)).join("")}
+      </div>
+      <button type="button" id="market-sell-confirm" class="mbtn red equipment-buy-btn-full market-sell-confirm" disabled>$ Sell 0 Items • $0</button>
+    </div>
+  </div>`;
+}
+
 export const weaponsMarketTemplate = () => {
   const store = usePlayerCompanyStore.getState();
   const maxLevel = getMaxSoldierLevel(store.company);
@@ -164,6 +208,7 @@ export const weaponsMarketTemplate = () => {
 
   return `
 <div id="weapons-market" class="weapons-market-root troops-market-root">
+  ${marketSellPopupHtml(companyLvl, inv)}
   <div id="weapons-buy-popup" class="gear-buy-popup supplies-buy-popup" role="dialog" aria-modal="true" hidden>
     <div class="gear-buy-popup-inner supplies-buy-popup-inner">
       <div class="gear-buy-title-wrap">
@@ -192,6 +237,9 @@ export const weaponsMarketTemplate = () => {
   <div class="weapons-market-footer troops-market-footer">
     ${marketLevelNavigatorPartial(selectedTier, maxLevel)}
     <div class="footer-banner">
+      <div class="inventory-footer-actions">
+        <button type="button" id="market-sell-open" class="equip-troops-btn">Sell Items</button>
+      </div>
       <div class="recruit-balance-bar">
         ${marketCreditsPartial(creditBalance)}
         <span class="recruit-balance-item market-slots-info"><strong>Slots</strong> ${slotsFree}/${totalCapacity}</span>
@@ -240,6 +288,7 @@ export const armorMarketTemplate = () => {
 
   return `
 <div id="armor-market" class="armor-market-root troops-market-root">
+  ${marketSellPopupHtml(companyLvl, inv)}
   <div id="armor-buy-popup" class="gear-buy-popup supplies-buy-popup" role="dialog" aria-modal="true" hidden>
     <div class="gear-buy-popup-inner supplies-buy-popup-inner">
       <div class="gear-buy-title-wrap">
@@ -268,6 +317,9 @@ export const armorMarketTemplate = () => {
   <div class="armor-market-footer troops-market-footer">
     ${marketLevelNavigatorPartial(selectedTier, maxLevel)}
     <div class="footer-banner">
+      <div class="inventory-footer-actions">
+        <button type="button" id="market-sell-open" class="equip-troops-btn">Sell Items</button>
+      </div>
       <div class="recruit-balance-bar">
         ${marketCreditsPartial(creditBalance)}
         <span class="recruit-balance-item market-slots-info"><strong>Slots</strong> ${slotsFree}/${totalCapacity}</span>
@@ -443,6 +495,7 @@ export const suppliesMarketTemplate = () => {
 
   return `
 <div id="supplies-market" class="supplies-market-root troops-market-root">
+  ${marketSellPopupHtml(companyLvl, inv)}
   <div id="supplies-buy-popup" class="supplies-buy-popup" role="dialog" aria-modal="true" hidden>
     <div class="supplies-buy-popup-inner">
       <h4 id="supplies-buy-title" class="supplies-buy-title"></h4>
@@ -469,6 +522,9 @@ export const suppliesMarketTemplate = () => {
   <div class="supplies-market-footer troops-market-footer">
     ${marketLevelNavigatorPartial(selectedTier, maxLevel)}
     <div class="footer-banner">
+      <div class="inventory-footer-actions">
+        <button type="button" id="market-sell-open" class="equip-troops-btn">Sell Items</button>
+      </div>
       <div class="recruit-balance-bar">
         ${marketCreditsPartial(creditBalance)}
         <span class="recruit-balance-item market-slots-info"><strong>Slots</strong> ${slotsFree}/${totalCapacity}</span>

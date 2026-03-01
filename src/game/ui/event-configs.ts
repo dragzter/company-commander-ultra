@@ -14,7 +14,12 @@ import {
   getItemArmoryCategory,
   countArmoryByCategory,
 } from "../../utils/item-utils.ts";
-import { getActiveSlots, getFormationSlots, getSoldierById } from "../../constants/company-slots.ts";
+import {
+  getActiveSlots,
+  getFormationSlots,
+  getSoldierById,
+  isFormationReassignmentAllowed,
+} from "../../constants/company-slots.ts";
 import { setFormationSwapIndices } from "../html-templates/formation-template.ts";
 import { setLastEquipMoveSoldierIds, setLastReadyRoomMoveSlotIndices } from "../html-templates/ready-room-template.ts";
 import { usePlayerCompanyStore } from "../../store/ui-store.ts";
@@ -64,6 +69,7 @@ import { createEnemyCombatant } from "../combat/combatant-utils.ts";
 import { formatDisplayName } from "../../utils/name-utils.ts";
 import { MAX_GEAR_LEVEL } from "../../constants/items/types.ts";
 import type { Item } from "../../constants/items/types.ts";
+import { getItemMarketBuyPrice, getItemSellPrice } from "../../utils/sell-pricing.ts";
 
 /**
  * Contains definitions for the events of all html templates.
@@ -755,6 +761,24 @@ export function eventConfigs() {
 </div>`;
     }
 
+    const combatCardLastPointerUpAt = new WeakMap<HTMLElement, number>();
+
+    function bindCombatCardInteraction(card: HTMLElement): void {
+      const onPointerUp = (e: Event) => {
+        const ev = e as PointerEvent;
+        if (ev.pointerType === "mouse" && ev.button !== 0) return;
+        combatCardLastPointerUpAt.set(card, Date.now());
+        handleCombatCardClick(e, card);
+      };
+      const onClickFallback = (e: Event) => {
+        const lastPointerUpAt = combatCardLastPointerUpAt.get(card) ?? 0;
+        if (Date.now() - lastPointerUpAt < 400) return;
+        handleCombatCardClick(e, card);
+      };
+      card.addEventListener("pointerup", onPointerUp);
+      card.addEventListener("click", onClickFallback);
+    }
+
     function insertEnemyCardBySlot(c: Combatant, fadeIn = false): void {
       const slot = c.enemySlotIndex ?? 0;
       const slotCell = document.querySelector(`.combat-enemy-slot[data-enemy-slot-cell="${slot}"]`) as HTMLElement | null;
@@ -767,9 +791,7 @@ export function eventConfigs() {
       slotCell.appendChild(card);
       cacheCombatantCard(card);
       markCombatantDirty(c.id);
-      card.addEventListener("click", (e) => {
-        handleCombatCardClick(e, card);
-      });
+      bindCombatCardInteraction(card);
       if (fadeIn) {
         card.classList.add("animate__animated", "animate__fadeInDown");
         card.classList.add("combat-card-reinforce-arrival");
@@ -1914,11 +1936,18 @@ export function eventConfigs() {
         ? now + 3500 + Math.floor(Math.random() * 6000)
         : Number.POSITIVE_INFINITY;
       const enemyMedicState = new Map<string, { threshold: number; nextCheckAt: number }>();
+      const enemyCoverState = new Map<string, { nextCheckAt: number }>();
+      let nextEnemyCoverGlobalAt = now + 900 + Math.floor(Math.random() * 800);
       for (const e of enemies) {
         if ((e.designation ?? "").toLowerCase() !== "medic") continue;
         enemyMedicState.set(e.id, {
           threshold: 0.3 + Math.random() * 0.3, // 30%..60% randomized per medic
           nextCheckAt: now + 1500 + Math.floor(Math.random() * 2000),
+        });
+      }
+      for (const e of enemies) {
+        enemyCoverState.set(e.id, {
+          nextCheckAt: now + 350 + Math.floor(Math.random() * 2000),
         });
       }
       lastBurnTickTimeRef.current = now;
@@ -2252,23 +2281,42 @@ export function eventConfigs() {
 
         // Enemy AI: chance to use Take Cover.
         if (!didAttack) {
-          for (const enemy of enemies) {
+          const coverEvalOrder = [...enemies];
+          for (let i = coverEvalOrder.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            const tmp = coverEvalOrder[i];
+            coverEvalOrder[i] = coverEvalOrder[j];
+            coverEvalOrder[j] = tmp;
+          }
+          for (const enemy of coverEvalOrder) {
             if (enemy.hp <= 0 || enemy.downState || isInCover(enemy, now) || isStunned(enemy, now)) continue;
             if ((enemy.setupUntil ?? 0) > now) continue;
             if ((enemy.takeCoverCooldownUntil ?? 0) > now) continue;
+            if (now < nextEnemyCoverGlobalAt) continue;
+            const coverState = enemyCoverState.get(enemy.id);
+            if (coverState && now < coverState.nextCheckAt) continue;
             const hpPct = enemy.maxHp > 0 ? enemy.hp / enemy.maxHp : 1;
             const focusedByPlayers = Array.from(targets.entries()).reduce((acc, [attackerId, targetId]) => {
               const attacker = players.find((p) => p.id === attackerId);
               return attacker && targetId === enemy.id ? acc + 1 : acc;
             }, 0);
-            if (hpPct > 0.65 && focusedByPlayers < 2) continue;
+            if (hpPct > 0.65 && focusedByPlayers < 2) {
+              if (coverState) coverState.nextCheckAt = now + 350 + Math.floor(Math.random() * 850);
+              continue;
+            }
             const chance = hpPct <= 0.4 ? 0.32 : focusedByPlayers >= 2 ? 0.24 : 0.14;
-            if (Math.random() > chance) continue;
+            if (Math.random() > chance) {
+              if (coverState) coverState.nextCheckAt = now + 450 + Math.floor(Math.random() * 1200);
+              continue;
+            }
             if (executeTakeCover(enemy, { closePopup: false })) {
+              if (coverState) coverState.nextCheckAt = now + 1800 + Math.floor(Math.random() * 1800);
+              nextEnemyCoverGlobalAt = now + 700 + Math.floor(Math.random() * 1100);
               nextAttackAt.set(enemy.id, getNextAttackAt(enemy, now));
               didAttack = true;
               break;
             }
+            if (coverState) coverState.nextCheckAt = now + 500 + Math.floor(Math.random() * 900);
           }
         }
 
@@ -2601,9 +2649,24 @@ export function eventConfigs() {
       },
       {
         selector: ".combat-card",
+        eventType: "pointerup",
+        callback: (e: Event) => {
+          const ev = e as PointerEvent;
+          if (ev.pointerType === "mouse" && ev.button !== 0) return;
+          const card = (e.currentTarget as HTMLElement).closest(".combat-card") as HTMLElement | null;
+          if (!card) return;
+          combatCardLastPointerUpAt.set(card, Date.now());
+          handleCombatCardClick(e, card);
+        },
+      },
+      {
+        selector: ".combat-card",
         eventType: "click",
         callback: (e: Event) => {
           const card = (e.currentTarget as HTMLElement).closest(".combat-card") as HTMLElement | null;
+          if (!card) return;
+          const lastPointerUpAt = combatCardLastPointerUpAt.get(card) ?? 0;
+          if (Date.now() - lastPointerUpAt < 400) return;
           handleCombatCardClick(e, card);
         },
       },
@@ -3552,11 +3615,13 @@ export function eventConfigs() {
         const titleEl = document.getElementById("item-stats-popup-title");
         const bodyEl = document.getElementById("item-stats-popup-body");
         const equipBtn = document.getElementById("item-stats-popup-equip");
+        const sellBtn = document.getElementById("item-stats-popup-sell");
         if (popup && titleEl && bodyEl) {
           (popup as HTMLElement).classList.remove("item-stats-popup-popover");
           (popup as HTMLElement).style.cssText = "";
           (popup as HTMLElement).dataset.itemJson = json;
           (popup as HTMLElement).dataset.itemIndex = indexStr ?? "";
+          (popup as HTMLElement).dataset.itemSource = "inventory";
           (popup as HTMLElement).dataset.rarity = (item.rarity as string) ?? "common";
           delete (popup as HTMLElement).dataset.unequipSoldierId;
           delete (popup as HTMLElement).dataset.unequipSlotType;
@@ -3571,6 +3636,17 @@ export function eventConfigs() {
             (item.type as string) === "gear";
           if (equipBtn) {
             (equipBtn as HTMLElement).style.display = isEquippable ? "" : "none";
+          }
+          if (sellBtn) {
+            const inArmory = indexStr != null && indexStr !== "";
+            if (inArmory) {
+              const companyLevel = usePlayerCompanyStore.getState().company?.level ?? usePlayerCompanyStore.getState().companyLevel ?? 1;
+              const sellValue = getItemSellPrice(item, companyLevel);
+              sellBtn.textContent = `$ Sell ${sellValue}`;
+              (sellBtn as HTMLElement).style.display = "";
+            } else {
+              (sellBtn as HTMLElement).style.display = "none";
+            }
           }
           const actionsWrap = popup.querySelector(".item-popup-actions");
           if (actionsWrap) (actionsWrap as HTMLElement).style.display = "";
@@ -3635,6 +3711,40 @@ export function eventConfigs() {
       },
     },
     {
+      selector: "#item-stats-popup-sell",
+      eventType: "click",
+      callback: () => {
+        const popup = document.getElementById("item-stats-popup");
+        if (!popup) return;
+        const itemSource = (popup as HTMLElement).dataset.itemSource;
+        if (itemSource !== "inventory") return;
+        const idxStr = (popup as HTMLElement).dataset.itemIndex;
+        const json = (popup as HTMLElement).dataset.itemJson;
+        if (idxStr == null || !json) return;
+        const index = parseInt(idxStr, 10);
+        if (!Number.isFinite(index) || index < 0) return;
+        let item: Item | null = null;
+        try {
+          item = JSON.parse(json.replace(/&quot;/g, '"')) as Item;
+        } catch {
+          item = null;
+        }
+        if (!item) return;
+        const companyLevel = usePlayerCompanyStore.getState().company?.level ?? usePlayerCompanyStore.getState().companyLevel ?? 1;
+        const marketPrice = getItemMarketBuyPrice(item, companyLevel);
+        const sellValue = getItemSellPrice(item, companyLevel);
+        const rarity = (item.rarity ?? "common").toLowerCase();
+        if (rarity === "rare" || rarity === "epic") {
+          const ok = window.confirm(`Sell ${item.name} for $${sellValue}?\n(Market $${marketPrice} -> 50% sell value${item.uses != null ? ", prorated by uses" : ""})`);
+          if (!ok) return;
+        }
+        const result = usePlayerCompanyStore.getState().sellCompanyItem(index);
+        if (!result.success) return;
+        popup.setAttribute("hidden", "");
+        UiManager.renderInventoryScreen();
+      },
+    },
+    {
       selector: DOM.inventory.itemStatsPopupClose,
       eventType: "click",
       callback: () => {
@@ -3678,12 +3788,15 @@ export function eventConfigs() {
   function applyFormationDropZones(selectedIndex: number) {
     const screen = document.getElementById("formation-screen");
     if (!screen) return;
+    const store = usePlayerCompanyStore.getState();
     screen.querySelectorAll(".formation-soldier-card").forEach((el) => {
       const card = el as HTMLElement;
       const idxStr = card.dataset.slotIndex;
       if (idxStr == null) return;
       const idx = parseInt(idxStr, 10);
-      if (idx !== selectedIndex) card.classList.add("formation-drop-zone");
+      if (idx === selectedIndex) return;
+      if (!isFormationReassignmentAllowed(store.company, selectedIndex, idx)) return;
+      card.classList.add("formation-drop-zone");
     });
   }
 
@@ -3767,12 +3880,14 @@ export function eventConfigs() {
             return;
           }
           const targetFilled = hasSoldier;
-          if (targetFilled) {
+          const legalMove = card.classList.contains("formation-drop-zone")
+            && isFormationReassignmentAllowed(store.company, selected, slotIndex);
+          if (targetFilled && legalMove) {
             setFormationSwapIndices([selected, slotIndex]);
             store.swapSoldierPositions(selected, slotIndex);
             UiManager.renderFormationScreen();
             setTimeout(() => setFormationSwapIndices(null), 450);
-          } else if (card.classList.contains("formation-drop-zone")) {
+          } else if (!targetFilled && legalMove) {
             setFormationSwapIndices([selected, slotIndex]);
             store.moveSoldierToPosition(selected, slotIndex);
             UiManager.renderFormationScreen();
@@ -3823,12 +3938,15 @@ export function eventConfigs() {
   function applyReadyRoomDropZones(selectedIndex: number) {
     const screen = document.getElementById("ready-room-screen");
     if (!screen) return;
+    const store = usePlayerCompanyStore.getState();
     screen.querySelectorAll(".ready-room-soldier-card").forEach((el) => {
       const card = el as HTMLElement;
       const idxStr = card.dataset.slotIndex;
       if (idxStr == null) return;
       const idx = parseInt(idxStr, 10);
-      if (idx !== selectedIndex) card.classList.add("ready-room-drop-zone");
+      if (idx === selectedIndex) return;
+      if (!isFormationReassignmentAllowed(store.company, selectedIndex, idx)) return;
+      card.classList.add("ready-room-drop-zone");
     });
   }
 
@@ -3934,12 +4052,14 @@ export function eventConfigs() {
           }
           const json = screen?.getAttribute("data-mission-json");
           const mission = json && json !== "" ? JSON.parse(json) : null;
-          if (hasSoldier) {
+          const legalMove = card.classList.contains("ready-room-drop-zone")
+            && isFormationReassignmentAllowed(store.company, selected, slotIndex);
+          if (hasSoldier && legalMove) {
             setLastReadyRoomMoveSlotIndices([selected, slotIndex]);
             store.swapSoldierPositions(selected, slotIndex);
             UiManager.renderReadyRoomScreen(mission);
             setTimeout(() => setLastReadyRoomMoveSlotIndices([]), 450);
-          } else if (card.classList.contains("ready-room-drop-zone")) {
+          } else if (!hasSoldier && legalMove) {
             setLastReadyRoomMoveSlotIndices([selected, slotIndex]);
             store.moveSoldierToPosition(selected, slotIndex);
             UiManager.renderReadyRoomScreen(mission);
@@ -4012,6 +4132,7 @@ export function eventConfigs() {
 
   const suppliesScreenEventConfig: HandlerInitConfig[] = [
     ...marketLevelNavHandlers("supplies-market", () => UiManager.renderSuppliesMarketScreen()),
+    ...marketSellPopupHandlers(() => UiManager.renderSuppliesMarketScreen()),
     {
       selector: DOM.supplies.item,
       eventType: "click",
@@ -4284,8 +4405,88 @@ export function eventConfigs() {
     ];
   }
 
+  function marketSellPopupHandlers(onDone: () => void): HandlerInitConfig[] {
+    function updateSummary() {
+      const popup = document.getElementById("market-sell-popup");
+      const btn = document.getElementById("market-sell-confirm") as HTMLButtonElement | null;
+      if (!popup || !btn) return;
+      const selected = Array.from(popup.querySelectorAll(".market-sell-item.selected")) as HTMLElement[];
+      const count = selected.length;
+      const total = selected.reduce((sum, el) => sum + (parseInt(el.dataset.sellValue ?? "0", 10) || 0), 0);
+      btn.disabled = count <= 0;
+      btn.textContent = `$ Sell ${count} Item${count === 1 ? "" : "s"} • $${total.toLocaleString()}`;
+    }
+
+    return [
+      {
+        selector: "#market-sell-open",
+        eventType: "click",
+        callback: () => {
+          const popup = document.getElementById("market-sell-popup");
+          if (!popup) return;
+          popup.querySelectorAll(".market-sell-item.selected").forEach((el) => el.classList.remove("selected"));
+          popup.removeAttribute("hidden");
+          updateSummary();
+        },
+      },
+      {
+        selector: "#market-sell-grid",
+        eventType: "click",
+        callback: (e: Event) => {
+          const target = (e.target as HTMLElement).closest(".market-sell-item") as HTMLElement | null;
+          if (!target) return;
+          target.classList.toggle("selected");
+          updateSummary();
+        },
+      },
+      {
+        selector: "#market-sell-close",
+        eventType: "click",
+        callback: () => {
+          const popup = document.getElementById("market-sell-popup");
+          if (popup) popup.setAttribute("hidden", "");
+        },
+      },
+      {
+        selector: "#market-sell-confirm",
+        eventType: "click",
+        callback: () => {
+          const popup = document.getElementById("market-sell-popup");
+          if (!popup) return;
+          const selected = Array.from(popup.querySelectorAll(".market-sell-item.selected")) as HTMLElement[];
+          const indices = selected
+            .map((el) => parseInt(el.dataset.itemIndex ?? "-1", 10))
+            .filter((n) => Number.isFinite(n) && n >= 0);
+          if (indices.length === 0) return;
+          const hasRareOrEpic = selected.some((el) => {
+            const rarity = (el.dataset.itemRarity ?? "common").toLowerCase();
+            return rarity === "rare" || rarity === "epic";
+          });
+          if (hasRareOrEpic) {
+            const total = selected.reduce((sum, el) => sum + (parseInt(el.dataset.sellValue ?? "0", 10) || 0), 0);
+            const ok = window.confirm(`Sell ${indices.length} selected item(s) for $${total.toLocaleString()}?`);
+            if (!ok) return;
+          }
+          const result = usePlayerCompanyStore.getState().sellCompanyItems(indices);
+          if (!result.success) return;
+          popup.setAttribute("hidden", "");
+          onDone();
+        },
+      },
+      {
+        selector: "#market-sell-popup",
+        eventType: "click",
+        callback: (e: Event) => {
+          if (e.target !== e.currentTarget) return;
+          (e.currentTarget as HTMLElement).setAttribute("hidden", "");
+        },
+      },
+    ];
+  }
+
   const weaponsScreenEventConfig: HandlerInitConfig[] = [
     ...marketLevelNavHandlers("weapons-market", () => UiManager.renderWeaponsMarketScreen()),
+    ...marketSellPopupHandlers(() => UiManager.renderWeaponsMarketScreen()),
     ...gearBuyHandlers(
       {
         popup: "weapons-buy-popup",
@@ -4364,6 +4565,7 @@ export function eventConfigs() {
 
   const armorScreenEventConfig: HandlerInitConfig[] = [
     ...marketLevelNavHandlers("armor-market", () => UiManager.renderArmorMarketScreen()),
+    ...marketSellPopupHandlers(() => UiManager.renderArmorMarketScreen()),
     ...gearBuyHandlers(
       {
         popup: "armor-buy-popup",

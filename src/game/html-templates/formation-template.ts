@@ -3,7 +3,13 @@ import { Partial } from "./partials/partial.ts";
 import { getLevelFromExperience } from "../../constants/economy.ts";
 import type { Soldier } from "../entities/types.ts";
 import type { Item } from "../../constants/items/types.ts";
-import { getActiveSlots, getReserveSlots, getFormationSlots, getSoldierById } from "../../constants/company-slots.ts";
+import {
+  getActiveSlots,
+  getReserveSlots,
+  getFormationSlots,
+  getSoldierById,
+  getActiveRoleCounts,
+} from "../../constants/company-slots.ts";
 import { usePlayerCompanyStore } from "../../store/ui-store.ts";
 import { formatDesignation, formatDisplayName, getSoldierPortraitUrl } from "../../utils/name-utils.ts";
 import { getItemIconUrl } from "../../utils/item-utils.ts";
@@ -103,7 +109,13 @@ export function formationTemplate(): string {
   const formationSlots = getFormationSlots(company);
   const activeCount = getActiveSlots(company);
   const reserveCount = getReserveSlots(company);
+  const roleCounts = getActiveRoleCounts(company);
   const swapped = _lastFormationSwap;
+  const roleSummary = `
+    <span class="role-pill role-pill-rifleman">${roleCounts.rifleman}/${roleCounts.activeCapacity} Rifleman</span>
+    <span class="role-pill role-pill-support">${roleCounts.support}/${roleCounts.maxSupport} Support</span>
+    <span class="role-pill role-pill-medic">${roleCounts.medic}/${roleCounts.maxMedic} Medic</span>
+  `;
 
   const activeSlots: string[] = [];
   for (let i = 0; i < activeCount; i++) {
@@ -131,6 +143,7 @@ export function formationTemplate(): string {
   return `
 <div id="formation-screen" class="formation-root troops-market-root" data-selected-index="-1">
   ${companyHeaderPartial("Formation")}
+  <div class="formation-role-banner">${roleSummary}</div>
   <div class="formation-main">
     <div class="formation-section">
       <h4 class="formation-section-title">Active (${formationSlots.slice(0, activeCount).filter((id) => id != null).length}/${activeCount})</h4>

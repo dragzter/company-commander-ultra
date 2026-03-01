@@ -236,7 +236,7 @@ function ScreenManager() {
         .map((id) => (id ? getSoldierById(company, id) : null))
         .filter((s): s is NonNullable<typeof s> => s != null);
       players = activeSoldiers.map((s) => soldierToCombatant(s));
-      const enemyCount = mission?.enemyCount ?? 3;
+      const enemyCount = mission?.enemyCount ?? 4;
       const enemyBaseLevel = getEnemyLevelFromActiveSquad(activeSoldiers);
       const isEpicMission = !!(mission?.isEpic ?? mission?.rarity === "epic");
       const manhuntTargetIndex =

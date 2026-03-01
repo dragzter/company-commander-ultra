@@ -4,7 +4,13 @@ import { equipPickerTemplate } from "./equip-picker-template.ts";
 import { itemStatsPopupHtml } from "./inventory-template.ts";
 import type { Soldier } from "../entities/types.ts";
 import { usePlayerCompanyStore } from "../../store/ui-store.ts";
-import { getActiveSlots, getReserveSlots, getFormationSlots, getSoldierById } from "../../constants/company-slots.ts";
+import {
+  getActiveSlots,
+  getReserveSlots,
+  getFormationSlots,
+  getSoldierById,
+  getActiveRoleCounts,
+} from "../../constants/company-slots.ts";
 import { formatDisplayName, getSoldierPortraitUrl } from "../../utils/name-utils.ts";
 
 function rosterSoldierCard(s: Soldier, index: number, isActive: boolean): string {
@@ -101,6 +107,12 @@ export function rosterTemplate(): string {
   const formationSlots = getFormationSlots(company);
   const activeCount = getActiveSlots(company);
   const reserveCount = getReserveSlots(company);
+  const roleCounts = getActiveRoleCounts(company);
+  const roleSummary = `
+    <span class="role-pill role-pill-rifleman">${roleCounts.rifleman}/${roleCounts.activeCapacity} Rifleman</span>
+    <span class="role-pill role-pill-support">${roleCounts.support}/${roleCounts.maxSupport} Support</span>
+    <span class="role-pill role-pill-medic">${roleCounts.medic}/${roleCounts.maxMedic} Medic</span>
+  `;
   const activeEntries: { soldier: NonNullable<ReturnType<typeof getSoldierById>>; slotIndex: number }[] = [];
   for (let i = 0; i < activeCount; i++) {
     const sid = formationSlots[i];
@@ -129,6 +141,7 @@ export function rosterTemplate(): string {
   ${restTroopsPopupHtml(soldiers, activeIds)}
   ${itemStatsPopupHtml()}
   ${companyHeaderPartial("Company Roster")}
+  <div class="roster-role-banner">${roleSummary}</div>
   <div class="roster-main">
     <div class="roster-section">
       <div class="roster-section-header roster-section-active">

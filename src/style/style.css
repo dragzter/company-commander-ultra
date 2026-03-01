@@ -2383,14 +2383,152 @@ button.mbtn {
 	line-height: 1.5;
 }
 
-/* Ready room */
-.ready-room-role-banner {
-	padding: 6px var(--page-padding-x-reduced);
-	background: rgba(0, 0, 0, 0.4);
-	font-size: 0.85rem;
+.inventory-section-sort {
+	display: inline-block;
+	margin-left: 8px;
+	padding: 2px 7px;
+	border-radius: 4px;
+	font-size: 0.66rem;
+	font-weight: 800;
+	letter-spacing: 0.06em;
+	color: #d7ecff;
+	background: rgba(40, 78, 110, 0.75);
+	border: 1px solid rgba(138, 204, 255, 0.35);
+}
+
+.market-sell-popup .supplies-buy-popup-inner {
+	max-height: min(80vh, 700px);
+	display: flex;
+	flex-direction: column;
+}
+
+.market-sell-hint {
+	margin: 0 0 8px 0;
+	font-size: 0.8rem;
 	color: var(--gray-2);
-	text-align: center;
-	border-bottom: 1px solid var(--gray-6);
+}
+
+.market-sell-grid {
+	display: grid;
+	grid-template-columns: 1fr;
+	gap: 8px;
+	overflow-y: auto;
+	padding-right: 2px;
+	margin-bottom: 10px;
+}
+
+.market-sell-item {
+	width: 100%;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 10px;
+	padding: 8px 10px;
+	border-radius: 8px;
+	border: 1px solid rgba(95, 140, 180, 0.5);
+	background: linear-gradient(165deg, rgba(24, 32, 44, 0.92) 0%, rgba(14, 20, 30, 0.95) 100%);
+	color: var(--gray-1);
+	text-align: left;
+	cursor: pointer;
+	transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+}
+
+.market-sell-item.selected {
+	border-color: rgba(120, 232, 160, 0.95);
+	box-shadow: 0 0 0 2px rgba(70, 180, 110, 0.45), 0 0 16px rgba(80, 220, 130, 0.25);
+	transform: translateY(-1px);
+}
+
+.market-sell-item-left {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	min-width: 0;
+}
+
+.market-sell-item-icon-wrap {
+	position: relative;
+	width: 40px;
+	height: 40px;
+	flex-shrink: 0;
+}
+
+.market-sell-item-icon {
+	width: 100%;
+	height: 100%;
+	object-fit: contain;
+	border-radius: 6px;
+}
+
+.market-sell-item-name {
+	font-size: 0.86rem;
+	font-weight: 700;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.market-sell-item-value {
+	font-size: 0.86rem;
+	font-weight: 900;
+	color: #9fffc5;
+	flex-shrink: 0;
+}
+
+.market-sell-confirm:disabled {
+	opacity: 0.55;
+	filter: grayscale(0.25);
+}
+
+/* Ready room */
+.ready-room-role-banner,
+.roster-role-banner,
+.formation-role-banner {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	padding: 8px var(--page-padding-x-reduced);
+	background:
+		radial-gradient(circle at 12% 35%, rgba(100, 190, 255, 0.16), transparent 42%),
+		linear-gradient(180deg, rgba(12, 22, 32, 0.92) 0%, rgba(8, 16, 24, 0.94) 100%);
+	border-top: 1px solid rgba(140, 205, 255, 0.2);
+	border-bottom: 1px solid rgba(140, 205, 255, 0.25);
+	box-shadow: inset 0 1px 0 rgba(210, 240, 255, 0.08), inset 0 -1px 0 rgba(0, 0, 0, 0.35);
+}
+
+.role-pill {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-height: 24px;
+	padding: 3px 10px;
+	border-radius: 5px;
+	font-size: 0.72rem;
+	font-weight: 900;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	border: 1px solid transparent;
+	box-shadow: 0 1px 5px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+.role-pill-rifleman {
+	color: #f2f8e6;
+	background: linear-gradient(180deg, rgba(70, 108, 58, 0.95) 0%, rgba(45, 76, 36, 0.98) 100%);
+	border-color: rgba(158, 214, 136, 0.55);
+}
+
+.role-pill-support {
+	color: #fff4dd;
+	background: linear-gradient(180deg, rgba(128, 94, 40, 0.96) 0%, rgba(92, 63, 21, 0.98) 100%);
+	border-color: rgba(255, 197, 95, 0.62);
+}
+
+.role-pill-medic {
+	color: #ffe9e7;
+	background: linear-gradient(180deg, rgba(112, 52, 52, 0.95) 0%, rgba(78, 31, 31, 0.99) 100%);
+	border-color: rgba(255, 145, 145, 0.58);
 }
 
 .ready-room-root .ready-room-main {
@@ -6592,6 +6730,9 @@ button.mbtn {
 	gap: 2px;
 	cursor: pointer;
 	overflow: visible;
+	touch-action: manipulation;
+	-webkit-tap-highlight-color: transparent;
+	user-select: none;
 }
 
 .combat-card:hover {
