@@ -202,6 +202,7 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
   highestRecruitLevelAchieved: 1,
   company: {} as Company,
   marketTierLevel: 0,
+  devCatalogTierLevel: 0,
   missionBoard: [],
   missionBoardSchemaVersion: MISSION_BOARD_SCHEMA_VERSION,
   missionsViewMode: "menu" as CompanyStore["missionsViewMode"],
@@ -349,6 +350,7 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
     })),
   setGameStep: (step: GameStep) => set({ gameStep: step }),
   setMarketTierLevel: (n: number) => set({ marketTierLevel: n }),
+  setDevCatalogTierLevel: (n: number) => set({ devCatalogTierLevel: n }),
   setMissionsViewMode: (mode: "menu" | "normal" | "epic" | "dev") => set({ missionsViewMode: mode }),
   ensureMissionBoard: () => {
     const state = get();

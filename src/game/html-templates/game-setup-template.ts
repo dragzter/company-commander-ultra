@@ -8,6 +8,7 @@ import { TRAIT_CODEX } from "../../constants/trait-codex.ts";
 import { TraitProfileStats } from "../entities/soldier/soldier-traits.ts";
 import { getLevelBenefitsForCodex } from "../entities/levels.ts";
 import { APP_VERSION } from "../../constants/version.ts";
+import { CREDIT_SYMBOL } from "../../constants/currency.ts";
 
 const TRAIT_STAT_ABBR: Record<string, string> = {
   hit_points: "HP",
@@ -151,8 +152,10 @@ export function codexPopupTemplate(): string {
   return `
   <div id="codex-popup" class="codex-popup" role="dialog" aria-modal="true" hidden>
     <div class="codex-popup-inner codex-popup-tall">
-      <button type="button" class="game-btn game-btn-md game-btn-red codex-popup-close" id="codex-popup-close" aria-label="Close">Close</button>
-      <h4 class="codex-popup-title">Game Codex</h4>
+      <div class="codex-popup-header popup-dialog-header">
+        <h4 class="codex-popup-title">Game Codex</h4>
+        <button type="button" class="game-btn game-btn-md game-btn-red codex-popup-close popup-close-btn" id="codex-popup-close" aria-label="Close">Close</button>
+      </div>
       <div class="codex-tabs">
         <button type="button" class="codex-tab active" data-tab="stats">Stats</button>
         <button type="button" class="codex-tab" data-tab="traits">Traits</button>
@@ -215,8 +218,10 @@ export function memorialPopupTemplate(): string {
   return `
   <div id="memorial-popup" class="codex-popup memorial-popup" role="dialog" aria-modal="true" hidden>
     <div class="codex-popup-inner memorial-popup-inner">
-      <button type="button" class="game-btn game-btn-md game-btn-red codex-popup-close" id="memorial-popup-close" aria-label="Close">Close</button>
-      <h4 class="codex-popup-title">Memorial Wall</h4>
+      <div class="codex-popup-header popup-dialog-header">
+        <h4 class="codex-popup-title">Memorial Wall</h4>
+        <button type="button" class="game-btn game-btn-md game-btn-red codex-popup-close popup-close-btn" id="memorial-popup-close" aria-label="Close">Close</button>
+      </div>
       <p class="memorial-count">Total lost in combat: <strong>${menLost}</strong></p>
       <div class="memorial-fallen-list">${fallenList}</div>
     </div>
@@ -354,8 +359,7 @@ export const marketCreditsPartial = (creditBalance: number) => {
   const formatted = creditBalance.toLocaleString();
   return `
   <div class="market-credits-display">
-    <span class="market-credits-label">Credits</span>
-    <span class="market-credits-amount">$${formatted}</span>
+    <span class="market-credits-amount"><span class="market-credits-symbol">${CREDIT_SYMBOL}</span><span class="market-credits-value">${formatted}</span></span>
   </div>`;
 };
 

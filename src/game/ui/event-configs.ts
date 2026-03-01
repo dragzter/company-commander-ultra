@@ -70,6 +70,9 @@ import { formatDisplayName } from "../../utils/name-utils.ts";
 import { MAX_GEAR_LEVEL } from "../../constants/items/types.ts";
 import type { Item } from "../../constants/items/types.ts";
 import { getItemMarketBuyPrice, getItemSellPrice } from "../../utils/sell-pricing.ts";
+import { CREDIT_SYMBOL } from "../../constants/currency.ts";
+import { TRAIT_CODEX } from "../../constants/trait-codex.ts";
+import { TraitProfileStats } from "../entities/soldier/soldier-traits.ts";
 
 /**
  * Contains definitions for the events of all html templates.
@@ -82,16 +85,19 @@ export function eventConfigs() {
     containerId: string,
     render: () => void,
     maxOverride?: number,
+    options?: { tierSource?: "market" | "devCatalog" },
   ): HandlerInitConfig[] => [
     {
       selector: `#${containerId} .market-level-nav-prev`,
       eventType: "click",
       callback: () => {
         const st = usePlayerCompanyStore.getState();
+        const useDevTier = options?.tierSource === "devCatalog";
         const max = maxOverride ?? getMaxSoldierLevel(st.company);
-        const cur = st.marketTierLevel || (maxOverride ?? max);
+        const cur = (useDevTier ? st.devCatalogTierLevel : st.marketTierLevel) || (maxOverride ?? max);
         if (cur > 1) {
-          st.setMarketTierLevel(cur - 1);
+          if (useDevTier) st.setDevCatalogTierLevel(cur - 1);
+          else st.setMarketTierLevel(cur - 1);
           render();
         }
       },
@@ -101,10 +107,12 @@ export function eventConfigs() {
       eventType: "click",
       callback: () => {
         const st = usePlayerCompanyStore.getState();
+        const useDevTier = options?.tierSource === "devCatalog";
         const max = maxOverride ?? getMaxSoldierLevel(st.company);
-        const cur = st.marketTierLevel || (maxOverride ?? max);
+        const cur = (useDevTier ? st.devCatalogTierLevel : st.marketTierLevel) || (maxOverride ?? max);
         if (cur < max) {
-          st.setMarketTierLevel(cur + 1);
+          if (useDevTier) st.setDevCatalogTierLevel(cur + 1);
+          else st.setMarketTierLevel(cur + 1);
           render();
         }
       },
@@ -114,15 +122,17 @@ export function eventConfigs() {
       eventType: "click",
       callback: (e: Event) => {
         const st = usePlayerCompanyStore.getState();
+        const useDevTier = options?.tierSource === "devCatalog";
         const max = maxOverride ?? getMaxSoldierLevel(st.company);
-        const cur = st.marketTierLevel || (maxOverride ?? max);
+        const cur = (useDevTier ? st.devCatalogTierLevel : st.marketTierLevel) || (maxOverride ?? max);
         const trigger = (e.target as HTMLElement | null)?.closest("[data-market-tier-delta]") as HTMLElement | null;
         const deltaRaw = Number(trigger?.getAttribute("data-market-tier-delta") ?? 0);
         const delta = Number.isFinite(deltaRaw) ? Math.trunc(deltaRaw) : 0;
         if (delta === 0) return;
         const next = Math.max(1, Math.min(max, cur + delta));
         if (next !== cur) {
-          st.setMarketTierLevel(next);
+          if (useDevTier) st.setDevCatalogTierLevel(next);
+          else st.setMarketTierLevel(next);
           render();
         }
       },
@@ -132,8 +142,9 @@ export function eventConfigs() {
       eventType: "click",
       callback: (e: Event) => {
         const st = usePlayerCompanyStore.getState();
+        const useDevTier = options?.tierSource === "devCatalog";
         const max = maxOverride ?? getMaxSoldierLevel(st.company);
-        const cur = st.marketTierLevel || (maxOverride ?? max);
+        const cur = (useDevTier ? st.devCatalogTierLevel : st.marketTierLevel) || (maxOverride ?? max);
         const trigger = (e.target as HTMLElement | null)?.closest("[data-market-tier-go]") as HTMLElement | null;
         const nav = trigger?.closest(".market-level-nav");
         const input = nav?.querySelector("[data-market-tier-input]") as HTMLInputElement | null;
@@ -142,7 +153,8 @@ export function eventConfigs() {
         if (!Number.isFinite(parsed)) return;
         const next = Math.max(1, Math.min(max, Math.floor(parsed)));
         if (next !== cur) {
-          st.setMarketTierLevel(next);
+          if (useDevTier) st.setDevCatalogTierLevel(next);
+          else st.setMarketTierLevel(next);
           render();
         }
       },
@@ -155,15 +167,17 @@ export function eventConfigs() {
         if (ke.key !== "Enter") return;
         ke.preventDefault();
         const st = usePlayerCompanyStore.getState();
+        const useDevTier = options?.tierSource === "devCatalog";
         const max = maxOverride ?? getMaxSoldierLevel(st.company);
-        const cur = st.marketTierLevel || (maxOverride ?? max);
+        const cur = (useDevTier ? st.devCatalogTierLevel : st.marketTierLevel) || (maxOverride ?? max);
         const input = e.currentTarget as HTMLInputElement | null;
         if (!input) return;
         const parsed = Number(input.value);
         if (!Number.isFinite(parsed)) return;
         const next = Math.max(1, Math.min(max, Math.floor(parsed)));
         if (next !== cur) {
-          st.setMarketTierLevel(next);
+          if (useDevTier) st.setDevCatalogTierLevel(next);
+          else st.setMarketTierLevel(next);
           render();
         }
       },
@@ -629,6 +643,7 @@ export function eventConfigs() {
       stunned: boolean;
       panicked: boolean;
       burning: boolean;
+      bleeding: boolean;
       stimmed: boolean;
       blinded: boolean;
       suppressed: boolean;
@@ -830,6 +845,7 @@ export function eventConfigs() {
       const mins = Math.floor(totalSec / 60);
       const secs = totalSec % 60;
       defendTimerEl.textContent = `Hold: ${mins}:${String(secs).padStart(2, "0")}`;
+      defendTimerEl.classList.toggle("combat-objective-timer-urgent", totalSec <= 30);
       defendTimerEl.hidden = false;
     }
 
@@ -896,6 +912,15 @@ export function eventConfigs() {
       popup.style.top = `${topV - screenRect.top}px`;
       popup.style.bottom = "";
       popup.style.transform = "none";
+    }
+
+    function clearPopupCardSelection() {
+      document
+        .querySelectorAll(".combat-card-latched, .combat-card-pressing")
+        .forEach((el) => {
+          el.classList.remove("combat-card-latched");
+          el.classList.remove("combat-card-pressing");
+        });
     }
 
     function openAbilitiesPopup(combatant: Combatant, card?: HTMLElement | null) {
@@ -1048,10 +1073,17 @@ export function eventConfigs() {
       hintEl.classList.remove("visible");
       hintEl.textContent = "";
       popupEl.classList.remove("combat-abilities-popup-hint-only");
+      clearPopupCardSelection();
+      const selectedCard = (card ??
+        document.querySelector(`[data-combatant-id="${combatant.id}"]`)) as HTMLElement | null;
+      if (selectedCard) {
+        selectedCard.classList.remove("combat-card-pressing");
+        selectedCard.classList.add("combat-card-latched");
+      }
       popupCombatantId = combatant.id;
       popupEl.setAttribute("aria-hidden", "false");
       refreshAbilitiesList();
-      positionPopupUnderCard(popupEl, card ?? document.querySelector(`[data-combatant-id="${combatant.id}"]`) as HTMLElement);
+      positionPopupUnderCard(popupEl, selectedCard);
 
       void popupEl.offsetHeight;
 
@@ -1128,6 +1160,7 @@ export function eventConfigs() {
       document.querySelectorAll(".combat-card-grenade-target").forEach((el) => el.classList.remove("combat-card-grenade-target"));
       document.querySelectorAll(".combat-card-heal-target").forEach((el) => el.classList.remove("combat-card-heal-target"));
       clearSelectedHighlight();
+      clearPopupCardSelection();
       const popup = document.getElementById("combat-abilities-popup");
       if (popup) {
         popup.classList.remove("combat-abilities-popup-hint-only");
@@ -1190,6 +1223,72 @@ export function eventConfigs() {
 
     function animateGrenadeProjectile(attackerCard: Element, targetCard: Element, iconUrl: string, durationMs: number) {
       animateProjectile(attackerCard, targetCard, iconUrl, durationMs, 28, true);
+    }
+
+    function playGrenadeImpactFX(
+      impactTargetId: string,
+      affectedTargetIds: string[],
+      variant: "frag" | "incendiary" | "stun" | "smoke",
+    ) {
+      const battleArea = document.querySelector("#combat-battle-area") as HTMLElement | null;
+      const impactCard = getCombatantCard(impactTargetId) as HTMLElement | null;
+      if (!battleArea || !impactCard) return;
+
+      const areaRect = battleArea.getBoundingClientRect();
+      const impactRect = impactCard.getBoundingClientRect();
+      const cx = impactRect.left - areaRect.left + impactRect.width / 2;
+      const cy = impactRect.top - areaRect.top + impactRect.height / 2;
+
+      battleArea.classList.remove("combat-battle-area-grenade-kick");
+      void battleArea.offsetWidth;
+      battleArea.classList.add("combat-battle-area-grenade-kick");
+      window.setTimeout(() => battleArea.classList.remove("combat-battle-area-grenade-kick"), 280);
+
+      const fx = document.createElement("div");
+      fx.className = `combat-grenade-impact-fx combat-grenade-impact-${variant}`;
+      fx.style.left = `${cx}px`;
+      fx.style.top = `${cy}px`;
+
+      const core = document.createElement("span");
+      core.className = "combat-grenade-impact-core";
+      fx.appendChild(core);
+
+      const ringA = document.createElement("span");
+      ringA.className = "combat-grenade-impact-ring ring-a";
+      fx.appendChild(ringA);
+      const ringB = document.createElement("span");
+      ringB.className = "combat-grenade-impact-ring ring-b";
+      fx.appendChild(ringB);
+
+      const crack = document.createElement("span");
+      crack.className = "combat-grenade-impact-crack";
+      fx.appendChild(crack);
+
+      const shardCount = variant === "frag" ? 10 : 8;
+      for (let i = 0; i < shardCount; i++) {
+        const shard = document.createElement("span");
+        shard.className = "combat-grenade-impact-shard";
+        shard.style.setProperty("--shard-angle", `${(360 / shardCount) * i}deg`);
+        shard.style.setProperty("--shard-dist", `${50 + Math.round(Math.random() * 22)}px`);
+        shard.style.setProperty("--shard-delay", `${Math.round(Math.random() * 45)}ms`);
+        fx.appendChild(shard);
+      }
+
+      battleArea.appendChild(fx);
+      window.setTimeout(() => fx.remove(), 760);
+
+      const uniqueTargets = Array.from(new Set(affectedTargetIds));
+      uniqueTargets.forEach((id, idx) => {
+        if (!shouldShowCombatFeedback(id)) return;
+        const card = getCombatantCard(id) as HTMLElement | null;
+        if (!card) return;
+        window.setTimeout(() => {
+          card.classList.remove("combat-card-grenade-jolt");
+          void card.offsetWidth;
+          card.classList.add("combat-card-grenade-jolt");
+          window.setTimeout(() => card.classList.remove("combat-card-grenade-jolt"), 250);
+        }, 22 * idx);
+      });
     }
 
     function getCombatantById(id: string): Combatant | undefined {
@@ -1524,6 +1623,7 @@ export function eventConfigs() {
         const isStun = (grenade.item.tags as string[] | undefined)?.includes("stun") || grenade.item.id === "m84_flashbang";
         const isIncendiary = grenade.item.id === "incendiary_grenade";
         const isFrag = (grenade.item.tags as string[] | undefined)?.includes("explosive");
+        const isSmoke = (grenade.item.tags as string[] | undefined)?.includes("smoke") || grenade.item.id === "mk18_smoke";
         const overlayType: GrenadeOverlayType =
           isThrowingKnife ? "throwing-knife"
           : isStun ? "stun"
@@ -1572,7 +1672,16 @@ export function eventConfigs() {
           impactTargetCard.classList.add("combat-card-frag-flash");
           setTimeout(() => impactTargetCard.classList.remove("combat-card-frag-flash"), 150);
         }
-        const isSmoke = (grenade.item.tags as string[] | undefined)?.includes("smoke") || grenade.item.id === "mk18_smoke";
+        if (!isThrowingKnife) {
+          const affectedForJolt: string[] = [];
+          if (result.primary.hit && !result.primary.evaded) affectedForJolt.push(result.primary.targetId);
+          for (const s of result.splash) {
+            if (s.hit && !s.evaded) affectedForJolt.push(s.targetId);
+          }
+          const impactVariant: "frag" | "incendiary" | "stun" | "smoke" =
+            isIncendiary ? "incendiary" : isStun ? "stun" : isSmoke ? "smoke" : "frag";
+          playGrenadeImpactFX(result.primary.targetId, affectedForJolt, impactVariant);
+        }
         if (!result.primary.hit) showThrowMiss(result.primary.targetId, isThrowingKnife);
         else if (result.primary.evaded) showEvaded(result.primary.targetId, isThrowingKnife);
         else if (isSmoke && result.primary.hit) showSmokeEffect(result.primary.targetId, 40);
@@ -1753,6 +1862,7 @@ export function eventConfigs() {
         const stunned = c.stunUntil != null && now < c.stunUntil;
         const panicked = c.panicUntil != null && now < c.panicUntil;
         const burning = c.burningUntil != null && now < c.burningUntil;
+        const bleeding = c.bleedingUntil != null && now < c.bleedingUntil;
         const stimmed = c.attackSpeedBuffUntil != null && now < c.attackSpeedBuffUntil;
         const blinded = c.blindedUntil != null && now < c.blindedUntil;
         const suppressed = c.suppressedUntil != null && now < c.suppressedUntil;
@@ -1771,6 +1881,7 @@ export function eventConfigs() {
           stunned,
           panicked,
           burning,
+          bleeding,
           stimmed,
           blinded,
           suppressed,
@@ -1783,6 +1894,7 @@ export function eventConfigs() {
           || prevSnapshot.stunned !== nextSnapshot.stunned
           || prevSnapshot.panicked !== nextSnapshot.panicked
           || prevSnapshot.burning !== nextSnapshot.burning
+          || prevSnapshot.bleeding !== nextSnapshot.bleeding
           || prevSnapshot.stimmed !== nextSnapshot.stimmed
           || prevSnapshot.blinded !== nextSnapshot.blinded
           || prevSnapshot.suppressed !== nextSnapshot.suppressed
@@ -1799,6 +1911,7 @@ export function eventConfigs() {
             card.classList.toggle("combat-card-stunned", stunned);
             card.classList.toggle("combat-card-panicked", panicked);
             card.classList.toggle("combat-card-burning", burning);
+            card.classList.toggle("combat-card-bleeding", bleeding);
             card.classList.toggle("combat-card-stimmed", stimmed);
             card.classList.toggle("combat-card-blinded", blinded);
             card.classList.toggle("combat-card-suppressed", suppressed);
@@ -1830,19 +1943,23 @@ export function eventConfigs() {
             if (burning) {
               const timerEl = ensureTimer(".combat-card-burn-timer", "combat-card-burn-timer", card);
               if (refreshTimerText) timerEl.textContent = (((c.burningUntil ?? 0) - now) / 1000).toFixed(1);
-              let flameEl = card.querySelector(".combat-card-burn-flame") as HTMLElement | null;
+            } else {
+              card.querySelector(".combat-card-burn-timer")?.remove();
+            }
+            const dotActive = burning || bleeding;
+            if (dotActive) {
+              let flameEl = card.querySelector(".combat-card-dot-flame") as HTMLElement | null;
               if (!flameEl && refs.avatarWrap) {
                 flameEl = document.createElement("div");
-                flameEl.className = "combat-card-burn-flame";
+                flameEl.className = "combat-card-dot-flame";
                 const img = document.createElement("img");
                 img.src = FLAME_ICON;
-                img.alt = "Burning";
+                img.alt = "Damage over time";
                 flameEl.appendChild(img);
                 refs.avatarWrap.appendChild(flameEl);
               }
             } else {
-              card.querySelector(".combat-card-burn-timer")?.remove();
-              card.querySelector(".combat-card-burn-flame")?.remove();
+              card.querySelector(".combat-card-dot-flame")?.remove();
             }
             if (stimmed) {
               if (refs.avatarWrap) {
@@ -2516,6 +2633,15 @@ export function eventConfigs() {
       if (!id) return;
       const combatant = allCombatants.find((c) => c.id === id);
       if (combatant?.side !== "player" || combatWinner) return;
+      card.classList.remove("combat-card-tap-flash");
+      card.classList.remove("combat-card-latched");
+      card.classList.remove("combat-card-pressing");
+      // Force reflow so repeated taps replay the flash immediately.
+      void card.offsetWidth;
+      card.classList.add("combat-card-pressing");
+      card.classList.add("combat-card-tap-flash");
+      window.setTimeout(() => card.classList.remove("combat-card-pressing"), 100);
+      window.setTimeout(() => card.classList.remove("combat-card-tap-flash"), 180);
       openAbilitiesPopup(combatant, card);
     }
 
@@ -3332,6 +3458,104 @@ export function eventConfigs() {
       },
     },
     {
+      selector: ".roster-traits-chip",
+      eventType: "click",
+      callback: (e: Event) => {
+        const btn = e.currentTarget as HTMLButtonElement | null;
+        const popup = document.getElementById("roster-traits-popup");
+        if (!btn || !popup) return;
+
+        const rawName = btn.dataset.soldierName ?? "Soldier";
+        const titleEl = document.getElementById("roster-traits-popup-title");
+        const listEl = document.getElementById("roster-traits-popup-list");
+        if (!titleEl || !listEl) return;
+
+        titleEl.textContent = `${rawName} Traits`;
+        let traits: string[] = [];
+        try {
+          const parsed = JSON.parse(btn.dataset.traitsJson ?? "[]") as unknown;
+          if (Array.isArray(parsed)) {
+            traits = parsed
+              .filter((v): v is string => typeof v === "string")
+              .map((v) => v.trim())
+              .filter((v) => v.length > 0);
+          }
+        } catch {
+          traits = [];
+        }
+
+        const esc = (v: string) =>
+          String(v)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;");
+        const toTitle = (raw: string) =>
+          raw
+            .replace(/_/g, " ")
+            .replace(/\s+/g, " ")
+            .trim()
+            .replace(/\b\w/g, (m) => m.toUpperCase());
+        const statAbbr: Record<string, string> = {
+          hit_points: "HP",
+          dexterity: "DEX",
+          morale: "MOR",
+          toughness: "TGH",
+          awareness: "AWR",
+        };
+        const fmtNum = (n: number) => `${n > 0 ? "+" : ""}${n}`;
+        const traitEntryHtml = (traitRaw: string, idx: number): string => {
+          const key = traitRaw.trim().toLowerCase().replace(/\s+/g, "_");
+          const title = toTitle(traitRaw);
+          const codex = TRAIT_CODEX[key];
+          const stats = (TraitProfileStats[key] as Record<string, number> | undefined) ?? undefined;
+          const statBadges = stats
+            ? Object.entries(stats)
+              .filter(([, n]) => typeof n === "number" && n !== 0)
+              .map(([k, n]) => {
+                const cls = n > 0 ? "positive" : "negative";
+                return `<span class="roster-trait-item-badge ${cls}">${esc(statAbbr[k] ?? k.toUpperCase())} ${esc(fmtNum(n))}</span>`;
+              })
+              .join("")
+            : "";
+          const desc = codex?.description ?? "No codex details yet. Reserved for future trait/injury systems.";
+          const typeLabel = idx === 0 ? "Primary" : "Trait";
+          return `<li class="roster-traits-popup-item${idx === 0 ? " roster-traits-popup-primary" : ""}">
+            <div class="roster-trait-item-head">
+              <span class="roster-trait-item-title">${esc(title)}</span>
+              <span class="roster-trait-item-type">${typeLabel}</span>
+            </div>
+            ${statBadges ? `<div class="roster-trait-item-badges">${statBadges}</div>` : ""}
+            <div class="roster-trait-item-desc">${esc(desc)}</div>
+          </li>`;
+        };
+
+        if (traits.length === 0) {
+          listEl.innerHTML = `<li class="roster-traits-popup-empty">No traits recorded yet.</li>`;
+        } else {
+          listEl.innerHTML = traits.map((trait, idx) => traitEntryHtml(trait, idx)).join("");
+        }
+        popup.removeAttribute("hidden");
+      },
+    },
+    {
+      selector: "#roster-traits-popup-close",
+      eventType: "click",
+      callback: () => {
+        const popup = document.getElementById("roster-traits-popup");
+        if (popup) popup.setAttribute("hidden", "");
+      },
+    },
+    {
+      selector: "#roster-traits-popup",
+      eventType: "click",
+      callback: (e: Event) => {
+        if (e.target !== e.currentTarget) return;
+        const popup = e.currentTarget as HTMLElement;
+        popup.setAttribute("hidden", "");
+      },
+    },
+    {
       selector: "#roster-rest-btn",
       eventType: "click",
       callback: () => {
@@ -3642,7 +3866,7 @@ export function eventConfigs() {
             if (inArmory) {
               const companyLevel = usePlayerCompanyStore.getState().company?.level ?? usePlayerCompanyStore.getState().companyLevel ?? 1;
               const sellValue = getItemSellPrice(item, companyLevel);
-              sellBtn.textContent = `$ Sell ${sellValue}`;
+              sellBtn.innerHTML = `<span class="sell-btn-coin">${CREDIT_SYMBOL}</span><span class="sell-btn-text">Sell</span><span class="sell-btn-amount">${sellValue.toLocaleString()}</span>`;
               (sellBtn as HTMLElement).style.display = "";
             } else {
               (sellBtn as HTMLElement).style.display = "none";
@@ -3735,7 +3959,7 @@ export function eventConfigs() {
         const sellValue = getItemSellPrice(item, companyLevel);
         const rarity = (item.rarity ?? "common").toLowerCase();
         if (rarity === "rare" || rarity === "epic") {
-          const ok = window.confirm(`Sell ${item.name} for $${sellValue}?\n(Market $${marketPrice} -> 50% sell value${item.uses != null ? ", prorated by uses" : ""})`);
+          const ok = window.confirm(`Sell ${item.name} for ${CREDIT_SYMBOL}${sellValue}?\n(Market ${CREDIT_SYMBOL}${marketPrice} -> 50% sell value${item.uses != null ? ", prorated by uses" : ""})`);
           if (!ok) return;
         }
         const result = usePlayerCompanyStore.getState().sellCompanyItem(index);
@@ -4130,6 +4354,62 @@ export function eventConfigs() {
     },
   ];
 
+  function updateMarketCreditsDisplay() {
+    const credits = usePlayerCompanyStore.getState().creditBalance ?? 0;
+    document.querySelectorAll(".market-credits-value").forEach((el) => {
+      (el as HTMLElement).textContent = credits.toLocaleString();
+    });
+  }
+
+  function playMarketBuyToArmoryAnimation(popupBodyId: string, qty: number) {
+    const body = document.getElementById(popupBodyId);
+    const armoryBtn = document.getElementById("company-go-inventory");
+    if (!body || !armoryBtn) return;
+    const iconEl = body.querySelector(".item-popup-icon") as HTMLImageElement | null;
+    if (!iconEl) return;
+
+    const startRect = iconEl.getBoundingClientRect();
+    const endRect = armoryBtn.getBoundingClientRect();
+    if (!startRect.width || !endRect.width) return;
+
+    const clone = document.createElement("div");
+    clone.className = "market-buy-fly-clone";
+    const cloneImg = iconEl.cloneNode(true) as HTMLImageElement;
+    clone.appendChild(cloneImg);
+    if (qty > 1) {
+      const qtyTag = document.createElement("span");
+      qtyTag.className = "market-buy-fly-qty";
+      qtyTag.textContent = `x${qty}`;
+      clone.appendChild(qtyTag);
+    }
+    document.body.appendChild(clone);
+
+    const startX = startRect.left + startRect.width / 2 - 22;
+    const startY = startRect.top + startRect.height / 2 - 22;
+    const endX = endRect.left + endRect.width / 2 - 22;
+    const endY = endRect.top + endRect.height / 2 - 22;
+    clone.style.left = `${startX}px`;
+    clone.style.top = `${startY}px`;
+    const dx = endX - startX;
+    const dy = endY - startY;
+
+    clone.animate(
+      [
+        { transform: "translate(0, 0) scale(1)", opacity: 1 },
+        { transform: `translate(${dx * 0.5}px, ${dy * 0.45 - 28}px) scale(1.08)`, opacity: 1, offset: 0.58 },
+        { transform: `translate(${dx}px, ${dy}px) scale(0.5)`, opacity: 0.12 },
+      ],
+      { duration: 420, easing: "cubic-bezier(0.22, 0.8, 0.25, 1)" },
+    ).finished.finally(() => {
+      clone.remove();
+    });
+
+    armoryBtn.classList.remove("market-armory-hit");
+    void armoryBtn.offsetWidth;
+    armoryBtn.classList.add("market-armory-hit");
+    window.setTimeout(() => armoryBtn.classList.remove("market-armory-hit"), 380);
+  }
+
   const suppliesScreenEventConfig: HandlerInitConfig[] = [
     ...marketLevelNavHandlers("supplies-market", () => UiManager.renderSuppliesMarketScreen()),
     ...marketSellPopupHandlers(() => UiManager.renderSuppliesMarketScreen()),
@@ -4239,8 +4519,30 @@ export function eventConfigs() {
           errorEl.classList.add("visible");
           return;
         }
-        popup.setAttribute("hidden", "");
-        UiManager.renderSuppliesMarketScreen();
+        errorEl.textContent = "";
+        errorEl.classList.remove("visible");
+        playMarketBuyToArmoryAnimation("supplies-buy-body", qty);
+        updateMarketCreditsDisplay();
+
+        const st = usePlayerCompanyStore.getState();
+        const level = st.company?.level ?? st.companyLevel ?? 1;
+        const inv = st.company?.inventory ?? [];
+        const cat = getItemArmoryCategory(item);
+        const count = countArmoryByCategory(inv)[cat];
+        const cap = getArmorySlotsForCategory(level, cat);
+        const slotsFree = Math.max(0, cap - count);
+        qtyInput.max = String(Math.max(1, slotsFree));
+        const nextQty = Math.max(1, Math.min(parseInt(qtyInput.value || "1", 10), Math.max(1, slotsFree)));
+        qtyInput.value = String(nextQty);
+        const buyBtn = document.getElementById("supplies-buy-btn");
+        if (buyBtn) {
+          (buyBtn as HTMLButtonElement).innerHTML = `Buy <span class="buy-btn-price">$${(price * nextQty).toLocaleString()}</span>`;
+          (buyBtn as HTMLButtonElement).disabled = slotsFree <= 0;
+        }
+        if (slotsFree <= 0) {
+          errorEl.textContent = "Armory full";
+          errorEl.classList.add("visible");
+        }
       },
     },
     {
@@ -4266,7 +4568,7 @@ export function eventConfigs() {
     ids: { popup: string; title: string; body: string; qtyInput: string; error: string; buyBtn: string; qtyMinus: string; qtyPlus: string; buyClose: string },
     // ids use element id (no #) for getElementById; selectors need # for querySelector
     itemSelector: string,
-    onSuccess: () => void,
+    _onSuccess: () => void,
   ): HandlerInitConfig[] {
     return [
       {
@@ -4381,8 +4683,31 @@ export function eventConfigs() {
             errorEl.classList.add("visible");
             return;
           }
-          popup.setAttribute("hidden", "");
-          onSuccess();
+          errorEl.textContent = "";
+          errorEl.classList.remove("visible");
+          playMarketBuyToArmoryAnimation(ids.body, qty);
+          updateMarketCreditsDisplay();
+
+          const nextStore = usePlayerCompanyStore.getState();
+          const nextLevel = nextStore.company?.level ?? nextStore.companyLevel ?? 1;
+          const nextInv = nextStore.company?.inventory ?? [];
+          const nextCat = getItemArmoryCategory(item);
+          const nextCount = countArmoryByCategory(nextInv)[nextCat];
+          const nextCap = getArmorySlotsForCategory(nextLevel, nextCat);
+          const nextSlotsFree = Math.max(0, nextCap - nextCount);
+          const nextMax = Math.max(1, Math.min(nextSlotsFree, 10));
+          qtyInput.max = String(nextMax);
+          const nextQty = Math.max(1, Math.min(parseInt(qtyInput.value || "1", 10), nextMax));
+          qtyInput.value = String(nextQty);
+          const buyBtn = document.getElementById(ids.buyBtn) as HTMLButtonElement | null;
+          if (buyBtn) {
+            buyBtn.innerHTML = `Buy <span class="buy-btn-price">$${(price * nextQty).toLocaleString()}</span>`;
+            buyBtn.disabled = nextSlotsFree <= 0;
+          }
+          if (nextSlotsFree <= 0) {
+            errorEl.textContent = "Armory full";
+            errorEl.classList.add("visible");
+          }
         },
       },
       {
@@ -4414,7 +4739,7 @@ export function eventConfigs() {
       const count = selected.length;
       const total = selected.reduce((sum, el) => sum + (parseInt(el.dataset.sellValue ?? "0", 10) || 0), 0);
       btn.disabled = count <= 0;
-      btn.textContent = `$ Sell ${count} Item${count === 1 ? "" : "s"} • $${total.toLocaleString()}`;
+      btn.textContent = `${CREDIT_SYMBOL} Sell ${count} Item${count === 1 ? "" : "s"} • ${CREDIT_SYMBOL}${total.toLocaleString()}`;
     }
 
     return [
@@ -4464,7 +4789,7 @@ export function eventConfigs() {
           });
           if (hasRareOrEpic) {
             const total = selected.reduce((sum, el) => sum + (parseInt(el.dataset.sellValue ?? "0", 10) || 0), 0);
-            const ok = window.confirm(`Sell ${indices.length} selected item(s) for $${total.toLocaleString()}?`);
+            const ok = window.confirm(`Sell ${indices.length} selected item(s) for ${CREDIT_SYMBOL}${total.toLocaleString()}?`);
             if (!ok) return;
           }
           const result = usePlayerCompanyStore.getState().sellCompanyItems(indices);
@@ -4505,7 +4830,7 @@ export function eventConfigs() {
   ];
 
   const devCatalogScreenEventConfig: HandlerInitConfig[] = [
-    ...marketLevelNavHandlers("dev-catalog-market", () => UiManager.renderDevCatalogScreen(), MAX_GEAR_LEVEL),
+    ...marketLevelNavHandlers("dev-catalog-market", () => UiManager.renderDevCatalogScreen(), MAX_GEAR_LEVEL, { tierSource: "devCatalog" }),
     {
       selector: "#dev-catalog-market .dev-catalog-item",
       eventType: "click",

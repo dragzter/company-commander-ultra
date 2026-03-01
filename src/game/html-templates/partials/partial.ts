@@ -11,6 +11,38 @@ import { formatDesignation, formatDisplayName, getSoldierPortraitUrl } from "../
 function Partial() {
   const { parseHTML } = UiServiceManager;
 
+  function escapeAttr(s: string): string {
+    return String(s)
+      .replace(/&/g, "&amp;")
+      .replace(/"/g, "&quot;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+  }
+
+  function collectSoldierTraits(soldier: Soldier): string[] {
+    const out: string[] = [];
+    const pushUnique = (raw: unknown) => {
+      if (typeof raw !== "string") return;
+      const v = raw.trim();
+      if (!v) return;
+      if (!out.some((x) => x.toLowerCase() === v.toLowerCase())) out.push(v);
+    };
+
+    // Primary rolled trait should always be first.
+    pushUnique(soldier.trait_profile?.name);
+
+    const sAny = soldier as unknown as {
+      traits?: unknown[];
+      additionalTraits?: unknown[];
+      permanentInjuries?: unknown[];
+      injuries?: unknown[];
+    };
+    [sAny.traits, sAny.additionalTraits, sAny.permanentInjuries, sAny.injuries]
+      .forEach((arr) => arr?.forEach((entry) => pushUnique(entry)));
+
+    return out;
+  }
+
   /**
    * Create HTML for a trooper entity-card for the troops market page.
    * Layout: avatar | name (row 1), stats (row 2), buttons (row 3)
@@ -101,6 +133,8 @@ function Partial() {
     const dex = formatStatBaseAndGear(bg.dex.base, bg.dex.gear);
     const avatar = soldier.avatar ?? "default.png";
     const portraitUrl = getSoldierPortraitUrl(avatar, soldier.designation);
+    const traitList = collectSoldierTraits(soldier);
+    const traitDataJson = escapeAttr(JSON.stringify(traitList));
     const spdMs = getSoldierAttackIntervalMs(soldier);
     const spdRow = spdMs != null ? `<div class="detail-item"><span class="stat-label">Spd</span><span class="stat-value">${(spdMs / 1000).toFixed(1)}s</span></div>` : "";
     return `
@@ -117,6 +151,7 @@ function Partial() {
       <div class="card-title-block">
         <span class="card-name">${formatDisplayName(soldier.name)}</span>
         <span class="equip-picker-role equip-picker-role-${(soldier.designation ?? "rifleman").toLowerCase()}" data-role="${soldier.designation ?? "rifleman"}">${formatDesignation(soldier.designation)}</span>
+        <button type="button" class="roster-traits-chip" data-soldier-id="${soldier.id}" data-soldier-name="${escapeAttr(formatDisplayName(soldier.name))}" data-traits-json="${traitDataJson}" title="View soldier traits and status effects">Traits</button>
       </div>
     </div>
     <div class="card-row card-row-2">
@@ -139,9 +174,7 @@ function Partial() {
     </div>
   </div>
   <div class="card-footer">
-    <span class="trooper-level-badge">Lv ${soldier.level}</span>
-    ${_traitWithTooltip(soldier.trait_profile)}
-    ${soldierXpBar(soldier)}
+    ${soldierXpBar(soldier, { variant: "roster" })}
   </div>
 </div>`;
   }

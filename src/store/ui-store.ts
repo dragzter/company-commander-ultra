@@ -47,6 +47,8 @@ export type CompanyStore = {
   rerollCounter: number;
   /** Selected gear tier (1–999) for market browsing. 0 = unset, defaults to max soldier level on first open. */
   marketTierLevel: number;
+  /** Selected tier for dev catalog browsing (1–999). Isolated from normal market tier. */
+  devCatalogTierLevel: number;
   missionBoard: Mission[];
   missionBoardSchemaVersion: number;
   missionsViewMode: "menu" | "normal" | "epic" | "dev";
@@ -62,6 +64,7 @@ export type CompanyStore = {
   setHighestRecruitLevelAchieved: (level: number) => void;
   setGameStep: (step: GameStep) => void;
   setMarketTierLevel: (n: number) => void;
+  setDevCatalogTierLevel: (n: number) => void;
   setMissionsViewMode: (mode: "menu" | "normal" | "epic" | "dev") => void;
   ensureMissionBoard: () => void;
   refreshMissionBoard: () => void;
@@ -213,6 +216,8 @@ export const usePlayerCompanyStore = createStore<CompanyStore>()(
           }
           const mtl = merged.marketTierLevel as number | undefined;
           if (typeof mtl !== "number" || mtl < 0) merged.marketTierLevel = 0;
+          const dctl = merged.devCatalogTierLevel as number | undefined;
+          if (typeof dctl !== "number" || dctl < 0) merged.devCatalogTierLevel = 0;
           if (!Array.isArray(merged.missionBoard)) merged.missionBoard = [];
           if (typeof merged.missionBoardSchemaVersion !== "number") merged.missionBoardSchemaVersion = 0;
           if (merged.missionsViewMode !== "menu" && merged.missionsViewMode !== "normal" && merged.missionsViewMode !== "epic" && merged.missionsViewMode !== "dev") {

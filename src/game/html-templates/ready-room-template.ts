@@ -65,7 +65,6 @@ function readyRoomSoldierCard(s: Soldier, slotIndex: number, isActive: boolean):
   const justMoved = _lastEquipMoveSoldierIds.includes(s.id) || _lastReadyRoomMoveSlotIndices.includes(slotIndex);
   const animateClass = justMoved ? " ready-room-card-just-moved" : "";
   const lvl = getLevelFromExperience(s.experience ?? 0);
-  const levelRarity = lvl >= 6 ? "epic" : lvl >= 3 ? "rare" : "common";
   const bg = getBaseAndGearStats(s);
   return `
 <div class="ready-room-soldier-card entity-card designation-${des} ${slotClass}${animateClass}" data-soldier-id="${s.id}" data-slot-index="${slotIndex}" data-soldier-json="${escapeAttr(JSON.stringify(s))}" data-has-soldier="true">
@@ -73,7 +72,7 @@ function readyRoomSoldierCard(s: Soldier, slotIndex: number, isActive: boolean):
     <div class="ready-room-left">
       <div class="ready-room-avatar-wrap">
         <img class="ready-room-avatar" src="${getSoldierPortraitUrl(s.avatar, s.designation)}" alt="">
-        <span class="ready-room-level-badge item-level-badge rarity-${levelRarity}">Lv${lvl}</span>
+        <span class="ready-room-level-badge item-level-badge">Lv${lvl}</span>
         <span class="ready-room-role-badge market-weapon-role-badge role-${des}">${formatDesignation(s.designation)}</span>
       </div>
       <div class="ready-room-hp-wrap">

@@ -17,8 +17,7 @@ export type SoldierAbility = {
 };
 
 /** Flame icon for burning effect (incendiary) */
-export const FLAME_ICON =
-  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23ff6633' d='M12 23c1.4 0 2.5-1.1 2.5-2.5 0-1.1-.7-2.1-1.7-2.6-.3-.2-.5-.5-.5-.9 0-.6.5-1 1-1 .2 0 .4.1.6.2 1 .5 1.6 1.5 1.6 2.6 0 1.4-1.1 2.5-2.5 2.5S9.5 21.4 9.5 20c0-.9.5-1.7 1.2-2.2.2-.1.3-.4.3-.6 0-.5-.4-1-.9-1-.1 0-.3 0-.4.1C8.2 17.3 7.5 18.3 7.5 19.5 7.5 21 8.6 22 10 22c.5 0 1-.1 1.4-.3.1.4.5.8 1 1 .4.2.9.3 1.6.3z'/%3E%3Cpath fill='%23ff9933' d='M14.5 2.2C13.4 1 12 0 10.5 0 7 0 4 3.5 4 8c0 2.2 1.1 4.2 2.8 5.4.5.4 1.2.2 1.2-.5V12c0-.8.6-1.4 1.4-1.4.5 0 .9.2 1.2.5.7.6 1.1 1.4 1.1 2.4 0 1-.4 1.9-1.1 2.5-.3.3-.5.7-.5 1.2v1.2c0 .7.7 1 1.2.5 1.7-1.2 2.8-3.2 2.8-5.4 0-2.5-1.2-4.6-3-6.1-.3-.2-.6-.5-.8-.8z'/%3E%3C/svg%3E";
+export const FLAME_ICON = "/images/on_fire.png";
 
 /** Take Cover ability icon - image asset (combat abilities popup) */
 export const TAKE_COVER_ICON = "/images/take_cover.png";

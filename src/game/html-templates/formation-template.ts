@@ -57,7 +57,6 @@ function formationSoldierCard(
   const slotClass = isActive ? "formation-active-slot" : "formation-reserve-slot";
   const swapClass = justSwapped ? " formation-just-swapped" : "";
   const lvl = getLevelFromExperience(s.experience ?? 0);
-  const levelRarity = lvl >= 6 ? "epic" : lvl >= 3 ? "rare" : "common";
   const bg = getBaseAndGearStats(s);
   return `
 <div class="formation-soldier-card entity-card designation-${des} ${slotClass}${swapClass}" data-soldier-id="${s.id}" data-slot-index="${slotIndex}" data-soldier-json="${escapeAttr(JSON.stringify(s))}" data-has-soldier="true">
@@ -65,7 +64,7 @@ function formationSoldierCard(
     <div class="formation-left">
       <div class="formation-avatar-wrap">
         <img class="formation-avatar" src="${getSoldierPortraitUrl(s.avatar, s.designation)}" alt="">
-        <span class="formation-level-badge item-level-badge rarity-${levelRarity}">Lv${lvl}</span>
+        <span class="formation-level-badge item-level-badge">Lv${lvl}</span>
         <span class="formation-role-badge market-weapon-role-badge role-${des}">${formatDesignation(s.designation)}</span>
       </div>
       <div class="formation-hp-wrap">

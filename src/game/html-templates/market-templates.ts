@@ -1,11 +1,7 @@
 import { DOM } from "../../constants/css-selectors.ts";
 import {
   getRecruitCost,
-  getWeaponArmorySlots,
-  getArmorArmorySlots,
-  getEquipmentArmorySlots,
 } from "../../constants/economy.ts";
-import { countArmoryByCategory } from "../../utils/item-utils.ts";
 import { getMaxCompanySize } from "../entities/company/company.ts";
 import { clrHash } from "../../utils/html-utils.ts";
 import {
@@ -28,6 +24,7 @@ import { getWeaponRestrictRole } from "../../utils/equip-utils.ts";
 import { getMaxSoldierLevel } from "../../utils/company-utils.ts";
 import { MAX_GEAR_LEVEL } from "../../constants/items/types.ts";
 import { getItemSellPrice } from "../../utils/sell-pricing.ts";
+import { CREDIT_SYMBOL } from "../../constants/currency.ts";
 
 export const marketTemplate = () => {
   const { market } = DOM;
@@ -147,7 +144,7 @@ function marketSellItemCard(item: import("../../constants/items/types.ts").Item,
     </span>
     <span class="market-sell-item-name">${item.name}</span>
   </span>
-  <span class="market-sell-item-value">$${sellValue}</span>
+  <span class="market-sell-item-value">${CREDIT_SYMBOL}${sellValue}</span>
 </button>`;
 }
 
@@ -166,21 +163,18 @@ function marketSellPopupHtml(companyLevel: number, inventory: import("../../cons
       <div id="market-sell-grid" class="market-sell-grid">
         ${sorted.map((entry) => marketSellItemCard(entry.item, entry.index, companyLevel)).join("")}
       </div>
-      <button type="button" id="market-sell-confirm" class="mbtn red equipment-buy-btn-full market-sell-confirm" disabled>$ Sell 0 Items • $0</button>
+      <button type="button" id="market-sell-confirm" class="mbtn red equipment-buy-btn-full market-sell-confirm" disabled>${CREDIT_SYMBOL} Sell 0 Items • ${CREDIT_SYMBOL}0</button>
     </div>
   </div>`;
 }
 
 export const weaponsMarketTemplate = () => {
   const store = usePlayerCompanyStore.getState();
-  const maxLevel = getMaxSoldierLevel(store.company);
-  const selectedTier = store.marketTierLevel || maxLevel;
+  const maxLevel = Math.max(1, getMaxSoldierLevel(store.company));
+  const selectedTier = Math.max(1, Math.min(maxLevel, store.marketTierLevel || maxLevel));
   const companyLvl = store.company?.level ?? store.companyLevel ?? 1;
   const creditBalance = store.creditBalance;
   const inv = store.company?.inventory ?? [];
-  const counts = countArmoryByCategory(inv);
-  const totalCapacity = getWeaponArmorySlots(companyLvl);
-  const slotsFree = Math.max(0, totalCapacity - counts.weapon);
 
   const allWeapons = getWeaponsMarketItems(selectedTier, companyLvl);
   const commonWeapons = allWeapons.filter((e) => (e.item.rarity ?? "common") === "common");
@@ -235,14 +229,15 @@ export const weaponsMarketTemplate = () => {
     ${sections}
   </div>
   <div class="weapons-market-footer troops-market-footer">
-    ${marketLevelNavigatorPartial(selectedTier, maxLevel)}
-    <div class="footer-banner">
-      <div class="inventory-footer-actions">
-        <button type="button" id="market-sell-open" class="equip-troops-btn">Sell Items</button>
+    <div class="market-controls-row">
+      <div class="market-controls-cell market-controls-nav">
+        ${marketLevelNavigatorPartial(selectedTier, maxLevel)}
       </div>
-      <div class="recruit-balance-bar">
+      <div class="market-controls-cell market-controls-credits">
         ${marketCreditsPartial(creditBalance)}
-        <span class="recruit-balance-item market-slots-info"><strong>Slots</strong> ${slotsFree}/${totalCapacity}</span>
+      </div>
+      <div class="market-controls-cell market-controls-sell">
+        <button type="button" id="market-sell-open" class="equip-troops-btn">Sell Items</button>
       </div>
     </div>
     ${companyActionsTemplate()}
@@ -253,14 +248,11 @@ export const weaponsMarketTemplate = () => {
 
 export const armorMarketTemplate = () => {
   const store = usePlayerCompanyStore.getState();
-  const maxLevel = getMaxSoldierLevel(store.company);
-  const selectedTier = store.marketTierLevel || maxLevel;
+  const maxLevel = Math.max(1, getMaxSoldierLevel(store.company));
+  const selectedTier = Math.max(1, Math.min(maxLevel, store.marketTierLevel || maxLevel));
   const companyLvl = store.company?.level ?? store.companyLevel ?? 1;
   const creditBalance = store.creditBalance;
   const inv = store.company?.inventory ?? [];
-  const counts = countArmoryByCategory(inv);
-  const totalCapacity = getArmorArmorySlots(companyLvl);
-  const slotsFree = Math.max(0, totalCapacity - counts.armor);
 
   const allArmor = getArmorMarketItems(selectedTier, companyLvl);
   const commonArmor = allArmor.filter((e) => (e.item.rarity ?? "common") === "common");
@@ -315,14 +307,15 @@ export const armorMarketTemplate = () => {
     ${sections}
   </div>
   <div class="armor-market-footer troops-market-footer">
-    ${marketLevelNavigatorPartial(selectedTier, maxLevel)}
-    <div class="footer-banner">
-      <div class="inventory-footer-actions">
-        <button type="button" id="market-sell-open" class="equip-troops-btn">Sell Items</button>
+    <div class="market-controls-row">
+      <div class="market-controls-cell market-controls-nav">
+        ${marketLevelNavigatorPartial(selectedTier, maxLevel)}
       </div>
-      <div class="recruit-balance-bar">
+      <div class="market-controls-cell market-controls-credits">
         ${marketCreditsPartial(creditBalance)}
-        <span class="recruit-balance-item market-slots-info"><strong>Slots</strong> ${slotsFree}/${totalCapacity}</span>
+      </div>
+      <div class="market-controls-cell market-controls-sell">
+        <button type="button" id="market-sell-open" class="equip-troops-btn">Sell Items</button>
       </div>
     </div>
     ${companyActionsTemplate()}
@@ -339,7 +332,7 @@ function escapeAttr(s: string): string {
 export const devCatalogMarketTemplate = () => {
   const store = usePlayerCompanyStore.getState();
   const maxLevel = MAX_GEAR_LEVEL; // Dev catalog: browse all levels 1-999
-  const selectedTier = Math.max(1, Math.min(MAX_GEAR_LEVEL, store.marketTierLevel || 1));
+  const selectedTier = Math.max(1, Math.min(MAX_GEAR_LEVEL, store.devCatalogTierLevel || 1));
   const tier = selectedTier as import("../../constants/items/types.ts").GearLevel;
 
   const allWeapons = getWeaponsMarketItemsAll(tier);
@@ -459,14 +452,11 @@ function abbreviateItemName(name: string): string {
 
 export const suppliesMarketTemplate = () => {
   const store = usePlayerCompanyStore.getState();
-  const maxLevel = getMaxSoldierLevel(store.company);
-  const selectedTier = store.marketTierLevel || maxLevel;
+  const maxLevel = Math.max(1, getMaxSoldierLevel(store.company));
+  const selectedTier = Math.max(1, Math.min(maxLevel, store.marketTierLevel || maxLevel));
   const creditBalance = store.creditBalance;
   const companyLvl = store.company?.level ?? store.companyLevel ?? 1;
   const inv = store.company?.inventory ?? [];
-  const counts = countArmoryByCategory(inv);
-  const totalCapacity = getEquipmentArmorySlots(companyLvl);
-  const slotsFree = Math.max(0, totalCapacity - counts.equipment);
 
   const suppliesData = (e: { item: import("../../constants/items/types.ts").Item; price: number }, i: number) =>
     `data-supplies-index="${i}" data-supplies-price="${e.price}" data-supplies-item="${escapeAttr(JSON.stringify(e.item))}"`;
@@ -520,14 +510,15 @@ export const suppliesMarketTemplate = () => {
     ${sections}
   </div>
   <div class="supplies-market-footer troops-market-footer">
-    ${marketLevelNavigatorPartial(selectedTier, maxLevel)}
-    <div class="footer-banner">
-      <div class="inventory-footer-actions">
-        <button type="button" id="market-sell-open" class="equip-troops-btn">Sell Items</button>
+    <div class="market-controls-row">
+      <div class="market-controls-cell market-controls-nav">
+        ${marketLevelNavigatorPartial(selectedTier, maxLevel)}
       </div>
-      <div class="recruit-balance-bar">
+      <div class="market-controls-cell market-controls-credits">
         ${marketCreditsPartial(creditBalance)}
-        <span class="recruit-balance-item market-slots-info"><strong>Slots</strong> ${slotsFree}/${totalCapacity}</span>
+      </div>
+      <div class="market-controls-cell market-controls-sell">
+        <button type="button" id="market-sell-open" class="equip-troops-btn">Sell Items</button>
       </div>
     </div>
     ${companyActionsTemplate()}

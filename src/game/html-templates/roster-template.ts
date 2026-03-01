@@ -99,6 +99,21 @@ function restTroopsPopupHtml(soldiers: Soldier[], activeIds: Set<string>): strin
 </div>`;
 }
 
+function rosterTraitsPopupHtml(): string {
+  return `
+<div id="roster-traits-popup" class="equip-picker-popup roster-traits-popup" hidden>
+  <div class="equip-picker-inner roster-traits-popup-inner">
+    <div class="equip-picker-header roster-traits-popup-header">
+      <h4 id="roster-traits-popup-title">Traits</h4>
+      <button type="button" id="roster-traits-popup-close" class="game-btn game-btn-md game-btn-red popup-close-btn">Close</button>
+    </div>
+    <div class="equip-picker-body roster-traits-popup-body">
+      <ul id="roster-traits-popup-list" class="roster-traits-popup-list"></ul>
+    </div>
+  </div>
+</div>`;
+}
+
 export function rosterTemplate(): string {
   const store = usePlayerCompanyStore.getState();
   const company = store.company;
@@ -139,6 +154,7 @@ export function rosterTemplate(): string {
 <div id="roster-screen" class="roster-root troops-market-root">
   ${equipPickerHtml}
   ${restTroopsPopupHtml(soldiers, activeIds)}
+  ${rosterTraitsPopupHtml()}
   ${itemStatsPopupHtml()}
   ${companyHeaderPartial("Company Roster")}
   <div class="roster-role-banner">${roleSummary}</div>

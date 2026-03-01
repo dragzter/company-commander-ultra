@@ -88,8 +88,8 @@ export function combatTemplate(
   ${companyHeaderPartial(missionName)}
   <div class="combat-main combat-main-with-drawer">
     <div id="combat-targeting-hint" class="combat-targeting-hint" aria-hidden="true"></div>
-    <div id="combat-objective-timer" class="combat-objective-timer" hidden>Hold: 2:00</div>
     <div id="combat-battle-area" class="combat-battle-area">
+      <div id="combat-objective-timer" class="combat-objective-timer" hidden>Hold: 2:00</div>
       <svg id="combat-attack-lines-svg" class="combat-attack-lines-svg" aria-hidden="true">
         <defs>
           <marker id="combat-arrow-player" markerWidth="6" markerHeight="6" refX="5.5" refY="3" orient="auto">

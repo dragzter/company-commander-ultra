@@ -187,8 +187,10 @@ export function missionsTemplate(
   ${companyActionsTemplate()}
   <div id="mission-flavor-popup" class="mission-flavor-popup" role="dialog" aria-modal="true" aria-labelledby="mission-flavor-popup-title" hidden>
     <div class="mission-flavor-popup-inner">
-      <button type="button" class="game-btn game-btn-md game-btn-red mission-flavor-popup-close" id="mission-flavor-popup-close" aria-label="Close">Close</button>
-      <h4 id="mission-flavor-popup-title" class="mission-flavor-popup-title">Mission Brief</h4>
+      <div class="mission-flavor-popup-header popup-dialog-header">
+        <h4 id="mission-flavor-popup-title" class="mission-flavor-popup-title">Mission Brief</h4>
+        <button type="button" class="game-btn game-btn-md game-btn-red mission-flavor-popup-close popup-close-btn" id="mission-flavor-popup-close" aria-label="Close">Close</button>
+      </div>
       <p id="mission-flavor-popup-text" class="mission-flavor-popup-text"></p>
     </div>
   </div>

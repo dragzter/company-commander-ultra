@@ -21,20 +21,21 @@ import { getWeaponRestrictRole } from "../../utils/equip-utils.ts";
 import { ThrowableItems } from "../../constants/items/throwable.ts";
 import { getScaledThrowableLevel20Damage } from "../../constants/items/throwable-scaling.ts";
 import { getItemSellPrice } from "../../utils/sell-pricing.ts";
+import { CREDIT_SYMBOL } from "../../constants/currency.ts";
 
 /** Shared item stats popup markup – used by inventory and roster (equip picker from roster needs it). */
 export function itemStatsPopupHtml(): string {
   return `
 <div id="item-stats-popup" class="item-stats-popup gear-buy-popup supplies-buy-popup" hidden role="dialog" aria-modal="true">
   <div class="item-stats-popup-inner gear-buy-popup-inner supplies-buy-popup-inner">
-    <div class="gear-buy-title-wrap">
+    <div class="gear-buy-title-wrap item-stats-header">
       <h4 id="item-stats-popup-title" class="supplies-buy-title"></h4>
       <button type="button" id="item-stats-popup-close" class="game-btn game-btn-md game-btn-red popup-close-btn">Close</button>
     </div>
     <div id="item-stats-popup-body" class="item-stats-popup-body supplies-buy-body"></div>
     <div class="item-popup-actions item-market-purchase item-popup-equip-only">
       <button type="button" id="item-stats-popup-equip" class="mbtn blue equipment-buy-btn-full" style="display:none">Equip</button>
-      <button type="button" id="item-stats-popup-sell" class="mbtn red equipment-buy-btn-full" style="display:none">$ Sell 0</button>
+      <button type="button" id="item-stats-popup-sell" class="mbtn red equipment-buy-btn-full" style="display:none">${CREDIT_SYMBOL} Sell 0</button>
     </div>
   </div>
 </div>`;

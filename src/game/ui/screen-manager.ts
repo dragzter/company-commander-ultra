@@ -314,9 +314,17 @@ function ScreenManager() {
 
   function ensureMarketTierInitialized() {
     const store = usePlayerCompanyStore.getState();
-    if (!store.marketTierLevel) {
-      const max = getMaxSoldierLevel(store.company);
+    const max = Math.max(1, getMaxSoldierLevel(store.company));
+    const current = store.marketTierLevel || 0;
+    if (current < 1 || current > max) {
       store.setMarketTierLevel(max);
+    }
+  }
+
+  function ensureDevCatalogTierInitialized() {
+    const store = usePlayerCompanyStore.getState();
+    if (!store.devCatalogTierLevel) {
+      store.setDevCatalogTierLevel(1);
     }
   }
 
@@ -328,7 +336,7 @@ function ScreenManager() {
     DomEventManager.initEventArray(ec().companyHome().concat(ec().market()));
     DomEventManager.initDelegatedEventArray(center as HTMLElement, ec().weaponsScreen(), "weapons-screen");
     UiManager.selectCompanyHomeButton(DOM.company.market);
-    Styler.setCenterBG("bg_76.jpg", true);
+    Styler.setCenterBG("weapons_market.png", true);
     show.center();
   }
 
@@ -340,13 +348,13 @@ function ScreenManager() {
     DomEventManager.initEventArray(ec().companyHome().concat(ec().market()));
     DomEventManager.initDelegatedEventArray(center as HTMLElement, ec().armorScreen(), "armor-screen");
     UiManager.selectCompanyHomeButton(DOM.company.market);
-    Styler.setCenterBG("bg_76.jpg", true);
+    Styler.setCenterBG("armor_market.png", true);
     show.center();
   }
 
   function createDevCatalogPage() {
     UiManager.clear.center();
-    ensureMarketTierInitialized();
+    ensureDevCatalogTierInitialized();
     const content = parseHTML(devCatalogMarketTemplate());
     center.appendChild(content as Element);
     DomEventManager.initEventArray(ec().companyHome().concat(ec().market()));
@@ -364,7 +372,7 @@ function ScreenManager() {
     DomEventManager.initEventArray(ec().companyHome().concat(ec().market()));
     DomEventManager.initDelegatedEventArray(center as HTMLElement, ec().suppliesScreen(), "supplies-screen");
     UiManager.selectCompanyHomeButton(DOM.company.market);
-    Styler.setCenterBG("bg_76.jpg", true);
+    Styler.setCenterBG("equipment_market.png", true);
     show.center();
   }
 

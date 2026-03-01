@@ -113,7 +113,7 @@ export function equipPickerTemplate(): string {
   <div class="equip-picker-inner">
     <div class="equip-picker-header">
       <h4 id="equip-picker-title">Equip Troops</h4>
-      <button type="button" id="equip-picker-close" class="game-btn game-btn-md game-btn-red">Close</button>
+      <button type="button" id="equip-picker-close" class="game-btn game-btn-md game-btn-red popup-close-btn">Close</button>
     </div>
     <div class="equip-picker-body">
       <div class="equip-picker-soldiers-list">
