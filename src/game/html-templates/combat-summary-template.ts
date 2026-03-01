@@ -1,7 +1,7 @@
 import type { Combatant } from "../combat/types.ts";
 import type { Mission } from "../../constants/missions.ts";
 import type { Item } from "../../constants/items/types.ts";
-import type { Soldier } from "../../entities/types.ts";
+import type { Soldier } from "../entities/types.ts";
 import { getItemIconUrl } from "../../utils/item-utils.ts";
 import { getWeaponRestrictRole } from "../../utils/equip-utils.ts";
 import { formatDisplayName, getSoldierPortraitUrl } from "../../utils/name-utils.ts";
@@ -226,7 +226,6 @@ function companyXpBarHtml(
 export function combatSummaryTemplate(data: CombatSummaryData): string {
   const {
     victory,
-    mission,
     participants,
     playerKills,
     leveledUpIds,

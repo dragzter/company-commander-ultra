@@ -154,6 +154,10 @@ function getRecruitLevelFromCompany(company: Company | null | undefined): number
   return Math.max(1, Math.min(20, enemyBaseLevel - 1));
 }
 
+function resolveRecruitLevel(company: Company | null | undefined, highestAchieved = 1): number {
+  return Math.max(Math.max(1, highestAchieved), getRecruitLevelFromCompany(company));
+}
+
 function generateRecruitByRole(role: Designation, level: number): Soldier {
   if (role === SOLDIER_DESIGNATION.medic) return SoldierManager.getNewMedic(level);
   if (role === SOLDIER_DESIGNATION.support) return SoldierManager.getNewSupportMan(level);
@@ -177,7 +181,7 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
   companyName: "",
   commanderName: "",
   companyUnitPatchURL: "",
-  gameStep: GAME_STEPS.at_intro_0,
+  gameStep: GAME_STEPS.at_intro_0 as GameStep,
   rerollCounter: 6,
 
   marketAvailableTroops: [],
@@ -194,11 +198,12 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
   totalItemsInInventory: 0,
   inventory: [],
   companyExperience: 0,
+  highestRecruitLevelAchieved: 1,
   company: {} as Company,
   marketTierLevel: 0,
   missionBoard: [],
   missionBoardSchemaVersion: MISSION_BOARD_SCHEMA_VERSION,
-  missionsViewMode: "menu",
+  missionsViewMode: "menu" as CompanyStore["missionsViewMode"],
 
   // Actions
   rerollSoldier: async (id: string) => {
@@ -343,7 +348,7 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
     })),
   setGameStep: (step: GameStep) => set({ gameStep: step }),
   setMarketTierLevel: (n: number) => set({ marketTierLevel: n }),
-  setMissionsViewMode: (mode: "menu" | "normal" | "epic") => set({ missionsViewMode: mode }),
+  setMissionsViewMode: (mode: "menu" | "normal" | "epic" | "dev") => set({ missionsViewMode: mode }),
   ensureMissionBoard: () => {
     const state = get();
     const existing = state.missionBoard ?? [];
@@ -375,6 +380,10 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
         ...state.company,
         name: n,
       },
+    })),
+  setHighestRecruitLevelAchieved: (level: number) =>
+    set((state: CompanyStore) => ({
+      highestRecruitLevelAchieved: Math.max(state.highestRecruitLevelAchieved ?? 1, Math.max(1, Math.floor(level || 1))),
     })),
   setCommanderName: (n: string) =>
     set((state: CompanyStore) => ({
@@ -452,11 +461,11 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
         soldiers: newSoldiers,
         formationSlots: newFormationSlots,
       };
-      const recruitLevel = getRecruitLevelFromCompany(nextCompany);
-      const replacements = added.map((s) => generateRecruitByRole(s.designation, recruitLevel));
+      const resolvedRecruitLevel = resolveRecruitLevel(nextCompany, state.highestRecruitLevelAchieved);
+      const replacements = added.map((s) => generateRecruitByRole(s.designation, resolvedRecruitLevel));
       const nextMarket = normalizeRecruitMarketPool(
         [...state.marketAvailableTroops, ...returned, ...replacements],
-        recruitLevel,
+        resolvedRecruitLevel,
       );
       return {
         creditBalance: state.creditBalance - totalCost,
@@ -464,15 +473,17 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
         totalMenInCompany: newSoldiers.length,
         company: nextCompany,
         marketAvailableTroops: nextMarket,
+        highestRecruitLevelAchieved: resolvedRecruitLevel,
       };
     }),
   onCompanyLevelUp: () => {
     const state = get();
-    const recruitLevel = getRecruitLevelFromCompany(state.company);
+    const recruitLevel = resolveRecruitLevel(state.company, state.highestRecruitLevelAchieved);
     const nextMarket = normalizeRecruitMarketPool(state.marketAvailableTroops ?? [], recruitLevel);
     set((s: CompanyStore) => ({
       rerollCounter: (s.rerollCounter ?? 0) + 6,
       marketAvailableTroops: nextMarket,
+      highestRecruitLevelAchieved: recruitLevel,
     }));
   },
   addInitialTroopsIfEmpty: () =>
@@ -488,12 +499,12 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
       ];
       /* Ensure company has required fields (level, resourceProfile) for new-game flow */
       const companyBase = {
+        ...state.company,
         level: state.company?.level ?? 1,
         experience: state.company?.experience ?? 0,
         inventory: state.company?.inventory ?? [],
         holding_inventory: state.company?.holding_inventory ?? [],
         resourceProfile: state.company?.resourceProfile ?? COMPANY_RESOURCES_BY_LEVEL[0],
-        ...state.company,
       };
       const companyWithSoldiers = { ...companyBase, soldiers: initial };
       const formationSlots = getFormationSlots(companyWithSoldiers);
@@ -506,6 +517,7 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
         totalMenInCompany: initial.length,
         companyLevel: companyBase.level,
         companyExperience: companyBase.experience ?? 0,
+        highestRecruitLevelAchieved: 1,
       };
     }),
   /** Add starter armory items when inventory is empty (new game). */
@@ -1164,6 +1176,10 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
     victory: boolean,
   ) => {
     const baseXp = victory ? SOLDIER_XP_BASE_SURVIVE_VICTORY : SOLDIER_XP_BASE_SURVIVE_DEFEAT;
+    let totalKillsThisMission = 0;
+    killsBySoldier.forEach((kills) => {
+      totalKillsThisMission += Math.max(0, Math.floor(kills || 0));
+    });
     set((state: CompanyStore) => {
       const soldiers = state.company?.soldiers ?? [];
       const newSoldiers = soldiers.map((s) => {
@@ -1189,7 +1205,10 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
         }
         return soldier;
       });
-      return { company: { ...state.company, soldiers: newSoldiers } };
+      return {
+        company: { ...state.company, soldiers: newSoldiers },
+        totalEnemiesKilledAllTime: (state.totalEnemiesKilledAllTime ?? 0) + totalKillsThisMission,
+      };
     });
   },
 
@@ -1214,6 +1233,7 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
     participantCount: number,
     hasCasualty: boolean,
     failed: boolean,
+    lowHealthIds: string[] = [],
   ) => {
     set((state: CompanyStore) => {
       const soldiers = state.company?.soldiers ?? [];
@@ -1226,17 +1246,64 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
       const baseDeduction = Math.floor(totalCost / n);
       const remainder = totalCost - baseDeduction * n;
       const participantSet = new Set(survivorIds);
+      const lowHealthSet = new Set(lowHealthIds);
       const newSoldiers = soldiers.map((s) => {
         const current = Math.max(0, Math.min(ENERGY_MAX, s.energy ?? ENERGY_MAX));
         if (participantSet.has(s.id)) {
           const extra = survivorIds.indexOf(s.id) === 0 ? remainder : 0;
-          const deduct = baseDeduction + extra;
+          const randomizedExtra = 5 + Math.floor(Math.random() * 4); // 5-8
+          const lowHealthPenalty = lowHealthSet.has(s.id) ? 4 : 0;
+          const deduct = baseDeduction + extra + randomizedExtra + lowHealthPenalty;
           return { ...s, energy: Math.max(0, current - deduct) };
         }
         return { ...s, energy: Math.min(ENERGY_MAX, current + ENERGY_RECOVERY_REST) };
       });
       return { company: { ...state.company, soldiers: newSoldiers } };
     });
+  },
+
+  /** Run one R&R round (+up to 30 energy each selected soldier, prorated cost). */
+  runRestRound: (soldierIds: string[]) => {
+    const ids = Array.from(new Set(soldierIds.filter(Boolean)));
+    if (ids.length === 0) {
+      return { success: false, totalCost: 0, totalRecovered: 0, recoveredById: {}, reason: "no_selection" as const };
+    }
+    const state = get();
+    const soldiers = state.company?.soldiers ?? [];
+    const byId = new Map(soldiers.map((s) => [s.id, s]));
+    const recoverById: Record<string, number> = {};
+    let totalRecovered = 0;
+    for (const id of ids) {
+      const s = byId.get(id);
+      if (!s) continue;
+      const cur = Math.max(0, Math.min(ENERGY_MAX, s.energy ?? ENERGY_MAX));
+      const recover = Math.max(0, Math.min(30, ENERGY_MAX - cur));
+      if (recover <= 0) continue;
+      recoverById[id] = recover;
+      totalRecovered += recover;
+    }
+    if (totalRecovered <= 0) {
+      return { success: false, totalCost: 0, totalRecovered: 0, recoveredById: {}, reason: "no_recovery" as const };
+    }
+    const totalCost = Math.max(1, Math.round((totalRecovered / 30) * 50));
+    if ((state.creditBalance ?? 0) < totalCost) {
+      return { success: false, totalCost, totalRecovered: 0, recoveredById: {}, reason: "credits" as const };
+    }
+
+    set((s: CompanyStore) => {
+      const nextSoldiers = (s.company?.soldiers ?? []).map((sol) => {
+        const gain = recoverById[sol.id] ?? 0;
+        if (gain <= 0) return sol;
+        const cur = Math.max(0, Math.min(ENERGY_MAX, sol.energy ?? ENERGY_MAX));
+        return { ...sol, energy: Math.min(ENERGY_MAX, cur + gain) };
+      });
+      return {
+        creditBalance: (s.creditBalance ?? 0) - totalCost,
+        company: { ...s.company, soldiers: nextSoldiers },
+      };
+    });
+
+    return { success: true, totalCost, totalRecovered, recoveredById: recoverById };
   },
 
   /** Sync combatant HP back to store soldiers after combat. Never overwrite with a lower value—soldiers may have gained HP from leveling up during grantSoldierCombatXP. */

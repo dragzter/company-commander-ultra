@@ -5,6 +5,8 @@ import type { ArmorBonus, GearLevel } from "./types.ts";
 import type { ItemSpecialEffectId } from "../item-special-effects.ts";
 import { getItemSpecialEffect } from "../item-special-effects.ts";
 import { ITEM_TYPES, RARITY, TARGET_TYPES } from "./types.ts";
+import { BASE_GEAR_LEVEL_CAP } from "./types.ts";
+import { applyPostCapArmorBonuses, clampGearLevel, scaleArmorBonusesToPreCapLevel } from "./gear-scaling.ts";
 
 export type ArmorImmunity = "stun" | "panic" | "suppression" | "burning";
 
@@ -27,17 +29,21 @@ export const EPIC_ARMOR_BASES: EpicArmorBase[] = [
   { baseId: "shadow_form", name: "Shadow Form", description: "Elite infiltration suit.", icon: "armor_7.png", toughnessBase: 24, toughnessPerLevel: 2, bonuses: [{ type: "percent", stat: "avoidance", value: 10 }, { type: "flat", stat: "dex", value: 5 }], specialEffect: "fearless", storeAvailable: false },
   { baseId: "phoenix_guard", name: "Phoenix Guard", description: "Fire-resistant plating.", icon: "armor_13.png", toughnessBase: 40, toughnessPerLevel: 5, bonuses: [{ type: "flat", stat: "hp", value: 20 }], specialEffect: "dragonskin", storeAvailable: false },
   { baseId: "mind_shield", name: "Mind Shield", description: "Psychic resistance helmet.", icon: "armor_10.png", toughnessBase: 30, toughnessPerLevel: 4, bonuses: [{ type: "flat", stat: "morale", value: 25 }, { type: "percent", stat: "mitigation", value: 3 }], specialEffect: "commissar", storeAvailable: false },
-  { baseId: "warden_plate", name: "Warden Plate", description: "All-around elite protection.", icon: "armor_6.png", toughnessBase: 43, toughnessPerLevel: 5, bonuses: [{ type: "flat", stat: "awareness", value: 5 }, { type: "percent", stat: "avoidance", value: 5 }, { type: "percent", stat: "mitigation", value: 3 }], specialEffect: "visionary", storeAvailable: false },
+  { baseId: "warden_plate", name: "Warden Plate", description: "All-around elite protection.", icon: "armor_6.png", toughnessBase: 43, toughnessPerLevel: 5, bonuses: [{ type: "percent", stat: "avoidance", value: 5 }, { type: "percent", stat: "mitigation", value: 3 }], specialEffect: "visionary", storeAvailable: false },
   { baseId: "sacred_cloak", name: "Sacred Cloak", description: "Blessed mantle.", icon: "armor_5.png", toughnessBase: 18, toughnessPerLevel: 2, bonuses: [{ type: "percent", stat: "avoidance", value: 2 }, { type: "flat", stat: "dex", value: 10 }], specialEffect: "flame_ward", storeAvailable: false },
 ];
 
 export function createEpicArmor(base: EpicArmorBase, level: GearLevel) {
-  const toughness = base.toughnessBase + (level - 1) * base.toughnessPerLevel;
+  const tier = clampGearLevel(level);
+  const preCapLevel = Math.min(tier, BASE_GEAR_LEVEL_CAP);
+  const toughness = base.toughnessBase + (preCapLevel - 1) * base.toughnessPerLevel;
   const eff = getItemSpecialEffect(base.specialEffect);
   const effectBonuses = eff.bonuses ?? [];
-  const bonuses: ArmorBonus[] = [...base.bonuses, ...effectBonuses];
+  const scaledBaseBonuses = scaleArmorBonusesToPreCapLevel(base.bonuses, preCapLevel) ?? [...base.bonuses];
+  const preCapBonuses = [...scaledBaseBonuses, ...effectBonuses];
+  const bonuses: ArmorBonus[] = applyPostCapArmorBonuses(preCapBonuses, tier) ?? preCapBonuses;
   return {
-    id: `${base.baseId}_${level}`,
+    id: `${base.baseId}_${tier}`,
     baseId: base.baseId,
     name: base.name,
     type: ITEM_TYPES.armor,
@@ -46,7 +52,7 @@ export function createEpicArmor(base: EpicArmorBase, level: GearLevel) {
     usable: true,
     icon: base.icon,
     toughness,
-    level,
+    level: tier,
     bonuses,
     immunities: eff.immunities,
     specialEffect: base.specialEffect,

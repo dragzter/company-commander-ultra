@@ -7,6 +7,8 @@ import type { ArmorImmunity } from "./epic-armor-bases.ts";
 import type { ItemSpecialEffectId } from "../item-special-effects.ts";
 import { getItemSpecialEffect } from "../item-special-effects.ts";
 import { ITEM_TYPES, RARITY, TARGET_TYPES } from "./types.ts";
+import { BASE_GEAR_LEVEL_CAP } from "./types.ts";
+import { applyPostCapArmorBonuses, clampGearLevel, scaleArmorBonusesToPreCapLevel } from "./gear-scaling.ts";
 
 export interface RareArmorBase {
   baseId: string;
@@ -37,19 +39,17 @@ export const RARE_ARMOR_BASES: RareArmorBase[] = [
 ];
 
 export function createRareArmor(base: RareArmorBase, level: GearLevel) {
-  const tier = Math.max(1, Math.min(20, level));
-  const baseToughness = base.toughnessBase + (tier - 1) * base.toughnessPerLevel;
-  let bonuses = base.bonuses.map((b) => {
-    if (b.type === "flat" && b.stat === "toughness") {
-      return { ...b, value: b.value + (tier - 1) * 1 };
-    }
-    return b;
-  });
+  const tier = clampGearLevel(level);
+  const preCapLevel = Math.min(tier, BASE_GEAR_LEVEL_CAP);
+  const baseToughness = base.toughnessBase + (preCapLevel - 1) * base.toughnessPerLevel;
+  const scaledBaseBonuses = scaleArmorBonusesToPreCapLevel(base.bonuses, preCapLevel) ?? [...base.bonuses];
+  let bonuses = [...scaledBaseBonuses];
   if (base.specialEffect) {
     const eff = getItemSpecialEffect(base.specialEffect);
     const effectBonuses = eff.bonuses ?? [];
     bonuses = [...bonuses, ...effectBonuses];
   }
+  bonuses = applyPostCapArmorBonuses(bonuses, tier) ?? bonuses;
   return {
     id: `${base.baseId}_${tier}`,
     baseId: base.baseId,

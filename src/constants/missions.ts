@@ -149,6 +149,13 @@ export type Mission = {
   xpReward?: number;
   flavorText?: string;
   isEpic?: boolean;
+  /** Dev-only sandbox mission. Excluded from normal progression/economy flows. */
+  isDevTest?: boolean;
+  /** Optional forced combat setup values for dev/testing flows. */
+  forcedPlayerLevel?: number;
+  forcedEnemyLevel?: number;
+  forcedGearLevel?: number;
+  forcedSquadSize?: number;
   rarity?: MissionRarity;
   rewardItems?: string[];
 };

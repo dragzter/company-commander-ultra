@@ -43,8 +43,13 @@ export type EffectSeverity = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
 
 export type WeaponBaseSpeed = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10; // Lower is slower
 
-/** Level/tier of gear (1-20). Same base item at higher level = better stats. */
-export type GearLevel = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20;
+/** Gear level bounds. */
+export const MIN_GEAR_LEVEL = 1;
+export const BASE_GEAR_LEVEL_CAP = 20;
+export const MAX_GEAR_LEVEL = 999;
+
+/** Level/tier of gear (1-999). Same base item at higher level = better stats. */
+export type GearLevel = number;
 
 /** Armor bonus: flat stats (TGH, HP, etc) or percent (MIT, AVD, CTH). Percent bonuses don't scale with tier. */
 export type ArmorBonus =
@@ -101,7 +106,7 @@ export interface Item {
   effect?: ItemEffect;
   icon?: string;
   id: string;
-  level?: GearLevel; // Gear tier 1-10
+  level?: GearLevel; // Gear tier 1-999
   /** If true, item has no level scaling (e.g. stim pack, flashbang, smoke). No Lv badge, fixed price. */
   noLevel?: boolean;
   /** Armor only: immunities granted (e.g. stun, panic). Shown in effect box. */

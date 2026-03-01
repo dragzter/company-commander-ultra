@@ -403,53 +403,80 @@ export const companyHomePageTemplate = () => {
 
   const totalMissions = (totalMissionsCompleted ?? 0) + (totalMissionsFailed ?? 0);
   const winRatePct = totalMissions > 0 ? Math.round(((totalMissionsCompleted ?? 0) / totalMissions) * 100) : 0;
+  const enemiesKilled = totalEnemiesKilledAllTime ?? 0;
   const killLossRatio = totalMenLostAllTime > 0
-    ? (totalEnemiesKilledAllTime / totalMenLostAllTime).toFixed(2)
-    : `${totalEnemiesKilledAllTime > 0 ? totalEnemiesKilledAllTime : 0}.00`;
+    ? (enemiesKilled / totalMenLostAllTime).toFixed(2)
+    : `${enemiesKilled > 0 ? enemiesKilled : 0}.00`;
 
-  const statsBlockExciting = totalMenInCompany > 0
+  const heroSubtitle = totalMissions > 0
+    ? `${totalMissions.toLocaleString()} operations logged`
+    : "Build your company and start your first operation";
+  const heroBlock = `
+    <section class="company-home-hero">
+      <div class="company-home-hero-top">
+        <h2 class="company-home-hero-title">Command Center</h2>
+        <span class="company-home-hero-subtitle">${heroSubtitle}</span>
+      </div>
+      <div class="company-home-kpi-strip">
+        <div class="company-home-kpi">
+          <span class="company-home-kpi-label">Enemies Killed</span>
+          <span class="company-home-kpi-value positive">${enemiesKilled.toLocaleString()}</span>
+        </div>
+        <div class="company-home-kpi">
+          <span class="company-home-kpi-label">Win Rate</span>
+          <span class="company-home-kpi-value accent">${winRatePct}%</span>
+        </div>
+        <div class="company-home-kpi">
+          <span class="company-home-kpi-label">Credits</span>
+          <span class="company-home-kpi-value accent">$${creditBalance.toLocaleString()}</span>
+        </div>
+      </div>
+    </section>
+  `;
+
+  const statsBlockExciting = `
+    ${heroBlock}
+    <section class="company-home-card">
+      <h3 class="company-home-card-title">Operational Snapshot</h3>
+      ${totalMenInCompany === 0 ? '<p class="company-home-empty-hint">No active soldiers in company. Recruit to begin operations.</p>' : ""}
+      <div class="company-stats-grid">
+        ${statRow("Total Men", totalMenInCompany, "positive")}
+        ${statRow("Armory", `${totalItemsInInventory} / ${totalInventoryCapacity}`, "neutral")}
+        ${statRow("Missions Done", totalMissionsCompleted, "positive")}
+        ${statRow("Missions Failed", totalMissionsFailed, "neutral")}
+        ${statRow("Men Lost", totalMenLostAllTime, "neutral")}
+        ${statRow("K/L Ratio", killLossRatio, "positive")}
+      </div>
+    </section>
+  `;
+
+  const emptyRecruitRow = totalMenInCompany === 0
     ? `
-    <div class="company-stats-grid">
-      ${statRow("Total Men", totalMenInCompany, "positive")}
-      ${statRow("Enemies Killed", totalEnemiesKilledAllTime, "positive")}
-      ${statRow("K/L Ratio", killLossRatio, "positive")}
-      ${statRow("Missions Done", totalMissionsCompleted, "positive")}
-      ${statRow("Missions Failed", totalMissionsFailed, "neutral")}
-      ${statRow("Win Rate", `${winRatePct}%`, "accent")}
-      ${statRow("Men Lost", totalMenLostAllTime, "neutral")}
-      ${statRow("Credits", `$${creditBalance.toLocaleString()}`, "accent")}
-      ${statRow("Armory", `${totalItemsInInventory} / ${totalInventoryCapacity}`, "neutral")}
+    <div class="flex align-center justify-center w-100 company-home-recruit-cta">
+      <button id="go-to-troops-screen" class="game-btn game-btn-lg company-home-recruit-btn company-home-recruit-btn-attn">Recruit Soldiers</button>
     </div>
   `
-    : `
-    <div class="company-stats-grid company-stats-minimal">
-      ${statRow("Total Men", totalMenInCompany, "positive")}
-      ${statRow("Credits", `$${creditBalance.toLocaleString()}`, "accent")}
-      ${statRow("Armory", `${totalItemsInInventory} / ${totalInventoryCapacity}`, "neutral")}
-    </div>
-    <div class="flex align-center justify-center w-100">
-      <button id="go-to-troops-screen" class="mbtn red">Recruit Men</button>
-    </div>
-  `;
+    : "";
 
   return `
   <div id="campaign-home-screen" class="flex h-100 column">
     ${companyHeaderPartial()}
 
-    <div class="campaign-home-scroll">
-      <div class="company-home-stats-block">
-        ${statsBlockExciting}
-        ${memorialCodexRow}
-      </div>
+	    <div class="campaign-home-scroll">
+	      <div class="company-home-stats-block">
+	        ${statsBlockExciting}
+	        ${memorialCodexRow}
+          ${emptyRecruitRow}
+	      </div>
     </div>
 
-    <div class="company-level-bar-wrapper">
-      <div class="company-xp-header">
-        <span class="company-level-badge">Lv ${companyLevel}</span>
-        ${companyLvl < 20
-          ? `<span class="company-xp-text"><span class="company-xp-current">${Math.round(progressInLevel)}</span> / <span class="company-xp-required">${xpInLevel}</span> XP</span>`
-          : '<span class="company-xp-max">MAX LEVEL</span>'}
-      </div>
+	    <div class="company-level-bar-wrapper">
+	      <div class="company-xp-header">
+	        <span class="company-level-badge">Lv ${companyLvl}</span>
+	        ${companyLvl < 20
+	          ? `<span class="company-xp-text"><span class="company-xp-current">${Math.round(progressInLevel)}</span> / <span class="company-xp-required">${xpInLevel}</span> XP</span>`
+	          : '<span class="company-xp-max">MAX LEVEL</span>'}
+	      </div>
       <div class="company-level-progress">
         <div class="company-xp-fill" style="width: ${xpFillPct}%"></div>
         ${companyLvl < 20 ? '<div class="company-xp-shine"></div>' : ""}

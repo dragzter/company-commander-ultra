@@ -113,7 +113,7 @@ function DomEventManager() {
   function initEquipSlotTooltipHideOnClick() {
     if (_tooltipCaptureAttached) return;
     _tooltipCaptureAttached = true;
-    const fn = (e: Event) => {
+    const fn = (_e: Event) => {
       const tt = document.getElementById("equip-slot-tooltip");
       if (tt && !tt.hidden) { tt.hidden = true; tt.classList.remove("equip-slot-tooltip-visible"); }
     };

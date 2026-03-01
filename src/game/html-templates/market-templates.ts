@@ -26,6 +26,7 @@ import {
 import { getItemIconUrl } from "../../utils/item-utils.ts";
 import { getWeaponRestrictRole } from "../../utils/equip-utils.ts";
 import { getMaxSoldierLevel } from "../../utils/company-utils.ts";
+import { MAX_GEAR_LEVEL } from "../../constants/items/types.ts";
 
 export const marketTemplate = () => {
   const { market } = DOM;
@@ -52,10 +53,11 @@ export const marketTemplate = () => {
 	`;
 };
 
-/** Level navigator for gear tier browsing: [←] Level N [→] */
-function marketLevelNavigatorPartial(currentLevel: number, maxLevel: number): string {
+/** Level navigator for gear tier browsing: [←] Level N [→]. Optional quick jumps for large ranges. */
+function marketLevelNavigatorPartial(currentLevel: number, maxLevel: number, options: { quickJumps?: boolean } = {}): string {
   const canDec = currentLevel > 1;
   const canInc = currentLevel < maxLevel;
+  const quick = options.quickJumps === true;
   return `
 <div class="market-level-nav" data-market-level-nav>
   <button type="button" class="market-level-nav-btn market-level-nav-prev" data-market-tier-prev aria-label="Previous level" ${!canDec ? "disabled" : ""}>
@@ -65,6 +67,16 @@ function marketLevelNavigatorPartial(currentLevel: number, maxLevel: number): st
   <button type="button" class="market-level-nav-btn market-level-nav-next" data-market-tier-next aria-label="Next level" ${!canInc ? "disabled" : ""}>
     <span class="market-level-nav-arrow">→</span>
   </button>
+  ${quick
+    ? `<div class="market-level-nav-quick">
+      <button type="button" class="market-level-nav-btn market-level-nav-jump" data-market-tier-delta="-100" aria-label="Jump back 100 levels">-100</button>
+      <button type="button" class="market-level-nav-btn market-level-nav-jump" data-market-tier-delta="-10" aria-label="Jump back 10 levels">-10</button>
+      <input type="number" class="market-level-nav-input" data-market-tier-input min="1" max="${maxLevel}" value="${currentLevel}" aria-label="Set level">
+      <button type="button" class="market-level-nav-btn market-level-nav-go" data-market-tier-go aria-label="Go to level">Go</button>
+      <button type="button" class="market-level-nav-btn market-level-nav-jump" data-market-tier-delta="10" aria-label="Jump forward 10 levels">+10</button>
+      <button type="button" class="market-level-nav-btn market-level-nav-jump" data-market-tier-delta="100" aria-label="Jump forward 100 levels">+100</button>
+    </div>`
+    : ""}
 </div>`;
 }
 
@@ -274,8 +286,8 @@ function escapeAttr(s: string): string {
 /** Dev-only: view all weapons and armor including epics. View-only, no purchase. */
 export const devCatalogMarketTemplate = () => {
   const store = usePlayerCompanyStore.getState();
-  const maxLevel = 20; // Dev catalog: browse all levels 1-20
-  const selectedTier = Math.max(1, Math.min(20, store.marketTierLevel || 1));
+  const maxLevel = MAX_GEAR_LEVEL; // Dev catalog: browse all levels 1-999
+  const selectedTier = Math.max(1, Math.min(MAX_GEAR_LEVEL, store.marketTierLevel || 1));
   const tier = selectedTier as import("../../constants/items/types.ts").GearLevel;
 
   const allWeapons = getWeaponsMarketItemsAll(tier);
@@ -351,7 +363,11 @@ export const devCatalogMarketTemplate = () => {
     section("Armor — Rare", rareArmor, commonArmor.length, "market-section-rare", "dev-armor") +
     section("Armor — Epic", epicArmor, commonArmor.length + rareArmor.length, "market-section-epic", "dev-armor");
 
-  const { common: commonSupplies, rare: rareSupplies, epic: epicSupplies } = getSuppliesMarketItems(selectedTier, Math.max(4, store.company?.level ?? store.companyLevel ?? 1));
+  const { common: commonSupplies, rare: rareSupplies, epic: epicSupplies } = getSuppliesMarketItems(
+    selectedTier,
+    Math.max(4, store.company?.level ?? store.companyLevel ?? 1),
+    { allowPost20: true },
+  );
   const suppliesSections =
     section("Supplies — Common", commonSupplies, 0, "market-section-common", "dev-supplies") +
     section("Supplies — Rare", rareSupplies, commonSupplies.length, "market-section-rare", "dev-supplies") +
@@ -376,7 +392,7 @@ export const devCatalogMarketTemplate = () => {
     ${suppliesSections}
   </div>
   <div class="dev-catalog-footer weapons-market-footer troops-market-footer">
-    ${marketLevelNavigatorPartial(selectedTier, maxLevel)}
+    ${marketLevelNavigatorPartial(selectedTier, maxLevel, { quickJumps: true })}
     <div class="footer-banner">
       ${companyActionsTemplate()}
     </div>
@@ -481,7 +497,6 @@ export const troopsMarketTemplate = (
   const maxSize = getMaxCompanySize(companyLevel ?? 1);
   const currentCount = store.company?.soldiers?.length ?? store.totalMenInCompany ?? 0;
   const slotsLeft = maxSize - currentCount;
-  const isFull = currentCount >= maxSize && slotsLeft === 0;
   const remaining = creditBalance - totalCost;
   const canAffordSoldier = (s: Soldier) =>
     slotsLeft > recruitStaging.length &&

@@ -43,5 +43,5 @@ export function computeFinalDamage(
     mit *= 0.5; // Stunned: toughness-derived mitigation halved
   }
   const damage = rawDamage * (1 - mit);
-  return Math.max(1, Math.floor(damage));
+  return Math.max(1, Math.ceil(damage));
 }

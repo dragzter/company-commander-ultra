@@ -105,7 +105,8 @@ function missionSectionByKind(missions: Mission[], kind: MissionKind): string {
 export function missionsTemplate(
   missions: Mission[],
   companyLevel = 1,
-  activeMode: "menu" | "normal" | "epic" = "menu",
+  activeMode: "menu" | "normal" | "epic" | "dev" = "menu",
+  devMissions: Mission[] = [],
 ): string {
   const regular = missions.filter((m) => (m.rarity ?? (m.isEpic ? "epic" : "normal")) !== "epic");
   const epic = missions.filter((m) => (m.rarity ?? (m.isEpic ? "epic" : "normal")) === "epic");
@@ -127,6 +128,16 @@ export function missionsTemplate(
     ? showEpic
       ? (epic.length > 0 ? epicSection : emptyState)
       : '<div class="missions-empty-state">Epic missions unlock at Company Level 2.</div>'
+    : mode === "dev"
+      ? (devMissions.length > 0
+        ? `
+      <div class="missions-section missions-section-dev">
+        <div class="missions-kind-banner missions-kind-banner-dev">Dev Test Missions</div>
+        <div class="missions-grid missions-grid-dev">
+          ${sortMissionsByDifficulty(devMissions).map((m) => missionCard(m)).join("")}
+        </div>
+      </div>`
+        : '<div class="missions-empty-state">No dev test missions available.</div>')
     : mode === "normal"
       ? (regularSections || emptyState)
       : `
@@ -151,6 +162,13 @@ export function missionsTemplate(
           </span>
           <span class="missions-mode-divider" aria-hidden="true"></span>
           <span class="missions-mode-label">Career</span>
+        </button>
+        <button id="missions-mode-dev" class="game-btn game-btn-md game-btn-black missions-mode-menu-btn missions-mode-menu-btn-dev" type="button">
+          <span class="missions-mode-icon-block missions-mode-icon-block-dev">
+            <img src="/images/career_m.png" alt="" width="40" height="40" aria-hidden="true">
+          </span>
+          <span class="missions-mode-divider" aria-hidden="true"></span>
+          <span class="missions-mode-label">Dev 999 Test</span>
         </button>
         ${
           showEpic

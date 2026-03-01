@@ -2,6 +2,7 @@ import type { Item } from "./items/types.ts";
 import type { GearLevel } from "./items/types.ts";
 import { ThrowableItems } from "./items/throwable.ts";
 import { MedicalItems } from "./items/medical-items.ts";
+import { getScaledIncendiaryTickDamage, getScaledThrowableDamage } from "./items/throwable-scaling.ts";
 
 export interface EquipmentMarketEntry {
   item: Item;
@@ -45,15 +46,15 @@ function createLeveledSupply<T extends Item>(
   if (options.damageOnly) {
     if (item.effect?.result === "burn" && item.effect.effect_value != null) {
       const baseDmg = 8;
-      const scaled = Math.round(baseDmg + (tier - 1) * 2);
+      const scaled = getScaledIncendiaryTickDamage(baseDmg, tier);
       (item as Item).effect = { ...item.effect!, effect_value: scaled };
     }
     return item;
   }
 
-  /* Frag, throwing knife: damage scales 10% per tier */
+  /* Frag/knife direct damage: unified throwable scaling path. */
   if (base.damage != null && base.damage > 0) {
-    (item as Item).damage = Math.round((base.damage as number) * (1 + (tier - 1) * 0.1));
+    (item as Item).damage = getScaledThrowableDamage(base.damage as number, tier);
   }
   if (base.effect) {
     const eff = { ...base.effect };
@@ -70,7 +71,7 @@ function createLeveledSupply<T extends Item>(
 
 /** Common supplies. Smoke, flashbang, stim have no level (absolute utility). Others scale with tier. */
 function getCommonSupplies(tier: GearLevel, _companyLvl: number): EquipmentMarketEntry[] {
-  const t = Math.max(1, Math.min(20, tier)) as GearLevel;
+  const t = Math.max(1, Math.min(999, tier)) as GearLevel;
   const smoke = createLeveledSupply(
     { ...ThrowableItems.common.mk18_smoke } as Item,
     1,
@@ -141,8 +142,10 @@ function getEpicSupplies(companyLvl: number): EquipmentMarketEntry[] {
 export function getSuppliesMarketItems(
   tier: number,
   companyLvl: number,
+  options: { allowPost20?: boolean } = {},
 ): { common: EquipmentMarketEntry[]; rare: EquipmentMarketEntry[]; epic: EquipmentMarketEntry[] } {
-  const t = Math.max(1, Math.min(20, Math.floor(tier))) as GearLevel;
+  const maxTier = options.allowPost20 ? 999 : 20;
+  const t = Math.max(1, Math.min(maxTier, Math.floor(tier))) as GearLevel;
   return {
     common: getCommonSupplies(t, companyLvl),
     rare: getRareSupplies(t, companyLvl),

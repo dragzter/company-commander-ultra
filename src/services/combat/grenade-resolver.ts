@@ -2,6 +2,8 @@ import { computeFinalDamage } from "../../game/combat/combat-damage.ts";
 import { clearCombatantEffectsOnDeath, getIncapacitationChance } from "../../game/combat/combat-loop.ts";
 import type { Combatant } from "../../game/combat/types.ts";
 import type { Item } from "../../constants/items/types.ts";
+import { getScaledThrowableDamage } from "../../constants/items/throwable-scaling.ts";
+import { getScaledIncendiaryTickDamage } from "../../constants/items/throwable-scaling.ts";
 
 const SPLASH_DAMAGE_PCT = 0.5;
 const SPLASH_EFFECT_PCT = 0.5;
@@ -171,7 +173,9 @@ export function resolveGrenadeThrow(
 
   /* Throwing knife: single-target damage from item, mitigated, no splash. */
   if (isThrowingKnife(grenade)) {
-    const knifeDmg = grenade.damage ?? 20;
+    const knifeDmg = grenade.damage != null
+      ? grenade.damage
+      : getScaledThrowableDamage(20, grenade.level ?? 1);
     const damageDealt = computeFinalDamage(knifeDmg, primaryTarget);
     const newHp = Math.max(0, Math.floor(primaryTarget.hp - damageDealt));
     primaryTarget.hp = newHp;
@@ -196,7 +200,7 @@ export function resolveGrenadeThrow(
 
   /* Incendiary: DoT only, unmitigated. Primary 4×effect_value dmg, adjacent 2×half. Duration/ticks fixed. Immune targets skip burn. */
   if (isIncendiaryGrenade(grenade)) {
-    const tickDmg = grenade.effect?.effect_value ?? 8;
+    const tickDmg = getScaledIncendiaryTickDamage(8, grenade.level ?? 1);
     if (!primaryTarget.immuneToBurning) {
       primaryTarget.burnTickDamage = tickDmg;
       primaryTarget.burnTicksRemaining = 4;

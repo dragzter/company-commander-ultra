@@ -177,3 +177,37 @@ export function generateMissions(companyLevel = 1, _seed?: number): Mission[] {
 
   return missions;
 }
+
+/** Dev-only fixed high-level sandbox missions (4v4, Lv999, Lv999 gear). */
+export function generateDevTestMissions(): Mission[] {
+  const now = Date.now();
+  const base = {
+    kind: "seek_and_destroy" as MissionKind,
+    difficulty: 5,
+    enemyCount: 4,
+    creditReward: 0,
+    xpReward: 0,
+    isEpic: false,
+    isDevTest: true,
+    forcedPlayerLevel: 999,
+    forcedEnemyLevel: 999,
+    forcedGearLevel: 999,
+    forcedSquadSize: 4,
+    rarity: "normal" as const,
+    rewardItems: [] as string[],
+  };
+  return [
+    {
+      ...base,
+      id: `dev-test-duel-a-${now}`,
+      name: "Dev Duel A",
+      flavorText: "Sandbox test: 4v4 at level 999 with level 999 gear.",
+    },
+    {
+      ...base,
+      id: `dev-test-duel-b-${now}`,
+      name: "Dev Duel B",
+      flavorText: "Sandbox test: 4v4 at level 999 with level 999 gear (alt seed).",
+    },
+  ];
+}

@@ -125,7 +125,7 @@ export const ENERGY_COST_FAIL = 10;
 /** Energy deducted from each participant when quitting a mission (to min 0) */
 export const ENERGY_COST_QUIT = 50;
 /** Energy recovered by soldiers who did not participate in the mission */
-export const ENERGY_RECOVERY_REST = 20;
+export const ENERGY_RECOVERY_REST = 3;
 
 /** Re-export gear pricing from item-pricing for use in gear market. */
 export { getWeaponPrice, getArmorPrice } from "./item-pricing.ts";

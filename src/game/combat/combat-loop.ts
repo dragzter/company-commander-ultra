@@ -203,7 +203,7 @@ export function clearExpiredEffects(combatants: Combatant[], now: number): void 
 /** Clear all effect timers and markers when a combatant dies (KIA/down). */
 export function clearCombatantEffectsOnDeath(c: Combatant): void {
   delete c.takeCoverUntil;
-  delete c.takeCoverUsed;
+  delete c.takeCoverCooldownUntil;
   delete c.suppressCooldownUntil;
   delete c.suppressedUntil;
   delete c.grenadeCooldownUntil;
@@ -282,10 +282,9 @@ export function resolveAttack(
   if (evadeRoll) {
     return { attackerId: attacker.id, targetId: target.id, hit: true, evaded: true, damage: 0 };
   }
-  const rawDmg = Math.floor(
-    (attacker.damageMin ?? 4) +
-      Math.random() * ((attacker.damageMax ?? 6) - (attacker.damageMin ?? 4) + 1),
-  );
+  const minDmg = attacker.damageMin ?? 4;
+  const maxDmg = attacker.damageMax ?? 6;
+  const rawDmg = Math.ceil(minDmg + Math.random() * Math.max(0, maxDmg - minDmg));
   const mitigated = computeFinalDamage(rawDmg, target);
   let totalDamage = mitigated;
   target.hp = Math.max(0, Math.floor(target.hp - mitigated));

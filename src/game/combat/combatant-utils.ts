@@ -13,6 +13,7 @@ import { SoldierManager } from "../entities/soldier/soldier-manager.ts";
 import type { Combatant } from "./types.ts";
 
 const RED_PORTRAIT_KEYS = Object.keys(Images.red_portrait);
+const round1 = (n: number) => Math.round(n * 10) / 10;
 
 function getArmorImmunitiesFromBase(baseId: string | undefined): ArmorImmunity[] {
   if (!baseId) return [];
@@ -60,8 +61,8 @@ export function soldierToCombatant(soldier: Soldier): Combatant {
   let dmgMax = weapon?.damage_max ?? dmg;
   const effect = weapon?.weaponEffect ? WEAPON_EFFECTS[weapon.weaponEffect] : undefined;
   const damageMult = effect?.modifiers?.damagePercent != null ? 1 + effect.modifiers.damagePercent : 1;
-  dmgMin = Math.round(dmgMin * damageMult);
-  dmgMax = Math.round(dmgMax * damageMult);
+  dmgMin = round1(dmgMin * damageMult);
+  dmgMax = round1(dmgMax * damageMult);
   let attackIntervalMs = computeAttackIntervalMs(weapon, soldier.attributes?.dexterity ?? 0);
   const intervalMult = effect?.modifiers?.attackIntervalMultiplier ?? 1;
   attackIntervalMs = intervalMult < 1 ? Math.floor(attackIntervalMs * intervalMult) : Math.round(attackIntervalMs * intervalMult);
@@ -82,8 +83,8 @@ export function soldierToCombatant(soldier: Soldier): Combatant {
     chanceToHit: cp.chanceToHit ?? 0.6,
     chanceToEvade: cp.chanceToEvade ?? 0.05,
     mitigateDamage: cp.mitigateDamage ?? 0,
-    damageMin: Math.max(1, dmgMin),
-    damageMax: Math.max(1, dmgMax),
+    damageMin: Math.max(1, round1(dmgMin)),
+    damageMax: Math.max(1, round1(dmgMax)),
     attackIntervalMs,
     toughness: soldier.attributes?.toughness ?? 0,
     level: soldier.level ?? 1,
@@ -108,13 +109,16 @@ export function createEnemyCombatant(
   isEpicMission = false,
   missionKind?: MissionKind,
   manhuntTargetIndex?: number,
+  roleSlots?: { supportIndex?: number; medicIndex?: number },
 ): Combatant {
   const eliteBonus = isEpicMission ? (Math.random() < 0.5 ? 1 : 2) : 0;
   const level = Math.max(1, Math.min(20, companyLevel + eliteBonus));
+  const supportIndex = roleSlots?.supportIndex ?? 0;
+  const medicIndex = roleSlots?.medicIndex ?? (enemyCount >= 2 ? (supportIndex === 1 ? 0 : 1) : -1);
   const soldier =
-    index === 0 && enemyCount >= 1
+    index === supportIndex && enemyCount >= 1
       ? SoldierManager.getNewSupportMan(level)
-      : index === 1 && enemyCount >= 2
+      : index === medicIndex && enemyCount >= 2
         ? SoldierManager.getNewMedic(level)
         : SoldierManager.getNewRifleman(level);
   const c = soldierToCombatant(soldier);
@@ -153,11 +157,11 @@ export function createEnemyCombatant(
   c.maxHp = c.hp;
   if (isEpicMission || isManhuntTarget) {
     // Elite missions and manhunt target: no enemy damage handicap.
-    c.damageMin = Math.max(1, Math.floor(c.damageMin ?? 4));
-    c.damageMax = Math.max(1, Math.floor(c.damageMax ?? 6));
+    c.damageMin = Math.max(1, round1(c.damageMin ?? 4));
+    c.damageMax = Math.max(1, round1(c.damageMax ?? 6));
   } else {
-    c.damageMin = Math.max(1, Math.floor((c.damageMin ?? 4) * ENEMY_DAMAGE_MULTIPLIER));
-    c.damageMax = Math.max(1, Math.floor((c.damageMax ?? 6) * ENEMY_DAMAGE_MULTIPLIER));
+    c.damageMin = Math.max(1, round1((c.damageMin ?? 4) * ENEMY_DAMAGE_MULTIPLIER));
+    c.damageMax = Math.max(1, round1((c.damageMax ?? 6) * ENEMY_DAMAGE_MULTIPLIER));
   }
   c.avatar = Images.red_portrait[RED_PORTRAIT_KEYS[index % RED_PORTRAIT_KEYS.length] as keyof typeof Images.red_portrait];
   return c;

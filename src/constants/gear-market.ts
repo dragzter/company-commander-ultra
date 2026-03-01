@@ -18,16 +18,16 @@ import { EPIC_ARMOR_BASES } from "./items/epic-armor-bases.ts";
 import { createEpicArmor } from "./items/epic-armor-bases.ts";
 import type { GearLevel } from "./items/types.ts";
 import { getWeaponPrice, getArmorPrice } from "./item-pricing.ts";
+import { clampGearLevel } from "./items/gear-scaling.ts";
 
 export interface GearMarketEntry {
   item: Item;
   price: number;
 }
 
-/** Market tier = avg company soldier level (1-20). Company sees gear at its level only. */
+/** Market tier = avg company soldier level (1-999). Company sees gear at its level only. */
 function marketTier(avgCompanyLevel: number): GearLevel {
-  const t = Math.max(1, Math.min(20, Math.floor(avgCompanyLevel)));
-  return t as GearLevel;
+  return clampGearLevel(avgCompanyLevel);
 }
 
 /** Min company level to see rare items. (Temporarily 1 to enable in store.) */

@@ -14,7 +14,7 @@ import {
   getItemArmoryCategory,
   countArmoryByCategory,
 } from "../../utils/item-utils.ts";
-import { getActiveSlots, getFormationSlots } from "../../constants/company-slots.ts";
+import { getActiveSlots, getFormationSlots, getSoldierById } from "../../constants/company-slots.ts";
 import { setFormationSwapIndices } from "../html-templates/formation-template.ts";
 import { setLastEquipMoveSoldierIds, setLastReadyRoomMoveSlotIndices } from "../html-templates/ready-room-template.ts";
 import { usePlayerCompanyStore } from "../../store/ui-store.ts";
@@ -62,6 +62,8 @@ import {
 import { ThrowableItems } from "../../constants/items/throwable.ts";
 import { createEnemyCombatant } from "../combat/combatant-utils.ts";
 import { formatDisplayName } from "../../utils/name-utils.ts";
+import { MAX_GEAR_LEVEL } from "../../constants/items/types.ts";
+import type { Item } from "../../constants/items/types.ts";
 
 /**
  * Contains definitions for the events of all html templates.
@@ -97,6 +99,65 @@ export function eventConfigs() {
         const cur = st.marketTierLevel || (maxOverride ?? max);
         if (cur < max) {
           st.setMarketTierLevel(cur + 1);
+          render();
+        }
+      },
+    },
+    {
+      selector: `#${containerId} [data-market-tier-delta]`,
+      eventType: "click",
+      callback: (e: Event) => {
+        const st = usePlayerCompanyStore.getState();
+        const max = maxOverride ?? getMaxSoldierLevel(st.company);
+        const cur = st.marketTierLevel || (maxOverride ?? max);
+        const trigger = (e.target as HTMLElement | null)?.closest("[data-market-tier-delta]") as HTMLElement | null;
+        const deltaRaw = Number(trigger?.getAttribute("data-market-tier-delta") ?? 0);
+        const delta = Number.isFinite(deltaRaw) ? Math.trunc(deltaRaw) : 0;
+        if (delta === 0) return;
+        const next = Math.max(1, Math.min(max, cur + delta));
+        if (next !== cur) {
+          st.setMarketTierLevel(next);
+          render();
+        }
+      },
+    },
+    {
+      selector: `#${containerId} [data-market-tier-go]`,
+      eventType: "click",
+      callback: (e: Event) => {
+        const st = usePlayerCompanyStore.getState();
+        const max = maxOverride ?? getMaxSoldierLevel(st.company);
+        const cur = st.marketTierLevel || (maxOverride ?? max);
+        const trigger = (e.target as HTMLElement | null)?.closest("[data-market-tier-go]") as HTMLElement | null;
+        const nav = trigger?.closest(".market-level-nav");
+        const input = nav?.querySelector("[data-market-tier-input]") as HTMLInputElement | null;
+        if (!input) return;
+        const parsed = Number(input.value);
+        if (!Number.isFinite(parsed)) return;
+        const next = Math.max(1, Math.min(max, Math.floor(parsed)));
+        if (next !== cur) {
+          st.setMarketTierLevel(next);
+          render();
+        }
+      },
+    },
+    {
+      selector: `#${containerId} [data-market-tier-input]`,
+      eventType: "keydown",
+      callback: (e: Event) => {
+        const ke = e as KeyboardEvent;
+        if (ke.key !== "Enter") return;
+        ke.preventDefault();
+        const st = usePlayerCompanyStore.getState();
+        const max = maxOverride ?? getMaxSoldierLevel(st.company);
+        const cur = st.marketTierLevel || (maxOverride ?? max);
+        const input = e.currentTarget as HTMLInputElement | null;
+        if (!input) return;
+        const parsed = Number(input.value);
+        if (!Number.isFinite(parsed)) return;
+        const next = Math.max(1, Math.min(max, Math.floor(parsed)));
+        if (next !== cur) {
+          st.setMarketTierLevel(next);
           render();
         }
       },
@@ -441,6 +502,13 @@ export function eventConfigs() {
       },
     },
     {
+      selector: DOM.missions.modeDevBtn,
+      eventType: "click",
+      callback: () => {
+        UiManager.renderMissionsScreen("dev");
+      },
+    },
+    {
       selector: DOM.missions.launchBtn,
       eventType: "click",
       callback: (e: Event) => {
@@ -450,8 +518,12 @@ export function eventConfigs() {
         const card = document.querySelector(`[data-mission-id="${missionId}"]`);
         const json = card?.getAttribute("data-mission-json");
         if (!json) return;
-        const mission = JSON.parse(json);
+        const mission = JSON.parse(json) as Mission;
         console.log("Launch mission", mission);
+        if (mission.isDevTest) {
+          UiManager.renderCombatScreen(mission);
+          return;
+        }
         UiManager.renderReadyRoomScreen(mission);
       },
     },
@@ -515,6 +587,7 @@ export function eventConfigs() {
         missionForCombat = null;
       }
     }
+    const isDevTestCombat = Boolean(missionForCombat?.isDevTest);
     const isDefendObjectiveMission = missionForCombat?.kind === "defend_objective";
     const DEFEND_DURATION_MS = 120_000;
     const DEFEND_REINFORCE_INTERVAL_MS = 20_000;
@@ -523,6 +596,7 @@ export function eventConfigs() {
     const DEFEND_DEATH_NOTICE_MS = 1_000;
     const DEFEND_PRESSURE_WINDOW_MS = 30_000;
     const DEFEND_PRESSURE_EVAL_MS = 10_000;
+    const TAKE_COVER_COOLDOWN_MS = 60_000;
     const DEFEND_HIGH_PRESSURE_DURATION_MS = 20_000;
     const DEFEND_HIGH_PRESSURE_WAVE_COUNT = 2;
     const DEFEND_WAVE_STAGGER_MIN_MS = 800;
@@ -739,7 +813,38 @@ export function eventConfigs() {
 
     function getSoldierFromStore(soldierId: string) {
       const company = usePlayerCompanyStore.getState().company;
-      return company?.soldiers?.find((s) => s.id === soldierId) ?? null;
+      const storeSoldier = company?.soldiers?.find((s) => s.id === soldierId) ?? null;
+      if (storeSoldier) return storeSoldier;
+      const combatant = players.find((p) => p.id === soldierId);
+      return combatant?.soldierRef ?? null;
+    }
+
+    function consumeCombatantItem(
+      soldierId: string,
+      inventoryIndex: number,
+      type: "medical" | "throwable",
+    ): void {
+      const store = usePlayerCompanyStore.getState();
+      const storeSoldier = store.company?.soldiers?.find((s) => s.id === soldierId) ?? null;
+      if (storeSoldier) {
+        if (type === "medical") store.consumeSoldierMedical(soldierId, inventoryIndex);
+        else store.consumeSoldierThrowable(soldierId, inventoryIndex);
+        return;
+      }
+      const combatant = players.find((p) => p.id === soldierId);
+      const inv = combatant?.soldierRef?.inventory;
+      if (!inv || inventoryIndex < 0 || inventoryIndex >= inv.length) return;
+      const item = inv[inventoryIndex] as { uses?: number; quantity?: number } | undefined;
+      if (!item) return;
+      const current = item.uses ?? item.quantity;
+      if (typeof current === "number") {
+        const next = Math.max(0, current - 1);
+        if (item.uses != null) item.uses = next;
+        if (item.quantity != null) item.quantity = next;
+        if (next <= 0) inv.splice(inventoryIndex, 1);
+        return;
+      }
+      inv.splice(inventoryIndex, 1);
     }
 
     function positionPopupUnderCard(popup: HTMLElement, card: HTMLElement | null) {
@@ -790,6 +895,8 @@ export function eventConfigs() {
       const listEl = document.getElementById("combat-abilities-list");
       const titleEl = document.getElementById("combat-abilities-popup-title");
       if (!popup || !contentEl || !hintEl || !listEl || !titleEl) return;
+      const popupEl = popup;
+      const listElNode = listEl;
 
       const canUse = combatStarted && !combatWinner;
       const soldier = getSoldierFromStore(combatant.id);
@@ -804,8 +911,9 @@ export function eventConfigs() {
         ...medItems.map((m) => ({ type: "med" as const, data: m })),
       ].slice(0, 2);
 
-      const used = combatant.takeCoverUsed;
       const now = Date.now();
+      const takeCoverOnCooldown = (combatant.takeCoverCooldownUntil ?? 0) > now;
+      const takeCoverRemainingSec = takeCoverOnCooldown ? Math.ceil((combatant.takeCoverCooldownUntil! - now) / 1000) : 0;
       const suppressOnCooldown = (combatant.suppressCooldownUntil ?? 0) > now;
       const suppressRemainingSec = suppressOnCooldown ? Math.ceil((combatant.suppressCooldownUntil! - now) / 1000) : 0;
       const designation = (combatant.designation ?? "").toLowerCase();
@@ -816,15 +924,16 @@ export function eventConfigs() {
       const abilityButtons = abilities.map((a) => {
         const isTakeCover = a.actionId === "take_cover";
         const isSuppress = a.actionId === "suppress";
-        const disabled = isTakeCover ? (used || !canUse) : isSuppress ? (!canUse || suppressOnCooldown) : !canUse;
-        const usedClass = isTakeCover && used ? " combat-ability-used" : "";
-        const cooldownClass = isSuppress && suppressOnCooldown ? " combat-ability-cooldown" : "";
+        const disabled = isTakeCover ? (!canUse || takeCoverOnCooldown) : isSuppress ? (!canUse || suppressOnCooldown) : !canUse;
+        const cooldownClass = (isTakeCover && takeCoverOnCooldown) || (isSuppress && suppressOnCooldown) ? " combat-ability-cooldown" : "";
         const slotClass = a.slotClassName ? ` ${a.slotClassName}` : "";
-        const timerHtml = isSuppress && suppressOnCooldown
-          ? `<span class="combat-ability-cooldown-timer" data-ability-cooldown="suppress">${suppressRemainingSec}</span>`
-          : "";
+        const timerHtml = isTakeCover && takeCoverOnCooldown
+          ? `<span class="combat-ability-cooldown-timer" data-ability-cooldown="take_cover">${takeCoverRemainingSec}</span>`
+          : isSuppress && suppressOnCooldown
+            ? `<span class="combat-ability-cooldown-timer" data-ability-cooldown="suppress">${suppressRemainingSec}</span>`
+            : "";
         const labelHtml = isTakeCover ? "" : `<span class="combat-ability-label">${a.name}</span>`;
-        return `<button type="button" class="combat-ability-icon-slot${slotClass}${usedClass}${cooldownClass}" data-ability-id="${a.id}" data-soldier-id="${combatant.id}" ${disabled ? "disabled" : ""} title="${a.name}" aria-label="${a.name}">
+        return `<button type="button" class="combat-ability-icon-slot${slotClass}${cooldownClass}" data-ability-id="${a.id}" data-soldier-id="${combatant.id}" ${disabled ? "disabled" : ""} title="${a.name}" aria-label="${a.name}">
             <img src="${a.icon}" alt="" width="48" height="48">
             ${timerHtml}
             ${labelHtml}
@@ -875,16 +984,17 @@ export function eventConfigs() {
         }).join("");
       }
 
-      listEl.innerHTML = abilityButtons + buildEquipmentHtml(combatant);
+      listElNode.innerHTML = abilityButtons + buildEquipmentHtml(combatant);
 
       function refreshAbilitiesList() {
         const c = players.find((p) => p.id === combatant.id);
-        if (!c || popup.getAttribute("aria-hidden") === "true") return;
+        if (!c || popupEl.getAttribute("aria-hidden") === "true") return;
         if (grenadeTargetingMode || medTargetingMode || suppressTargetingMode) return;
         const now = Date.now();
+        const takeCoverOnCooldown = (c.takeCoverCooldownUntil ?? 0) > now;
+        const takeCoverRemainingSec = takeCoverOnCooldown ? Math.ceil((c.takeCoverCooldownUntil! - now) / 1000) : 0;
         const suppressOnCooldown = (c.suppressCooldownUntil ?? 0) > now;
         const suppressRemainingSec = suppressOnCooldown ? Math.ceil((c.suppressCooldownUntil! - now) / 1000) : 0;
-        const used = c.takeCoverUsed;
         const des = (c.designation ?? "").toLowerCase();
         const abils = getSoldierAbilities().filter((a) => {
           if (a.designationRestrict) return des === a.designationRestrict;
@@ -893,66 +1003,38 @@ export function eventConfigs() {
         const btns = abils.map((a) => {
           const isTakeCover = a.actionId === "take_cover";
           const isSuppress = a.actionId === "suppress";
-          const disabled = isTakeCover ? (used || !canUse) : isSuppress ? (!canUse || suppressOnCooldown) : !canUse;
-          const usedClass = isTakeCover && used ? " combat-ability-used" : "";
-          const cooldownClass = isSuppress && suppressOnCooldown ? " combat-ability-cooldown" : "";
+          const disabled = isTakeCover ? (!canUse || takeCoverOnCooldown) : isSuppress ? (!canUse || suppressOnCooldown) : !canUse;
+          const cooldownClass = (isTakeCover && takeCoverOnCooldown) || (isSuppress && suppressOnCooldown) ? " combat-ability-cooldown" : "";
           const slotClass = a.slotClassName ? ` ${a.slotClassName}` : "";
-          const timerHtml = isSuppress && suppressOnCooldown
-            ? `<span class="combat-ability-cooldown-timer" data-ability-cooldown="suppress">${suppressRemainingSec}</span>`
-            : "";
+          const timerHtml = isTakeCover && takeCoverOnCooldown
+            ? `<span class="combat-ability-cooldown-timer" data-ability-cooldown="take_cover">${takeCoverRemainingSec}</span>`
+            : isSuppress && suppressOnCooldown
+              ? `<span class="combat-ability-cooldown-timer" data-ability-cooldown="suppress">${suppressRemainingSec}</span>`
+              : "";
           const labelHtml = isTakeCover ? "" : `<span class="combat-ability-label">${a.name}</span>`;
-          return `<button type="button" class="combat-ability-icon-slot${slotClass}${usedClass}${cooldownClass}" data-ability-id="${a.id}" data-soldier-id="${c.id}" ${disabled ? "disabled" : ""} title="${a.name}" aria-label="${a.name}">
+          return `<button type="button" class="combat-ability-icon-slot${slotClass}${cooldownClass}" data-ability-id="${a.id}" data-soldier-id="${c.id}" ${disabled ? "disabled" : ""} title="${a.name}" aria-label="${a.name}">
             <img src="${a.icon}" alt="" width="48" height="48">
             ${timerHtml}
             ${labelHtml}
           </button>`;
         }).join("");
-        listEl.innerHTML = btns + buildEquipmentHtml(c);
+        listElNode.innerHTML = btns + buildEquipmentHtml(c);
       }
 
       titleEl.textContent = "Abilities";
       contentEl.style.display = "";
       hintEl.classList.remove("visible");
       hintEl.textContent = "";
-      popup.classList.remove("combat-abilities-popup-hint-only");
+      popupEl.classList.remove("combat-abilities-popup-hint-only");
       popupCombatantId = combatant.id;
-      popup.setAttribute("aria-hidden", "false");
+      popupEl.setAttribute("aria-hidden", "false");
       refreshAbilitiesList();
-      positionPopupUnderCard(popup, card ?? document.querySelector(`[data-combatant-id="${combatant.id}"]`) as HTMLElement);
+      positionPopupUnderCard(popupEl, card ?? document.querySelector(`[data-combatant-id="${combatant.id}"]`) as HTMLElement);
 
-      void popup.offsetHeight;
+      void popupEl.offsetHeight;
 
       if (abilitiesPopupRefreshIntervalId != null) clearInterval(abilitiesPopupRefreshIntervalId);
       abilitiesPopupRefreshIntervalId = setInterval(refreshAbilitiesList, 1000);
-    }
-
-    function positionPopupCentered(popup: HTMLElement) {
-      const combatScreen = document.getElementById("combat-screen");
-      if (!combatScreen) return;
-      const screenRect = combatScreen.getBoundingClientRect();
-      const popupRect = popup.getBoundingClientRect();
-      const left = (screenRect.width - popupRect.width) / 2;
-      const top = screenRect.height * 0.6 - popupRect.height / 2;
-      popup.style.left = `${left}px`;
-      popup.style.top = `${top}px`;
-      popup.style.bottom = "";
-      popup.style.transform = "none";
-    }
-
-    /** Position hint popup at top of screen, just below header */
-    function positionPopupAtTop(popup: HTMLElement) {
-      const combatScreen = document.getElementById("combat-screen");
-      if (!combatScreen) return;
-      const screenRect = combatScreen.getBoundingClientRect();
-      const popupRect = popup.getBoundingClientRect();
-      const header = combatScreen.querySelector(".company-header");
-      const headerBottom = header ? header.getBoundingClientRect().bottom - screenRect.top : 60;
-      const left = (screenRect.width - popupRect.width) / 2;
-      const top = headerBottom + 6;
-      popup.style.left = `${left}px`;
-      popup.style.top = `${top}px`;
-      popup.style.bottom = "";
-      popup.style.transform = "none";
     }
 
     function clearSelectedHighlight() {
@@ -1126,7 +1208,7 @@ export function eventConfigs() {
     function executeMedicalUse(user: Combatant, target: Combatant, medItem: SoldierMedItem) {
       playerAbilitiesUsed.set(user.id, (playerAbilitiesUsed.get(user.id) ?? 0) + 1);
       const isStimPack = medItem.item.id === "stim_pack";
-      usePlayerCompanyStore.getState().consumeSoldierMedical(user.id, medItem.inventoryIndex);
+      consumeCombatantItem(user.id, medItem.inventoryIndex, "medical");
       medTargetingMode = null;
       document.querySelectorAll(".combat-card-heal-target").forEach((el) => el.classList.remove("combat-card-heal-target"));
       closeAbilitiesPopup();
@@ -1159,6 +1241,13 @@ export function eventConfigs() {
           const t = Math.max(0, Math.min(1, (itemLevel - 1) / 19));
           /* MedKit: non-medic 20→40, medic 50→100 from Lv1 to Lv20 */
           healAmount = isMedic ? Math.round(50 + 50 * t) : Math.round(20 + 20 * t);
+          if (itemLevel > 20) {
+            const post20Levels = itemLevel - 20;
+            const post20Gain = isMedic
+              ? Math.ceil(post20Levels * 1.5)
+              : Math.ceil(post20Levels * 0.5);
+            healAmount += post20Gain;
+          }
         } else {
           healAmount = baseHeal;
         }
@@ -1225,7 +1314,6 @@ export function eventConfigs() {
     }
 
     const SUPPRESS_DURATION_MS = 8000;
-    const SUPPRESS_BURST_COUNT = 3;
     const SUPPRESS_BURST_INTERVAL_MS = 500;
     const ATTACK_PROJECTILE_MS = 220;
 
@@ -1245,7 +1333,7 @@ export function eventConfigs() {
       let anyHit = false;
       const now = Date.now();
 
-      const doBurst = (burstIndex: number) => {
+      const doBurst = () => {
         if (target.hp <= 0 || target.downState) return;
         const result = resolveAttack(user, target, now);
         if (result.hit && !result.evaded) anyHit = true;
@@ -1280,10 +1368,10 @@ export function eventConfigs() {
         markCombatantDirty(target.id);
       };
 
-      doBurst(0);
-      setTimeout(() => doBurst(1), SUPPRESS_BURST_INTERVAL_MS);
+      doBurst();
+      setTimeout(() => doBurst(), SUPPRESS_BURST_INTERVAL_MS);
       setTimeout(() => {
-        doBurst(2);
+        doBurst();
         if (anyHit && target.hp > 0 && !target.downState && !target.immuneToSuppression) {
           const applyNow = Date.now();
           target.suppressedUntil = applyNow + SUPPRESS_DURATION_MS;
@@ -1399,7 +1487,7 @@ export function eventConfigs() {
               : null;
         if (!impactPrimaryTarget) {
           if (consumeThrowable) {
-            usePlayerCompanyStore.getState().consumeSoldierThrowable(thrower.id, grenade.inventoryIndex);
+            consumeCombatantItem(thrower.id, grenade.inventoryIndex, "throwable");
           }
           if (resetTargetingUi) {
             grenadeTargetingMode = null;
@@ -1473,7 +1561,7 @@ export function eventConfigs() {
           else if (s.damageDealt > 0) showDamage(s.targetId, s.damageDealt);
         }
         if (consumeThrowable) {
-          usePlayerCompanyStore.getState().consumeSoldierThrowable(thrower.id, grenade.inventoryIndex);
+          consumeCombatantItem(thrower.id, grenade.inventoryIndex, "throwable");
         }
         if (resetTargetingUi) {
           grenadeTargetingMode = null;
@@ -2010,25 +2098,39 @@ export function eventConfigs() {
             }
             const kiaIds = players.filter((p) => p.downState === "kia").map((p) => p.id);
             const missionName = mission?.name ?? "Unknown";
+            const isDevTest = Boolean(mission?.isDevTest);
             const kiaKilledBy = new Map<string, string>();
             for (const p of players) {
               if (p.downState === "kia" && p.killedBy) kiaKilledBy.set(p.id, p.killedBy);
             }
-            usePlayerCompanyStore.getState().processCombatKIA(kiaIds, missionName, playerKills, kiaKilledBy);
+            if (!isDevTest) {
+              usePlayerCompanyStore.getState().processCombatKIA(kiaIds, missionName, playerKills, kiaKilledBy);
+            }
             const survivorIds = players.filter((p) => !kiaIds.includes(p.id)).map((p) => p.id);
+            const lowHealthSurvivorIds = players
+              .filter((p) => !kiaIds.includes(p.id) && p.maxHp > 0 && (p.hp / p.maxHp) < 0.3)
+              .map((p) => p.id);
             const hasCasualty = players.some((p) => p.downState === "kia" || p.downState === "incapacitated");
             const store = usePlayerCompanyStore.getState();
             /* Same derivation as enemy soldiers: getAverageCompanyLevel(company) - compute before XP to match combat setup */
             const missionLevel = Math.max(1, Math.min(20, getAverageCompanyLevel(store.company)));
-            store.deductMissionEnergy(survivorIds, players.length, hasCasualty, !victory);
-            const oldLevels = new Map(store.company?.soldiers?.filter((s) => survivorIds.includes(s.id)).map((s) => [s.id, s.level ?? 1]) ?? []);
-            store.grantSoldierCombatXP(survivorIds, playerDamage, playerDamageTaken, playerKills, playerAbilitiesUsed, victory);
-            store.syncCombatHpToSoldiers(players.map((p) => ({ id: p.id, hp: p.maxHp })));
+            if (!isDevTest) {
+              store.deductMissionEnergy(survivorIds, players.length, hasCasualty, !victory, lowHealthSurvivorIds);
+            }
+            const oldLevels = isDevTest
+              ? new Map<string, number>()
+              : new Map(store.company?.soldiers?.filter((s) => survivorIds.includes(s.id)).map((s) => [s.id, s.level ?? 1]) ?? []);
+            if (!isDevTest) {
+              store.grantSoldierCombatXP(survivorIds, playerDamage, playerDamageTaken, playerKills, playerAbilitiesUsed, victory);
+              store.syncCombatHpToSoldiers(players.map((p) => ({ id: p.id, hp: p.maxHp })));
+            }
             const kiaCount = kiaIds.length;
-            const { rewardItems, lootItems } = victory && mission
+            const { rewardItems, lootItems } = !isDevTest && victory && mission
               ? store.grantMissionRewards(mission, true, kiaCount, missionLevel)
               : { rewardItems: [] as import("../../constants/items/types.ts").Item[], lootItems: [] as import("../../constants/items/types.ts").Item[] };
-            const newLevels = new Map(usePlayerCompanyStore.getState().company?.soldiers?.filter((s) => survivorIds.includes(s.id)).map((s) => [s.id, s.level ?? 1]) ?? []);
+            const newLevels = isDevTest
+              ? new Map<string, number>()
+              : new Map(usePlayerCompanyStore.getState().company?.soldiers?.filter((s) => survivorIds.includes(s.id)).map((s) => [s.id, s.level ?? 1]) ?? []);
             const leveledUpIds = new Set<string>();
             for (const id of survivorIds) {
               if ((newLevels.get(id) ?? 1) > (oldLevels.get(id) ?? 1)) leveledUpIds.add(id);
@@ -2043,9 +2145,11 @@ export function eventConfigs() {
               const xp = baseXp + dmg * SOLDIER_XP_PER_DAMAGE + dmgTaken * SOLDIER_XP_PER_DAMAGE_TAKEN + kills * SOLDIER_XP_PER_KILL + abilitiesUsed * SOLDIER_XP_PER_ABILITY_USE;
               xpEarnedBySoldier.set(id, Math.round(xp * 10) / 10);
             }
-            const soldiersAfterCombat = new Map(usePlayerCompanyStore.getState().company?.soldiers?.filter((s) => players.some((p) => p.id === s.id)).map((s) => [s.id, s]) ?? []);
+            const soldiersAfterCombat = isDevTest
+              ? new Map<string, import("../entities/types.ts").Soldier>()
+              : new Map(usePlayerCompanyStore.getState().company?.soldiers?.filter((s) => players.some((p) => p.id === s.id)).map((s) => [s.id, s]) ?? []);
             let companyXpEarned = 0;
-            if (victory && mission) {
+            if (!isDevTest && victory && mission) {
               companyXpEarned = mission.xpReward ?? 20 * (mission.difficulty ?? 1);
               if (kiaCount > 0) companyXpEarned = Math.max(1, Math.floor(companyXpEarned * 0.9));
             }
@@ -2144,6 +2248,28 @@ export function eventConfigs() {
           }
         }
 
+        // Enemy AI: chance to use Take Cover.
+        if (!didAttack) {
+          for (const enemy of enemies) {
+            if (enemy.hp <= 0 || enemy.downState || isInCover(enemy, now) || isStunned(enemy, now)) continue;
+            if ((enemy.setupUntil ?? 0) > now) continue;
+            if ((enemy.takeCoverCooldownUntil ?? 0) > now) continue;
+            const hpPct = enemy.maxHp > 0 ? enemy.hp / enemy.maxHp : 1;
+            const focusedByPlayers = Array.from(targets.entries()).reduce((acc, [attackerId, targetId]) => {
+              const attacker = players.find((p) => p.id === attackerId);
+              return attacker && targetId === enemy.id ? acc + 1 : acc;
+            }, 0);
+            if (hpPct > 0.65 && focusedByPlayers < 2) continue;
+            const chance = hpPct <= 0.4 ? 0.32 : focusedByPlayers >= 2 ? 0.24 : 0.14;
+            if (Math.random() > chance) continue;
+            if (executeTakeCover(enemy, { closePopup: false })) {
+              nextAttackAt.set(enemy.id, getNextAttackAt(enemy, now));
+              didAttack = true;
+              break;
+            }
+          }
+        }
+
         for (const c of all) {
           if (c.hp <= 0 || c.downState || isInCover(c, now) || isStunned(c, now)) continue;
           if (c.side === "enemy" && (c.setupUntil ?? 0) > now) continue;
@@ -2231,29 +2357,45 @@ export function eventConfigs() {
       }
       const survivorIds = players.filter((p) => !kiaIds.includes(p.id)).map((p) => p.id);
       const store = usePlayerCompanyStore.getState();
-      store.processCombatKIA(kiaIds, missionName, playerKills, kiaKilledBy);
-      store.grantSoldierCombatXP(
-        survivorIds,
-        playerDamage,
-        playerDamageTaken,
-        playerKills,
-        playerAbilitiesUsed,
-        false,
-      );
-      store.grantMissionRewards(mission, false, kiaIds.length);
+      if (!mission?.isDevTest) {
+        store.processCombatKIA(kiaIds, missionName, playerKills, kiaKilledBy);
+        store.grantSoldierCombatXP(
+          survivorIds,
+          playerDamage,
+          playerDamageTaken,
+          playerKills,
+          playerAbilitiesUsed,
+          false,
+        );
+        // Survivors return to roster at full HP after mission end/quit.
+        const survivors = players.filter((p) => !kiaIds.includes(p.id)).map((p) => ({ id: p.id, hp: p.maxHp }));
+        store.syncCombatHpToSoldiers(survivors);
+        store.grantMissionRewards(mission, false, kiaIds.length);
+      }
     }
 
-    function handleTakeCoverAbility(combatant: Combatant): void {
-      if (combatant.takeCoverUsed || combatant.hp <= 0 || combatant.downState) return;
-      playerAbilitiesUsed.set(combatant.id, (playerAbilitiesUsed.get(combatant.id) ?? 0) + 1);
+    function executeTakeCover(
+      combatant: Combatant,
+      options: { trackPlayerAbility?: boolean; closePopup?: boolean } = {},
+    ): boolean {
+      if (combatant.hp <= 0 || combatant.downState) return false;
       const now = Date.now();
+      if ((combatant.takeCoverCooldownUntil ?? 0) > now) return false;
       combatant.takeCoverUntil = now + TAKE_COVER_DURATION_MS;
-      combatant.takeCoverUsed = true;
+      combatant.takeCoverCooldownUntil = now + TAKE_COVER_COOLDOWN_MS;
       removeTargetsForCombatantInCover(targets, combatant.id);
       assignTargets(players, enemies, targets, now);
       markCombatantDirty(combatant.id, { hp: false, status: true, speed: false });
-      closeAbilitiesPopup();
+      if (options.trackPlayerAbility) {
+        playerAbilitiesUsed.set(combatant.id, (playerAbilitiesUsed.get(combatant.id) ?? 0) + 1);
+      }
+      if (options.closePopup !== false) closeAbilitiesPopup();
       updateCombatUI(true);
+      return true;
+    }
+
+    function handleTakeCoverAbility(combatant: Combatant): void {
+      void executeTakeCover(combatant, { trackPlayerAbility: true, closePopup: true });
     }
 
     function handleSuppressAbility(combatant: Combatant): void {
@@ -2327,6 +2469,29 @@ export function eventConfigs() {
 
     primeCombatantDomCache();
     markAllCombatantsDirty();
+    const startCombatSession = () => {
+      if (combatStarted) return;
+      const store = usePlayerCompanyStore.getState();
+      const minEnergy = 5;
+      const lowEnergy = players.filter((p) => {
+        const s = store.company?.soldiers?.find((x) => x.id === p.id);
+        return (s?.energy ?? 100) < minEnergy;
+      });
+      if (lowEnergy.length > 0) {
+        const names = lowEnergy.map((p) => formatDisplayName(p.name)).join(", ");
+        alert(`Need at least ${minEnergy} energy to deploy. Soldiers low on energy: ${names}`);
+        return;
+      }
+      combatStarted = true;
+      const btn = s_(DOM.combat.beginBtn) as HTMLButtonElement | null;
+      if (btn) btn.setAttribute("hidden", "");
+      primeCombatantDomCache();
+      markAllCombatantsDirty();
+      startCombatLoop();
+    };
+    if (isDevTestCombat) {
+      window.setTimeout(() => startCombatSession(), 0);
+    }
 
     return [
       {
@@ -2353,7 +2518,6 @@ export function eventConfigs() {
             const m = medItemsList.find((mr) => mr.inventoryIndex === inventoryIndex);
             if (!m) return;
             const isMedic = (user.designation ?? "").toLowerCase() === "medic";
-            const isStimPack = m.item.id === "stim_pack";
             /* Non-medics can only use stim/medkit on themselves; medic can target allies */
             if (!isMedic) {
               executeMedicalUse(user, user, m);
@@ -2443,23 +2607,7 @@ export function eventConfigs() {
         selector: DOM.combat.beginBtn,
         eventType: "click",
         callback: () => {
-          const store = usePlayerCompanyStore.getState();
-          const minEnergy = 5;
-          const lowEnergy = players.filter((p) => {
-            const s = store.company?.soldiers?.find((x) => x.id === p.id);
-            return (s?.energy ?? 100) < minEnergy;
-          });
-          if (lowEnergy.length > 0) {
-            const names = lowEnergy.map((p) => formatDisplayName(p.name)).join(", ");
-            alert(`Need at least ${minEnergy} energy to deploy. Soldiers low on energy: ${names}`);
-            return;
-          }
-          combatStarted = true;
-          const btn = s_(DOM.combat.beginBtn) as HTMLButtonElement | null;
-          if (btn) btn.setAttribute("hidden", "");
-          primeCombatantDomCache();
-          markAllCombatantsDirty();
-          startCombatLoop();
+          startCombatSession();
         },
       },
       {
@@ -2523,8 +2671,10 @@ export function eventConfigs() {
           }
           closeAbilitiesPopup();
           processQuitMissionOutcome();
-          const store = usePlayerCompanyStore.getState();
-          store.deductQuitMissionEnergy(players.map((p) => p.id));
+          if (!isDevTestCombat) {
+            const store = usePlayerCompanyStore.getState();
+            store.deductQuitMissionEnergy(players.map((p) => p.id));
+          }
           const popup = document.getElementById("combat-quit-confirm-popup");
           if (popup) popup.setAttribute("hidden", "");
           UiManager.renderMissionsScreen();
@@ -2545,8 +2695,10 @@ export function eventConfigs() {
           const target = (e.target as HTMLElement).closest("#combat-summary-return");
           if (!target) return;
           e.stopPropagation();
-          const store = usePlayerCompanyStore.getState();
-          store.syncCombatHpToSoldiers(players.map((p) => ({ id: p.id, hp: p.maxHp })));
+          if (!isDevTestCombat) {
+            const store = usePlayerCompanyStore.getState();
+            store.syncCombatHpToSoldiers(players.map((p) => ({ id: p.id, hp: p.maxHp })));
+          }
           if (combatTickId != null) {
             clearTimeout(combatTickId);
             combatTickId = null;
@@ -3106,6 +3258,203 @@ export function eventConfigs() {
 
   const rosterScreenEventConfig: HandlerInitConfig[] = [
     {
+      selector: "#roster-empty-recruit-btn",
+      eventType: "click",
+      callback: () => {
+        UiManager.renderMarketTroopsScreen();
+      },
+    },
+    {
+      selector: "#roster-rest-btn",
+      eventType: "click",
+      callback: () => {
+        const popup = document.getElementById("roster-rest-popup");
+        if (!popup) return;
+        const feedback = popup.querySelector("#rest-popup-feedback") as HTMLElement | null;
+        const progressWrap = popup.querySelector("#rest-popup-progress-wrap") as HTMLElement | null;
+        const progressFill = popup.querySelector("#rest-popup-progress-fill") as HTMLElement | null;
+        popup.removeAttribute("hidden");
+        popup.classList.remove("rest-popup-running");
+        popup.setAttribute("aria-busy", "false");
+        popup.querySelectorAll(".rest-soldier-pill.selected").forEach((el) => el.classList.remove("selected"));
+        if (feedback) feedback.textContent = "";
+        if (progressWrap) progressWrap.hidden = true;
+        if (progressFill) {
+          progressFill.style.transition = "none";
+          progressFill.style.width = "0%";
+        }
+        const updateSummary = () => {
+          const selected = Array.from(popup.querySelectorAll(".rest-soldier-pill.selected")) as HTMLElement[];
+          let totalRecover = 0;
+          let totalCost = 0;
+          selected.forEach((card) => {
+            totalRecover += Number(card.dataset.restRecover ?? 0);
+            totalCost += Number(card.dataset.restCost ?? 0);
+          });
+          const selectedEl = popup.querySelector("#rest-popup-selected-count") as HTMLElement | null;
+          const previewEl = popup.querySelector("#rest-popup-preview") as HTMLElement | null;
+          const sendBtn = popup.querySelector("#rest-popup-send-btn") as HTMLButtonElement | null;
+          if (selectedEl) selectedEl.textContent = `${selected.length} selected`;
+          if (previewEl) previewEl.textContent = `Recovery +${totalRecover} | Cost $${totalCost}`;
+          if (sendBtn) sendBtn.disabled = selected.length === 0 || totalRecover <= 0;
+        };
+        updateSummary();
+      },
+    },
+    {
+      selector: "#rest-popup-close",
+      eventType: "click",
+      callback: () => {
+        const popup = document.getElementById("roster-rest-popup");
+        if (!popup || popup.classList.contains("rest-popup-running")) return;
+        UiManager.renderRosterScreen();
+      },
+    },
+    {
+      selector: "#roster-rest-popup",
+      eventType: "click",
+      callback: (e: Event) => {
+        const popup = e.currentTarget as HTMLElement;
+        if (!popup || popup.classList.contains("rest-popup-running")) return;
+        if (e.target === popup) UiManager.renderRosterScreen();
+      },
+    },
+    {
+      selector: "#roster-rest-popup .rest-soldier-pill",
+      eventType: "click",
+      callback: (e: Event) => {
+        const card = e.currentTarget as HTMLButtonElement;
+        const popup = document.getElementById("roster-rest-popup");
+        if (!popup || popup.classList.contains("rest-popup-running")) return;
+        if (card.disabled || card.classList.contains("disabled")) return;
+        card.classList.toggle("selected");
+        const selected = Array.from(popup.querySelectorAll(".rest-soldier-pill.selected")) as HTMLElement[];
+        let totalRecover = 0;
+        let totalCost = 0;
+        selected.forEach((el) => {
+          totalRecover += Number(el.dataset.restRecover ?? 0);
+          totalCost += Number(el.dataset.restCost ?? 0);
+        });
+        const selectedEl = popup.querySelector("#rest-popup-selected-count") as HTMLElement | null;
+        const previewEl = popup.querySelector("#rest-popup-preview") as HTMLElement | null;
+        const sendBtn = popup.querySelector("#rest-popup-send-btn") as HTMLButtonElement | null;
+        if (selectedEl) selectedEl.textContent = `${selected.length} selected`;
+        if (previewEl) previewEl.textContent = `Recovery +${totalRecover} | Cost $${totalCost}`;
+        if (sendBtn) sendBtn.disabled = selected.length === 0 || totalRecover <= 0;
+      },
+    },
+    {
+      selector: "#rest-popup-send-btn",
+      eventType: "click",
+      callback: () => {
+        const popup = document.getElementById("roster-rest-popup");
+        if (!popup || popup.classList.contains("rest-popup-running")) return;
+
+        const selectedCards = Array.from(popup.querySelectorAll(".rest-soldier-pill.selected")) as HTMLButtonElement[];
+        if (selectedCards.length === 0) return;
+
+        const selectedIds = selectedCards
+          .map((card) => card.dataset.restSoldierId ?? "")
+          .filter((id) => id.length > 0);
+        if (selectedIds.length === 0) return;
+
+        const sendBtn = popup.querySelector("#rest-popup-send-btn") as HTMLButtonElement | null;
+        const closeBtn = popup.querySelector("#rest-popup-close") as HTMLButtonElement | null;
+        const progressWrap = popup.querySelector("#rest-popup-progress-wrap") as HTMLElement | null;
+        const progressFill = popup.querySelector("#rest-popup-progress-fill") as HTMLElement | null;
+        const feedback = popup.querySelector("#rest-popup-feedback") as HTMLElement | null;
+        const selectedEl = popup.querySelector("#rest-popup-selected-count") as HTMLElement | null;
+        const previewEl = popup.querySelector("#rest-popup-preview") as HTMLElement | null;
+
+        popup.classList.add("rest-popup-running");
+        popup.setAttribute("aria-busy", "true");
+        if (sendBtn) sendBtn.disabled = true;
+        if (closeBtn) closeBtn.disabled = true;
+        if (feedback) feedback.textContent = "R&R in progress...";
+        if (progressWrap) progressWrap.hidden = false;
+        if (progressFill) {
+          progressFill.style.transition = "none";
+          progressFill.style.width = "0%";
+          requestAnimationFrame(() => {
+            if (!progressFill) return;
+            progressFill.style.transition = "width 2000ms linear";
+            progressFill.style.width = "100%";
+          });
+        }
+
+        window.setTimeout(() => {
+          const result = usePlayerCompanyStore.getState().runRestRound(selectedIds);
+          if (!result.success) {
+            if (feedback) {
+              if (result.reason === "credits") feedback.textContent = "Not enough credits.";
+              else if (result.reason === "no_recovery") feedback.textContent = "Selected troops are already fully rested.";
+              else feedback.textContent = "No troops selected.";
+            }
+          } else {
+            let hitMaxCount = 0;
+            selectedCards.forEach((card) => {
+              const id = card.dataset.restSoldierId ?? "";
+              const gained = result.recoveredById[id] ?? 0;
+              const oldEnergy = Number(card.dataset.restEnergy ?? 100);
+              const nextEnergy = Math.max(0, Math.min(100, oldEnergy + gained));
+              card.dataset.restEnergy = String(nextEnergy);
+              const recover = Math.max(0, Math.min(30, 100 - nextEnergy));
+              const cost = recover <= 0 ? 0 : Math.max(1, Math.round((recover / 30) * 50));
+              card.dataset.restRecover = String(recover);
+              card.dataset.restCost = String(cost);
+
+              const energyText = card.querySelector(".rest-soldier-energy") as HTMLElement | null;
+              const energyFill = card.querySelector(".rest-soldier-energyfill") as HTMLElement | null;
+              if (energyText) energyText.textContent = `EN ${nextEnergy}`;
+              if (energyFill) energyFill.style.width = `${nextEnergy}%`;
+
+              if (gained > 0) {
+                const gain = document.createElement("span");
+                gain.className = "rest-soldier-gain";
+                gain.textContent = `+${gained}`;
+                card.appendChild(gain);
+                window.setTimeout(() => gain.remove(), 1000);
+              }
+
+              if (nextEnergy >= 100) {
+                hitMaxCount += 1;
+                card.classList.add("disabled", "rest-soldier-maxed");
+                card.classList.remove("selected");
+                card.disabled = true;
+                window.setTimeout(() => card.classList.remove("rest-soldier-maxed"), 900);
+              }
+            });
+
+            const remainingSelected = Array.from(popup.querySelectorAll(".rest-soldier-pill.selected")) as HTMLElement[];
+            let totalRecover = 0;
+            let totalCost = 0;
+            remainingSelected.forEach((card) => {
+              totalRecover += Number(card.dataset.restRecover ?? 0);
+              totalCost += Number(card.dataset.restCost ?? 0);
+            });
+            if (selectedEl) selectedEl.textContent = `${remainingSelected.length} selected`;
+            if (previewEl) previewEl.textContent = `Recovery +${totalRecover} | Cost $${totalCost}`;
+            if (sendBtn) sendBtn.disabled = remainingSelected.length === 0 || totalRecover <= 0;
+
+            if (feedback) {
+              const creditLeft = usePlayerCompanyStore.getState().creditBalance ?? 0;
+              const maxMsg = hitMaxCount > 0 ? ` ${hitMaxCount} maxed.` : "";
+              feedback.textContent = `Recovered +${result.totalRecovered} energy for $${result.totalCost}.${maxMsg} Credits: $${creditLeft}`;
+            }
+          }
+
+          popup.classList.remove("rest-popup-running");
+          popup.setAttribute("aria-busy", "false");
+          if (closeBtn) closeBtn.disabled = false;
+          if (progressFill) {
+            progressFill.style.transition = "none";
+            progressFill.style.width = "0%";
+          }
+          if (progressWrap) progressWrap.hidden = true;
+        }, 2000);
+      },
+    },
+    {
       selector: "#roster-formation-btn",
       eventType: "click",
       callback: () => {
@@ -3490,6 +3839,17 @@ export function eventConfigs() {
         if (!mission) return;
         const btn = s_(DOM.readyRoom.proceedBtn);
         if (btn?.classList.contains("disabled")) return;
+        if (!mission?.isDevTest) {
+          const store = usePlayerCompanyStore.getState();
+          const company = store.company;
+          const activeCount = getActiveSlots(company);
+          const formationSlots = getFormationSlots(company);
+          const activeSoldiers = formationSlots
+            .slice(0, activeCount)
+            .map((id) => (id ? getSoldierById(company, id) : null))
+            .filter((s): s is NonNullable<typeof s> => s != null);
+          store.syncCombatHpToSoldiers(activeSoldiers.map((s) => ({ id: s.id, hp: s.attributes?.hit_points ?? 0 })));
+        }
         console.log("Proceed to combat", mission);
         UiManager.renderCombatScreen(mission);
       },
@@ -3507,8 +3867,6 @@ export function eventConfigs() {
           const soldierId = equipSlot.dataset.soldierId;
           const slotType = equipSlot.dataset.slotType as "weapon" | "armor" | "equipment";
           const eqIndexStr = equipSlot.dataset.eqIndex;
-          const eqIndex = eqIndexStr != null ? parseInt(eqIndexStr, 10) : undefined;
-
           if (selectedSlot) {
             if (selectedSlot === equipSlot) {
               clearReadyRoomEquipSelection();
@@ -3942,7 +4300,7 @@ export function eventConfigs() {
   ];
 
   const devCatalogScreenEventConfig: HandlerInitConfig[] = [
-    ...marketLevelNavHandlers("dev-catalog-market", () => UiManager.renderDevCatalogScreen(), 20),
+    ...marketLevelNavHandlers("dev-catalog-market", () => UiManager.renderDevCatalogScreen(), MAX_GEAR_LEVEL),
     {
       selector: "#dev-catalog-market .dev-catalog-item",
       eventType: "click",
@@ -3950,7 +4308,7 @@ export function eventConfigs() {
         const card = (e.target as HTMLElement).closest(".dev-catalog-item");
         const itemJson = card?.getAttribute("data-gear-item");
         if (!itemJson) return;
-        const item = JSON.parse(itemJson) as import("../entities/types.ts").Item;
+        const item = JSON.parse(itemJson) as Item;
         const popup = document.getElementById("dev-catalog-popup");
         const bodyEl = document.getElementById("dev-catalog-popup-body");
         if (popup && bodyEl) {
@@ -3967,7 +4325,7 @@ export function eventConfigs() {
         const popup = document.getElementById("dev-catalog-popup");
         const itemJson = (popup as HTMLElement)?.dataset?.devCatalogItem;
         if (!itemJson) return;
-        let item: import("../constants/items/types.ts").Item;
+        let item: Item;
         try {
           item = JSON.parse(itemJson.replace(/&quot;/g, '"'));
         } catch {

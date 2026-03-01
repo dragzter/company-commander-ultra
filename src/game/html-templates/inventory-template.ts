@@ -18,6 +18,8 @@ import {
 } from "../../constants/item-effect-descriptions.ts";
 import { getItemSpecialEffect } from "../../constants/item-special-effects.ts";
 import { getWeaponRestrictRole } from "../../utils/equip-utils.ts";
+import { ThrowableItems } from "../../constants/items/throwable.ts";
+import { getScaledThrowableLevel20Damage } from "../../constants/items/throwable-scaling.ts";
 
 /** Shared item stats popup markup – used by inventory and roster (equip picker from roster needs it). */
 export function itemStatsPopupHtml(): string {
@@ -47,6 +49,62 @@ const STAT_LABELS: Record<string, string> = {
   chanceToHit: "CTH",
 };
 
+function formatDamageDisplayNumber(n: number): string {
+  return String(Math.ceil(n));
+}
+
+function getPostCapWeaponDamageBonus(item: Item): number {
+  const isWeapon = item.type === "ballistic_weapon" || item.type === "melee_weapon";
+  const isThrowableWithDamage = item.type === "throwable" && (item.damage ?? 0) > 0;
+  if (!isWeapon && !isThrowableWithDamage) return 0;
+  const lvl = item.level ?? 1;
+  if (lvl <= 20) return 0;
+  if (isThrowableWithDamage && item.damage != null) {
+    const pool = item.rarity === "epic"
+      ? Object.values(ThrowableItems.epic)
+      : item.rarity === "rare"
+        ? Object.values(ThrowableItems.rare)
+        : Object.values(ThrowableItems.common);
+    const base = pool.find((t) => t.id === item.id);
+    const baseDamage = base?.damage ?? item.damage;
+    const level20Damage = getScaledThrowableLevel20Damage(baseDamage);
+    return Math.max(0, Math.ceil(item.damage - level20Damage));
+  }
+  return (lvl - 20) * 0.4;
+}
+
+function getPostCapArmorHpBonus(item: Item): number {
+  if (item.type !== "armor") return 0;
+  const lvl = item.level ?? 1;
+  if (lvl <= 20) return 0;
+  const postCap = lvl - 20;
+  return Math.floor((postCap + 1) / 2);
+}
+
+function splitBonusesForDisplay(item: Item, bonuses: ArmorBonus[] | undefined): { base: ArmorBonus[]; postCap: string[] } {
+  const base = [...(bonuses ?? [])];
+  const postCap: string[] = [];
+
+  const postCapDamage = getPostCapWeaponDamageBonus(item);
+  if (postCapDamage > 0) {
+    postCap.push(`+${formatDamageDisplayNumber(postCapDamage)} DMG`);
+  }
+
+  const postCapArmorHp = getPostCapArmorHpBonus(item);
+  if (postCapArmorHp > 0) {
+    postCap.push(`+${formatDamageDisplayNumber(postCapArmorHp)} HP`);
+    const hpBonus = base.find((b) => b.type === "flat" && b.stat === "hp");
+    if (hpBonus && hpBonus.type === "flat") {
+      hpBonus.value = Math.max(0, hpBonus.value - postCapArmorHp);
+    }
+  }
+
+  return {
+    base: base.filter((b) => !(b.type === "flat" && b.stat === "hp" && b.value <= 0)),
+    postCap,
+  };
+}
+
 export function getItemPopupBodyHtml(item: Item): string {
   const rarity = (item.rarity ?? "common") as string;
   const iconUrl = getItemIconUrl(item);
@@ -64,9 +122,9 @@ export function getItemPopupBodyHtml(item: Item): string {
 
   const rows: [string, string, string?][] = [];
   if (item.damage_min != null && item.damage_max != null) {
-    rows.push(["Damage", `${item.damage_min}–${item.damage_max}`]);
+    rows.push(["Damage", `${formatDamageDisplayNumber(item.damage_min)}–${formatDamageDisplayNumber(item.damage_max)}`]);
   } else if (item.damage != null) {
-    rows.push(["Damage", String(item.damage)]);
+    rows.push(["Damage", formatDamageDisplayNumber(item.damage)]);
   }
   if (item.toughness != null) rows.push(["Toughness", String(item.toughness)]);
   const speedBase = item.speed_base ?? (item as Item & { speed_base?: number }).speed_base;
@@ -103,8 +161,9 @@ export function getItemPopupBodyHtml(item: Item): string {
   html += '</div>';
 
   const bonuses = (item as Item & { bonuses?: ArmorBonus[] }).bonuses;
-  if (bonuses?.length) {
-    const badges = bonuses.map((b) => {
+  const split = splitBonusesForDisplay(item, bonuses);
+  if (split.base.length) {
+    const badges = split.base.map((b) => {
       const label = STAT_LABELS[b.stat] ?? b.stat.replace(/([A-Z])/g, " $1").trim().toUpperCase().replace(/ /g, "");
       // chanceToHit bonus: show as "+1 CTH" (1% = 1 CTH). Focused effect (2% CTH) is a separate effect box.
       const text = b.type === "percent" && b.stat === "chanceToHit"
@@ -115,6 +174,12 @@ export function getItemPopupBodyHtml(item: Item): string {
       return `<span class="item-popup-bonus-badge">${escapeHtml(text)}</span>`;
     });
     html += `<div class="item-popup-bonus"><span class="item-popup-bonus-hint">Bonus</span><div class="item-popup-bonus-row">${badges.join("")}</div></div>`;
+  }
+  if (split.postCap.length) {
+    const postCapBadges = split.postCap
+      .map((text) => `<span class="item-popup-bonus-badge item-popup-bonus-badge-postcap">${escapeHtml(text)}</span>`)
+      .join("");
+    html += `<div class="item-popup-bonus item-popup-bonus-postcap"><span class="item-popup-bonus-hint">Post-20 Bonus</span><div class="item-popup-bonus-row">${postCapBadges}</div></div>`;
   }
   const flavor = (item as Item & { flavor?: string }).flavor;
   if (flavor) {
@@ -179,9 +244,9 @@ export function getItemPopupBodyHtmlCompact(item: Item): string {
 
   const parts: string[] = [];
   if (item.damage_min != null && item.damage_max != null) {
-    parts.push(`${item.damage_min}–${item.damage_max} dmg`);
+    parts.push(`${formatDamageDisplayNumber(item.damage_min)}–${formatDamageDisplayNumber(item.damage_max)} dmg`);
   } else if (item.damage != null) {
-    parts.push(`${item.damage} dmg`);
+    parts.push(`${formatDamageDisplayNumber(item.damage)} dmg`);
   }
   if (item.toughness != null) parts.push(`${item.toughness} TGH`);
   const speedBase = item.speed_base ?? (item as Item & { speed_base?: number }).speed_base;
@@ -195,8 +260,9 @@ export function getItemPopupBodyHtmlCompact(item: Item): string {
   }
 
   const bonuses = (item as Item & { bonuses?: ArmorBonus[] }).bonuses;
-  if (bonuses?.length) {
-    const badges = bonuses.slice(0, 3).map((b) => {
+  const split = splitBonusesForDisplay(item, bonuses);
+  if (split.base.length) {
+    const badges = split.base.slice(0, 3).map((b) => {
       const label = STAT_LABELS[b.stat] ?? b.stat.replace(/([A-Z])/g, " $1").trim().slice(0, 4).toUpperCase().replace(/ /g, "");
       const text = b.type === "percent" && b.stat === "chanceToHit"
         ? `+${b.value} CTH`
@@ -206,6 +272,12 @@ export function getItemPopupBodyHtmlCompact(item: Item): string {
       return `<span class="item-popup-bonus-badge item-popup-bonus-badge-compact">${escapeHtml(text)}</span>`;
     });
     html += `<div class="item-popup-bonus-compact">${badges.join("")}</div>`;
+  }
+  if (split.postCap.length) {
+    const postCapBadges = split.postCap
+      .map((text) => `<span class="item-popup-bonus-badge item-popup-bonus-badge-compact item-popup-bonus-badge-postcap">${escapeHtml(text)}</span>`)
+      .join("");
+    html += `<div class="item-popup-bonus-compact">${postCapBadges}</div>`;
   }
 
   const specialEffectId = (item as Item & { specialEffect?: string }).specialEffect;

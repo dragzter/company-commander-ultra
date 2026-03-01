@@ -3,6 +3,8 @@
  */
 import type { ArmorBonus, GearLevel } from "./types.ts";
 import { ITEM_TYPES, RARITY, TARGET_TYPES } from "./types.ts";
+import { BASE_GEAR_LEVEL_CAP } from "./types.ts";
+import { applyPostCapArmorBonuses, clampGearLevel, scaleArmorBonusesToPreCapLevel } from "./gear-scaling.ts";
 
 export interface ArmorBase {
   baseId: string;
@@ -33,10 +35,11 @@ export function scaleArmor(base: ArmorBase, tier: GearLevel) {
 }
 
 export function createArmor(base: ArmorBase, level: GearLevel) {
-  const tier = Math.max(1, Math.min(20, level));
-  const toughness = base.toughnessBase + (tier - 1) * base.toughnessPerLevel;
-  // Percent bonuses do NOT scale with tier - stay fixed
-  const bonuses = base.bonuses;
+  const tier = clampGearLevel(level);
+  const preCapLevel = Math.min(tier, BASE_GEAR_LEVEL_CAP);
+  const toughness = base.toughnessBase + (preCapLevel - 1) * base.toughnessPerLevel;
+  const scaledBonuses = scaleArmorBonusesToPreCapLevel(base.bonuses, preCapLevel);
+  const bonuses = applyPostCapArmorBonuses(scaledBonuses, tier);
   return {
     id: `${base.baseId}_${tier}`,
     baseId: base.baseId,

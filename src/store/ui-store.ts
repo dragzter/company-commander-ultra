@@ -42,13 +42,14 @@ export type CompanyStore = {
   totalItemsInInventory: number;
   totalInventoryCapacity: number;
   companyExperience: number;
+  highestRecruitLevelAchieved: number;
   company: Company;
   rerollCounter: number;
-  /** Selected gear tier (1–20) for market browsing. 0 = unset, defaults to max soldier level on first open. */
+  /** Selected gear tier (1–999) for market browsing. 0 = unset, defaults to max soldier level on first open. */
   marketTierLevel: number;
   missionBoard: Mission[];
   missionBoardSchemaVersion: number;
-  missionsViewMode: "menu" | "normal" | "epic";
+  missionsViewMode: "menu" | "normal" | "epic" | "dev";
 
   // Setters
   setMarketAvailableTroops: (soldiers: Soldier[]) => void;
@@ -58,9 +59,10 @@ export type CompanyStore = {
   setCreditBalance: (amount: number) => void;
   setCompanyUnitPatch: (patchImgUrl: string) => void;
   setCompanyName: (companyName: string) => void;
+  setHighestRecruitLevelAchieved: (level: number) => void;
   setGameStep: (step: GameStep) => void;
   setMarketTierLevel: (n: number) => void;
-  setMissionsViewMode: (mode: "menu" | "normal" | "epic") => void;
+  setMissionsViewMode: (mode: "menu" | "normal" | "epic" | "dev") => void;
   ensureMissionBoard: () => void;
   refreshMissionBoard: () => void;
   addSoldierToCompany: (soldier: Soldier) => void;
@@ -113,7 +115,20 @@ export type CompanyStore = {
     kiaKilledBy?: Map<string, string>,
   ) => void;
   deductQuitMissionEnergy: (participantIds: string[]) => void;
-  deductMissionEnergy: (survivorIds: string[], participantCount: number, hasCasualty: boolean, failed: boolean) => void;
+  deductMissionEnergy: (
+    survivorIds: string[],
+    participantCount: number,
+    hasCasualty: boolean,
+    failed: boolean,
+    lowHealthIds?: string[],
+  ) => void;
+  runRestRound: (soldierIds: string[]) => {
+    success: boolean;
+    totalCost: number;
+    totalRecovered: number;
+    recoveredById: Record<string, number>;
+    reason?: "credits" | "no_selection" | "no_recovery";
+  };
   moveZeroEnergySoldiersToReserve: () => void;
   syncCombatHpToSoldiers: (playerCombatants: { id: string; hp: number }[]) => void;
   claimHoldingInventory: () => void;
@@ -162,7 +177,7 @@ export const usePlayerCompanyStore = createStore<CompanyStore>()(
           if (Array.isArray(merged.company?.soldiers)) {
             merged.company = {
               ...merged.company,
-              soldiers: merged.company!.soldiers!.map((s: { energy?: number }) =>
+              soldiers: merged.company!.soldiers!.map((s: Soldier) =>
                 typeof s.energy !== "number" ? { ...s, energy: 100 } : s,
               ),
             };
@@ -171,7 +186,7 @@ export const usePlayerCompanyStore = createStore<CompanyStore>()(
           if (typeof mtl !== "number" || mtl < 0) merged.marketTierLevel = 0;
           if (!Array.isArray(merged.missionBoard)) merged.missionBoard = [];
           if (typeof merged.missionBoardSchemaVersion !== "number") merged.missionBoardSchemaVersion = 0;
-          if (merged.missionsViewMode !== "menu" && merged.missionsViewMode !== "normal" && merged.missionsViewMode !== "epic") {
+          if (merged.missionsViewMode !== "menu" && merged.missionsViewMode !== "normal" && merged.missionsViewMode !== "epic" && merged.missionsViewMode !== "dev") {
             merged.missionsViewMode = "menu";
           }
           /* Sync companyExperience with company.experience (avoid drift from old saves or partial updates) */
@@ -182,6 +197,9 @@ export const usePlayerCompanyStore = createStore<CompanyStore>()(
           merged.companyExperience = companyExp;
           if (typeof merged.companyLevel !== "number" || merged.companyLevel < 1) {
             merged.companyLevel = merged.company?.level ?? 1;
+          }
+          if (typeof merged.highestRecruitLevelAchieved !== "number" || merged.highestRecruitLevelAchieved < 1) {
+            merged.highestRecruitLevelAchieved = 1;
           }
           return merged;
         },

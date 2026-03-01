@@ -4,6 +4,8 @@
  */
 import type { GearLevel, WeaponBonus, WeaponEffectId } from "./types.ts";
 import { ITEM_TYPES, RARITY } from "./types.ts";
+import { BASE_GEAR_LEVEL_CAP } from "./types.ts";
+import { applyPostCapWeaponDamage, clampGearLevel, scaleWeaponBonusesToPreCapLevel } from "./gear-scaling.ts";
 
 export interface EpicWeaponBase {
   baseId: string;
@@ -40,13 +42,20 @@ export const EPIC_WEAPON_BASES: EpicWeaponBase[] = [
 ];
 
 export function createEpicWeapon(base: EpicWeaponBase, level: GearLevel) {
-  const tier = Math.max(1, Math.min(20, level)) as GearLevel;
-  const add = (tier - 1) * base.damagePerLevel;
-  const damageMin = Math.round(base.damageMinBase + add);
-  const damageMax = Math.round(base.damageMaxBase + add);
+  const tier = clampGearLevel(level);
+  const preCapLevel = Math.min(tier, BASE_GEAR_LEVEL_CAP);
+  const add = (preCapLevel - 1) * base.damagePerLevel;
+  let damageMin = Math.round(base.damageMinBase + add);
+  let damageMax = Math.round(base.damageMaxBase + add);
+  if (tier > BASE_GEAR_LEVEL_CAP) {
+    const boosted = applyPostCapWeaponDamage(damageMin, damageMax, tier);
+    damageMin = boosted.min;
+    damageMax = boosted.max;
+  }
   const damage = Math.round((damageMin + damageMax) / 2);
+  const bonuses = scaleWeaponBonusesToPreCapLevel(base.bonuses, preCapLevel) ?? base.bonuses;
   return {
-    id: `${base.baseId}_${level}`,
+    id: `${base.baseId}_${tier}`,
     name: base.name,
     type: ITEM_TYPES.ballistic_weapon,
     rarity: RARITY.epic,
@@ -61,7 +70,7 @@ export function createEpicWeapon(base: EpicWeaponBase, level: GearLevel) {
     speed_base: base.speed_base,
     level: tier as GearLevel,
     restrictRole: base.restrictRole,
-    bonuses: base.bonuses,
+    bonuses,
     weaponEffect: base.weaponEffect,
   };
 }

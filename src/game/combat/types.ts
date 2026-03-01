@@ -26,8 +26,8 @@ export interface Combatant {
   weaponIconUrl?: string;
   /** Timestamp (ms) when Take Cover ends */
   takeCoverUntil?: number;
-  /** Take Cover used this combat (1x per soldier) */
-  takeCoverUsed?: boolean;
+  /** Timestamp (ms) when Take Cover can next be used */
+  takeCoverCooldownUntil?: number;
   /** Timestamp (ms) when Suppress cooldown ends */
   suppressCooldownUntil?: number;
   /** Timestamp (ms) when grenade cooldown ends (per-soldier, 5s after throwing) */

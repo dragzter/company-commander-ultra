@@ -57,6 +57,7 @@ export const DOM = {
     modeNormalBtn: "#missions-mode-normal",
     modeEpicBtn: "#missions-mode-epic",
     modeCareerBtn: "#missions-mode-career",
+    modeDevBtn: "#missions-mode-dev",
     launchBtn: ".mission-launch-btn",
     readMoreBtn: ".mission-card-read-more",
     flavorPopup: "#mission-flavor-popup",

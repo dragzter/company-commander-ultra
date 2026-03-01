@@ -92,6 +92,23 @@ export function getItemEffectDescription(item: { id?: string; level?: number }):
   if (!item?.id) return null;
   const entry = ITEM_EFFECT_DESCRIPTIONS[item.id];
   if (!entry) return null;
+  if (item.id === "m3_frag_grenade" && isStructuredEffect(entry)) {
+    const rawDamage = (item as { damage?: number }).damage ?? 30;
+    const primary = Math.max(1, Math.ceil(rawDamage));
+    const adjacent = Math.max(1, Math.ceil(primary * 0.5));
+    return {
+      primary: `Explosive damage (${primary}).`,
+      adjacent: `${adjacent} splash damage.`,
+    };
+  }
+  if (item.id === "incendiary_grenade" && isStructuredEffect(entry)) {
+    const tick = getScaledIncendiaryTickDamage(8, item.level ?? 1);
+    const adjacentTick = Math.max(1, Math.ceil(tick * 0.5));
+    return {
+      primary: `${tick} damage per tick, 1s interval, 4 seconds. Ignores armor.`,
+      adjacent: `Half duration, ${adjacentTick} damage per tick.`,
+    };
+  }
   if (item.id === "standard_medkit" && isSimpleEffect(entry) && entry.effect === "_dynamic_") {
     const { nonMedic, medic } = getMedKitHealValues(item.level ?? 1);
     return {
@@ -120,3 +137,4 @@ export function renderEffectDescriptionHtml(desc: EffectDescription, escapeHtml:
   }
   return "";
 }
+import { getScaledIncendiaryTickDamage } from "./items/throwable-scaling.ts";

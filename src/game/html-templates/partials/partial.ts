@@ -86,12 +86,12 @@ function Partial() {
   /**
    * Roster soldier card - same layout as troops market entity card but with Inventory and Release buttons.
    */
-  function _rsc(soldier: Soldier, index: number, isActive: boolean, hpScaleMax = 1) {
+  function _rsc(soldier: Soldier, index: number, isActive: boolean) {
     const slotClass = isActive ? "roster-active" : "roster-reserve";
     const combat = soldier.combatProfile ?? {};
     const bg = getBaseAndGearStats(soldier);
     const totalHp = Math.max(0, bg.hp.base + bg.hp.gear);
-    const hpPct = Math.max(0, Math.min(100, Math.round((totalHp / Math.max(1, hpScaleMax)) * 100)));
+    const hpPct = 100;
     const mit = formatPctOneDecimal(combat.mitigateDamage ?? 0);
     const avd = formatPctOneDecimal(combat.chanceToEvade ?? 0);
     const cth = formatPctOneDecimal(combat.chanceToHit ?? 0);
