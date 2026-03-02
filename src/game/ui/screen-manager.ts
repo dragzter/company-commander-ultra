@@ -170,7 +170,7 @@ function ScreenManager() {
     UiManager.selectCompanyHomeButton(DOM.company.home);
     DomEventManager.initEventArray(ec().companyHome());
     DomEventManager.initEquipSlotTooltipHideOnClick();
-    Styler.setCenterBG("bg_81.jpg", true);
+    Styler.setCenterBG("home_2.png", true);
     show.center();
   }
 
@@ -188,9 +188,24 @@ function ScreenManager() {
   function createMissionsPage(mode?: "menu" | "normal" | "epic" | "dev") {
     UiManager.clear.center();
     const store = usePlayerCompanyStore.getState();
-    store.setMissionsViewMode(mode ?? "menu");
+    const onboardingFirstMission = !!store.onboardingFirstMissionPending;
+    store.setMissionsViewMode(onboardingFirstMission ? "normal" : (mode ?? "menu"));
     store.ensureMissionBoard();
-    const missions = usePlayerCompanyStore.getState().missionBoard ?? [];
+    const createOnboardingSkirmish = (): Mission => ({
+      id: "onboarding_skirmish_1",
+      kind: "seek_and_destroy",
+      name: "Skirmish",
+      difficulty: 1,
+      enemyCount: 3,
+      creditReward: 120,
+      xpReward: 40,
+      flavorText: "Hostile scouts have entered the sector. Engage and eliminate all enemy soldiers.",
+      rarity: "normal",
+      rewardItems: [],
+    });
+    const missions = onboardingFirstMission
+      ? [createOnboardingSkirmish()]
+      : (usePlayerCompanyStore.getState().missionBoard ?? []);
     const companyLevel = usePlayerCompanyStore.getState().companyLevel ?? 1;
     const activeMode = usePlayerCompanyStore.getState().missionsViewMode ?? "menu";
     const devMissions = activeMode === "dev" ? generateDevTestMissions() : [];

@@ -106,7 +106,8 @@ function roleBadge(designation: string | undefined): string {
 
 function summaryXpBar(soldier: Soldier | undefined, xpEarned: number): string {
   if (!soldier) return "";
-  const exp = Math.round(((soldier.experience ?? 0) + xpEarned) * 10) / 10;
+  // `soldier.experience` is already post-combat; do not add mission XP again.
+  const exp = Math.round((soldier.experience ?? 0) * 10) / 10;
   const lvl = getLevelFromExperience(exp);
   const current = getSoldierXpRequiredForLevel(lvl);
   const next = getSoldierXpRequiredForLevel(lvl + 1);

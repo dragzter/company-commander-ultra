@@ -120,6 +120,14 @@ export function readyRoomTemplate(mission: Mission | null): string {
   const missionTitle = mission?.name ?? "Ready Room";
   const missionData = mission ? escapeAttr(JSON.stringify(mission)) : "";
   const activeSoldierCount = formationSlots.slice(0, activeCount).filter((id) => id != null).length;
+  const showOnboardingPopup = !!mission?.id?.startsWith("onboarding_");
+  const onboardingSoldiers = company?.soldiers ?? [];
+  const onboardingFeatured = onboardingSoldiers.length > 0
+    ? onboardingSoldiers[Math.floor(Math.random() * onboardingSoldiers.length)]
+    : null;
+  const onboardingPortrait = onboardingFeatured
+    ? getSoldierPortraitUrl(onboardingFeatured.avatar, onboardingFeatured.designation)
+    : "/images/green-portrait/portrait_0.png";
 
   const roleCounts = getActiveRoleCounts(company);
   const roleBreakdown = `
@@ -151,6 +159,23 @@ export function readyRoomTemplate(mission: Mission | null): string {
     }
   }
 
+  const onboardingPopup = showOnboardingPopup
+    ? `
+  <div id="ready-room-onboarding-popup" class="ready-room-onboarding-popup helper-onboarding-popup" role="dialog" aria-modal="true">
+    <div class="ready-room-onboarding-dialog helper-onboarding-dialog">
+      <div class="ready-room-onboarding-copy helper-onboarding-copy">
+        <h4 class="ready-room-onboarding-title helper-onboarding-title">Ready Room Briefing</h4>
+        <p class="ready-room-onboarding-text helper-onboarding-text helper-onboarding-typed-text" id="ready-room-onboarding-typed-text" data-full-text="Set your squad here: tap Active and Reserve soldiers to swap positions, and tap matching gear slots to transfer equipment."></p>
+        <p class="ready-room-onboarding-text helper-onboarding-text">Tap <span class="helper-onboarding-inline-btn">Proceed to Mission</span> when ready.</p>
+        <button id="ready-room-onboarding-continue" type="button" class="game-btn game-btn-md game-btn-green ready-room-onboarding-continue helper-onboarding-continue">Continue</button>
+      </div>
+      <div class="ready-room-onboarding-image-wrap helper-onboarding-image-wrap">
+        <img src="${onboardingPortrait}" alt="Squad soldier" class="ready-room-onboarding-image helper-onboarding-image">
+      </div>
+    </div>
+  </div>`
+    : "";
+
   return `
 <div id="ready-room-screen" class="ready-room-root troops-market-root" data-mission-json="${missionData}" data-selected-index="-1">
   ${companyHeaderPartial(missionTitle)}
@@ -177,5 +202,6 @@ export function readyRoomTemplate(mission: Mission | null): string {
     </div>
     ${companyActionsTemplate()}
   </div>
+  ${onboardingPopup}
 </div>`;
 }

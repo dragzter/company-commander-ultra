@@ -237,7 +237,7 @@ export const weaponsMarketTemplate = () => {
         ${marketCreditsPartial(creditBalance)}
       </div>
       <div class="market-controls-cell market-controls-sell">
-        <button type="button" id="market-sell-open" class="equip-troops-btn">Sell Items</button>
+        <button type="button" id="market-sell-open" class="equip-troops-btn">Sell</button>
       </div>
     </div>
     ${companyActionsTemplate()}
@@ -315,7 +315,7 @@ export const armorMarketTemplate = () => {
         ${marketCreditsPartial(creditBalance)}
       </div>
       <div class="market-controls-cell market-controls-sell">
-        <button type="button" id="market-sell-open" class="equip-troops-btn">Sell Items</button>
+        <button type="button" id="market-sell-open" class="equip-troops-btn">Sell</button>
       </div>
     </div>
     ${companyActionsTemplate()}
@@ -518,7 +518,7 @@ export const suppliesMarketTemplate = () => {
         ${marketCreditsPartial(creditBalance)}
       </div>
       <div class="market-controls-cell market-controls-sell">
-        <button type="button" id="market-sell-open" class="equip-troops-btn">Sell Items</button>
+        <button type="button" id="market-sell-open" class="equip-troops-btn">Sell</button>
       </div>
     </div>
     ${companyActionsTemplate()}

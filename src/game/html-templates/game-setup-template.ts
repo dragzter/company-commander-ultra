@@ -9,6 +9,7 @@ import { TraitProfileStats } from "../entities/soldier/soldier-traits.ts";
 import { getLevelBenefitsForCodex } from "../entities/levels.ts";
 import { APP_VERSION } from "../../constants/version.ts";
 import { CREDIT_SYMBOL } from "../../constants/currency.ts";
+import { getSoldierPortraitUrl } from "../../utils/name-utils.ts";
 
 const TRAIT_STAT_ABBR: Record<string, string> = {
   hit_points: "HP",
@@ -228,6 +229,45 @@ export function memorialPopupTemplate(): string {
   </div>`;
 }
 
+/** Settings popup with destructive reset action. */
+export function settingsPopupTemplate(): string {
+  return `
+  <div id="settings-popup" class="codex-popup settings-popup" role="dialog" aria-modal="true" hidden>
+    <div class="codex-popup-inner settings-popup-inner">
+      <div class="codex-popup-header popup-dialog-header">
+        <h4 class="codex-popup-title">Settings</h4>
+        <button type="button" class="game-btn game-btn-md game-btn-red codex-popup-close popup-close-btn" id="settings-popup-close" aria-label="Close">Close</button>
+      </div>
+      <div class="settings-popup-body">
+        <section class="settings-panel settings-panel-danger">
+          <h5 class="settings-panel-title">Danger Zone</h5>
+          <p class="settings-panel-copy">Resetting erases your company, soldiers, armory, missions, and all progress.</p>
+          <button type="button" id="settings-reset-game-btn" class="game-btn game-btn-md game-btn-red settings-reset-btn">Reset Game</button>
+        </section>
+      </div>
+    </div>
+  </div>`;
+}
+
+/** Reset confirmation dialog. */
+export function settingsResetConfirmPopupTemplate(): string {
+  return `
+  <div id="settings-reset-confirm-popup" class="codex-popup settings-reset-confirm-popup" role="dialog" aria-modal="true" hidden>
+    <div class="codex-popup-inner settings-reset-confirm-inner">
+      <div class="codex-popup-header popup-dialog-header">
+        <h4 class="codex-popup-title">Confirm Reset</h4>
+      </div>
+      <div class="settings-reset-confirm-body">
+        <p class="settings-reset-confirm-copy">Are you sure? All saved game data will be erased and the game will restart from the beginning.</p>
+        <div class="settings-reset-confirm-actions">
+          <button type="button" id="settings-reset-confirm-no" class="game-btn game-btn-md game-btn-blue">Cancel</button>
+          <button type="button" id="settings-reset-confirm-yes" class="game-btn game-btn-md game-btn-red">Yes, Reset</button>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
 export const gameSetupTemplate = `<div class="setup-game-wrapper">
                     <div class="setup-game-content">
                         <h3 class="setup-title">Create Your Company</h3>
@@ -314,8 +354,8 @@ export const setupConfirmationTemplate = (
 	</div>
 	<img width="120" class="confirm-screen-patch" src="images/unit-patches/${unitPatch}" alt="Company Patch">
 	<div class="confirm-screen-buttons">
-		<button id="launch-game" class="game-btn game-btn-md game-btn-green">Begin</button>
 		<button id="go-back" class="game-btn game-btn-md game-btn-red">Go Back</button>
+		<button id="launch-game" class="game-btn game-btn-md game-btn-green">Begin</button>
 	</div>
 </div>
 `;
@@ -418,9 +458,10 @@ export const companyHomePageTemplate = () => {
   const nextLevel = Math.min(20, companyLvl + 1);
 
   const memorialCodexRow = `
-    <div class="company-home-buttons-row flex align-center justify-center gap-2">
+    <div class="company-home-buttons-row">
       <button id="company-stats-memorial" class="game-btn game-btn-md game-btn-blue codex-memorial-btn">Memorial Wall</button>
       <button id="company-go-codex" class="game-btn game-btn-md game-btn-blue codex-memorial-btn">Game Codex</button>
+      <button id="company-go-settings" class="game-btn game-btn-md game-btn-blue codex-memorial-btn company-home-settings-btn"><span class="company-home-settings-gear" aria-hidden="true">⚙</span> Settings</button>
     </div>
   `;
 
@@ -484,6 +525,30 @@ export const companyHomePageTemplate = () => {
   `
     : "";
 
+  const onboardingSoldiers = company?.soldiers ?? [];
+  const onboardingFeatured = onboardingSoldiers.length > 0
+    ? onboardingSoldiers[Math.floor(Math.random() * onboardingSoldiers.length)]
+    : null;
+  const onboardingPortrait = onboardingFeatured
+    ? getSoldierPortraitUrl(onboardingFeatured.avatar, onboardingFeatured.designation)
+    : "/images/green-portrait/portrait_0.png";
+  const onboardingPopup = store.onboardingHomeIntroPending
+    ? `
+    <div id="home-onboarding-popup" class="home-onboarding-popup helper-onboarding-popup" role="dialog" aria-modal="true">
+      <div class="home-onboarding-dialog helper-onboarding-dialog">
+        <div class="home-onboarding-copy helper-onboarding-copy">
+          <h4 class="home-onboarding-title helper-onboarding-title">Welcome, Commander</h4>
+          <p class="home-onboarding-text helper-onboarding-text helper-onboarding-typed-text" id="home-onboarding-typed-text" data-full-text="Your squad is assembled and awaiting orders. Start by opening Missions to launch your first operation."></p>
+          <button id="home-onboarding-continue" type="button" class="game-btn game-btn-md game-btn-green home-onboarding-continue helper-onboarding-continue">Continue</button>
+        </div>
+        <div class="home-onboarding-image-wrap helper-onboarding-image-wrap">
+          <img src="${onboardingPortrait}" alt="Squad soldier" class="home-onboarding-image helper-onboarding-image">
+        </div>
+      </div>
+    </div>
+  `
+    : "";
+
   return `
   <div id="campaign-home-screen" class="flex h-100 column">
     ${companyHeaderPartial()}
@@ -516,6 +581,9 @@ export const companyHomePageTemplate = () => {
 
     ${codexPopupTemplate()}
     ${memorialPopupTemplate()}
+    ${settingsPopupTemplate()}
+    ${settingsResetConfirmPopupTemplate()}
+    ${onboardingPopup}
   </div>
 `;
 };

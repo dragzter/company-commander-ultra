@@ -206,6 +206,8 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
   missionBoard: [],
   missionBoardSchemaVersion: MISSION_BOARD_SCHEMA_VERSION,
   missionsViewMode: "menu" as CompanyStore["missionsViewMode"],
+  onboardingHomeIntroPending: false,
+  onboardingFirstMissionPending: false,
 
   // Actions
   rerollSoldier: async (id: string) => {
@@ -309,6 +311,8 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
         missionBoard: [],
         missionBoardSchemaVersion: MISSION_BOARD_SCHEMA_VERSION,
         missionsViewMode: "menu",
+        onboardingHomeIntroPending: false,
+        onboardingFirstMissionPending: false,
         company: {
           level: 1,
           experience: 0,
@@ -352,6 +356,8 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
   setMarketTierLevel: (n: number) => set({ marketTierLevel: n }),
   setDevCatalogTierLevel: (n: number) => set({ devCatalogTierLevel: n }),
   setMissionsViewMode: (mode: "menu" | "normal" | "epic" | "dev") => set({ missionsViewMode: mode }),
+  setOnboardingHomeIntroPending: (pending: boolean) => set({ onboardingHomeIntroPending: !!pending }),
+  setOnboardingFirstMissionPending: (pending: boolean) => set({ onboardingFirstMissionPending: !!pending }),
   ensureMissionBoard: () => {
     const state = get();
     const existing = state.missionBoard ?? [];
@@ -494,11 +500,12 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
       const soldiers = state.company?.soldiers ?? [];
       if (soldiers.length > 0) return {};
       const modelTrait = SoldierManager.getSoldierTraitProfileByName("model_soldier");
+      const nimbleTrait = SoldierManager.getSoldierTraitProfileByName("nimble");
+      const veteranTrait = SoldierManager.getSoldierTraitProfileByName("veteran");
       const initial = [
         SoldierManager.getNewRifleman(1, modelTrait),
-        SoldierManager.getNewRifleman(1, modelTrait),
-        SoldierManager.getNewSupportMan(1, modelTrait),
-        SoldierManager.getNewMedic(1, modelTrait),
+        SoldierManager.getNewRifleman(1, nimbleTrait),
+        SoldierManager.getNewRifleman(1, veteranTrait),
       ];
       /* Ensure company has required fields (level, resourceProfile) for new-game flow */
       const companyBase = {
@@ -521,6 +528,8 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
         companyLevel: companyBase.level,
         companyExperience: companyBase.experience ?? 0,
         highestRecruitLevelAchieved: 1,
+        onboardingHomeIntroPending: true,
+        onboardingFirstMissionPending: true,
       };
     }),
   /** Add starter armory items when inventory is empty (new game). */

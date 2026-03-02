@@ -81,6 +81,50 @@ import { TraitProfileStats } from "../entities/soldier/soldier-traits.ts";
 export function eventConfigs() {
   const store = usePlayerCompanyStore.getState();
 
+  const initHelperDialogTypewriter = () => {
+    const textEls = Array.from(document.querySelectorAll(".helper-onboarding-typed-text[data-full-text]")) as HTMLElement[];
+    for (const textEl of textEls) {
+      const fullText = textEl.dataset.fullText ?? "";
+      if (fullText.length === 0) continue;
+      if (textEl.dataset.typed === "true") continue;
+
+      textEl.dataset.typed = "true";
+      textEl.textContent = fullText;
+      const reserveHeight = Math.ceil(textEl.getBoundingClientRect().height);
+      if (reserveHeight > 0) textEl.style.minHeight = `${reserveHeight}px`;
+      textEl.textContent = "";
+      textEl.classList.add("helper-onboarding-text-typing");
+      const durationMs = 1500;
+      const start = performance.now();
+
+      const renderTyped = (typedText: string) => {
+        textEl.innerHTML = "";
+        const typedSpan = document.createElement("span");
+        typedSpan.textContent = typedText;
+        textEl.appendChild(typedSpan);
+        const caret = document.createElement("span");
+        caret.className = "helper-onboarding-caret";
+        caret.setAttribute("aria-hidden", "true");
+        textEl.appendChild(caret);
+      };
+
+      const tick = (now: number) => {
+        const elapsed = Math.max(0, now - start);
+        const progress = Math.min(1, elapsed / durationMs);
+        const count = Math.max(1, Math.floor(fullText.length * progress));
+        renderTyped(fullText.slice(0, count));
+        if (progress < 1) {
+          window.requestAnimationFrame(tick);
+        } else {
+          textEl.textContent = fullText;
+          textEl.classList.remove("helper-onboarding-text-typing");
+        }
+      };
+
+      window.requestAnimationFrame(tick);
+    }
+  };
+
   const marketLevelNavHandlers = (
     containerId: string,
     render: () => void,
@@ -400,6 +444,99 @@ export function eventConfigs() {
       },
     },
     {
+      selector: DOM.company.settings,
+      eventType: "click",
+      callback: () => {
+        const popup = s_(DOM.company.settingsPopup) as HTMLElement | null;
+        if (popup) popup.hidden = false;
+      },
+    },
+    {
+      selector: DOM.company.settingsPopupClose,
+      eventType: "click",
+      callback: () => {
+        const popup = s_(DOM.company.settingsPopup) as HTMLElement | null;
+        if (popup) popup.hidden = true;
+      },
+    },
+    {
+      selector: DOM.company.settingsPopup,
+      eventType: "click",
+      callback: (e: Event) => {
+        if ((e.target as HTMLElement).id === "settings-popup") {
+          (e.target as HTMLElement).hidden = true;
+        }
+      },
+    },
+    {
+      selector: DOM.company.settingsResetBtn,
+      eventType: "click",
+      callback: () => {
+        const popup = s_(DOM.company.settingsResetConfirmPopup) as HTMLElement | null;
+        if (popup) popup.hidden = false;
+      },
+    },
+    {
+      selector: DOM.company.settingsResetConfirmNo,
+      eventType: "click",
+      callback: () => {
+        const popup = s_(DOM.company.settingsResetConfirmPopup) as HTMLElement | null;
+        if (popup) popup.hidden = true;
+      },
+    },
+    {
+      selector: DOM.company.settingsResetConfirmPopup,
+      eventType: "click",
+      callback: (e: Event) => {
+        if ((e.target as HTMLElement).id === "settings-reset-confirm-popup") {
+          (e.target as HTMLElement).hidden = true;
+        }
+      },
+    },
+    {
+      selector: DOM.company.settingsResetConfirmYes,
+      eventType: "click",
+      callback: () => {
+        const resetBtn = s_(DOM.company.settingsResetConfirmYes) as HTMLButtonElement | null;
+        if (resetBtn) resetBtn.disabled = true;
+        try {
+          ((usePlayerCompanyStore as unknown as { persist?: { clearStorage?: () => void } }).persist?.clearStorage?.());
+        } catch {
+          //
+        }
+        try {
+          localStorage.removeItem("cc-company-store");
+        } catch {
+          //
+        }
+        try {
+          sessionStorage.removeItem("cc-company-store");
+        } catch {
+          //
+        }
+        window.location.reload();
+      },
+    },
+    {
+      selector: DOM.company.onboardingIntroContinue,
+      eventType: "click",
+      callback: () => {
+        usePlayerCompanyStore.getState().setOnboardingHomeIntroPending(false);
+        usePlayerCompanyStore.getState().setOnboardingFirstMissionPending(true);
+        const popup = s_(DOM.company.onboardingIntroPopup) as HTMLElement | null;
+        if (popup) {
+          popup.classList.add("home-onboarding-popup-hide");
+          window.setTimeout(() => {
+            popup.remove();
+          }, 260);
+        }
+        const missionBtn = s_(DOM.company.missions) as HTMLElement | null;
+        if (missionBtn) {
+          missionBtn.classList.add("onboarding-mission-focus");
+        }
+      },
+    },
+    {
       selector: DOM.company.statsMemorial,
       eventType: "click",
       callback: () => {
@@ -458,6 +595,7 @@ export function eventConfigs() {
       },
     },
   ];
+  initHelperDialogTypewriter();
 
   const marketEventConfig: HandlerInitConfig[] = [
     {
@@ -540,6 +678,9 @@ export function eventConfigs() {
         if (!json) return;
         const mission = JSON.parse(json) as Mission;
         console.log("Launch mission", mission);
+        if (mission.id?.startsWith("onboarding_")) {
+          usePlayerCompanyStore.getState().setOnboardingFirstMissionPending(false);
+        }
         if (mission.isDevTest) {
           UiManager.renderCombatScreen(mission);
           return;
@@ -4179,6 +4320,26 @@ export function eventConfigs() {
   }
 
   const readyRoomScreenEventConfig: HandlerInitConfig[] = [
+    {
+      selector: DOM.readyRoom.onboardingContinue,
+      eventType: "click",
+      callback: () => {
+        const popup = s_(DOM.readyRoom.onboardingPopup) as HTMLElement | null;
+        if (!popup) return;
+        popup.classList.add("ready-room-onboarding-popup-hide");
+        window.setTimeout(() => popup.remove(), 220);
+      },
+    },
+    {
+      selector: DOM.readyRoom.onboardingPopup,
+      eventType: "click",
+      callback: (e: Event) => {
+        if ((e.target as HTMLElement).id !== "ready-room-onboarding-popup") return;
+        const popup = e.currentTarget as HTMLElement;
+        popup.classList.add("ready-room-onboarding-popup-hide");
+        window.setTimeout(() => popup.remove(), 220);
+      },
+    },
     {
       selector: DOM.readyRoom.proceedBtn,
       eventType: "click",

@@ -48,6 +48,7 @@ function missionCard(m: Mission): string {
   const diffLabel = DIFFICULTY_LABELS[m.difficulty] ?? "Unknown";
   const rarity = m.rarity ?? (m.isEpic ? "epic" : "normal");
   const epicClass = rarity === "epic" ? " mission-card-epic" : "";
+  const onboardingClass = m.id?.startsWith("onboarding_") ? " mission-card-onboarding-target" : "";
   const flavorText = m.flavorText ?? meta.description;
   const rewards = buildRewardsEntries(m);
   const rewardsHtml = rewards
@@ -61,7 +62,7 @@ function missionCard(m: Mission): string {
     .join("");
 
   return `
-<div class="mission-card${epicClass}" data-mission-id="${m.id}" data-kind="${m.kind}" data-level="${m.difficulty}" data-rarity="${rarity}" data-mission-json="${escapeAttr(JSON.stringify(m))}">
+<div class="mission-card${epicClass}${onboardingClass}" data-mission-id="${m.id}" data-kind="${m.kind}" data-level="${m.difficulty}" data-rarity="${rarity}" data-mission-json="${escapeAttr(JSON.stringify(m))}">
   <span class="mission-card-rarity-badge mission-card-rarity-badge-${rarity}">${rarity === "epic" ? "Epic" : rarity === "rare" ? "Rare" : "Normal"}</span>
   <div class="mission-card-kind-badge">${meta.name}</div>
   <h4 class="mission-card-name">${escapeHtml(m.name)}</h4>

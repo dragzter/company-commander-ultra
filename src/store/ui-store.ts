@@ -52,6 +52,8 @@ export type CompanyStore = {
   missionBoard: Mission[];
   missionBoardSchemaVersion: number;
   missionsViewMode: "menu" | "normal" | "epic" | "dev";
+  onboardingHomeIntroPending: boolean;
+  onboardingFirstMissionPending: boolean;
 
   // Setters
   setMarketAvailableTroops: (soldiers: Soldier[]) => void;
@@ -66,6 +68,8 @@ export type CompanyStore = {
   setMarketTierLevel: (n: number) => void;
   setDevCatalogTierLevel: (n: number) => void;
   setMissionsViewMode: (mode: "menu" | "normal" | "epic" | "dev") => void;
+  setOnboardingHomeIntroPending: (pending: boolean) => void;
+  setOnboardingFirstMissionPending: (pending: boolean) => void;
   ensureMissionBoard: () => void;
   refreshMissionBoard: () => void;
   addSoldierToCompany: (soldier: Soldier) => void;
@@ -229,6 +233,8 @@ export const usePlayerCompanyStore = createStore<CompanyStore>()(
           if (merged.missionsViewMode !== "menu" && merged.missionsViewMode !== "normal" && merged.missionsViewMode !== "epic" && merged.missionsViewMode !== "dev") {
             merged.missionsViewMode = "menu";
           }
+          if (typeof merged.onboardingHomeIntroPending !== "boolean") merged.onboardingHomeIntroPending = false;
+          if (typeof merged.onboardingFirstMissionPending !== "boolean") merged.onboardingFirstMissionPending = false;
           /* Sync companyExperience with company.experience (avoid drift from old saves or partial updates) */
           const companyExp = merged.company?.experience ?? merged.companyExperience ?? 0;
           if (typeof merged.company === "object") {
