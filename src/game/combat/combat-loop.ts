@@ -168,7 +168,13 @@ export function applyBleedTicks(
 /** Clear expired effects on all combatants */
 export function clearExpiredEffects(combatants: Combatant[], now: number): void {
   for (const c of combatants) {
-    if (c.takeCoverUntil != null && now >= c.takeCoverUntil) delete c.takeCoverUntil;
+    if (c.takeCoverUntil != null && now >= c.takeCoverUntil) {
+      if ((c.takeCoverToughnessBonus ?? 0) > 0) {
+        c.toughness = Math.max(0, (c.toughness ?? 0) - (c.takeCoverToughnessBonus ?? 0));
+        delete c.takeCoverToughnessBonus;
+      }
+      delete c.takeCoverUntil;
+    }
     if (c.smokedUntil != null && now >= c.smokedUntil) delete c.smokedUntil;
     if (c.stunUntil != null && now >= c.stunUntil) delete c.stunUntil;
     if (c.panicUntil != null && now >= c.panicUntil) delete c.panicUntil;
@@ -202,6 +208,10 @@ export function clearExpiredEffects(combatants: Combatant[], now: number): void 
 
 /** Clear all effect timers and markers when a combatant dies (KIA/down). */
 export function clearCombatantEffectsOnDeath(c: Combatant): void {
+  if ((c.takeCoverToughnessBonus ?? 0) > 0) {
+    c.toughness = Math.max(0, (c.toughness ?? 0) - (c.takeCoverToughnessBonus ?? 0));
+  }
+  delete c.takeCoverToughnessBonus;
   delete c.takeCoverUntil;
   delete c.takeCoverCooldownUntil;
   delete c.suppressCooldownUntil;

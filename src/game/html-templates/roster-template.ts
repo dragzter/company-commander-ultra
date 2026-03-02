@@ -125,7 +125,7 @@ export function rosterTemplate(): string {
   const roleCounts = getActiveRoleCounts(company);
   const roleSummary = `
     <span class="role-pill role-pill-rifleman">${roleCounts.rifleman}/${roleCounts.activeCapacity} Rifleman</span>
-    <span class="role-pill role-pill-support">${roleCounts.support}/${roleCounts.maxSupport} Support</span>
+    <span class="role-pill role-pill-support">${roleCounts.support}/${roleCounts.maxSupport} Gunner</span>
     <span class="role-pill role-pill-medic">${roleCounts.medic}/${roleCounts.maxMedic} Medic</span>
   `;
   const activeEntries: { soldier: NonNullable<ReturnType<typeof getSoldierById>>; slotIndex: number }[] = [];

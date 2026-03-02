@@ -1,3 +1,6 @@
+import { getMedKitHealValues } from "./items/medkit-scaling.ts";
+import { getScaledIncendiaryTickDamage } from "./items/throwable-scaling.ts";
+
 /** Structured effect: primary + optional adjacent for area grenades. */
 export interface StructuredEffect {
   primary: string;
@@ -39,7 +42,7 @@ export const ITEM_EFFECT_DESCRIPTIONS: Record<string, EffectDescription> = {
     adjacent: "Panic for 3 seconds.",
   },
   m3a_repressor: {
-    primary: "10 damage, 80% toughness reduction for 8 seconds.",
+    primary: "Low explosive damage, 80% toughness reduction for 8 seconds.",
     adjacent: "20% toughness reduction for 4 seconds. No damage.",
   },
   m3_frag_grenade: {
@@ -76,16 +79,6 @@ function isStructuredEffect(d: EffectDescription): d is StructuredEffect {
 
 function isSimpleEffect(d: EffectDescription): d is SimpleEffect {
   return typeof d === "object" && d !== null && "effect" in d;
-}
-
-/** MedKit heal amounts: non-medic 20→40, medic 50→100 from Lv1 to Lv20 */
-function getMedKitHealValues(level: number): { nonMedic: number; medic: number } {
-  const lvl = Math.max(1, Math.min(20, level ?? 1));
-  const t = (lvl - 1) / 19;
-  return {
-    nonMedic: Math.round(20 + 20 * t),
-    medic: Math.round(50 + 50 * t),
-  };
 }
 
 export function getItemEffectDescription(item: { id?: string; level?: number }): EffectDescription | null {
@@ -137,4 +130,3 @@ export function renderEffectDescriptionHtml(desc: EffectDescription, escapeHtml:
   }
   return "";
 }
-import { getScaledIncendiaryTickDamage } from "./items/throwable-scaling.ts";

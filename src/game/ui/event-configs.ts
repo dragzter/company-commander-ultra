@@ -65,6 +65,7 @@ import {
   buildCombatSummaryData,
 } from "../html-templates/combat-summary-template.ts";
 import { ThrowableItems } from "../../constants/items/throwable.ts";
+import { getMedKitHealValues } from "../../constants/items/medkit-scaling.ts";
 import { createEnemyCombatant } from "../combat/combatant-utils.ts";
 import { formatDisplayName } from "../../utils/name-utils.ts";
 import { MAX_GEAR_LEVEL } from "../../constants/items/types.ts";
@@ -1500,16 +1501,8 @@ export function eventConfigs() {
         let healAmount: number;
         if (medItem.item.id === "standard_medkit") {
           const itemLevel = (medItem.item as { level?: number }).level ?? 1;
-          const t = Math.max(0, Math.min(1, (itemLevel - 1) / 19));
-          /* MedKit: non-medic 20→40, medic 50→100 from Lv1 to Lv20 */
-          healAmount = isMedic ? Math.round(50 + 50 * t) : Math.round(20 + 20 * t);
-          if (itemLevel > 20) {
-            const post20Levels = itemLevel - 20;
-            const post20Gain = isMedic
-              ? Math.ceil(post20Levels * 1.5)
-              : Math.ceil(post20Levels * 0.5);
-            healAmount += post20Gain;
-          }
+          const medkitHeals = getMedKitHealValues(itemLevel);
+          healAmount = isMedic ? medkitHeals.medic : medkitHeals.nonMedic;
         } else {
           healAmount = baseHeal;
         }
@@ -1541,10 +1534,9 @@ export function eventConfigs() {
       const uses = user.enemyMedkitUses ?? 0;
       if (uses <= 0 || target.hp <= 0 || target.downState) return false;
 
-      // Enemy medic uses level-appropriate medkit tier scaling.
-      const medLevel = Math.max(1, Math.min(20, user.enemyMedkitLevel ?? user.level ?? 1));
-      const t = Math.max(0, Math.min(1, (medLevel - 1) / 19));
-      const healAmount = Math.round(50 + 50 * t);
+      // Enemy medic uses medkit tier scaling (supports post-20 medkits too).
+      const medLevel = Math.max(1, Math.min(999, user.enemyMedkitLevel ?? user.level ?? 1));
+      const healAmount = getMedKitHealValues(medLevel).medic;
       const newHp = Math.min(target.maxHp, Math.floor(target.hp) + healAmount);
       if (newHp <= target.hp) return false;
 
@@ -2695,6 +2687,10 @@ export function eventConfigs() {
       if (combatant.hp <= 0 || combatant.downState) return false;
       const now = Date.now();
       if ((combatant.takeCoverCooldownUntil ?? 0) > now) return false;
+      if ((combatant.takeCoverToughnessBonus ?? 0) <= 0) {
+        combatant.toughness = Math.max(0, (combatant.toughness ?? 0) + 50);
+        combatant.takeCoverToughnessBonus = 50;
+      }
       combatant.takeCoverUntil = now + TAKE_COVER_DURATION_MS;
       combatant.takeCoverCooldownUntil = now + TAKE_COVER_COOLDOWN_MS;
       removeTargetsForCombatantInCover(targets, combatant.id);
@@ -3082,7 +3078,7 @@ export function eventConfigs() {
     const titleByType = { weapon: "Weapons", armor: "Armor", equipment: "Supplies" };
     if (titleEl) titleEl.textContent = titleByType[slotType] ?? "Armory";
     const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-    const WEAPON_ROLE_LABELS: Record<string, string> = { rifleman: "Rifleman", support: "Support", medic: "Medic", any: "Any" };
+    const WEAPON_ROLE_LABELS: Record<string, string> = { rifleman: "Rifleman", support: "Gunner", medic: "Medic", any: "Any" };
     grid.innerHTML = itemsWithMeta.length === 0
       ? '<div class="equip-supplies-empty">No items in armory for this slot.</div>'
       : itemsWithMeta

@@ -64,10 +64,11 @@ export function formatDisplayName(name: string | null | undefined): string {
   return `${parts[0]} ${initial}.`;
 }
 
-/** Format designation for display: "Rifleman", "Support", "Medic" */
+/** Format designation for display: "Rifleman", "Gunner", "Medic" */
 export function formatDesignation(designation: string | null | undefined): string {
   const d = (designation ?? "rifleman").toString().toLowerCase();
   if (!d) return "Rifleman";
+  if (d === "support") return "Gunner";
   return d.charAt(0).toUpperCase() + d.slice(1);
 }
 

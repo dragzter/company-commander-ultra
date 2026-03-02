@@ -222,8 +222,13 @@ function ScreenManager() {
       createCombatPage(mission);
       return;
     }
+    const isRefresh = document.getElementById("ready-room-screen") != null;
     UiManager.clear.center();
-    usePlayerCompanyStore.getState().moveZeroEnergySoldiersToReserve();
+    // Only auto-normalize zero-energy soldiers on first entry from missions.
+    // Do not run on in-screen re-renders (swap/move), or it can undo user moves.
+    if (!isRefresh) {
+      usePlayerCompanyStore.getState().moveZeroEnergySoldiersToReserve();
+    }
     const content = parseHTML(readyRoomTemplate(mission ?? null));
     center.appendChild(content as Element);
     setTimeout(clearLastEquipMoveSoldierIds, 450);
@@ -576,7 +581,7 @@ export { singleton as ScreenManager };
       if (isEnemyMedic) {
         const medkit = (s.inventory ?? []).find((item) => item.id === "standard_medkit");
         c.enemyMedkitUses = medkit ? Math.min(2, (medkit.uses ?? medkit.quantity ?? 1)) : 0;
-        c.enemyMedkitLevel = Math.max(1, Math.min(20, medkit?.level ?? 20));
+        c.enemyMedkitLevel = Math.max(1, Math.min(999, medkit?.level ?? 20));
       } else {
         c.enemyMedkitUses = 0;
         c.enemyMedkitLevel = undefined;

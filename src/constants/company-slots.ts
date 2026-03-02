@@ -1,5 +1,6 @@
 import type { Company } from "../game/entities/company/company.ts";
 import { getActiveSlotsByLevel, getMaxCompanySize, getReserveSlotsByLevel } from "./company-capacity.ts";
+import { COMPANY_RESOURCES_BY_LEVEL } from "../game/entities/company/company.ts";
 
 export function getTotalCompanySlots(company: Company | null): number {
   if (!company) return 0;
@@ -45,11 +46,19 @@ export function getSoldierById(company: Company | null, id: string) {
 }
 
 export function getMaxMedicSlots(company: Company | null): number {
-  return company?.resourceProfile?.soldier_mission_slots?.medic ?? 0;
+  if (!company) return 0;
+  const fromProfile = company.resourceProfile?.soldier_mission_slots?.medic;
+  if (typeof fromProfile === "number") return fromProfile;
+  const lvl = Math.max(1, Math.min(20, company.level ?? 1));
+  return COMPANY_RESOURCES_BY_LEVEL[lvl - 1]?.soldier_mission_slots?.medic ?? 0;
 }
 
 export function getMaxSupportSlots(company: Company | null): number {
-  return company?.resourceProfile?.soldier_mission_slots?.support ?? 0;
+  if (!company) return 0;
+  const fromProfile = company.resourceProfile?.soldier_mission_slots?.support;
+  if (typeof fromProfile === "number") return fromProfile;
+  const lvl = Math.max(1, Math.min(20, company.level ?? 1));
+  return COMPANY_RESOURCES_BY_LEVEL[lvl - 1]?.soldier_mission_slots?.support ?? 0;
 }
 
 export type FormationRole = "rifleman" | "support" | "medic";
@@ -100,7 +109,7 @@ export function getActiveRoleCounts(company: Company | null): ActiveRoleCounts {
 
 export function getActiveRoleSummaryText(company: Company | null): string {
   const c = getActiveRoleCounts(company);
-  return `${c.rifleman}/${c.activeCapacity} R · ${c.support}/${c.maxSupport} Support · ${c.medic}/${c.maxMedic} Medic`;
+  return `${c.rifleman}/${c.activeCapacity} R · ${c.support}/${c.maxSupport} Gunner · ${c.medic}/${c.maxMedic} Medic`;
 }
 
 export function isFormationReassignmentAllowed(

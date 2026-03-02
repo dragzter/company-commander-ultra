@@ -22,6 +22,8 @@ const SMOKE_ADJACENT_ACCURACY_DEBUFF = 0.1;
 const SMOKE_EVASION_BONUS = 0.05;
 const M3A_REPRESSOR_ADJACENT_TGH_PCT = 20;
 const M3A_REPRESSOR_ADJACENT_DURATION_S = 4;
+const M3A_REPRESSOR_BASE_DAMAGE = 12;
+const M3A_REPRESSOR_DAMAGE_PER_LEVEL = 0.19;
 
 function isSmokeGrenade(grenade: Item): boolean {
   const tags = grenade.tags as string[] | undefined;
@@ -87,7 +89,8 @@ export function resolveGrenadeThrow(
   let baseDamage = grenade.damage ?? 0;
   if (isM3ARepressor(grenade)) {
     const lvl = thrower.level ?? 1;
-    baseDamage = 10 + Math.max(0, lvl - 1);
+    // Repressor is primarily a debuff tool; keep damage intentionally modest at high levels.
+    baseDamage = M3A_REPRESSOR_BASE_DAMAGE + Math.ceil(Math.max(0, lvl - 1) * M3A_REPRESSOR_DAMAGE_PER_LEVEL);
   }
   const splashBase = Math.max(1, Math.floor(baseDamage * SPLASH_DAMAGE_PCT));
 

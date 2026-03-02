@@ -26,6 +26,8 @@ export interface Combatant {
   weaponIconUrl?: string;
   /** Timestamp (ms) when Take Cover ends */
   takeCoverUntil?: number;
+  /** Flat toughness bonus granted while Take Cover is active. */
+  takeCoverToughnessBonus?: number;
   /** Timestamp (ms) when Take Cover can next be used */
   takeCoverCooldownUntil?: number;
   /** Timestamp (ms) when Suppress cooldown ends */
@@ -34,7 +36,7 @@ export interface Combatant {
   grenadeCooldownUntil?: number;
   /** Enemy AI: number of medkit uses available this combat. */
   enemyMedkitUses?: number;
-  /** Enemy AI: medkit tier level (1-20) for heal scaling. */
+  /** Enemy AI: medkit tier level (1-999) for heal scaling. */
   enemyMedkitLevel?: number;
   /** Timestamp (ms) when smoke effect ends */
   smokedUntil?: number;

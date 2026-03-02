@@ -80,7 +80,7 @@ function marketLevelNavigatorPartial(currentLevel: number, maxLevel: number, opt
 
 const WEAPON_ROLE_LABELS: Record<string, string> = {
   rifleman: "Rifleman",
-  support: "Support",
+  support: "Gunner",
   medic: "Medic",
   any: "Any",
 };

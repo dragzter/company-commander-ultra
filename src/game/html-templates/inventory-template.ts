@@ -311,7 +311,7 @@ function escapeAttr(s: string): string {
 
 const WEAPON_ROLE_LABELS: Record<string, string> = {
   rifleman: "Rifleman",
-  support: "Support",
+  support: "Gunner",
   medic: "Medic",
   any: "Any",
 };
