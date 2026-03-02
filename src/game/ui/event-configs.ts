@@ -126,6 +126,18 @@ export function eventConfigs() {
     }
   };
 
+  const applyHomeOnboardingFocus = () => {
+    const st = usePlayerCompanyStore.getState();
+    const missionBtn = s_(DOM.company.missions) as HTMLElement | null;
+    const marketBtn = s_(DOM.company.market) as HTMLElement | null;
+    if (missionBtn) {
+      missionBtn.classList.toggle("onboarding-mission-focus", !!st.onboardingFirstMissionPending && !st.onboardingHomeIntroPending);
+    }
+    if (marketBtn) {
+      marketBtn.classList.toggle("onboarding-market-focus", st.onboardingRecruitStep === "market");
+    }
+  };
+
   const marketLevelNavHandlers = (
     containerId: string,
     render: () => void,
@@ -538,6 +550,25 @@ export function eventConfigs() {
       },
     },
     {
+      selector: DOM.company.onboardingRecruitContinue,
+      eventType: "click",
+      callback: () => {
+        const st = usePlayerCompanyStore.getState();
+        st.setOnboardingRecruitStep("market");
+        const popup = s_(DOM.company.onboardingRecruitPopup) as HTMLElement | null;
+        if (popup) {
+          popup.classList.add("home-onboarding-popup-hide");
+          window.setTimeout(() => {
+            popup.remove();
+          }, 260);
+        }
+        const marketBtn = s_(DOM.company.market) as HTMLElement | null;
+        if (marketBtn) {
+          marketBtn.classList.add("onboarding-market-focus");
+        }
+      },
+    },
+    {
       selector: DOM.company.statsMemorial,
       eventType: "click",
       callback: () => {
@@ -597,12 +628,17 @@ export function eventConfigs() {
     },
   ];
   initHelperDialogTypewriter();
+  applyHomeOnboardingFocus();
 
   const marketEventConfig: HandlerInitConfig[] = [
     {
       selector: DOM.market.marketTroopsLink,
       eventType: "click",
       callback: () => {
+        const st = usePlayerCompanyStore.getState();
+        if (st.onboardingRecruitStep === "market") {
+          st.setOnboardingRecruitStep("troops_recruit");
+        }
         UiManager.renderMarketTroopsScreen();
       },
     },
@@ -3038,6 +3074,13 @@ export function eventConfigs() {
             combatTickId = null;
           }
           closeAbilitiesPopup();
+          const onboardingMission = missionForCombat?.id?.startsWith("onboarding_");
+          if (onboardingMission) {
+            const st = usePlayerCompanyStore.getState();
+            st.setOnboardingRecruitStep("home_popup");
+            UiManager.renderCompanyHomePage();
+            return;
+          }
           UiManager.renderMissionsScreen();
         },
       },
@@ -4474,6 +4517,8 @@ export function eventConfigs() {
       selector: "#troops-market",
       eventType: "click",
       callback: (e: Event) => {
+        const st = usePlayerCompanyStore.getState();
+        const guided = st.onboardingRecruitStep === "troops_recruit" || st.onboardingRecruitStep === "troops_confirm";
         const target = e.target as HTMLElement;
         const recruitBtn = target.closest(".recruit-soldier");
         if (recruitBtn) {
@@ -4481,10 +4526,13 @@ export function eventConfigs() {
           if (btn.getAttribute("aria-disabled") === "true") return;
           const trooperId = btn.dataset.trooperId;
           if (!trooperId) return;
-          const soldier = usePlayerCompanyStore.getState().marketAvailableTroops.find((s) => s.id === trooperId);
+          const soldier = guided
+            ? (st.onboardingRecruitSoldier?.id === trooperId ? st.onboardingRecruitSoldier : null)
+            : st.marketAvailableTroops.find((s) => s.id === trooperId);
           if (!soldier) return;
-          const result = usePlayerCompanyStore.getState().tryAddToRecruitStaging(soldier);
+          const result = st.tryAddToRecruitStaging(soldier);
           if (result.success) {
+            if (st.onboardingRecruitStep === "troops_recruit") st.setOnboardingRecruitStep("troops_confirm");
             UiManager.renderMarketTroopsScreen();
           } else {
             UiManager.showTroopsRecruitError(result.reason ?? "capacity");
@@ -4495,21 +4543,29 @@ export function eventConfigs() {
         if (removeBtn) {
           const soldierId = (removeBtn as HTMLElement).dataset.soldierId;
           if (soldierId) {
-            usePlayerCompanyStore.getState().removeFromRecruitStaging(soldierId);
+            st.removeFromRecruitStaging(soldierId);
+            if (st.onboardingRecruitStep === "troops_confirm") st.setOnboardingRecruitStep("troops_recruit");
             UiManager.renderMarketTroopsScreen();
           }
           return;
         }
         const confirmBtn = target.closest("#confirm-recruitment");
         if (confirmBtn && !(confirmBtn as HTMLButtonElement).disabled) {
-          usePlayerCompanyStore.getState().confirmRecruitment();
-          UiManager.renderMarketTroopsScreen();
+          st.confirmRecruitment();
+          if (guided) {
+            st.setOnboardingRecruitStep("none");
+            st.setOnboardingRecruitSoldier(null);
+            UiManager.renderRosterScreen();
+          } else {
+            UiManager.renderMarketTroopsScreen();
+          }
           return;
         }
         const rerollBtn = target.closest(".reroll-soldier");
         if (rerollBtn) {
+          if (guided) return;
           const id = (rerollBtn as HTMLElement).dataset.trooperid;
-          if (id) usePlayerCompanyStore.getState().rerollSoldier(id);
+          if (id) st.rerollSoldier(id);
         }
       },
     },

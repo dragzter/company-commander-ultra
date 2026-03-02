@@ -3,7 +3,7 @@ import { animateHTMLRemove, animateHTMLReplace } from "../utils/html-utils.ts";
 import { Partial } from "../game/html-templates/partials/partial.ts";
 import { DomEventManager } from "../game/ui/event-handlers/dom-event-manager.ts";
 import { eventConfigs } from "../game/ui/event-configs.ts";
-import { type CompanyStore, GAME_STEPS, type GameStep } from "./ui-store.ts";
+import { type CompanyStore, GAME_STEPS, type GameStep, type RecruitOnboardingStep } from "./ui-store.ts";
 import {
   type Company,
   getMaxCompanySize,
@@ -208,6 +208,8 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
   missionsViewMode: "menu" as CompanyStore["missionsViewMode"],
   onboardingHomeIntroPending: false,
   onboardingFirstMissionPending: false,
+  onboardingRecruitStep: "none" as RecruitOnboardingStep,
+  onboardingRecruitSoldier: null,
 
   // Actions
   rerollSoldier: async (id: string) => {
@@ -313,6 +315,8 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
         missionsViewMode: "menu",
         onboardingHomeIntroPending: false,
         onboardingFirstMissionPending: false,
+        onboardingRecruitStep: "none",
+        onboardingRecruitSoldier: null,
         company: {
           level: 1,
           experience: 0,
@@ -358,6 +362,8 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
   setMissionsViewMode: (mode: "menu" | "normal" | "epic" | "dev") => set({ missionsViewMode: mode }),
   setOnboardingHomeIntroPending: (pending: boolean) => set({ onboardingHomeIntroPending: !!pending }),
   setOnboardingFirstMissionPending: (pending: boolean) => set({ onboardingFirstMissionPending: !!pending }),
+  setOnboardingRecruitStep: (step: RecruitOnboardingStep) => set({ onboardingRecruitStep: step }),
+  setOnboardingRecruitSoldier: (soldier: Soldier | null) => set({ onboardingRecruitSoldier: soldier }),
   ensureMissionBoard: () => {
     const state = get();
     const existing = state.missionBoard ?? [];
@@ -443,9 +449,12 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
       const staging = state.recruitStaging ?? [];
       const soldier = staging.find((s) => s.id === soldierId);
       if (!soldier) return {};
+      const isGuidedRecruitSoldier =
+        (state.onboardingRecruitStep === "troops_recruit" || state.onboardingRecruitStep === "troops_confirm")
+        && state.onboardingRecruitSoldier?.id === soldier.id;
       return {
         recruitStaging: staging.filter((s) => s.id !== soldierId),
-        marketAvailableTroops: [...state.marketAvailableTroops, soldier],
+        marketAvailableTroops: isGuidedRecruitSoldier ? state.marketAvailableTroops : [...state.marketAvailableTroops, soldier],
       };
     }),
   confirmRecruitment: () =>
@@ -530,6 +539,8 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
         highestRecruitLevelAchieved: 1,
         onboardingHomeIntroPending: true,
         onboardingFirstMissionPending: true,
+        onboardingRecruitStep: "none",
+        onboardingRecruitSoldier: null,
       };
     }),
   /** Add starter armory items when inventory is empty (new game). */

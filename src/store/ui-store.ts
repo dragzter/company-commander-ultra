@@ -21,6 +21,12 @@ export const GAME_STEPS = {
 };
 
 export type GameStep = (typeof GAME_STEPS)[keyof typeof GAME_STEPS];
+export type RecruitOnboardingStep =
+  | "none"
+  | "home_popup"
+  | "market"
+  | "troops_recruit"
+  | "troops_confirm";
 
 export type CompanyStore = {
   // State
@@ -54,6 +60,8 @@ export type CompanyStore = {
   missionsViewMode: "menu" | "normal" | "epic" | "dev";
   onboardingHomeIntroPending: boolean;
   onboardingFirstMissionPending: boolean;
+  onboardingRecruitStep: RecruitOnboardingStep;
+  onboardingRecruitSoldier: Soldier | null;
 
   // Setters
   setMarketAvailableTroops: (soldiers: Soldier[]) => void;
@@ -70,6 +78,8 @@ export type CompanyStore = {
   setMissionsViewMode: (mode: "menu" | "normal" | "epic" | "dev") => void;
   setOnboardingHomeIntroPending: (pending: boolean) => void;
   setOnboardingFirstMissionPending: (pending: boolean) => void;
+  setOnboardingRecruitStep: (step: RecruitOnboardingStep) => void;
+  setOnboardingRecruitSoldier: (soldier: Soldier | null) => void;
   ensureMissionBoard: () => void;
   refreshMissionBoard: () => void;
   addSoldierToCompany: (soldier: Soldier) => void;
@@ -235,6 +245,18 @@ export const usePlayerCompanyStore = createStore<CompanyStore>()(
           }
           if (typeof merged.onboardingHomeIntroPending !== "boolean") merged.onboardingHomeIntroPending = false;
           if (typeof merged.onboardingFirstMissionPending !== "boolean") merged.onboardingFirstMissionPending = false;
+          if (
+            merged.onboardingRecruitStep !== "none"
+            && merged.onboardingRecruitStep !== "home_popup"
+            && merged.onboardingRecruitStep !== "market"
+            && merged.onboardingRecruitStep !== "troops_recruit"
+            && merged.onboardingRecruitStep !== "troops_confirm"
+          ) {
+            merged.onboardingRecruitStep = "none";
+          }
+          if (typeof merged.onboardingRecruitSoldier !== "object" && merged.onboardingRecruitSoldier !== null) {
+            merged.onboardingRecruitSoldier = null;
+          }
           /* Sync companyExperience with company.experience (avoid drift from old saves or partial updates) */
           const companyExp = merged.company?.experience ?? merged.companyExperience ?? 0;
           if (typeof merged.company === "object") {

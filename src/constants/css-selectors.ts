@@ -29,6 +29,8 @@ export const DOM = {
     settingsResetConfirmNo: "#settings-reset-confirm-no",
     onboardingIntroPopup: "#home-onboarding-popup",
     onboardingIntroContinue: "#home-onboarding-continue",
+    onboardingRecruitPopup: "#home-recruit-onboarding-popup",
+    onboardingRecruitContinue: "#home-recruit-onboarding-continue",
     memorialPopup: "#memorial-popup",
     memorialPopupClose: "#memorial-popup-close",
     codexPopup: "#codex-popup",

@@ -29,6 +29,9 @@ import { CREDIT_SYMBOL } from "../../constants/currency.ts";
 export const marketTemplate = () => {
   const { market } = DOM;
   const c = (d: string) => clrHash(d);
+  const store = usePlayerCompanyStore.getState();
+  const recruitOnboardingMarketOnly = store.onboardingRecruitStep === "market";
+  const troopsBtnClass = recruitOnboardingMarketOnly ? " blue mbtn mb-3 onboarding-focus-btn" : "blue mbtn mb-3";
 
   return `
 	<div id="cc-market" class="flex h-100 column">
@@ -37,11 +40,12 @@ export const marketTemplate = () => {
 		<div class="text-center">
 			<h1>Market</h1>
 			<div class="flex column align-center justify-between">
-				<button id="${c(market.marketTroopsLink)}" class="blue mbtn mb-3">Troops</button>
+				<button id="${c(market.marketTroopsLink)}" class="${troopsBtnClass}">Troops</button>
+				${recruitOnboardingMarketOnly ? "" : `
 				<button id="${c(market.marketArmorLink)}" class="blue mbtn mb-3">Body Armor</button>
 				<button id="${c(market.marketWeaponsLink)}" class="blue mbtn mb-3">Weapons</button>
 				<button id="${c(market.marketSuppliesLink)}" class="blue mbtn mb-3">Supplies</button>
-				<button id="${c(market.marketDevCatalogLink)}" class="gray mbtn market-dev-btn" title="Developer: view all weapons and armor">Dev Catalog</button>
+				<button id="${c(market.marketDevCatalogLink)}" class="gray mbtn market-dev-btn" title="Developer: view all weapons and armor">Dev Catalog</button>`}
 			</div>
 			<div class="market-credits-inline">${marketCreditsPartial(usePlayerCompanyStore.getState().creditBalance)}</div>
 		</div>
@@ -536,6 +540,8 @@ export const troopsMarketTemplate = (
   rerolls = usePlayerCompanyStore.getState().rerollCounter,
 ) => {
   const store = usePlayerCompanyStore.getState();
+  const onboardingStep = store.onboardingRecruitStep ?? "none";
+  const guidedRecruit = onboardingStep === "troops_recruit" || onboardingStep === "troops_confirm";
   const recruitStaging = store.recruitStaging ?? [];
   const { creditBalance, companyLevel } = store;
   const totalCost = getStagingTotalCost(recruitStaging);
@@ -575,23 +581,26 @@ export const troopsMarketTemplate = (
     const br = roleRank[(b.designation ?? "rifleman").toLowerCase()] ?? 99;
     return ar - br;
   });
+  const displayedTroops = guidedRecruit ? orderedTroops.slice(0, 1) : orderedTroops;
+  const guidedRecruitButtonGlow = guidedRecruit && onboardingStep === "troops_recruit" && recruitStaging.length === 0;
+  const guidedConfirmGlow = guidedRecruit && onboardingStep === "troops_confirm" && recruitStaging.length > 0;
 
   return `
-<div id="troops-market" class="troops-market-root" data-troops-screen="v2">
+<div id="troops-market" class="troops-market-root${guidedRecruit ? " onboarding-troops-guided" : ""}${guidedRecruitButtonGlow ? " onboarding-troops-recruit-focus" : ""}" data-troops-screen="v2">
 	<div id="troops-recruit-error" class="troops-recruit-error" role="alert" aria-live="polite"></div>
 		${companyHeaderPartial("Available Troops")}
 		<div class="troops-market-main">
 			<div class="troops-list">
-				${orderedTroops.map((t) => Partial.create.trooper(t, canAffordSoldier(t), rerolls > 0)).join("")}
+				${displayedTroops.map((t) => Partial.create.trooper(t, canAffordSoldier(t), guidedRecruit ? false : rerolls > 0)).join("")}
 			</div>
 		<div id="recruit-staging-area" class="recruit-staging-area">
 			<p class="recruit-staging-label">Selected ${slotsLeft > 0 ? `(${recruitStaging.length}/${slotsLeft})` : ""}</p>
-			<div class="recruit-staging-reroll reroll-counter${rerolls <= 0 ? " reroll-empty" : ""}">Rerolls: ${rerolls}</div>
+			<div class="recruit-staging-reroll reroll-counter${rerolls <= 0 ? " reroll-empty" : ""}${guidedRecruit ? " onboarding-hidden" : ""}">Rerolls: ${rerolls}</div>
 			<div id="recruit-staging">
 				${recruitStaging.map((s) => Partial.create.stagedTrooperCard(s)).join("")}
 			</div>
 			<div class="staging-total-banner">$${totalCost}</div>
-			<button id="confirm-recruitment" type="button" class="confirm-recruit-btn ${!hasStaged || !canAfford ? "disabled" : ""}" ${!hasStaged || !canAfford ? "disabled" : ""}>Confirm</button>
+			<button id="confirm-recruitment" type="button" class="confirm-recruit-btn ${!hasStaged || !canAfford ? "disabled" : ""}${guidedConfirmGlow ? " onboarding-focus-btn" : ""}" ${!hasStaged || !canAfford ? "disabled" : ""}>Confirm</button>
 		</div>
 	</div>
 	<div class="troops-market-footer">

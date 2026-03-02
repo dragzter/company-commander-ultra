@@ -302,25 +302,39 @@ function ScreenManager() {
       company,
       highestRecruitLevelAchieved,
       setHighestRecruitLevelAchieved,
+      onboardingRecruitStep,
+      onboardingRecruitSoldier,
+      setOnboardingRecruitSoldier,
     } =
       usePlayerCompanyStore.getState();
 
     let soldiers: Soldier[];
+    const guidedRecruit = onboardingRecruitStep === "troops_recruit" || onboardingRecruitStep === "troops_confirm";
     const computedRecruitLevel = getRecruitLevelFromCompany(company);
     const recruitLevel = Math.max(highestRecruitLevelAchieved ?? 1, computedRecruitLevel);
     if (recruitLevel > (highestRecruitLevelAchieved ?? 1)) {
       setHighestRecruitLevelAchieved(recruitLevel);
     }
 
-    if (
-      !marketAvailableTroops.length
-      || !hasValidRecruitMarketComposition(marketAvailableTroops)
-      || !hasExpectedRecruitLevel(marketAvailableTroops, recruitLevel)
-    ) {
-      soldiers = SoldierManager.generateTroopList(recruitLevel);
-      setMarketAvailableTroops(soldiers);
+    if (guidedRecruit) {
+      let guided = onboardingRecruitSoldier;
+      if (!guided) {
+        const trait = SoldierManager.getSoldierTraitProfileByName("sharpshooter");
+        guided = SoldierManager.getNewSupportMan(recruitLevel, trait);
+        setOnboardingRecruitSoldier(guided);
+      }
+      soldiers = [guided];
     } else {
-      soldiers = marketAvailableTroops;
+      if (
+        !marketAvailableTroops.length
+        || !hasValidRecruitMarketComposition(marketAvailableTroops)
+        || !hasExpectedRecruitLevel(marketAvailableTroops, recruitLevel)
+      ) {
+        soldiers = SoldierManager.generateTroopList(recruitLevel);
+        setMarketAvailableTroops(soldiers);
+      } else {
+        soldiers = marketAvailableTroops;
+      }
     }
 
     const content = parseHTML(troopsMarketTemplate(soldiers));
