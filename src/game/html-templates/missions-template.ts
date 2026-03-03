@@ -1,6 +1,13 @@
-import { companyHeaderPartial, companyActionsTemplate } from "./game-setup-template.ts";
+import {
+  companyHeaderPartial,
+  companyActionsTemplate,
+} from "./game-setup-template.ts";
 import type { Mission, MissionKind } from "../../constants/missions.ts";
-import { DIFFICULTY_LABELS, MISSION_KIND_META, MISSION_KIND_ORDER } from "../../constants/missions.ts";
+import {
+  DIFFICULTY_LABELS,
+  MISSION_KIND_META,
+  MISSION_KIND_ORDER,
+} from "../../constants/missions.ts";
 import { getRewardItemById } from "../../utils/reward-utils.ts";
 import { getItemIconUrl } from "../../utils/item-utils.ts";
 import { getDisplayEnemyCount } from "../../services/missions/mission-scenarios.ts";
@@ -45,11 +52,16 @@ function buildRewardsEntries(m: Mission): RewardEntry[] {
 }
 
 function missionCard(m: Mission): string {
-  const meta = MISSION_KIND_META[m.kind] ?? { name: m.kind.replace(/_/g, " "), description: "" };
+  const meta = MISSION_KIND_META[m.kind] ?? {
+    name: m.kind.replace(/_/g, " "),
+    description: "",
+  };
   const diffLabel = DIFFICULTY_LABELS[m.difficulty] ?? "Unknown";
   const rarity = m.rarity ?? (m.isEpic ? "epic" : "normal");
   const epicClass = rarity === "epic" ? " mission-card-epic" : "";
-  const onboardingClass = m.id?.startsWith("onboarding_") ? " mission-card-onboarding-target" : "";
+  const onboardingClass = m.id?.startsWith("onboarding_")
+    ? " mission-card-onboarding-target"
+    : "";
   const flavorText = m.flavorText ?? meta.description;
   const totalEnemies = getDisplayEnemyCount(m);
   const initialEnemies = m.encounter?.initialEnemyCount ?? m.enemyCount;
@@ -57,11 +69,12 @@ function missionCard(m: Mission): string {
   const enemyLabel = hasReinforcements
     ? `Enemies: ${totalEnemies} total`
     : `Enemies: ${initialEnemies}`;
-  const defendNote = m.kind === "defend_objective"
-    ? '<p class="mission-card-note">Reinforcements arrive every 30s. Win by holding out or wiping the force.</p>'
-    : hasReinforcements
-      ? '<p class="mission-card-note">Enemy reinforcements are expected when slots open.</p>'
-      : "";
+  const defendNote =
+    m.kind === "defend_objective"
+      ? '<p class="mission-card-note">Reinforcements arrive every 30s. Win by holding out or wiping the force.</p>'
+      : hasReinforcements
+        ? '<p class="mission-card-note">Enemy reinforcements are expected when slots open.</p>'
+        : "";
   const rewards = buildRewardsEntries(m);
   const rewardsHtml = rewards
     .map((e) => {
@@ -105,7 +118,9 @@ function sortMissionsByDifficulty(ms: Mission[]): Mission[] {
 
 function missionSectionByKind(missions: Mission[], kind: MissionKind): string {
   const meta = MISSION_KIND_META[kind];
-  const kindMissions = sortMissionsByDifficulty(missions.filter((m) => m.kind === kind));
+  const kindMissions = sortMissionsByDifficulty(
+    missions.filter((m) => m.kind === kind),
+  );
   if (kindMissions.length === 0) return "";
   return `
     <div class="missions-section missions-section-kind" data-kind="${kind}">
@@ -117,19 +132,23 @@ function missionSectionByKind(missions: Mission[], kind: MissionKind): string {
 }
 
 function buildMissionFilters(missions: Mission[]): string {
-  const kindsPresent = MISSION_KIND_ORDER.filter((k) => missions.some((m) => m.kind === k));
-  const difficultiesPresent = [1, 2, 3, 4].filter((d) => missions.some((m) => m.difficulty === d));
+  const kindsPresent = MISSION_KIND_ORDER.filter((k) =>
+    missions.some((m) => m.kind === k),
+  );
+  const difficultiesPresent = [1, 2, 3, 4].filter((d) =>
+    missions.some((m) => m.difficulty === d),
+  );
   if (kindsPresent.length === 0) return "";
   return `
   <div class="missions-filters" data-kind-filter="all" data-difficulty-filter="all">
     <div class="missions-filter-row">
-      <button type="button" class="missions-filter-chip is-active" data-filter-group="kind" data-filter-value="all">All Types</button>
-      ${kindsPresent.map((k) => `<button type="button" class="missions-filter-chip" data-filter-group="kind" data-filter-value="${k}">${MISSION_KIND_META[k].name}</button>`).join("")}
+      <button type="button" class="missions-filter-chip  blue is-active" data-filter-group="kind" data-filter-value="all">All</button>
+      ${kindsPresent.map((k) => `<button type="button" class="missions-filter-chip  blue" data-filter-group="kind" data-filter-value="${k}">${MISSION_KIND_META[k].name}</button>`).join("")}
     </div>
-    <div class="missions-filter-row">
-      <button type="button" class="missions-filter-chip is-active" data-filter-group="difficulty" data-filter-value="all">All Difficulty</button>
+   <!-- <div class="missions-filter-row mission-difficulties">
+      <button type="button" class="missions-filter-chip is-active" data-filter-group="difficulty" data-filter-value="all">All</button>
       ${difficultiesPresent.map((d) => `<button type="button" class="missions-filter-chip" data-filter-group="difficulty" data-filter-value="${d}">${DIFFICULTY_LABELS[d]}</button>`).join("")}
-    </div>
+    </div> -->
   </div>`;
 }
 
@@ -139,42 +158,59 @@ export function missionsTemplate(
   activeMode: "menu" | "normal" | "epic" | "dev" = "menu",
   devMissions: Mission[] = [],
 ): string {
-  const regular = missions.filter((m) => (m.rarity ?? (m.isEpic ? "epic" : "normal")) !== "epic");
-  const epic = missions.filter((m) => (m.rarity ?? (m.isEpic ? "epic" : "normal")) === "epic");
+  const regular = missions.filter(
+    (m) => (m.rarity ?? (m.isEpic ? "epic" : "normal")) !== "epic",
+  );
+  const epic = missions.filter(
+    (m) => (m.rarity ?? (m.isEpic ? "epic" : "normal")) === "epic",
+  );
   const mode = activeMode;
   const showEpic = companyLevel >= 2;
-  const mainClass = mode === "menu" ? "missions-main missions-main-menu" : "missions-main";
-  const regularSections = MISSION_KIND_ORDER.map((k) => missionSectionByKind(regular, k)).filter(Boolean).join("");
+  const mainClass =
+    mode === "menu" ? "missions-main missions-main-menu" : "missions-main";
+  const regularSections = MISSION_KIND_ORDER.map((k) =>
+    missionSectionByKind(regular, k),
+  )
+    .filter(Boolean)
+    .join("");
   const regularFilters = buildMissionFilters(regular);
   const epicSection = `
     <div class="missions-section missions-section-epic">
       <div class="missions-kind-banner missions-kind-banner-epic">Epic Missions</div>
       <div class="missions-grid missions-grid-epic">
-        ${sortMissionsByDifficulty(epic).map((m) => missionCard(m)).join("")}
+        ${sortMissionsByDifficulty(epic)
+          .map((m) => missionCard(m))
+          .join("")}
       </div>
     </div>`;
-  const emptyState = mode === "epic"
-    ? '<div class="missions-empty-state">No epic missions available.</div>'
-    : '<div class="missions-empty-state">No normal missions available.</div>';
-  const modeContent = mode === "epic"
-    ? showEpic
-      ? (epic.length > 0 ? epicSection : emptyState)
-      : '<div class="missions-empty-state">Epic missions unlock at Company Level 2.</div>'
-    : mode === "dev"
-      ? (devMissions.length > 0
-        ? `
+  const emptyState =
+    mode === "epic"
+      ? '<div class="missions-empty-state">No epic missions available.</div>'
+      : '<div class="missions-empty-state">No normal missions available.</div>';
+  const modeContent =
+    mode === "epic"
+      ? showEpic
+        ? epic.length > 0
+          ? epicSection
+          : emptyState
+        : '<div class="missions-empty-state">Epic missions unlock at Company Level 2.</div>'
+      : mode === "dev"
+        ? devMissions.length > 0
+          ? `
       <div class="missions-section missions-section-dev">
         <div class="missions-kind-banner missions-kind-banner-dev">Dev Test Missions</div>
         <div class="missions-grid missions-grid-dev">
-          ${sortMissionsByDifficulty(devMissions).map((m) => missionCard(m)).join("")}
+          ${sortMissionsByDifficulty(devMissions)
+            .map((m) => missionCard(m))
+            .join("")}
         </div>
       </div>`
-        : '<div class="missions-empty-state">No dev test missions available.</div>')
-    : mode === "normal"
-      ? ((regularSections
-        ? `${regularFilters}<div class="missions-filter-empty-state" hidden>No missions match these filters.</div>${regularSections}`
-        : emptyState))
-      : `
+          : '<div class="missions-empty-state">No dev test missions available.</div>'
+        : mode === "normal"
+          ? regularSections
+            ? `${regularFilters}<div class="missions-filter-empty-state" hidden>No missions match these filters.</div>${regularSections}`
+            : emptyState
+          : `
       <div class="missions-mode-menu">
         <button id="missions-mode-normal" class="game-btn game-btn-lg game-btn-green missions-mode-menu-btn missions-mode-menu-btn-normal" type="button">
           <span class="missions-mode-icon-block">
