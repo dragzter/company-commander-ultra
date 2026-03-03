@@ -3,7 +3,7 @@ import { animateHTMLRemove, animateHTMLReplace } from "../utils/html-utils.ts";
 import { Partial } from "../game/html-templates/partials/partial.ts";
 import { DomEventManager } from "../game/ui/event-handlers/dom-event-manager.ts";
 import { eventConfigs } from "../game/ui/event-configs.ts";
-import { type CompanyStore, GAME_STEPS, type GameStep, type RecruitOnboardingStep } from "./ui-store.ts";
+import { type CompanyStore, GAME_STEPS, type GameStep, type MissionsResumeStep, type RecruitOnboardingStep } from "./ui-store.ts";
 import {
   type Company,
   getMaxCompanySize,
@@ -65,27 +65,46 @@ import { getStarterArmoryItems } from "../constants/starter-armory.ts";
 import { generateMissions, MISSION_BOARD_SCHEMA_VERSION } from "../services/missions/mission-generator.ts";
 import { SOLDIER_DESIGNATION, type Designation } from "../game/entities/types.ts";
 import { getItemSellPrice } from "../utils/sell-pricing.ts";
+import {
+  type EarnedTraitAward,
+  type EarnedTraitDefinition,
+  MIXED_VETERANCY_TRAITS,
+  POSITIVE_VETERANCY_TRAITS,
+  SEVERE_INCAP_TRAITS,
+  getOwnedEarnedTraitSet,
+  getSoldierVeterancyDefaults,
+  toEarnedTraitAward,
+} from "../constants/veterancy-traits.ts";
 
 function pickReplacementMission(
   completed: Mission,
   companyLevel: number,
+  progressionLevel: number,
   existingBoard: Mission[],
 ): Mission | null {
   const wantedEpic = !!(completed.isEpic ?? completed.rarity === "epic");
   const wantedRarity = wantedEpic ? "epic" : "normal";
   const wantedKind = completed.kind;
+  const wantedDifficulty = Math.max(1, Math.floor(completed.difficulty ?? 1));
   const usedTitles = new Set(existingBoard.filter((m) => m.id !== completed.id).map((m) => m.name));
 
   for (let attempt = 0; attempt < 8; attempt++) {
-    const pool = generateMissions(companyLevel);
+    const pool = generateMissions(companyLevel, undefined, progressionLevel);
     const candidate = pool.find((m) => {
       const isEpic = !!(m.isEpic ?? m.rarity === "epic");
       const rarity = isEpic ? "epic" : (m.rarity ?? "normal");
-      return m.kind === wantedKind && isEpic === wantedEpic && rarity === wantedRarity && !usedTitles.has(m.name);
+      return m.kind === wantedKind
+        && isEpic === wantedEpic
+        && rarity === wantedRarity
+        && (m.difficulty ?? 1) === wantedDifficulty
+        && !usedTitles.has(m.name);
     }) ?? pool.find((m) => {
       const isEpic = !!(m.isEpic ?? m.rarity === "epic");
       const rarity = isEpic ? "epic" : (m.rarity ?? "normal");
-      return m.kind === wantedKind && isEpic === wantedEpic && rarity === wantedRarity;
+      return m.kind === wantedKind
+        && isEpic === wantedEpic
+        && rarity === wantedRarity
+        && (m.difficulty ?? 1) === wantedDifficulty;
     });
     if (candidate) return candidate;
   }
@@ -150,6 +169,13 @@ function getEnemyBaseLevelFromCompany(company: Company | null | undefined): numb
   return Math.max(1, Math.min(20, Math.ceil(sum / activeSoldiers.length)));
 }
 
+function getProgressionLevelFromCompany(company: Company | null | undefined, fallbackLevel: number): number {
+  const soldiers = company?.soldiers ?? [];
+  if (soldiers.length <= 0) return Math.max(1, Math.floor(fallbackLevel || 1));
+  const maxSoldierLevel = soldiers.reduce((max, s) => Math.max(max, Math.max(1, Math.floor(s.level ?? 1))), 1);
+  return maxSoldierLevel;
+}
+
 function getRecruitLevelFromCompany(company: Company | null | undefined): number {
   const enemyBaseLevel = getEnemyBaseLevelFromCompany(company);
   return Math.max(1, Math.min(20, enemyBaseLevel - 1));
@@ -157,6 +183,58 @@ function getRecruitLevelFromCompany(company: Company | null | undefined): number
 
 function resolveRecruitLevel(company: Company | null | undefined, highestAchieved = 1): number {
   return Math.max(Math.max(1, highestAchieved), getRecruitLevelFromCompany(company));
+}
+
+const VETERANCY_CHECKPOINTS = [25, 55, 90, 130, 175, 225, 280, 340, 410];
+const MAX_EARNED_TRAITS_PER_SOLDIER = 5;
+
+function meetsTraitRequirements(
+  soldier: Soldier,
+  trait: EarnedTraitDefinition,
+): boolean {
+  const req = trait.requirements;
+  if (!req) return true;
+  const missionsCompleted = Math.max(0, Math.floor(soldier.missionsCompleted ?? 0));
+  const v = { ...getSoldierVeterancyDefaults(), ...(soldier.veterancy ?? {}) };
+  if ((req.missionsCompletedMin ?? 0) > missionsCompleted) return false;
+  if ((req.grenadeThrowsMin ?? 0) > v.grenadeThrows) return false;
+  if ((req.grenadeHitsMin ?? 0) > v.grenadeHits) return false;
+  if ((req.turnsBelow20HpMin ?? 0) > v.turnsBelow20Hp) return false;
+  if ((req.missionsWithBelow20HpMin ?? 0) > v.missionsWithBelow20Hp) return false;
+  if ((req.incapacitationsMin ?? 0) > v.incapacitations) return false;
+  return true;
+}
+
+function chooseRandomTrait(
+  soldier: Soldier,
+  pool: EarnedTraitDefinition[],
+): EarnedTraitDefinition | null {
+  const owned = getOwnedEarnedTraitSet(soldier);
+  const eligible = pool.filter((t) => !owned.has(t.id) && meetsTraitRequirements(soldier, t));
+  if (eligible.length === 0) return null;
+  return eligible[Math.floor(Math.random() * eligible.length)] ?? null;
+}
+
+function applyEarnedTraitToSoldier(soldier: Soldier, trait: EarnedTraitDefinition): Soldier {
+  const next = {
+    ...soldier,
+    earnedTraitIds: [...(soldier.earnedTraitIds ?? [])],
+    attributes: { ...soldier.attributes },
+    veterancy: { ...getSoldierVeterancyDefaults(), ...(soldier.veterancy ?? {}) },
+  };
+  if (next.earnedTraitIds!.includes(trait.id)) return next;
+  next.earnedTraitIds!.push(trait.id);
+  const stats = trait.stats ?? {};
+  for (const [key, value] of Object.entries(stats)) {
+    const k = key as keyof Soldier["attributes"];
+    const base = (next.attributes[k] as number | undefined) ?? 0;
+    next.attributes[k] = base + value;
+  }
+  if ((trait.grenadeHitBonusPct ?? 0) > 0) {
+    next.grenadeHitBonusPct = Math.min(0.25, (next.grenadeHitBonusPct ?? 0) + (trait.grenadeHitBonusPct ?? 0));
+  }
+  SoldierManager.refreshCombatProfile(next);
+  return next;
 }
 
 function generateRecruitByRole(role: Designation, level: number): Soldier {
@@ -206,6 +284,8 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
   missionBoard: [],
   missionBoardSchemaVersion: MISSION_BOARD_SCHEMA_VERSION,
   missionsViewMode: "menu" as CompanyStore["missionsViewMode"],
+  missionsResumeStep: "none" as MissionsResumeStep,
+  missionsResumeMission: null,
   onboardingHomeIntroPending: false,
   onboardingFirstMissionPending: false,
   onboardingRecruitStep: "none" as RecruitOnboardingStep,
@@ -313,6 +393,8 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
         missionBoard: [],
         missionBoardSchemaVersion: MISSION_BOARD_SCHEMA_VERSION,
         missionsViewMode: "menu",
+        missionsResumeStep: "none",
+        missionsResumeMission: null,
         onboardingHomeIntroPending: false,
         onboardingFirstMissionPending: false,
         onboardingRecruitStep: "none",
@@ -360,6 +442,8 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
   setMarketTierLevel: (n: number) => set({ marketTierLevel: n }),
   setDevCatalogTierLevel: (n: number) => set({ devCatalogTierLevel: n }),
   setMissionsViewMode: (mode: "menu" | "normal" | "epic" | "dev") => set({ missionsViewMode: mode }),
+  setMissionsResumeState: (step: MissionsResumeStep, mission: Mission | null) =>
+    set({ missionsResumeStep: step, missionsResumeMission: mission }),
   setOnboardingHomeIntroPending: (pending: boolean) => set({ onboardingHomeIntroPending: !!pending }),
   setOnboardingFirstMissionPending: (pending: boolean) => set({ onboardingFirstMissionPending: !!pending }),
   setOnboardingRecruitStep: (step: RecruitOnboardingStep) => set({ onboardingRecruitStep: step }),
@@ -374,16 +458,18 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
       if (!hasRare && !hasLegacyTitles && !schemaMismatch) return;
     }
     const companyLevel = state.company?.level ?? state.companyLevel ?? 1;
+    const progressionLevel = getProgressionLevelFromCompany(state.company, companyLevel);
     set({
-      missionBoard: generateMissions(companyLevel),
+      missionBoard: generateMissions(companyLevel, undefined, progressionLevel),
       missionBoardSchemaVersion: MISSION_BOARD_SCHEMA_VERSION,
     });
   },
   refreshMissionBoard: () => {
     const state = get();
     const companyLevel = state.company?.level ?? state.companyLevel ?? 1;
+    const progressionLevel = getProgressionLevelFromCompany(state.company, companyLevel);
     set({
-      missionBoard: generateMissions(companyLevel),
+      missionBoard: generateMissions(companyLevel, undefined, progressionLevel),
       missionBoardSchemaVersion: MISSION_BOARD_SCHEMA_VERSION,
     });
   },
@@ -418,6 +504,7 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
   addToRecruitStaging: (soldier: Soldier) =>
     set((state: CompanyStore) => {
       const staging = state.recruitStaging ?? [];
+      if (staging.some((s) => s.id === soldier.id)) return {};
       const maxSize = getMaxCompanySize(state.companyLevel ?? 1);
       const currentCount = state.company.soldiers?.length ?? state.totalMenInCompany ?? 0;
       const slotsLeft = maxSize - currentCount;
@@ -434,6 +521,7 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
   tryAddToRecruitStaging: (soldier: Soldier): { success: boolean; reason?: "capacity" | "afford" } => {
     const state = get();
     const staging = state.recruitStaging ?? [];
+    if (staging.some((s) => s.id === soldier.id)) return { success: false, reason: "capacity" };
     const maxSize = getMaxCompanySize(state.companyLevel ?? 1);
     const currentCount = state.company.soldiers?.length ?? state.totalMenInCompany ?? 0;
     const slotsLeft = maxSize - currentCount;
@@ -537,6 +625,8 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
         companyLevel: companyBase.level,
         companyExperience: companyBase.experience ?? 0,
         highestRecruitLevelAchieved: 1,
+        missionsResumeStep: "none",
+        missionsResumeMission: null,
         onboardingHomeIntroPending: true,
         onboardingFirstMissionPending: true,
         onboardingRecruitStep: "none",
@@ -938,6 +1028,23 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
 
     const destInv = dest.inventory ?? [];
     const destItem = getItem(dest, op.destSlotType, op.destEqIndex);
+    const sourceToDestWeaponSwap =
+      op.sourceSlotType === "weapon"
+      && op.destSlotType === "weapon"
+      && (srcItem.type === "ballistic_weapon" || srcItem.type === "melee_weapon");
+    if (
+      sourceToDestWeaponSwap
+      && destItem
+      && (destItem.type === "ballistic_weapon" || destItem.type === "melee_weapon")
+      && op.sourceSoldierId !== op.destSoldierId
+    ) {
+      if (!weaponWieldOk(destItem as import("../constants/items/types.ts").Item, src)) {
+        return { success: false, reason: "weapon restricted to role" };
+      }
+      if (!canEquipItemLevel(destItem as import("../constants/items/types.ts").Item, src)) {
+        return { success: false, reason: "soldier level too low for item" };
+      }
+    }
     const isSameSoldierReorder =
       op.sourceSoldierId === op.destSoldierId &&
       op.sourceSlotType === "equipment" &&
@@ -1205,7 +1312,8 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
       const board = s.missionBoard ?? [];
       const idx = board.findIndex((m) => m.id === mission.id);
       if (idx < 0) return {};
-      const replacement = pickReplacementMission(mission, lvl, board);
+      const progressionLevel = getProgressionLevelFromCompany(s.company, lvl);
+      const replacement = pickReplacementMission(mission, lvl, progressionLevel, board);
       if (!replacement) return {};
       const next = board.slice();
       next[idx] = replacement;
@@ -1306,10 +1414,93 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
           ...s,
           totalKills: Math.max(0, Math.floor(s.totalKills ?? 0)) + missionKills,
           missionsCompleted: Math.max(0, Math.floor(s.missionsCompleted ?? 0)) + (missionCompleted ? 1 : 0),
+          earnedTraitIds: [...(s.earnedTraitIds ?? [])],
+          veterancy: { ...getSoldierVeterancyDefaults(), ...(s.veterancy ?? {}) },
         };
       });
       return { company: { ...state.company, soldiers: newSoldiers } };
     });
+  },
+
+  /** Evaluate rare veterancy/scar traits after mission and apply permanent stat modifiers. */
+  awardSoldierVeterancyTraits: (
+    participantIds: string[],
+    killsBySoldier: Map<string, number>,
+    missionCompleted: boolean,
+    victory: boolean,
+    missionStatsBySoldier: Map<string, { grenadeThrows: number; grenadeHits: number; turnsBelow20Hp: number }>,
+    incapacitatedIds: string[] = [],
+  ) => {
+    const participantSet = new Set(participantIds);
+    const incapSet = new Set(incapacitatedIds);
+    const awardsBySoldier = new Map<string, EarnedTraitAward[]>();
+    if (participantSet.size === 0) return awardsBySoldier;
+
+    set((state: CompanyStore) => {
+      const soldiers = state.company?.soldiers ?? [];
+      if (soldiers.length === 0) return state;
+      const nextSoldiers = soldiers.map((s) => {
+        if (!participantSet.has(s.id)) return s;
+        let soldier: Soldier = {
+          ...s,
+          earnedTraitIds: [...(s.earnedTraitIds ?? [])],
+          veterancy: { ...getSoldierVeterancyDefaults(), ...(s.veterancy ?? {}) },
+        };
+        const v = soldier.veterancy!;
+        const missionStats = missionStatsBySoldier.get(s.id) ?? { grenadeThrows: 0, grenadeHits: 0, turnsBelow20Hp: 0 };
+        const hadLowHp = missionStats.turnsBelow20Hp > 0;
+        v.grenadeThrows += Math.max(0, Math.floor(missionStats.grenadeThrows));
+        v.grenadeHits += Math.max(0, Math.floor(missionStats.grenadeHits));
+        v.turnsBelow20Hp += Math.max(0, Math.floor(missionStats.turnsBelow20Hp));
+        if (hadLowHp) v.missionsWithBelow20Hp += 1;
+
+        const missionKills = Math.max(0, Math.floor(killsBySoldier.get(s.id) ?? 0));
+        let vxpGain = 0;
+        if (missionCompleted) vxpGain += 1;
+        if (missionCompleted && victory) vxpGain += 1;
+        if (missionKills >= 3) vxpGain += 1;
+        if (hadLowHp) vxpGain += 1;
+        if (missionStats.grenadeThrows >= 2) vxpGain += 1;
+        v.veterancyXp += Math.min(4, vxpGain);
+
+        const maxTraits = MAX_EARNED_TRAITS_PER_SOLDIER;
+        let award: EarnedTraitDefinition | null = null;
+        if ((soldier.earnedTraitIds?.length ?? 0) < maxTraits && incapSet.has(s.id)) {
+          v.incapacitations += 1;
+          const severeEligible = v.incapacitations >= 2;
+          const severeChance = severeEligible ? 0.7 : 0;
+          const mixedChance = 0.9;
+          if (Math.random() < (severeEligible ? severeChance : mixedChance)) {
+            award = severeEligible && Math.random() < severeChance
+              ? chooseRandomTrait(soldier, SEVERE_INCAP_TRAITS)
+              : chooseRandomTrait(soldier, MIXED_VETERANCY_TRAITS);
+            if (!award) award = chooseRandomTrait(soldier, MIXED_VETERANCY_TRAITS);
+          }
+        }
+
+        while (!award && (soldier.earnedTraitIds?.length ?? 0) < maxTraits && v.checkpointCursor < VETERANCY_CHECKPOINTS.length && v.veterancyXp >= VETERANCY_CHECKPOINTS[v.checkpointCursor]) {
+          const rollChance = Math.min(0.8, 0.2 + v.failedTraitRolls * 0.1);
+          const success = Math.random() < rollChance;
+          v.checkpointCursor += 1;
+          if (!success) {
+            v.failedTraitRolls += 1;
+            continue;
+          }
+          v.failedTraitRolls = 0;
+          const pool = Math.random() < 0.72 ? POSITIVE_VETERANCY_TRAITS : MIXED_VETERANCY_TRAITS;
+          award = chooseRandomTrait(soldier, pool) ?? chooseRandomTrait(soldier, POSITIVE_VETERANCY_TRAITS) ?? chooseRandomTrait(soldier, MIXED_VETERANCY_TRAITS);
+        }
+
+        if (award) {
+          soldier = applyEarnedTraitToSoldier(soldier, award);
+          awardsBySoldier.set(soldier.id, [...(awardsBySoldier.get(soldier.id) ?? []), toEarnedTraitAward(award)]);
+        }
+        return soldier;
+      });
+      return { company: { ...state.company, soldiers: nextSoldiers } };
+    });
+
+    return awardsBySoldier;
   },
 
   /** Deduct 50 energy from each participant when quitting a mission (min 0). */

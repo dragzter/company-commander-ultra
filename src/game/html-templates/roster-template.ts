@@ -186,14 +186,8 @@ export function rosterTemplate(): string {
   <div class="roster-footer troops-market-footer">
     <div class="footer-banner">
       <div class="roster-footer-actions">
-        <button type="button" id="roster-formation-btn" class="equip-troops-btn">Formation</button>
         <button type="button" id="roster-rest-btn" class="equip-troops-btn roster-rest-btn">Rest Troops</button>
-      </div>
-      <div class="recruit-balance-bar">
-        <span class="recruit-balance-item">
-          <img src="/images/soldier_count.png" alt="" class="roster-soldier-count-icon" width="14" height="18" aria-hidden="true">
-          <strong>Soldiers</strong> ${company?.soldiers?.length ?? 0}
-        </span>
+        <button type="button" id="roster-formation-btn" class="equip-troops-btn">Formation</button>
       </div>
     </div>
     ${companyActionsTemplate()}

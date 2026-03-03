@@ -5,6 +5,7 @@ import type { Soldier } from "../entities/types.ts";
 import { getItemIconUrl } from "../../utils/item-utils.ts";
 import { getWeaponRestrictRole } from "../../utils/equip-utils.ts";
 import { formatDisplayName, getSoldierPortraitUrl } from "../../utils/name-utils.ts";
+import type { EarnedTraitAward } from "../../constants/veterancy-traits.ts";
 import {
   getLevelFromExperience,
   getSoldierXpRequiredForLevel,
@@ -40,6 +41,8 @@ export interface CombatSummaryData {
   companyExperience: number;
   /** Company level after mission */
   companyLevel: number;
+  /** Newly earned veterancy/scar traits by soldier id for this mission */
+  newTraitAwardsBySoldier: Map<string, EarnedTraitAward[]>;
 }
 
 function escapeHtml(s: string): string {
@@ -146,6 +149,7 @@ function summaryCombatCard(
   newLevels: Map<string, number>,
   soldier: Soldier | undefined,
   xpEarned: number,
+  traitAwards: EarnedTraitAward[] = [],
 ): string {
   const imgSrc = getSoldierPortraitUrl(c.avatar ?? "default.png", c.designation);
   const weaponIcon = c.weaponIconUrl ?? "";
@@ -165,6 +169,10 @@ function summaryCombatCard(
     ? " combat-card-level-badge-leveled-up"
     : "";
   const xpBarHtml = summaryXpBar(soldier, xpEarned);
+  const traitData = escapeAttr(JSON.stringify(traitAwards));
+  const newTraitBtn = traitAwards.length > 0
+    ? `<button type="button" class="combat-summary-new-trait-btn" data-soldier-id="${c.id}" data-traits-json="${traitData}">NEW TRAIT</button>`
+    : "";
   return `
 <div class="combat-card combat-summary-card designation-${des}${downClass}${levelUpClass}" data-combatant-id="${c.id}">
   <div class="combat-card-inner">
@@ -181,6 +189,7 @@ function summaryCombatCard(
     <span class="combat-card-name">${escapeHtml(formatDisplayName(c.name))}</span>
     <span class="combat-summary-kills">${kills} kill${kills === 1 ? "" : "s"}</span>
     ${c.downState === "kia" ? '<span class="combat-summary-status combat-summary-kia">KIA</span>' : c.hp <= 0 || c.downState ? '<span class="combat-summary-status combat-summary-wounded">Wounded</span>' : ""}
+    ${newTraitBtn}
     ${xpBarHtml}
   </div>
 </div>`;
@@ -240,6 +249,7 @@ export function combatSummaryTemplate(data: CombatSummaryData): string {
     companyXpEarned,
     companyExperience,
     companyLevel,
+    newTraitAwardsBySoldier,
   } = data;
   const title = victory ? "Victory!" : "Defeat";
   const titleClass = victory
@@ -262,6 +272,7 @@ export function combatSummaryTemplate(data: CombatSummaryData): string {
               newLevels,
               soldiersAfterCombat.get(p.id),
               xpEarnedBySoldier.get(p.id) ?? 0,
+              newTraitAwardsBySoldier.get(p.id) ?? [],
             ),
           )
           .join("");
@@ -340,6 +351,7 @@ export function buildCombatSummaryData(
   companyXpEarned = 0,
   companyExperience = 0,
   companyLevel = 1,
+  newTraitAwardsBySoldier: Map<string, EarnedTraitAward[]> = new Map(),
 ): CombatSummaryData {
   const creditReward = mission?.creditReward ?? 0;
 
@@ -359,5 +371,6 @@ export function buildCombatSummaryData(
     companyXpEarned,
     companyExperience,
     companyLevel,
+    newTraitAwardsBySoldier,
   };
 }

@@ -29,6 +29,17 @@ export type TraitDict = {
   stats: SoldierTraitProfile;
 };
 
+export type SoldierVeterancyStats = {
+  veterancyXp: number;
+  checkpointCursor: number;
+  failedTraitRolls: number;
+  grenadeThrows: number;
+  grenadeHits: number;
+  turnsBelow20Hp: number;
+  missionsWithBelow20Hp: number;
+  incapacitations: number;
+};
+
 /**
  * Some statuses represent a permanent alteration to a soldiers attributes, like a permanent injury
  */
@@ -64,6 +75,12 @@ export interface Soldier {
   attributes: Attributes;
   designation: Designation;
   trait_profile: TraitDict;
+  /** Permanent post-recruit traits earned from missions/incapacitations. */
+  earnedTraitIds?: string[];
+  /** Grenade accuracy bonus from earned traits (e.g., Grenadier). */
+  grenadeHitBonusPct?: number;
+  /** Hidden veterancy progression and counters used for trait unlocks. */
+  veterancy?: SoldierVeterancyStats;
 
   combatProfile: CombatProfile;
 

@@ -126,18 +126,15 @@ export function combatTemplate(
         </div>
       </div>
     </div>
-    <button type="button" id="combat-begin" class="combat-begin-floating combat-begin-poppy">Begin</button>
+    <div id="combat-begin-overlay" class="combat-begin-overlay" aria-hidden="true"></div>
+    <button type="button" id="combat-begin" class="combat-begin-floating combat-begin-poppy">
+      <span class="combat-begin-glyph" aria-hidden="true">▶</span>
+      <span class="combat-begin-label">GO!</span>
+    </button>
   </div>
   <div class="combat-footer troops-market-footer combat-footer-layout">
-    <button type="button" id="combat-mission-details" class="game-btn game-btn-sm game-btn-blue">Details</button>
+    <button type="button" id="combat-back-ready-room" class="game-btn game-btn-sm game-btn-blue combat-back-ready-room-btn">Back</button>
     <button type="button" id="combat-quit" class="game-btn game-btn-sm game-btn-red">Quit</button>
-  </div>
-  <div id="combat-mission-details-popup" class="combat-mission-details-popup" role="dialog" aria-modal="true" hidden>
-    <div class="combat-mission-details-inner">
-      <h4 id="combat-mission-details-title">Details</h4>
-      <div id="combat-mission-details-body"></div>
-      <button type="button" id="combat-mission-details-close" class="game-btn game-btn-md game-btn-blue">Close</button>
-    </div>
   </div>
   <div id="combat-quit-confirm-popup" class="combat-quit-confirm-popup" role="dialog" aria-modal="true" hidden>
     <div class="combat-quit-confirm-inner">

@@ -81,6 +81,7 @@ export function soldierToCombatant(soldier: Soldier): Combatant {
     hp,
     maxHp: hp,
     chanceToHit: cp.chanceToHit ?? 0.6,
+    grenadeHitBonusPct: soldier.grenadeHitBonusPct ?? 0,
     chanceToEvade: cp.chanceToEvade ?? 0.05,
     mitigateDamage: cp.mitigateDamage ?? 0,
     damageMin: Math.max(1, round1(dmgMin)),
@@ -110,17 +111,22 @@ export function createEnemyCombatant(
   missionKind?: MissionKind,
   manhuntTargetIndex?: number,
   roleSlots?: { supportIndex?: number; medicIndex?: number },
+  options?: { designation?: "rifleman" | "support" | "medic"; isManhuntTarget?: boolean },
 ): Combatant {
   const eliteBonus = isEpicMission ? (Math.random() < 0.5 ? 1 : 2) : 0;
   const level = Math.max(1, Math.min(20, companyLevel + eliteBonus));
   const supportIndex = roleSlots?.supportIndex ?? 0;
   const medicIndex = roleSlots?.medicIndex ?? (enemyCount >= 2 ? (supportIndex === 1 ? 0 : 1) : -1);
-  const soldier =
-    index === supportIndex && enemyCount >= 1
-      ? SoldierManager.getNewSupportMan(level)
-      : index === medicIndex && enemyCount >= 2
-        ? SoldierManager.getNewMedic(level)
-        : SoldierManager.getNewRifleman(level);
+  const forcedDesignation = options?.designation;
+  const soldier = forcedDesignation === "support"
+    ? SoldierManager.getNewSupportMan(level)
+    : forcedDesignation === "medic"
+      ? SoldierManager.getNewMedic(level)
+      : index === supportIndex && enemyCount >= 1
+        ? SoldierManager.getNewSupportMan(level)
+        : index === medicIndex && enemyCount >= 2
+          ? SoldierManager.getNewMedic(level)
+          : SoldierManager.getNewRifleman(level);
   const c = soldierToCombatant(soldier);
   c.id = `enemy-${index}-${Date.now()}`;
   c.side = "enemy";
@@ -137,7 +143,7 @@ export function createEnemyCombatant(
   c.soldierRef = undefined;
   const isEpicElite = isEpicMission && index === 0;
   const resolvedManhuntTargetIndex = manhuntTargetIndex ?? 0;
-  const isManhuntTarget = missionKind === "manhunt" && index === resolvedManhuntTargetIndex;
+  const isManhuntTarget = options?.isManhuntTarget || (missionKind === "manhunt" && index === resolvedManhuntTargetIndex);
   if (isEpicElite) {
     c.isEpicElite = true;
   }
@@ -164,5 +170,11 @@ export function createEnemyCombatant(
     c.damageMax = Math.max(1, round1((c.damageMax ?? 6) * ENEMY_DAMAGE_MULTIPLIER));
   }
   c.avatar = Images.red_portrait[RED_PORTRAIT_KEYS[index % RED_PORTRAIT_KEYS.length] as keyof typeof Images.red_portrait];
+  if ((c.designation ?? "").toLowerCase() === "support") {
+    c.enemySuppressUses = 1;
+  } else {
+    c.enemySuppressUses = 0;
+  }
+  c.enemyGrenadeThrowsRemaining = 0;
   return c;
 }

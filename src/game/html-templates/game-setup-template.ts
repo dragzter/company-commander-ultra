@@ -364,7 +364,7 @@ export const setupConfirmationTemplate = (
 export const mainMenuTemplate = () => {
   return `
 		<div id="g-menu-wrapper" class="flex align-center column justify-center h-100">
-				<img width="170" src="images/ui/${Images.logo.cc_logo}" alt="Game Logo">
+				<img width="170" src="/images/ft_logo_main.png" alt="Game Logo">
 				<button id="${clrHash(DOM.mainMenu.newGame)}" class="game-btn game-btn-lg game-btn-green menu-btn">New Game</button>
 				<button id="${clrHash(DOM.mainMenu.credits)}" class="game-btn game-btn-lg game-btn-black menu-btn">Credits</button>
 				<button id="${clrHash(DOM.mainMenu.settings)}" class="game-btn game-btn-lg game-btn-blue menu-btn">Settings</button>
@@ -456,6 +456,7 @@ export const companyHomePageTemplate = () => {
   const progressInLevel = Math.max(0, companyExperience - xpFloor);
   const xpFillPct = companyLvl >= 20 ? 100 : Math.max(0, Math.min(100, (progressInLevel / xpInLevel) * 100));
   const nextLevel = Math.min(20, companyLvl + 1);
+  const playerName = (store.commanderName ?? company?.commander ?? "").trim() || "Commander";
 
   const memorialCodexRow = `
     <div class="company-home-buttons-row">
@@ -537,7 +538,7 @@ export const companyHomePageTemplate = () => {
     <div id="home-onboarding-popup" class="home-onboarding-popup helper-onboarding-popup" role="dialog" aria-modal="true">
       <div class="home-onboarding-dialog helper-onboarding-dialog">
         <div class="home-onboarding-copy helper-onboarding-copy">
-          <h4 class="home-onboarding-title helper-onboarding-title">Welcome, Commander</h4>
+          <h4 class="home-onboarding-title helper-onboarding-title">Welcome, ${playerName}</h4>
           <p class="home-onboarding-text helper-onboarding-text helper-onboarding-typed-text" id="home-onboarding-typed-text" data-full-text="Your squad is assembled and awaiting orders. Start by opening Missions to launch your first operation."></p>
           <button id="home-onboarding-continue" type="button" class="game-btn game-btn-md game-btn-green home-onboarding-continue helper-onboarding-continue">Continue</button>
         </div>

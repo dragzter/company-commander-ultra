@@ -122,14 +122,33 @@ export function getMissionKindsForGeneration(mode: "regular" | "epic"): MissionK
 }
 
 export const DIFFICULTY_LABELS: Record<number, string> = {
-  1: "Trivial",
-  2: "Easy",
-  3: "Medium",
-  4: "Hard",
-  5: "Extreme",
+  1: "Easy",
+  2: "Medium",
+  3: "Hard",
+  4: "Extreme",
 };
 
 export type MissionRarity = "normal" | "rare" | "epic";
+
+export interface MissionEnemyRoleMix {
+  rifleman: number;
+  medic: number;
+  support: number;
+}
+
+export interface MissionEncounterConfig {
+  initialEnemyCount: number;
+  totalEnemyCount: number;
+  maxConcurrentEnemies: number;
+  reinforceIntervalMs: number;
+  reinforceSetupMs: number;
+  rolesInitial: MissionEnemyRoleMix;
+  rolesReinforcement: MissionEnemyRoleMix;
+  medicHealsPerMedic: number;
+  supportSuppressUses: number;
+  eliteCount: number;
+  grenadeThrowers: number;
+}
 
 /** Any successful mission: chance to drop an epic weapon or armor (level-appropriate). */
 export const LOOT_EPIC_CHANCE = 0.005;
@@ -157,5 +176,6 @@ export type Mission = {
   forcedGearLevel?: number;
   forcedSquadSize?: number;
   rarity?: MissionRarity;
+  encounter?: MissionEncounterConfig;
   rewardItems?: string[];
 };

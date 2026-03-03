@@ -3,8 +3,9 @@ import type { Mission, MissionKind } from "../../constants/missions.ts";
 import { DIFFICULTY_LABELS, MISSION_KIND_META, MISSION_KIND_ORDER } from "../../constants/missions.ts";
 import { getRewardItemById } from "../../utils/reward-utils.ts";
 import { getItemIconUrl } from "../../utils/item-utils.ts";
+import { getDisplayEnemyCount } from "../../services/missions/mission-scenarios.ts";
 
-const ENEMY_COUNT_ICON = `<img src="/images/soldier_count.png" alt="" class="mission-enemies-icon" aria-hidden="true" width="14" height="18">`;
+const ENEMY_COUNT_ICON = `<img src="/images/soldier_count.png" alt="" class="mission-enemies-icon" aria-hidden="true" width="20" height="24">`;
 
 function escapeHtml(s: string): string {
   return s
@@ -50,6 +51,17 @@ function missionCard(m: Mission): string {
   const epicClass = rarity === "epic" ? " mission-card-epic" : "";
   const onboardingClass = m.id?.startsWith("onboarding_") ? " mission-card-onboarding-target" : "";
   const flavorText = m.flavorText ?? meta.description;
+  const totalEnemies = getDisplayEnemyCount(m);
+  const initialEnemies = m.encounter?.initialEnemyCount ?? m.enemyCount;
+  const hasReinforcements = totalEnemies > initialEnemies;
+  const enemyLabel = hasReinforcements
+    ? `Enemies: ${totalEnemies} total`
+    : `Enemies: ${initialEnemies}`;
+  const defendNote = m.kind === "defend_objective"
+    ? '<p class="mission-card-note">Reinforcements arrive every 30s. Win by holding out or wiping the force.</p>'
+    : hasReinforcements
+      ? '<p class="mission-card-note">Enemy reinforcements are expected when slots open.</p>'
+      : "";
   const rewards = buildRewardsEntries(m);
   const rewardsHtml = rewards
     .map((e) => {
@@ -68,11 +80,12 @@ function missionCard(m: Mission): string {
   <h4 class="mission-card-name">${escapeHtml(m.name)}</h4>
   <div class="mission-card-body">
     <p class="mission-card-desc">${escapeHtml(flavorText)}</p>
+    ${defendNote}
   </div>
   <div class="mission-card-difficulty" title="${diffLabel}" aria-label="${diffLabel}">
     <div class="mission-card-difficulty-row">
-      <span class="mission-diff-bars"><span class="mission-diff-fill" style="width: ${(m.difficulty / 5) * 100}%"></span></span>
-      <span class="mission-card-enemies" data-kind="${m.kind}">${ENEMY_COUNT_ICON}<span class="mission-enemies-count">× ${m.enemyCount}</span></span>
+      <span class="mission-diff-bars"><span class="mission-diff-fill" style="width: ${(m.difficulty / 4) * 100}%"></span></span>
+      <span class="mission-card-enemies" data-kind="${m.kind}">${ENEMY_COUNT_ICON}<span class="mission-enemies-count">${enemyLabel}</span></span>
     </div>
     <span class="mission-diff-label">${diffLabel}</span>
   </div>
@@ -103,6 +116,23 @@ function missionSectionByKind(missions: Mission[], kind: MissionKind): string {
     </div>`;
 }
 
+function buildMissionFilters(missions: Mission[]): string {
+  const kindsPresent = MISSION_KIND_ORDER.filter((k) => missions.some((m) => m.kind === k));
+  const difficultiesPresent = [1, 2, 3, 4].filter((d) => missions.some((m) => m.difficulty === d));
+  if (kindsPresent.length === 0) return "";
+  return `
+  <div class="missions-filters" data-kind-filter="all" data-difficulty-filter="all">
+    <div class="missions-filter-row">
+      <button type="button" class="missions-filter-chip is-active" data-filter-group="kind" data-filter-value="all">All Types</button>
+      ${kindsPresent.map((k) => `<button type="button" class="missions-filter-chip" data-filter-group="kind" data-filter-value="${k}">${MISSION_KIND_META[k].name}</button>`).join("")}
+    </div>
+    <div class="missions-filter-row">
+      <button type="button" class="missions-filter-chip is-active" data-filter-group="difficulty" data-filter-value="all">All Difficulty</button>
+      ${difficultiesPresent.map((d) => `<button type="button" class="missions-filter-chip" data-filter-group="difficulty" data-filter-value="${d}">${DIFFICULTY_LABELS[d]}</button>`).join("")}
+    </div>
+  </div>`;
+}
+
 export function missionsTemplate(
   missions: Mission[],
   companyLevel = 1,
@@ -115,6 +145,7 @@ export function missionsTemplate(
   const showEpic = companyLevel >= 2;
   const mainClass = mode === "menu" ? "missions-main missions-main-menu" : "missions-main";
   const regularSections = MISSION_KIND_ORDER.map((k) => missionSectionByKind(regular, k)).filter(Boolean).join("");
+  const regularFilters = buildMissionFilters(regular);
   const epicSection = `
     <div class="missions-section missions-section-epic">
       <div class="missions-kind-banner missions-kind-banner-epic">Epic Missions</div>
@@ -140,7 +171,9 @@ export function missionsTemplate(
       </div>`
         : '<div class="missions-empty-state">No dev test missions available.</div>')
     : mode === "normal"
-      ? (regularSections || emptyState)
+      ? ((regularSections
+        ? `${regularFilters}<div class="missions-filter-empty-state" hidden>No missions match these filters.</div>${regularSections}`
+        : emptyState))
       : `
       <div class="missions-mode-menu">
         <button id="missions-mode-normal" class="game-btn game-btn-lg game-btn-green missions-mode-menu-btn missions-mode-menu-btn-normal" type="button">

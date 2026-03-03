@@ -8,6 +8,8 @@ import type { MemorialEntry } from "../game/entities/memorial-types.ts";
 import { StoreActions } from "./action.ts";
 import { STARTING_CREDITS } from "../constants/economy.ts";
 import type { Mission } from "../constants/missions.ts";
+import { getSoldierVeterancyDefaults } from "../constants/veterancy-traits.ts";
+import type { EarnedTraitAward } from "../constants/veterancy-traits.ts";
 
 const { nocache } = URLReader(document.location.search);
 const skipPersistence = nocache === "true";
@@ -27,6 +29,7 @@ export type RecruitOnboardingStep =
   | "market"
   | "troops_recruit"
   | "troops_confirm";
+export type MissionsResumeStep = "none" | "ready_room";
 
 export type CompanyStore = {
   // State
@@ -58,6 +61,8 @@ export type CompanyStore = {
   missionBoard: Mission[];
   missionBoardSchemaVersion: number;
   missionsViewMode: "menu" | "normal" | "epic" | "dev";
+  missionsResumeStep: MissionsResumeStep;
+  missionsResumeMission: Mission | null;
   onboardingHomeIntroPending: boolean;
   onboardingFirstMissionPending: boolean;
   onboardingRecruitStep: RecruitOnboardingStep;
@@ -76,6 +81,7 @@ export type CompanyStore = {
   setMarketTierLevel: (n: number) => void;
   setDevCatalogTierLevel: (n: number) => void;
   setMissionsViewMode: (mode: "menu" | "normal" | "epic" | "dev") => void;
+  setMissionsResumeState: (step: MissionsResumeStep, mission: Mission | null) => void;
   setOnboardingHomeIntroPending: (pending: boolean) => void;
   setOnboardingFirstMissionPending: (pending: boolean) => void;
   setOnboardingRecruitStep: (step: RecruitOnboardingStep) => void;
@@ -138,6 +144,14 @@ export type CompanyStore = {
     killsBySoldier: Map<string, number>,
     missionCompleted: boolean,
   ) => void;
+  awardSoldierVeterancyTraits: (
+    participantIds: string[],
+    killsBySoldier: Map<string, number>,
+    missionCompleted: boolean,
+    victory: boolean,
+    missionStatsBySoldier: Map<string, { grenadeThrows: number; grenadeHits: number; turnsBelow20Hp: number }>,
+    incapacitatedIds?: string[],
+  ) => Map<string, EarnedTraitAward[]>;
   processCombatKIA: (
     kiaSoldierIds: string[],
     missionName?: string,
@@ -230,6 +244,12 @@ export const usePlayerCompanyStore = createStore<CompanyStore>()(
                   energy: typeof s.energy === "number" ? s.energy : 100,
                   missionsCompleted: typeof s.missionsCompleted === "number" ? s.missionsCompleted : 0,
                   totalKills: typeof s.totalKills === "number" ? s.totalKills : 0,
+                  earnedTraitIds: Array.isArray((s as Soldier).earnedTraitIds) ? (s as Soldier).earnedTraitIds : [],
+                  grenadeHitBonusPct: typeof s.grenadeHitBonusPct === "number" ? s.grenadeHitBonusPct : 0,
+                  veterancy: {
+                    ...getSoldierVeterancyDefaults(),
+                    ...(typeof s.veterancy === "object" && s.veterancy ? s.veterancy : {}),
+                  },
                 }),
               ),
             };
@@ -242,6 +262,12 @@ export const usePlayerCompanyStore = createStore<CompanyStore>()(
           if (typeof merged.missionBoardSchemaVersion !== "number") merged.missionBoardSchemaVersion = 0;
           if (merged.missionsViewMode !== "menu" && merged.missionsViewMode !== "normal" && merged.missionsViewMode !== "epic" && merged.missionsViewMode !== "dev") {
             merged.missionsViewMode = "menu";
+          }
+          if (merged.missionsResumeStep !== "none" && merged.missionsResumeStep !== "ready_room") {
+            merged.missionsResumeStep = "none";
+          }
+          if (typeof merged.missionsResumeMission !== "object" && merged.missionsResumeMission !== null) {
+            merged.missionsResumeMission = null;
           }
           if (typeof merged.onboardingHomeIntroPending !== "boolean") merged.onboardingHomeIntroPending = false;
           if (typeof merged.onboardingFirstMissionPending !== "boolean") merged.onboardingFirstMissionPending = false;

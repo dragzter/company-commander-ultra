@@ -196,6 +196,13 @@ function UiManager() {
   }
 
   function renderMissionsScreen(mode?: "menu" | "normal" | "epic" | "dev") {
+    if (mode == null) {
+      const store = usePlayerCompanyStore.getState();
+      if (store.missionsResumeStep === "ready_room" && store.missionsResumeMission) {
+        _ScreenManager.generate.createReadyRoomPage(store.missionsResumeMission);
+        return;
+      }
+    }
     _ScreenManager.generate.createMissionsPage(mode);
   }
 

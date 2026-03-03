@@ -10,6 +10,8 @@ export interface Combatant {
   hp: number;
   maxHp: number;
   chanceToHit: number;
+  /** Bonus applied only to grenade throws (from veterancy traits). */
+  grenadeHitBonusPct?: number;
   chanceToEvade: number;
   mitigateDamage: number;
   damageMin: number;
@@ -38,6 +40,10 @@ export interface Combatant {
   enemyMedkitUses?: number;
   /** Enemy AI: medkit tier level (1-999) for heal scaling. */
   enemyMedkitLevel?: number;
+  /** Enemy AI: number of suppress ability uses left this combat. */
+  enemySuppressUses?: number;
+  /** Enemy AI: number of grenade throws left this combat. */
+  enemyGrenadeThrowsRemaining?: number;
   /** Timestamp (ms) when smoke effect ends */
   smokedUntil?: number;
   /** Timestamp (ms) when stun ends */

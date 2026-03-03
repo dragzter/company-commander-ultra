@@ -68,10 +68,10 @@ export function getXpRequiredForLevel(level: number): number {
   return XP_FOR_LEVEL[level] ?? 0;
 }
 
-/** Soldier XP required to reach level L (total). Exponential: L2~130 (3–4 missions), each level needs ~22% more XP. */
+/** Soldier XP required to reach level L (total). */
 const SOLDIER_XP_FOR_LEVEL = [
-  0, 130, 289, 483, 720, 1009, 1362, 1793, 2319, 2961, 3744,
-  4699, 5864, 7285, 9019, 11134, 13714, 16862, 20703, 25389,
+  0, 176, 390, 652, 972, 1362, 1839, 2421, 3131, 3997, 5054,
+  6344, 7916, 9835, 12176, 15031, 18514, 22764, 27949, 34275,
 ];
 
 export const MAX_SOLDIER_LEVEL = 999;

@@ -581,7 +581,9 @@ export const troopsMarketTemplate = (
     const br = roleRank[(b.designation ?? "rifleman").toLowerCase()] ?? 99;
     return ar - br;
   });
-  const displayedTroops = guidedRecruit ? orderedTroops.slice(0, 1) : orderedTroops;
+  const stagedIds = new Set(recruitStaging.map((s) => s.id));
+  const availableTroops = orderedTroops.filter((t) => !stagedIds.has(t.id));
+  const displayedTroops = guidedRecruit ? availableTroops.slice(0, 1) : availableTroops;
   const guidedRecruitButtonGlow = guidedRecruit && onboardingStep === "troops_recruit" && recruitStaging.length === 0;
   const guidedConfirmGlow = guidedRecruit && onboardingStep === "troops_confirm" && recruitStaging.length > 0;
 

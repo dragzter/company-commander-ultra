@@ -34,6 +34,10 @@ import { memorialTemplate } from "../html-templates/memorial-template.ts";
 import { trainingTemplate } from "../html-templates/training-template.ts";
 import { abilitiesTemplate } from "../html-templates/abilities-template.ts";
 import { combatTemplate } from "../html-templates/combat-template.ts";
+import {
+  buildCombatSummaryData,
+  combatSummaryTemplate,
+} from "../html-templates/combat-summary-template.ts";
 import { soldierToCombatant, createEnemyCombatant } from "../combat/combatant-utils.ts";
 import { getActiveSlots, getFormationSlots, getSoldierById } from "../../constants/company-slots.ts";
 import { getMaxSoldierLevel } from "../../utils/company-utils.ts";
@@ -42,12 +46,14 @@ import { SoldierManager } from "../entities/soldier/soldier-manager.ts";
 import type { Designation, Soldier } from "../entities/types.ts";
 import type { Mission } from "../../constants/missions.ts";
 import { generateDevTestMissions } from "../../services/missions/mission-generator.ts";
+import { normalizeEncounterForMission } from "../../services/missions/mission-scenarios.ts";
 import { RARE_WEAPON_BASES, createRareWeapon } from "../../constants/items/rare-weapon-bases.ts";
 import { RARE_ARMOR_BASES, createRareArmor } from "../../constants/items/rare-armor-bases.ts";
 import { MedicalItems } from "../../constants/items/medical-items.ts";
 import { ThrowableItems } from "../../constants/items/throwable.ts";
 import { getScaledThrowableDamage } from "../../constants/items/throwable-scaling.ts";
 import { Images } from "../../constants/images.ts";
+import type { EarnedTraitAward } from "../../constants/veterancy-traits.ts";
 
 /**
  * Manager which templates are displayed.  Orchestrates all the things that need to happen when
@@ -201,10 +207,23 @@ function ScreenManager() {
       xpReward: 40,
       flavorText: "Hostile scouts have entered the sector. Engage and eliminate all enemy soldiers.",
       rarity: "normal",
+      encounter: {
+        initialEnemyCount: 3,
+        totalEnemyCount: 3,
+        maxConcurrentEnemies: 8,
+        reinforceIntervalMs: 0,
+        reinforceSetupMs: 2000,
+        rolesInitial: { rifleman: 3, medic: 0, support: 0 },
+        rolesReinforcement: { rifleman: 0, medic: 0, support: 0 },
+        medicHealsPerMedic: 0,
+        supportSuppressUses: 0,
+        eliteCount: 0,
+        grenadeThrowers: 0,
+      },
       rewardItems: [],
     });
     const missions = onboardingFirstMission
-      ? [createOnboardingSkirmish()]
+      ? [normalizeEncounterForMission(createOnboardingSkirmish())]
       : (usePlayerCompanyStore.getState().missionBoard ?? []);
     const companyLevel = usePlayerCompanyStore.getState().companyLevel ?? 1;
     const activeMode = usePlayerCompanyStore.getState().missionsViewMode ?? "menu";
@@ -221,6 +240,9 @@ function ScreenManager() {
     if (mission?.isDevTest) {
       createCombatPage(mission);
       return;
+    }
+    if (mission) {
+      usePlayerCompanyStore.getState().setMissionsResumeState("ready_room", mission);
     }
     const isRefresh = document.getElementById("ready-room-screen") != null;
     UiManager.clear.center();
@@ -256,40 +278,157 @@ function ScreenManager() {
         .map((id) => (id ? getSoldierById(company, id) : null))
         .filter((s): s is NonNullable<typeof s> => s != null);
       players = activeSoldiers.map((s) => soldierToCombatant(s));
-      const enemyCount = mission?.enemyCount ?? 4;
+      const encounter = mission?.encounter;
+      const enemyCount = encounter?.initialEnemyCount ?? mission?.enemyCount ?? 4;
       const enemyBaseLevel = getEnemyLevelFromActiveSquad(activeSoldiers);
       const isEpicMission = !!(mission?.isEpic ?? mission?.rarity === "epic");
-      const manhuntTargetIndex =
-        mission?.kind === "manhunt" && enemyCount > 0
-          ? Math.floor(Math.random() * enemyCount)
-          : undefined;
-      const shuffledEnemyIndices = Array.from({ length: enemyCount }, (_, i) => i);
-      for (let i = shuffledEnemyIndices.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        const t = shuffledEnemyIndices[i];
-        shuffledEnemyIndices[i] = shuffledEnemyIndices[j];
-        shuffledEnemyIndices[j] = t;
+      const roles: Designation[] = [];
+      if (encounter) {
+        for (let i = 0; i < encounter.rolesInitial.rifleman; i++) roles.push("rifleman");
+        for (let i = 0; i < encounter.rolesInitial.support; i++) roles.push("support");
+        for (let i = 0; i < encounter.rolesInitial.medic; i++) roles.push("medic");
       }
-      const supportIndex = shuffledEnemyIndices[0] ?? 0;
-      const medicIndex = enemyCount >= 2 ? (shuffledEnemyIndices[1] ?? 1) : -1;
+      while (roles.length < enemyCount) roles.push("rifleman");
+      roles.length = enemyCount;
+      for (let i = roles.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        const t = roles[i];
+        roles[i] = roles[j];
+        roles[j] = t;
+      }
+      const eliteCount = encounter?.eliteCount ?? (mission?.kind === "manhunt" ? 1 : 0);
+      const eliteIndices = new Set<number>();
+      if (eliteCount > 0) {
+        const idxPool = Array.from({ length: enemyCount }, (_, i) => i);
+        for (let i = 0; i < eliteCount && idxPool.length > 0; i++) {
+          const pickAt = Math.floor(Math.random() * idxPool.length);
+          eliteIndices.add(idxPool[pickAt]);
+          idxPool.splice(pickAt, 1);
+        }
+      }
       const ENEMY_SLOT_ORDER = [0, 1, 2, 3, 5, 6, 4, 7];
       enemies = Array.from({ length: enemyCount }, (_, i) => {
+        const role = roles[i] ?? "rifleman";
+        const isManhuntElite = mission?.kind === "manhunt" && eliteIndices.has(i);
         const c = createEnemyCombatant(
           i,
           enemyCount,
           enemyBaseLevel,
           isEpicMission,
           mission?.kind,
-          manhuntTargetIndex,
-          { supportIndex, medicIndex },
+          isManhuntElite ? i : undefined,
+          undefined,
+          { designation: role, isManhuntTarget: isManhuntElite },
         );
+        const isMedic = role === "medic";
+        const isSupport = role === "support";
+        c.enemyMedkitUses = isMedic ? (encounter?.medicHealsPerMedic ?? c.enemyMedkitUses ?? 0) : 0;
+        c.enemySuppressUses = isSupport ? (encounter?.supportSuppressUses ?? 0) : 0;
+        c.enemyGrenadeThrowsRemaining = 0;
         c.enemySlotIndex = ENEMY_SLOT_ORDER[i] ?? (i % 8);
         return c;
       });
+      if (encounter && encounter.grenadeThrowers > 0 && enemyCount > 0) {
+        const grenadeCandidates = mission?.kind === "manhunt"
+          ? enemies.filter((e) => e.isManhuntTarget)
+          : enemies.filter((e) => e.hp > 0 && !e.downState);
+        const pool = grenadeCandidates.length > 0 ? grenadeCandidates : enemies;
+        for (let i = 0; i < Math.min(encounter.grenadeThrowers, pool.length); i++) {
+          const idx = Math.floor(Math.random() * pool.length);
+          const selected = pool[idx];
+          selected.enemyGrenadeThrowsRemaining = Math.max(1, selected.enemyGrenadeThrowsRemaining ?? 0);
+          pool.splice(idx, 1);
+        }
+      }
     }
     const content = parseHTML(combatTemplate(mission ?? null, players, enemies));
     center.appendChild(content as Element);
     DomEventManager.initEventArray(ec().companyHome().concat(ec().combatScreen(players, enemies)));
+    if (mission?.id?.startsWith("dev-trait-summary-preview-")) {
+      const beginBtn = document.getElementById("combat-begin");
+      const beginOverlay = document.getElementById("combat-begin-overlay");
+      if (beginBtn) (beginBtn as HTMLElement).style.display = "none";
+      if (beginOverlay) (beginOverlay as HTMLElement).style.display = "none";
+
+      const playerKills = new Map<string, number>();
+      const newLevels = new Map<string, number>();
+      const xpEarnedBySoldier = new Map<string, number>();
+      const soldiersAfterCombat = new Map<string, Soldier>();
+      const newTraitAwardsBySoldier = new Map<string, EarnedTraitAward[]>();
+
+      for (let i = 0; i < players.length; i++) {
+        const p = players[i];
+        playerKills.set(p.id, i === 0 ? 3 : i === 1 ? 2 : 1);
+        newLevels.set(p.id, p.level ?? 1);
+        xpEarnedBySoldier.set(p.id, i === 0 ? 72 : i === 1 ? 48 : 31);
+        if (p.soldierRef) {
+          soldiersAfterCombat.set(p.id, {
+            ...p.soldierRef,
+            experience: (p.soldierRef.experience ?? 0) + (xpEarnedBySoldier.get(p.id) ?? 0),
+          });
+        }
+      }
+
+      if (players[0]) {
+        newTraitAwardsBySoldier.set(players[0].id, [
+          {
+            id: "hard_to_kill",
+            name: "Hard To Kill",
+            kind: "positive",
+            flavor: "Refuses to go down clean.",
+            description: "Hard To Kill",
+            stats: { toughness: 4 },
+            grenadeHitBonusPct: 0,
+          },
+        ]);
+      }
+      if (players[1]) {
+        newTraitAwardsBySoldier.set(players[1].id, [
+          {
+            id: "shattered_kneecap",
+            name: "Shattered Kneecap",
+            kind: "mixed",
+            flavor: "The knee healed wrong, the grit didn't.",
+            description: "Shattered Kneecap",
+            stats: { dexterity: -4, toughness: 1 },
+            grenadeHitBonusPct: 0,
+          },
+          {
+            id: "grenadier",
+            name: "Grenadier",
+            kind: "positive",
+            flavor: "Knows exactly where to place the blast.",
+            description: "Grenadier",
+            stats: {},
+            grenadeHitBonusPct: 0.02,
+          },
+        ]);
+      }
+
+      const summaryData = buildCombatSummaryData(
+        true,
+        mission,
+        players,
+        playerKills,
+        0,
+        [{ ...MedicalItems.common.standard_medkit, level: 20 }],
+        [{ ...ThrowableItems.common.incendiary_grenade, level: 20 }],
+        new Set<string>(),
+        newLevels,
+        soldiersAfterCombat,
+        xpEarnedBySoldier,
+        86,
+        1280,
+        2,
+        newTraitAwardsBySoldier,
+      );
+      const container = document.getElementById("combat-summary-container");
+      if (container) {
+        container.innerHTML = combatSummaryTemplate(summaryData);
+        const overlay = container.querySelector(".combat-summary-overlay") as HTMLElement | null;
+        if (overlay) overlay.classList.add("combat-summary-visible");
+      }
+    }
     Styler.setCenterBG("bg_81.jpg", true);
     show.center();
   }

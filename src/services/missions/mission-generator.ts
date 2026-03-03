@@ -7,9 +7,10 @@ import {
   computeMissionEnemyCount,
   computeMissionRewards,
 } from "./mission-reward-policy.ts";
+import { getStandardMissionEncounter, normalizeEncounterForMission } from "./mission-scenarios.ts";
 
 /** Bump this when mission generation output changes and old boards should be regenerated. */
-export const MISSION_BOARD_SCHEMA_VERSION = 6;
+export const MISSION_BOARD_SCHEMA_VERSION = 8;
 
 const LOCATIONS = [
   "the narrow pass",
@@ -133,16 +134,17 @@ function composeUniqueMissionText(
   return { ...fallback, name: uniqueFallback };
 }
 
-export function generateMissions(companyLevel = 1, _seed?: number): Mission[] {
+export function generateMissions(companyLevel = 1, _seed?: number, progressionLevelOverride?: number): Mission[] {
   const missions: Mission[] = [];
   const usedTitles = new Set<string>();
-  const COPIES_PER_KIND = 3;
+  const progressionLevel = Math.max(1, Math.floor(progressionLevelOverride ?? companyLevel));
+  const extremeUnlocked = progressionLevel >= 6;
   let serial = 0;
-  const addMission = (kind: MissionKind, isEpic: boolean) => {
+  const addMission = (kind: MissionKind, difficulty: number, isEpic: boolean) => {
     serial += 1;
-    const difficulty = isEpic ? randomInt(4, 5) : randomInt(1, 4);
     const rarity = isEpic ? "epic" : "normal";
-    const enemyCount = computeMissionEnemyCount(difficulty, rarity, companyLevel);
+    const encounter = !isEpic ? getStandardMissionEncounter(kind, difficulty) : undefined;
+    const enemyCount = encounter?.initialEnemyCount ?? computeMissionEnemyCount(difficulty, rarity, companyLevel, kind);
     const { creditReward, xpReward } = computeMissionRewards({
       difficulty,
       kind,
@@ -161,21 +163,24 @@ export function generateMissions(companyLevel = 1, _seed?: number): Mission[] {
       flavorText: text.flavorText,
       isEpic,
       rarity,
+      encounter,
       rewardItems: isEpic
         ? [pick(["m84_flashbang", "incendiary_grenade", "stim_pack", "standard_medkit", "tk21_throwing_knife", "m3a_repressor", "m3_frag_grenade", "mk18_smoke", "orange_stim_pack"])]
         : undefined,
     });
   };
 
+  const standardDifficulties = extremeUnlocked ? [1, 2, 3, 4] : [1, 2, 3];
   for (const kind of MISSION_KIND_ORDER) {
-    for (let i = 0; i < COPIES_PER_KIND; i++) addMission(kind, false);
+    for (const difficulty of standardDifficulties) addMission(kind, difficulty, false);
   }
 
+  const EPIC_PER_KIND = 2;
   for (const kind of MISSION_KIND_ORDER) {
-    for (let i = 0; i < COPIES_PER_KIND; i++) addMission(kind, true);
+    for (let i = 0; i < EPIC_PER_KIND; i++) addMission(kind, randomInt(3, 4), true);
   }
 
-  return missions;
+  return missions.map((m) => normalizeEncounterForMission(m));
 }
 
 /** Dev-only fixed high-level sandbox missions (4v4, Lv999, Lv999 gear). */
@@ -183,7 +188,7 @@ export function generateDevTestMissions(): Mission[] {
   const now = Date.now();
   const base = {
     kind: "seek_and_destroy" as MissionKind,
-    difficulty: 5,
+    difficulty: 4,
     enemyCount: 4,
     creditReward: 0,
     xpReward: 0,
@@ -197,6 +202,12 @@ export function generateDevTestMissions(): Mission[] {
     rewardItems: [] as string[],
   };
   return [
+    {
+      ...base,
+      id: `dev-trait-summary-preview-${now}`,
+      name: "Trait Summary Preview",
+      flavorText: "UI sandbox: preview post-mission trait awards and summary interactions.",
+    },
     {
       ...base,
       id: `dev-test-duel-a-${now}`,

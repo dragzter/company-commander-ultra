@@ -95,7 +95,8 @@ export function resolveGrenadeThrow(
   const splashBase = Math.max(1, Math.floor(baseDamage * SPLASH_DAMAGE_PCT));
 
   const isKnife = isThrowingKnife(grenade);
-  const hitChance = isKnife ? (thrower.chanceToHit ?? 0.6) : GRENADE_HIT_CHANCE;
+  const grenadeBonus = Math.max(0, thrower.grenadeHitBonusPct ?? 0);
+  const hitChance = isKnife ? (thrower.chanceToHit ?? 0.6) : Math.min(0.98, GRENADE_HIT_CHANCE + grenadeBonus);
   const evadeChance = isKnife ? (primaryTarget.chanceToEvade ?? 0.05) : GRENADE_EVADE_CHANCE;
 
   const rollHit = Math.random() < hitChance;

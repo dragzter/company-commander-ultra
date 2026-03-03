@@ -74,6 +74,11 @@ import { getItemMarketBuyPrice, getItemSellPrice } from "../../utils/sell-pricin
 import { CREDIT_SYMBOL } from "../../constants/currency.ts";
 import { TRAIT_CODEX } from "../../constants/trait-codex.ts";
 import { TraitProfileStats } from "../entities/soldier/soldier-traits.ts";
+import {
+  getEarnedTraitById,
+  type EarnedTraitAward,
+} from "../../constants/veterancy-traits.ts";
+import type { Soldier } from "../entities/types.ts";
 
 /**
  * Contains definitions for the events of all html templates.
@@ -81,6 +86,116 @@ import { TraitProfileStats } from "../entities/soldier/soldier-traits.ts";
  */
 export function eventConfigs() {
   const store = usePlayerCompanyStore.getState();
+
+  function parseSlotItemFromData(slotEl: HTMLElement): Item | null {
+    const raw = slotEl.dataset.slotItem;
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw.replace(/&quot;/g, '"')) as Item;
+    } catch {
+      return null;
+    }
+  }
+
+  function isWeaponItem(item: Item | null | undefined): item is Item {
+    const t = item?.type as string | undefined;
+    return t === "ballistic_weapon" || t === "melee_weapon";
+  }
+
+  function toTitle(raw: string): string {
+    return raw
+      .replace(/_/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .replace(/\b\w/g, (m) => m.toUpperCase());
+  }
+
+  function esc(v: string): string {
+    return String(v)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  function fmtSigned(n: number): string {
+    return `${n > 0 ? "+" : ""}${n}`;
+  }
+
+  function traitStatBadgesHtml(
+    stats: Record<string, number> | undefined,
+    grenadeHitBonusPct = 0,
+  ): string {
+    const statAbbr: Record<string, string> = {
+      hit_points: "HP",
+      dexterity: "DEX",
+      morale: "MOR",
+      toughness: "TGH",
+      awareness: "AWR",
+    };
+    const rows = Object.entries(stats ?? {})
+      .filter(([, n]) => typeof n === "number" && n !== 0)
+      .map(([k, n]) => {
+        const cls = n > 0 ? "positive" : "negative";
+        return `<span class="roster-trait-item-badge ${cls}">${esc(statAbbr[k] ?? k.toUpperCase())} ${esc(fmtSigned(n))}</span>`;
+      });
+    if (grenadeHitBonusPct > 0) {
+      const pct = Math.round(grenadeHitBonusPct * 1000) / 10;
+      rows.push(`<span class="roster-trait-item-badge positive">Chance to hit with grenades +${esc(String(pct))}%</span>`);
+    }
+    return rows.join("");
+  }
+
+  function buildSoldierTraitEntries(soldier: Soldier): Array<{ title: string; type: string; desc: string; stats?: Record<string, number>; grenadeHitBonusPct?: number; primary?: boolean }> {
+    const entries: Array<{ title: string; type: string; desc: string; stats?: Record<string, number>; grenadeHitBonusPct?: number; primary?: boolean }> = [];
+    const primaryRaw = (soldier.trait_profile?.name ?? "unremarkable").trim();
+    const primaryKey = primaryRaw.toLowerCase().replace(/\s+/g, "_");
+    const codex = TRAIT_CODEX[primaryKey];
+    entries.push({
+      title: toTitle(primaryRaw),
+      type: "Primary",
+      desc: codex?.flavor ?? codex?.description ?? "Original trait rolled at recruitment.",
+      stats: (TraitProfileStats[primaryKey] as Record<string, number> | undefined) ?? undefined,
+      primary: true,
+    });
+    for (const traitId of soldier.earnedTraitIds ?? []) {
+      const def = getEarnedTraitById(traitId);
+      if (!def) continue;
+      entries.push({
+        title: def.name,
+        type: def.kind === "positive" ? "Veterancy" : def.kind === "severe" ? "Severe Scar" : "Scar",
+        desc: def.flavor,
+        stats: def.stats,
+        grenadeHitBonusPct: def.grenadeHitBonusPct ?? 0,
+      });
+    }
+    return entries;
+  }
+
+  function isStrictWeaponSwapAllowed(
+    sourceSoldierId: string,
+    sourceWeapon: Item,
+    destSlotEl: HTMLElement,
+  ): boolean {
+    const soldiers = usePlayerCompanyStore.getState().company?.soldiers ?? [];
+    const sourceSoldier = soldiers.find((s) => s.id === sourceSoldierId);
+    const destSoldierId = destSlotEl.dataset.soldierId;
+    const destSoldier = destSoldierId ? soldiers.find((s) => s.id === destSoldierId) : null;
+    if (!sourceSoldier || !destSoldier) return false;
+
+    if (!weaponWieldOk(sourceWeapon, destSoldier) || !canEquipItemLevel(sourceWeapon, destSoldier)) {
+      return false;
+    }
+
+    const destWeapon = parseSlotItemFromData(destSlotEl);
+    if (isWeaponItem(destWeapon)) {
+      if (!weaponWieldOk(destWeapon, sourceSoldier) || !canEquipItemLevel(destWeapon, sourceSoldier)) {
+        return false;
+      }
+    }
+
+    return true;
+  }
 
   const initHelperDialogTypewriter = () => {
     const textEls = Array.from(document.querySelectorAll(".helper-onboarding-typed-text[data-full-text]")) as HTMLElement[];
@@ -674,9 +789,51 @@ export function eventConfigs() {
 
   const missionsScreenEventConfig: HandlerInitConfig[] = [
     {
+      selector: DOM.missions.filterChipBtn,
+      eventType: "click",
+      callback: (e: Event) => {
+        const chip = e.currentTarget as HTMLElement;
+        const group = chip.dataset.filterGroup;
+        const value = chip.dataset.filterValue;
+        if (!group || !value) return;
+        const filtersRoot = chip.closest(".missions-filters") as HTMLElement | null;
+        if (!filtersRoot) return;
+        if (group === "kind") filtersRoot.dataset.kindFilter = value;
+        if (group === "difficulty") filtersRoot.dataset.difficultyFilter = value;
+        filtersRoot.querySelectorAll(`.missions-filter-chip[data-filter-group="${group}"]`).forEach((el) => {
+          el.classList.toggle("is-active", el === chip);
+        });
+
+        const kindFilter = filtersRoot.dataset.kindFilter ?? "all";
+        const difficultyFilter = filtersRoot.dataset.difficultyFilter ?? "all";
+        const sections = Array.from(document.querySelectorAll(".missions-section-kind")) as HTMLElement[];
+        let visibleCards = 0;
+        sections.forEach((section) => {
+          const cards = Array.from(section.querySelectorAll(".mission-card")) as HTMLElement[];
+          let sectionVisible = false;
+          cards.forEach((card) => {
+            const cardKind = card.dataset.kind ?? "";
+            const cardDifficulty = card.dataset.level ?? "";
+            const kindOk = kindFilter === "all" || cardKind === kindFilter;
+            const diffOk = difficultyFilter === "all" || cardDifficulty === difficultyFilter;
+            const showCard = kindOk && diffOk;
+            card.hidden = !showCard;
+            if (showCard) {
+              visibleCards += 1;
+              sectionVisible = true;
+            }
+          });
+          section.hidden = !sectionVisible;
+        });
+        const empty = document.querySelector(".missions-filter-empty-state") as HTMLElement | null;
+        if (empty) empty.hidden = visibleCards > 0;
+      },
+    },
+    {
       selector: DOM.missions.modeNormalBtn,
       eventType: "click",
       callback: () => {
+        usePlayerCompanyStore.getState().setMissionsResumeState("none", null);
         UiManager.renderMissionsScreen("normal");
       },
     },
@@ -686,6 +843,7 @@ export function eventConfigs() {
       callback: () => {
         const level = usePlayerCompanyStore.getState().companyLevel ?? 1;
         if (level < 2) return;
+        usePlayerCompanyStore.getState().setMissionsResumeState("none", null);
         UiManager.renderMissionsScreen("epic");
       },
     },
@@ -700,6 +858,7 @@ export function eventConfigs() {
       selector: DOM.missions.modeDevBtn,
       eventType: "click",
       callback: () => {
+        usePlayerCompanyStore.getState().setMissionsResumeState("none", null);
         UiManager.renderMissionsScreen("dev");
       },
     },
@@ -769,11 +928,13 @@ export function eventConfigs() {
     const playerDamage = new Map<string, number>();
     const playerDamageTaken = new Map<string, number>();
     const playerAbilitiesUsed = new Map<string, number>();
+    const missionStatsBySoldier = new Map<string, { grenadeThrows: number; grenadeHits: number; turnsBelow20Hp: number }>();
     for (const p of players) {
       playerKills.set(p.id, 0);
       playerDamage.set(p.id, 0);
       playerDamageTaken.set(p.id, 0);
       playerAbilitiesUsed.set(p.id, 0);
+      missionStatsBySoldier.set(p.id, { grenadeThrows: 0, grenadeHits: 0, turnsBelow20Hp: 0 });
     }
     const screen = document.getElementById("combat-screen");
     const missionJson = screen?.getAttribute("data-mission-json");
@@ -787,23 +948,23 @@ export function eventConfigs() {
     }
     const isDevTestCombat = Boolean(missionForCombat?.isDevTest);
     const isDefendObjectiveMission = missionForCombat?.kind === "defend_objective";
+    const missionEncounter = missionForCombat?.encounter;
     const DEFEND_DURATION_MS = 120_000;
-    const DEFEND_REINFORCE_INTERVAL_MS = 20_000;
-    const DEFEND_REINFORCE_SETUP_MS = 2_000;
-    const DEFEND_MAX_ENEMIES = 8;
+    const DEFEND_REINFORCE_INTERVAL_MS = Math.max(0, missionEncounter?.reinforceIntervalMs ?? (isDefendObjectiveMission ? 30_000 : 0));
+    const DEFEND_REINFORCE_SETUP_MS = Math.max(0, missionEncounter?.reinforceSetupMs ?? 2_000);
+    const DEFEND_MAX_ENEMIES = Math.max(1, missionEncounter?.maxConcurrentEnemies ?? 8);
+    const MISSION_TOTAL_ENEMY_BUDGET = Math.max(enemies.length, missionEncounter?.totalEnemyCount ?? enemies.length);
+    const HAS_MISSION_REINFORCEMENTS = MISSION_TOTAL_ENEMY_BUDGET > enemies.length;
     const DEFEND_DEATH_NOTICE_MS = 1_000;
-    const DEFEND_PRESSURE_WINDOW_MS = 30_000;
-    const DEFEND_PRESSURE_EVAL_MS = 10_000;
     const TAKE_COVER_COOLDOWN_MS = 60_000;
-    const DEFEND_HIGH_PRESSURE_DURATION_MS = 20_000;
-    const DEFEND_HIGH_PRESSURE_WAVE_COUNT = 2;
-    const DEFEND_WAVE_STAGGER_MIN_MS = 800;
-    const DEFEND_WAVE_STAGGER_MAX_MS = 1200;
+    const DEFEND_WAVE_STAGGER_MIN_MS = 450;
+    const DEFEND_WAVE_STAGGER_MAX_MS = 750;
     const defendTimerEl = document.getElementById("combat-objective-timer");
     const enemySlotRecycleQueue: number[] = [];
     const ENEMY_SLOT_ORDER = [0, 1, 2, 3, 5, 6, 4, 7];
     let reinforcementSerial = enemies.length;
     const allCombatants = [...players, ...enemies];
+    let nextLowHpSampleAt = Date.now() + 1000;
 
     type CombatantDomRefs = {
       card: HTMLElement;
@@ -1609,12 +1770,16 @@ export function eventConfigs() {
 
     const SUPPRESS_COOLDOWN_MS = 60_000;
 
-    function executeSuppress(user: Combatant, target: Combatant) {
-      playerAbilitiesUsed.set(user.id, (playerAbilitiesUsed.get(user.id) ?? 0) + 1);
+    function executeSuppress(user: Combatant, target: Combatant, opts?: { fromEnemyAi?: boolean }) {
+      if (user.side === "player") {
+        playerAbilitiesUsed.set(user.id, (playerAbilitiesUsed.get(user.id) ?? 0) + 1);
+      }
       user.suppressCooldownUntil = Date.now() + SUPPRESS_COOLDOWN_MS;
-      suppressTargetingMode = null;
-      document.querySelectorAll("#combat-enemies-grid .combat-card-grenade-target").forEach((el) => el.classList.remove("combat-card-grenade-target"));
-      closeAbilitiesPopup();
+      if (!opts?.fromEnemyAi) {
+        suppressTargetingMode = null;
+        document.querySelectorAll("#combat-enemies-grid .combat-card-grenade-target").forEach((el) => el.classList.remove("combat-card-grenade-target"));
+        closeAbilitiesPopup();
+      }
 
       const attackerCard = getCombatantCard(user.id);
       const targetCard = getCombatantCard(target.id);
@@ -1672,6 +1837,9 @@ export function eventConfigs() {
           setTimeout(() => popup.remove(), 1500);
           markCombatantDirty(target.id, { hp: false, status: true, speed: false });
         }
+        if (user.side === "enemy") {
+          user.enemySuppressUses = Math.max(0, (user.enemySuppressUses ?? 0) - 1);
+        }
         updateCombatUI();
       }, SUPPRESS_BURST_INTERVAL_MS * 2);
     }
@@ -1692,6 +1860,10 @@ export function eventConfigs() {
       const consumeThrowable = options?.consumeThrowable ?? true;
       const trackPlayerStats = options?.trackPlayerStats ?? true;
       const resetTargetingUi = options?.resetTargetingUi ?? true;
+      if (trackPlayerStats) {
+        const ms = missionStatsBySoldier.get(thrower.id);
+        if (ms) ms.grenadeThrows += 1;
+      }
       const isThrowingKnife = grenade.item.id === "tk21_throwing_knife";
       if (!isThrowingKnife) thrower.grenadeCooldownUntil = Date.now() + GRENADE_COOLDOWN_MS;
 
@@ -1880,6 +2052,12 @@ export function eventConfigs() {
         }
         if (trackPlayerStats) {
           playerAbilitiesUsed.set(thrower.id, (playerAbilitiesUsed.get(thrower.id) ?? 0) + 1);
+          const hitCount = (result.primary.hit && !result.primary.evaded ? 1 : 0)
+            + result.splash.filter((s) => s.hit && !s.evaded).length;
+          if (hitCount > 0) {
+            const ms = missionStatsBySoldier.get(thrower.id);
+            if (ms) ms.grenadeHits += hitCount;
+          }
           if (killsFromGrenade > 0) {
             playerKills.set(thrower.id, (playerKills.get(thrower.id) ?? 0) + killsFromGrenade);
           }
@@ -2211,17 +2389,12 @@ export function eventConfigs() {
     function startCombatLoop() {
       const now = Date.now();
       const defendEndAt = isDefendObjectiveMission ? now + DEFEND_DURATION_MS : Number.POSITIVE_INFINITY;
-      let nextDefendReinforcementAt = isDefendObjectiveMission ? now + DEFEND_REINFORCE_INTERVAL_MS : Number.POSITIVE_INFINITY;
-      let defendHighPressureUntil = Number.NEGATIVE_INFINITY;
-      let nextDefendPressureEvalAt = now + DEFEND_PRESSURE_EVAL_MS;
-      const playerDownNoticedAt = new Map<string, number>();
-      const manhuntTargetEnemy = enemies.find((e) => e.isManhuntTarget);
-      const canUseManhuntGrenade = !!manhuntTargetEnemy;
-      let manhuntGrenadeUsed = false;
-      let nextManhuntGrenadeCheckAt = canUseManhuntGrenade
-        ? now + 3500 + Math.floor(Math.random() * 6000)
+      let nextDefendReinforcementAt = HAS_MISSION_REINFORCEMENTS
+        ? now + (DEFEND_REINFORCE_INTERVAL_MS > 0 ? DEFEND_REINFORCE_INTERVAL_MS : 0)
         : Number.POSITIVE_INFINITY;
       const enemyMedicState = new Map<string, { threshold: number; nextCheckAt: number }>();
+      const enemySuppressState = new Map<string, { nextCheckAt: number }>();
+      const enemyGrenadeState = new Map<string, { nextCheckAt: number }>();
       const enemyCoverState = new Map<string, { nextCheckAt: number }>();
       let nextEnemyCoverGlobalAt = now + 900 + Math.floor(Math.random() * 800);
       for (const e of enemies) {
@@ -2229,6 +2402,18 @@ export function eventConfigs() {
         enemyMedicState.set(e.id, {
           threshold: 0.3 + Math.random() * 0.3, // 30%..60% randomized per medic
           nextCheckAt: now + 1500 + Math.floor(Math.random() * 2000),
+        });
+      }
+      for (const e of enemies) {
+        if ((e.enemySuppressUses ?? 0) <= 0) continue;
+        enemySuppressState.set(e.id, {
+          nextCheckAt: now + 2200 + Math.floor(Math.random() * 2600),
+        });
+      }
+      for (const e of enemies) {
+        if ((e.enemyGrenadeThrowsRemaining ?? 0) <= 0) continue;
+        enemyGrenadeState.set(e.id, {
+          nextCheckAt: now + 2600 + Math.floor(Math.random() * 3200),
         });
       }
       for (const e of enemies) {
@@ -2243,7 +2428,24 @@ export function eventConfigs() {
       }
       markAllCombatantsDirty();
       if (isDefendObjectiveMission) updateDefendObjectiveTimer(now, defendEndAt);
-      function spawnDefendReinforcement(spawnAt: number): boolean {
+      const reinforcementRolesLeft = {
+        rifleman: Math.max(0, missionEncounter?.rolesReinforcement?.rifleman ?? 0),
+        support: Math.max(0, missionEncounter?.rolesReinforcement?.support ?? 0),
+        medic: Math.max(0, missionEncounter?.rolesReinforcement?.medic ?? 0),
+      };
+      function pickReinforcementRole(): "rifleman" | "support" | "medic" {
+        const pool: Array<"rifleman" | "support" | "medic"> = [];
+        for (let i = 0; i < reinforcementRolesLeft.rifleman; i++) pool.push("rifleman");
+        for (let i = 0; i < reinforcementRolesLeft.support; i++) pool.push("support");
+        for (let i = 0; i < reinforcementRolesLeft.medic; i++) pool.push("medic");
+        if (pool.length <= 0) return "rifleman";
+        const picked = pool[Math.floor(Math.random() * pool.length)];
+        reinforcementRolesLeft[picked] = Math.max(0, reinforcementRolesLeft[picked] - 1);
+        return picked;
+      }
+      function spawnMissionReinforcement(spawnAt: number): boolean {
+        if (!HAS_MISSION_REINFORCEMENTS) return false;
+        if (enemies.length >= MISSION_TOTAL_ENEMY_BUDGET) return false;
         if (getAliveEnemyCount() >= DEFEND_MAX_ENEMIES) return false;
         const slot = getNextOpenEnemySlot();
         if (slot == null) return false;
@@ -2251,62 +2453,73 @@ export function eventConfigs() {
           enemies.reduce((sum, e) => sum + (e.level ?? 1), 0) / Math.max(1, enemies.length),
         )));
         const isEpicMission = !!(missionForCombat?.isEpic ?? missionForCombat?.rarity === "epic");
+        const role = pickReinforcementRole();
         const newcomer = createEnemyCombatant(
           reinforcementSerial++,
           DEFEND_MAX_ENEMIES,
           enemyBaseLevel,
           isEpicMission,
           missionForCombat?.kind,
+          undefined,
+          undefined,
+          { designation: role },
         );
+        newcomer.enemyMedkitUses = role === "medic" ? (missionEncounter?.medicHealsPerMedic ?? 0) : 0;
+        newcomer.enemySuppressUses = role === "support" ? (missionEncounter?.supportSuppressUses ?? 0) : 0;
+        newcomer.enemyGrenadeThrowsRemaining = 0;
         newcomer.enemySlotIndex = slot;
         newcomer.setupUntil = spawnAt + DEFEND_REINFORCE_SETUP_MS;
         enemies.push(newcomer);
         allCombatants.push(newcomer);
+        if (role === "medic") {
+          enemyMedicState.set(newcomer.id, {
+            threshold: 0.3 + Math.random() * 0.2,
+            nextCheckAt: spawnAt + 1800 + Math.floor(Math.random() * 1600),
+          });
+        }
+        if ((newcomer.enemySuppressUses ?? 0) > 0) {
+          enemySuppressState.set(newcomer.id, {
+            nextCheckAt: spawnAt + 2200 + Math.floor(Math.random() * 1600),
+          });
+        }
+        enemyCoverState.set(newcomer.id, { nextCheckAt: spawnAt + 1000 + Math.floor(Math.random() * 1200) });
         insertEnemyCardBySlot(newcomer, true);
         nextAttackAt.set(newcomer.id, newcomer.setupUntil + 120);
         markCombatantDirty(newcomer.id, { hp: true, status: true, speed: true });
         return true;
       }
-      function scheduleDefendReinforcementWave(spawnAt: number, count: number): number {
+      function scheduleMissionReinforcementWave(spawnAt: number, count: number): number {
         let spawned = 0;
         for (let i = 0; i < count; i++) {
           const delay = i === 0
             ? 0
             : DEFEND_WAVE_STAGGER_MIN_MS + Math.floor(Math.random() * (DEFEND_WAVE_STAGGER_MAX_MS - DEFEND_WAVE_STAGGER_MIN_MS + 1));
           if (delay === 0) {
-            if (spawnDefendReinforcement(spawnAt)) spawned += 1;
+            if (spawnMissionReinforcement(spawnAt)) spawned += 1;
             continue;
           }
           window.setTimeout(() => {
             if (combatWinner) return;
-            spawnDefendReinforcement(Date.now());
+            spawnMissionReinforcement(Date.now());
           }, delay);
         }
         return spawned;
       }
-      function getPlayerDownsInWindow(at: number): number {
-        let count = 0;
-        for (const ts of playerDownNoticedAt.values()) {
-          if (at - ts <= DEFEND_PRESSURE_WINDOW_MS) count += 1;
-        }
-        return count;
-      }
-      function getEnemyKillsInWindow(at: number): number {
-        let count = 0;
-        for (const e of enemies) {
-          if (e.deathNoticedAt == null) continue;
-          if (at - e.deathNoticedAt <= DEFEND_PRESSURE_WINDOW_MS) count += 1;
-        }
-        return count;
-      }
-      function getAvgAlivePlayerHpPct(): number {
-        const alive = players.filter((p) => p.hp > 0 && !p.downState && p.maxHp > 0);
-        if (alive.length === 0) return 0;
-        const sum = alive.reduce((a, p) => a + (p.hp / p.maxHp), 0);
-        return sum / alive.length;
+      function getEnemyDefeatedCount(): number {
+        return enemies.filter((e) => e.hp <= 0 || e.downState || e.removedFromCombat).length;
       }
       function tick() {
         const now = Date.now();
+        if (now >= nextLowHpSampleAt) {
+          for (const p of players) {
+            if (p.hp <= 0 || p.downState || p.maxHp <= 0) continue;
+            if ((p.hp / p.maxHp) < 0.2) {
+              const ms = missionStatsBySoldier.get(p.id);
+              if (ms) ms.turnsBelow20Hp += 1;
+            }
+          }
+          nextLowHpSampleAt = now + 1000;
+        }
         if (isDefendObjectiveMission) updateDefendObjectiveTimer(now, defendEndAt);
         const burnEvents = applyBurnTicks(allCombatants, now, lastBurnTickTimeRef);
         const bleedEvents = applyBleedTicks(allCombatants, now, lastBleedTickTimeRef);
@@ -2335,12 +2548,7 @@ export function eventConfigs() {
           markCombatantDirty(ev.targetId, { hp: true, status: true, speed: false });
         }
         clearExpiredEffects(allCombatants, now);
-        if (isDefendObjectiveMission) {
-          for (const p of players) {
-            if (p.downState && !playerDownNoticedAt.has(p.id)) {
-              playerDownNoticedAt.set(p.id, now);
-            }
-          }
+        if (HAS_MISSION_REINFORCEMENTS) {
           for (const e of enemies) {
             if ((e.hp > 0 && !e.downState) || e.removedFromCombat) continue;
             if (e.deathNoticedAt == null) e.deathNoticedAt = now;
@@ -2358,35 +2566,27 @@ export function eventConfigs() {
               enemySlotRecycleQueue.push(e.enemySlotIndex);
             }
           }
-          if (now >= nextDefendPressureEvalAt) {
-            const playerDownsInWindow = getPlayerDownsInWindow(now);
-            const enemyKillsInWindow = getEnemyKillsInWindow(now);
-            const avgPlayerHpPct = getAvgAlivePlayerHpPct();
-            const dominating = playerDownsInWindow === 0 && enemyKillsInWindow >= 3 && avgPlayerHpPct >= 0.75;
-            const struggling = playerDownsInWindow > 0 || avgPlayerHpPct < 0.45;
-            if (dominating) {
-              defendHighPressureUntil = now + DEFEND_HIGH_PRESSURE_DURATION_MS;
-            } else if (struggling) {
-              defendHighPressureUntil = Number.NEGATIVE_INFINITY;
-            }
-            nextDefendPressureEvalAt = now + DEFEND_PRESSURE_EVAL_MS;
-          }
-          const highPressure = now < defendHighPressureUntil;
-          const waveCount = highPressure ? DEFEND_HIGH_PRESSURE_WAVE_COUNT : 1;
           if (getAliveEnemyCount() === 0) {
-            if (scheduleDefendReinforcementWave(now, waveCount) > 0) {
-              nextDefendReinforcementAt = now + DEFEND_REINFORCE_INTERVAL_MS;
+            if (scheduleMissionReinforcementWave(now, 1) > 0) {
+              nextDefendReinforcementAt = now + (DEFEND_REINFORCE_INTERVAL_MS > 0 ? DEFEND_REINFORCE_INTERVAL_MS : 0);
             }
           } else if (now >= nextDefendReinforcementAt) {
-            scheduleDefendReinforcementWave(now, waveCount);
-            nextDefendReinforcementAt = now + DEFEND_REINFORCE_INTERVAL_MS;
+            scheduleMissionReinforcementWave(now, 1);
+            nextDefendReinforcementAt = now + (DEFEND_REINFORCE_INTERVAL_MS > 0 ? DEFEND_REINFORCE_INTERVAL_MS : 0);
           }
         }
         assignTargets(players, enemies, targets, now);
+        const defeatedEnemies = getEnemyDefeatedCount();
         if (isDefendObjectiveMission) {
           combatWinner = players.every((p) => p.hp <= 0 || p.downState)
             ? "enemy"
-            : now >= defendEndAt
+            : defeatedEnemies >= MISSION_TOTAL_ENEMY_BUDGET || now >= defendEndAt
+              ? "player"
+              : null;
+        } else if (HAS_MISSION_REINFORCEMENTS) {
+          combatWinner = players.every((p) => p.hp <= 0 || p.downState)
+            ? "enemy"
+            : defeatedEnemies >= MISSION_TOTAL_ENEMY_BUDGET
               ? "player"
               : null;
         } else {
@@ -2398,8 +2598,25 @@ export function eventConfigs() {
           if (missionDetailsPopup) missionDetailsPopup.hidden = true;
           const quitConfirmPopup = document.getElementById("combat-quit-confirm-popup");
           if (quitConfirmPopup) quitConfirmPopup.hidden = true;
+          if (defendTimerEl) defendTimerEl.hidden = true;
           updateCombatUI();
           const victory = combatWinner === "player";
+          const playOutcomeBannerThen = (isVictory: boolean, done: () => void) => {
+            const combatMain = document.querySelector("#combat-screen .combat-main") as HTMLElement | null;
+            if (!combatMain) {
+              done();
+              return;
+            }
+            combatMain.querySelector(".combat-outcome-banner")?.remove();
+            const banner = document.createElement("div");
+            banner.className = `combat-outcome-banner ${isVictory ? "combat-outcome-victory" : "combat-outcome-failed"}`;
+            banner.textContent = isVictory ? "MISSION COMPLETE!" : "MISSION FAILED!";
+            combatMain.appendChild(banner);
+            window.setTimeout(() => {
+              banner.remove();
+              done();
+            }, 1050);
+          };
           const showSummary = () => {
             const screen = document.getElementById("combat-screen");
             const missionJson = screen?.getAttribute("data-mission-json");
@@ -2412,6 +2629,7 @@ export function eventConfigs() {
               }
             }
             const kiaIds = players.filter((p) => p.downState === "kia").map((p) => p.id);
+            const incapIds = players.filter((p) => p.downState === "incapacitated").map((p) => p.id);
             const missionName = mission?.name ?? "Unknown";
             const isDevTest = Boolean(mission?.isDevTest);
             const kiaKilledBy = new Map<string, string>();
@@ -2423,6 +2641,9 @@ export function eventConfigs() {
               usePlayerCompanyStore.getState().recordSoldierCombatStats(participantIds, playerKills, true);
               usePlayerCompanyStore.getState().processCombatKIA(kiaIds, missionName, playerKills, kiaKilledBy);
             }
+            const traitAwardsBySoldier = !isDevTest
+              ? usePlayerCompanyStore.getState().awardSoldierVeterancyTraits(participantIds, playerKills, true, victory, missionStatsBySoldier, incapIds)
+              : new Map<string, EarnedTraitAward[]>();
             const survivorIds = players.filter((p) => !kiaIds.includes(p.id)).map((p) => p.id);
             const lowHealthSurvivorIds = players
               .filter((p) => !kiaIds.includes(p.id) && p.maxHp > 0 && (p.hp / p.maxHp) < 0.3)
@@ -2477,7 +2698,7 @@ export function eventConfigs() {
             const st = usePlayerCompanyStore.getState();
             const companyExpTotal = st.company?.experience ?? st.companyExperience ?? 0;
             const companyLvlTotal = st.company?.level ?? st.companyLevel ?? 1;
-            const summaryData = buildCombatSummaryData(victory, mission, players, playerKills, leveledUpIds.size, rewardItems, lootItems, leveledUpIds, newLevels, soldiersAfterCombat, xpEarnedBySoldier, companyXpEarned, companyExpTotal, companyLvlTotal);
+            const summaryData = buildCombatSummaryData(victory, mission, players, playerKills, leveledUpIds.size, rewardItems, lootItems, leveledUpIds, newLevels, soldiersAfterCombat, xpEarnedBySoldier, companyXpEarned, companyExpTotal, companyLvlTotal, traitAwardsBySoldier);
             const container = document.getElementById("combat-summary-container");
             if (container) {
               container.innerHTML = combatSummaryTemplate(summaryData);
@@ -2485,11 +2706,7 @@ export function eventConfigs() {
               if (overlay) overlay.classList.add("combat-summary-visible");
             }
           };
-          if (victory) {
-            window.setTimeout(showSummary, 2000);
-          } else {
-            showSummary();
-          }
+          playOutcomeBannerThen(victory, showSummary);
           return;
         }
         const all = allCombatants;
@@ -2537,17 +2754,58 @@ export function eventConfigs() {
           }
         }
 
-        // Manhunt target: one random grenade throw at some point during combat.
-        if (!didAttack && canUseManhuntGrenade && !manhuntGrenadeUsed && now >= nextManhuntGrenadeCheckAt) {
-          const thrower = enemies.find((e) => e.isManhuntTarget && e.hp > 0 && !e.downState);
-          const alivePlayers = players.filter((p) => p.hp > 0 && !p.downState);
-          const throwerCanAct = !!thrower
-            && !isInCover(thrower, now)
-            && !isStunned(thrower, now)
-            && !((thrower.setupUntil ?? 0) > now);
-          if (!throwerCanAct || alivePlayers.length === 0) {
-            nextManhuntGrenadeCheckAt = now + 1200;
-          } else if (Math.random() < 0.35) {
+        // Enemy support: suppress with staggered timing and limited uses.
+        if (!didAttack) {
+          const supports = enemies.filter((e) =>
+            (e.designation ?? "").toLowerCase() === "support"
+            && (e.enemySuppressUses ?? 0) > 0
+            && e.hp > 0
+            && !e.downState
+            && !isInCover(e, now)
+            && !isStunned(e, now)
+            && (e.setupUntil ?? 0) <= now
+            && (e.suppressCooldownUntil ?? 0) <= now
+          );
+          for (const support of supports) {
+            const st = enemySuppressState.get(support.id);
+            if (!st || now < st.nextCheckAt) continue;
+            const viableTargets = players
+              .filter((p) => p.hp > 0 && !p.downState)
+              .sort((a, b) => (a.hp / Math.max(1, a.maxHp)) - (b.hp / Math.max(1, b.maxHp)));
+            const target = viableTargets[0];
+            if (!target) {
+              st.nextCheckAt = now + 1200 + Math.floor(Math.random() * 1200);
+              continue;
+            }
+            if (Math.random() > 0.42) {
+              st.nextCheckAt = now + 900 + Math.floor(Math.random() * 1600);
+              continue;
+            }
+            executeSuppress(support, target, { fromEnemyAi: true });
+            st.nextCheckAt = now + 2600 + Math.floor(Math.random() * 1900);
+            nextAttackAt.set(support.id, getNextAttackAt(support, now));
+            didAttack = true;
+            break;
+          }
+        }
+
+        // Enemy grenadiers: limited throws with staggered checks.
+        if (!didAttack) {
+          for (const thrower of enemies) {
+            if ((thrower.enemyGrenadeThrowsRemaining ?? 0) <= 0) continue;
+            if (thrower.hp <= 0 || thrower.downState || isInCover(thrower, now) || isStunned(thrower, now)) continue;
+            if ((thrower.setupUntil ?? 0) > now) continue;
+            const st = enemyGrenadeState.get(thrower.id);
+            if (!st || now < st.nextCheckAt) continue;
+            const alivePlayers = players.filter((p) => p.hp > 0 && !p.downState);
+            if (alivePlayers.length === 0) {
+              st.nextCheckAt = now + 1200;
+              continue;
+            }
+            if (Math.random() > 0.4) {
+              st.nextCheckAt = now + 1000 + Math.floor(Math.random() * 1600);
+              continue;
+            }
             const target = alivePlayers[Math.floor(Math.random() * alivePlayers.length)];
             const grenadePool = [
               ThrowableItems.common.m3_frag_grenade,
@@ -2561,11 +2819,11 @@ export function eventConfigs() {
               { item: grenadeItem, inventoryIndex: -1 },
               { consumeThrowable: false, trackPlayerStats: false, targetPool: alivePlayers, resetTargetingUi: false },
             );
+            thrower.enemyGrenadeThrowsRemaining = Math.max(0, (thrower.enemyGrenadeThrowsRemaining ?? 0) - 1);
+            st.nextCheckAt = now + 2400 + Math.floor(Math.random() * 2200);
             nextAttackAt.set(thrower.id, getNextAttackAt(thrower, now));
-            manhuntGrenadeUsed = true;
             didAttack = true;
-          } else {
-            nextManhuntGrenadeCheckAt = now + 900 + Math.floor(Math.random() * 1400);
+            break;
           }
         }
 
@@ -2840,6 +3098,8 @@ export function eventConfigs() {
       combatStarted = true;
       const btn = s_(DOM.combat.beginBtn) as HTMLButtonElement | null;
       if (btn) btn.setAttribute("hidden", "");
+      const beginOverlay = document.getElementById("combat-begin-overlay") as HTMLElement | null;
+      if (beginOverlay) beginOverlay.setAttribute("hidden", "");
       primeCombatantDomCache();
       markAllCombatantsDirty();
       startCombatLoop();
@@ -2981,6 +3241,18 @@ export function eventConfigs() {
         },
       },
       {
+        selector: DOM.combat.backToReadyRoomBtn,
+        eventType: "click",
+        callback: () => {
+          if (combatStarted) return;
+          if (missionForCombat) {
+            UiManager.renderReadyRoomScreen(missionForCombat);
+            return;
+          }
+          UiManager.renderMissionsScreen();
+        },
+      },
+      {
         selector: DOM.combat.missionDetailsBtn,
         eventType: "click",
         callback: () => {
@@ -3062,7 +3334,56 @@ export function eventConfigs() {
         selector: "#combat-screen",
         eventType: "click",
         callback: (e: Event) => {
-          const target = (e.target as HTMLElement).closest("#combat-summary-return");
+          const clicked = e.target as HTMLElement;
+          const summaryInner = clicked.closest(".combat-summary-inner") as HTMLElement | null;
+          if (!clicked.closest(".combat-summary-new-trait-btn") && !clicked.closest(".combat-summary-trait-popup")) {
+            summaryInner?.querySelector(".combat-summary-trait-popup")?.remove();
+          }
+          const traitBtn = clicked.closest(".combat-summary-new-trait-btn") as HTMLButtonElement | null;
+          if (traitBtn) {
+            e.stopPropagation();
+            const card = traitBtn.closest(".combat-card") as HTMLElement | null;
+            if (!card) return;
+            const hostSummaryInner = card.closest(".combat-summary-inner") as HTMLElement | null;
+            hostSummaryInner?.querySelector(".combat-summary-trait-popup")?.remove();
+            let awards: EarnedTraitAward[] = [];
+            try {
+              const parsed = JSON.parse(traitBtn.dataset.traitsJson ?? "[]") as unknown;
+              if (Array.isArray(parsed)) {
+                awards = parsed.filter((x): x is EarnedTraitAward => typeof x === "object" && x != null && "id" in x) as EarnedTraitAward[];
+              }
+            } catch {
+              awards = [];
+            }
+            if (awards.length === 0) return;
+            const popup = document.createElement("div");
+            popup.className = "combat-summary-trait-popup";
+            popup.innerHTML = awards.map((a) => {
+              const badges = traitStatBadgesHtml(a.stats, a.grenadeHitBonusPct ?? 0);
+              return `<div class="combat-summary-trait-popup-entry">
+                <div class="combat-summary-trait-popup-title">${esc(a.name)}</div>
+                <div class="combat-summary-trait-popup-text">${esc(a.flavor)}</div>
+                ${badges ? `<div class="combat-summary-trait-popup-badges">${badges}</div>` : ""}
+              </div>`;
+            }).join("");
+            if (hostSummaryInner) {
+              const cardRect = card.getBoundingClientRect();
+              const hostRect = hostSummaryInner.getBoundingClientRect();
+              const popupWidth = Math.min(360, Math.max(240, hostRect.width - 20));
+              popup.style.width = `${popupWidth}px`;
+              const maxLeft = Math.max(10, hostRect.width - popupWidth - 10);
+              const left = Math.max(10, Math.min(maxLeft, cardRect.left - hostRect.left - 10));
+              const top = Math.max(56, Math.min(hostRect.height - 120, cardRect.top - hostRect.top + 10));
+              popup.style.left = `${left}px`;
+              popup.style.top = `${top}px`;
+              hostSummaryInner.appendChild(popup);
+            } else {
+              card.appendChild(popup);
+            }
+            window.setTimeout(() => popup.remove(), 3800);
+            return;
+          }
+          const target = clicked.closest("#combat-summary-return");
           if (!target) return;
           e.stopPropagation();
           if (!isDevTestCombat) {
@@ -3574,7 +3895,9 @@ export function eventConfigs() {
                 const destType = (destSlot as HTMLElement).dataset.slotType as "weapon" | "armor" | "equipment";
                 if (destSlot === slotEl) return;
                 let canMove = false;
-                if (destType === "weapon" && (slotItem.type === "ballistic_weapon" || slotItem.type === "melee_weapon") && weaponWieldOk(slotItem, s)) canMove = true;
+                if (destType === "weapon" && isWeaponItem(slotItem)) {
+                  canMove = isStrictWeaponSwapAllowed(soldierId, slotItem, destSlot as HTMLElement);
+                }
                 else if (destType === "armor" && slotItem.type === "armor") canMove = true;
                 else if (destType === "equipment" && itemFitsSlot(slotItem, "equipment")) canMove = true;
                 if (canMove) (destSlot as HTMLElement).classList.add("equip-slot-highlight");
@@ -3650,74 +3973,30 @@ export function eventConfigs() {
         if (!btn || !popup) return;
 
         const rawName = btn.dataset.soldierName ?? "Soldier";
+        const soldierId = btn.dataset.soldierId ?? "";
+        const soldier = usePlayerCompanyStore.getState().company?.soldiers?.find((s) => s.id === soldierId);
         const titleEl = document.getElementById("roster-traits-popup-title");
         const listEl = document.getElementById("roster-traits-popup-list");
         if (!titleEl || !listEl) return;
 
         titleEl.textContent = `${rawName} Traits`;
-        let traits: string[] = [];
-        try {
-          const parsed = JSON.parse(btn.dataset.traitsJson ?? "[]") as unknown;
-          if (Array.isArray(parsed)) {
-            traits = parsed
-              .filter((v): v is string => typeof v === "string")
-              .map((v) => v.trim())
-              .filter((v) => v.length > 0);
-          }
-        } catch {
-          traits = [];
-        }
-
-        const esc = (v: string) =>
-          String(v)
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;");
-        const toTitle = (raw: string) =>
-          raw
-            .replace(/_/g, " ")
-            .replace(/\s+/g, " ")
-            .trim()
-            .replace(/\b\w/g, (m) => m.toUpperCase());
-        const statAbbr: Record<string, string> = {
-          hit_points: "HP",
-          dexterity: "DEX",
-          morale: "MOR",
-          toughness: "TGH",
-          awareness: "AWR",
-        };
-        const fmtNum = (n: number) => `${n > 0 ? "+" : ""}${n}`;
-        const traitEntryHtml = (traitRaw: string, idx: number): string => {
-          const key = traitRaw.trim().toLowerCase().replace(/\s+/g, "_");
-          const title = toTitle(traitRaw);
-          const codex = TRAIT_CODEX[key];
-          const stats = (TraitProfileStats[key] as Record<string, number> | undefined) ?? undefined;
-          const statBadges = stats
-            ? Object.entries(stats)
-              .filter(([, n]) => typeof n === "number" && n !== 0)
-              .map(([k, n]) => {
-                const cls = n > 0 ? "positive" : "negative";
-                return `<span class="roster-trait-item-badge ${cls}">${esc(statAbbr[k] ?? k.toUpperCase())} ${esc(fmtNum(n))}</span>`;
-              })
-              .join("")
-            : "";
-          const desc = codex?.description ?? "No codex details yet. Reserved for future trait/injury systems.";
-          const typeLabel = idx === 0 ? "Primary" : "Trait";
-          return `<li class="roster-traits-popup-item${idx === 0 ? " roster-traits-popup-primary" : ""}">
-            <div class="roster-trait-item-head">
-              <span class="roster-trait-item-title">${esc(title)}</span>
-              <span class="roster-trait-item-type">${typeLabel}</span>
-            </div>
-            ${statBadges ? `<div class="roster-trait-item-badges">${statBadges}</div>` : ""}
-            <div class="roster-trait-item-desc">${esc(desc)}</div>
-          </li>`;
-        };
-
-        if (traits.length === 0) {
+        if (!soldier) {
           listEl.innerHTML = `<li class="roster-traits-popup-empty">No traits recorded yet.</li>`;
         } else {
-          listEl.innerHTML = traits.map((trait, idx) => traitEntryHtml(trait, idx)).join("");
+          const entries = buildSoldierTraitEntries(soldier);
+          listEl.innerHTML = entries
+            .map((entry, idx) => {
+              const statBadges = traitStatBadgesHtml(entry.stats, entry.grenadeHitBonusPct ?? 0);
+              return `<li class="roster-traits-popup-item${entry.primary ? " roster-traits-popup-primary" : ""}">
+                <div class="roster-trait-item-head">
+                  <span class="roster-trait-item-title">${esc(entry.title)}</span>
+                  <span class="roster-trait-item-type">${esc(entry.type)}</span>
+                </div>
+                ${statBadges ? `<div class="roster-trait-item-badges">${statBadges}</div>` : ""}
+                <div class="roster-trait-item-desc">${esc(entry.desc)}</div>
+              </li>${idx < entries.length - 1 ? '<li class="roster-traits-popup-sep" aria-hidden="true"></li>' : ""}`;
+            })
+            .join("");
         }
         popup.removeAttribute("hidden");
       },
@@ -4188,8 +4467,20 @@ export function eventConfigs() {
     const slotType = selectedSlot.dataset.slotType as "weapon" | "armor" | "equipment";
     const screen = document.getElementById("formation-screen");
     if (!screen || !slotType) return;
+    if (slotType !== "weapon") {
+      screen.querySelectorAll(`.formation-equip-slot[data-slot-type="${slotType}"]`).forEach((el) => {
+        if (el !== selectedSlot) (el as HTMLElement).classList.add("formation-equip-slot-highlight");
+      });
+      return;
+    }
+    const sourceSoldierId = selectedSlot.dataset.soldierId;
+    const sourceWeapon = parseSlotItemFromData(selectedSlot);
+    if (!sourceSoldierId || !isWeaponItem(sourceWeapon)) return;
     screen.querySelectorAll(`.formation-equip-slot[data-slot-type="${slotType}"]`).forEach((el) => {
-      if (el !== selectedSlot) (el as HTMLElement).classList.add("formation-equip-slot-highlight");
+      if (el === selectedSlot) return;
+      if (isStrictWeaponSwapAllowed(sourceSoldierId, sourceWeapon, el as HTMLElement)) {
+        (el as HTMLElement).classList.add("formation-equip-slot-highlight");
+      }
     });
   }
 
@@ -4338,8 +4629,20 @@ export function eventConfigs() {
     const slotType = selectedSlot.dataset.slotType as "weapon" | "armor" | "equipment";
     const screen = document.getElementById("ready-room-screen");
     if (!screen || !slotType) return;
+    if (slotType !== "weapon") {
+      screen.querySelectorAll(`.ready-room-equip-slot[data-slot-type="${slotType}"]`).forEach((el) => {
+        if (el !== selectedSlot) (el as HTMLElement).classList.add("ready-room-equip-slot-highlight");
+      });
+      return;
+    }
+    const sourceSoldierId = selectedSlot.dataset.soldierId;
+    const sourceWeapon = parseSlotItemFromData(selectedSlot);
+    if (!sourceSoldierId || !isWeaponItem(sourceWeapon)) return;
     screen.querySelectorAll(`.ready-room-equip-slot[data-slot-type="${slotType}"]`).forEach((el) => {
-      if (el !== selectedSlot) (el as HTMLElement).classList.add("ready-room-equip-slot-highlight");
+      if (el === selectedSlot) return;
+      if (isStrictWeaponSwapAllowed(sourceSoldierId, sourceWeapon, el as HTMLElement)) {
+        (el as HTMLElement).classList.add("ready-room-equip-slot-highlight");
+      }
     });
   }
 
@@ -4388,7 +4691,8 @@ export function eventConfigs() {
         const mission = json ? JSON.parse(json) : null;
         if (!mission) return;
         const btn = s_(DOM.readyRoom.proceedBtn);
-        if (btn?.classList.contains("disabled")) return;
+        if (btn?.classList.contains("disabled") || (btn as HTMLButtonElement | null)?.disabled) return;
+        usePlayerCompanyStore.getState().setMissionsResumeState("none", null);
         if (!mission?.isDevTest) {
           const store = usePlayerCompanyStore.getState();
           const company = store.company;
@@ -4398,10 +4702,34 @@ export function eventConfigs() {
             .slice(0, activeCount)
             .map((id) => (id ? getSoldierById(company, id) : null))
             .filter((s): s is NonNullable<typeof s> => s != null);
+          const minEnergy = 5;
+          const lowEnergy = activeSoldiers.filter((s) => (s.energy ?? 100) < minEnergy);
+          if (lowEnergy.length > 0) return;
           store.syncCombatHpToSoldiers(activeSoldiers.map((s) => ({ id: s.id, hp: s.attributes?.hit_points ?? 0 })));
         }
         console.log("Proceed to combat", mission);
         UiManager.renderCombatScreen(mission);
+      },
+    },
+    {
+      selector: DOM.readyRoom.missionsBtn,
+      eventType: "click",
+      callback: () => {
+        const st = usePlayerCompanyStore.getState();
+        st.setMissionsResumeState("none", null);
+        const mode = st.missionsViewMode;
+        UiManager.renderMissionsScreen(mode === "menu" ? "normal" : mode);
+      },
+    },
+    {
+      selector: DOM.readyRoom.restBtn,
+      eventType: "click",
+      callback: () => {
+        UiManager.renderRosterScreen();
+        window.setTimeout(() => {
+          const btn = document.getElementById("roster-rest-btn") as HTMLButtonElement | null;
+          if (btn) btn.click();
+        }, 0);
       },
     },
     {
@@ -4526,9 +4854,8 @@ export function eventConfigs() {
           if (btn.getAttribute("aria-disabled") === "true") return;
           const trooperId = btn.dataset.trooperId;
           if (!trooperId) return;
-          const soldier = guided
-            ? (st.onboardingRecruitSoldier?.id === trooperId ? st.onboardingRecruitSoldier : null)
-            : st.marketAvailableTroops.find((s) => s.id === trooperId);
+          const soldier = st.marketAvailableTroops.find((s) => s.id === trooperId)
+            ?? (st.onboardingRecruitSoldier?.id === trooperId ? st.onboardingRecruitSoldier : null);
           if (!soldier) return;
           const result = st.tryAddToRecruitStaging(soldier);
           if (result.success) {

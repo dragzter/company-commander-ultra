@@ -1,5 +1,6 @@
 import { companyHeaderPartial, companyActionsTemplate } from "./game-setup-template.ts";
 import type { Soldier } from "../entities/types.ts";
+import { ENERGY_COST_BASE } from "../../constants/economy.ts";
 import { getLevelFromExperience } from "../../constants/economy.ts";
 import type { Item } from "../../constants/items/types.ts";
 import type { Mission } from "../../constants/missions.ts";
@@ -64,10 +65,12 @@ function readyRoomSoldierCard(s: Soldier, slotIndex: number, isActive: boolean):
   const slotClass = isActive ? "ready-room-active-slot" : "ready-room-reserve-slot";
   const justMoved = _lastEquipMoveSoldierIds.includes(s.id) || _lastReadyRoomMoveSlotIndices.includes(slotIndex);
   const animateClass = justMoved ? " ready-room-card-just-moved" : "";
+  const energy = Math.max(0, Math.min(100, s.energy ?? 100));
+  const lowEnergyClass = isActive && energy < ENERGY_COST_BASE ? " ready-room-low-energy" : "";
   const lvl = getLevelFromExperience(s.experience ?? 0);
   const bg = getBaseAndGearStats(s);
   return `
-<div class="ready-room-soldier-card entity-card designation-${des} ${slotClass}${animateClass}" data-soldier-id="${s.id}" data-slot-index="${slotIndex}" data-soldier-json="${escapeAttr(JSON.stringify(s))}" data-has-soldier="true">
+<div class="ready-room-soldier-card entity-card designation-${des} ${slotClass}${animateClass}${lowEnergyClass}" data-soldier-id="${s.id}" data-slot-index="${slotIndex}" data-soldier-json="${escapeAttr(JSON.stringify(s))}" data-has-soldier="true">
   <div class="ready-room-card-inner">
     <div class="ready-room-left">
       <div class="ready-room-avatar-wrap">
@@ -119,7 +122,13 @@ export function readyRoomTemplate(mission: Mission | null): string {
 
   const missionTitle = mission?.name ?? "Ready Room";
   const missionData = mission ? escapeAttr(JSON.stringify(mission)) : "";
-  const activeSoldierCount = formationSlots.slice(0, activeCount).filter((id) => id != null).length;
+  const activeSoldiers = formationSlots
+    .slice(0, activeCount)
+    .map((id) => (id ? getSoldierById(company, id) : null))
+    .filter((s): s is Soldier => s != null);
+  const activeSoldierCount = activeSoldiers.length;
+  const hasLowEnergyActive = activeSoldiers.some((s) => (s.energy ?? 100) < ENERGY_COST_BASE);
+  const proceedDisabled = activeSoldierCount === 0 || hasLowEnergyActive;
   const showOnboardingPopup = !!mission?.id?.startsWith("onboarding_");
   const onboardingSoldiers = company?.soldiers ?? [];
   const onboardingFeatured = onboardingSoldiers.length > 0
@@ -182,7 +191,10 @@ export function readyRoomTemplate(mission: Mission | null): string {
   <div class="ready-room-role-banner">${roleBreakdown}</div>
   <div class="ready-room-main">
     <div class="ready-room-section">
-      <h4 class="ready-room-section-title">Active (${formationSlots.slice(0, activeCount).filter((id) => id != null).length}/${activeCount})</h4>
+      <div class="ready-room-section-title-row">
+        <h4 class="ready-room-section-title">Active (${formationSlots.slice(0, activeCount).filter((id) => id != null).length}/${activeCount})</h4>
+        <button type="button" id="ready-room-rest-btn" class="equip-troops-btn ready-room-header-rest-btn">Rest Troops</button>
+      </div>
       <div class="ready-room-grid ready-room-grid-2col" id="ready-room-active-grid">
         ${activeSlots.join("")}
       </div>
@@ -197,7 +209,8 @@ export function readyRoomTemplate(mission: Mission | null): string {
   <div class="ready-room-footer troops-market-footer">
     <div class="footer-banner">
       <div class="roster-footer-actions">
-        <button type="button" id="ready-room-proceed" class="equip-troops-btn ${activeSoldierCount === 0 ? "disabled" : ""}">Proceed to Mission</button>
+        <button type="button" id="ready-room-missions" class="equip-troops-btn ready-room-missions-btn">Missions</button>
+        <button type="button" id="ready-room-proceed" class="equip-troops-btn ready-room-proceed-btn ${proceedDisabled ? "disabled" : ""}" ${proceedDisabled ? "disabled" : ""}>Proceed to Mission</button>
       </div>
     </div>
     ${companyActionsTemplate()}
