@@ -1,6 +1,15 @@
-import type { Mission, MissionEncounterConfig, MissionEnemyRoleMix, MissionKind } from "../../constants/missions.ts";
+import type {
+  Mission,
+  MissionEncounterConfig,
+  MissionEnemyRoleMix,
+  MissionKind,
+} from "../../constants/missions.ts";
 
-function roleMix(rifleman: number, medic: number, support: number): MissionEnemyRoleMix {
+function roleMix(
+  rifleman: number,
+  medic: number,
+  support: number,
+): MissionEnemyRoleMix {
   return { rifleman, medic, support };
 }
 
@@ -16,7 +25,10 @@ function sumRoleMix(mix: MissionEnemyRoleMix): number {
   return (mix.rifleman ?? 0) + (mix.medic ?? 0) + (mix.support ?? 0);
 }
 
-function normalizeRoleMix(total: number, mix: MissionEnemyRoleMix): MissionEnemyRoleMix {
+function normalizeRoleMix(
+  total: number,
+  mix: MissionEnemyRoleMix,
+): MissionEnemyRoleMix {
   const next = { ...mix };
   const delta = total - sumRoleMix(next);
   if (delta > 0) next.rifleman += delta;
@@ -54,7 +66,7 @@ export function getStandardMissionEncounter(
     grenadeThrowers: 0,
   };
 
-  if (kind === "seek_and_destroy") {
+  if (kind === "skirmish") {
     if (d === 1) {
       const includeMedic = Math.random() < 0.5;
       base.initialEnemyCount = 4;
@@ -164,28 +176,65 @@ export function getStandardMissionEncounter(
 export function getDisplayEnemyCount(mission: Mission): number {
   const encounter = mission.encounter;
   if (!encounter) return Math.max(1, mission.enemyCount ?? 1);
-  return Math.max(1, encounter.totalEnemyCount || mission.enemyCount || encounter.initialEnemyCount);
+  return Math.max(
+    1,
+    encounter.totalEnemyCount ||
+      mission.enemyCount ||
+      encounter.initialEnemyCount,
+  );
 }
 
-export function shouldUseEncounterReinforcements(mission: Mission | null | undefined): boolean {
+export function shouldUseEncounterReinforcements(
+  mission: Mission | null | undefined,
+): boolean {
   if (!mission?.encounter) return false;
-  return (mission.encounter.totalEnemyCount ?? 0) > (mission.encounter.initialEnemyCount ?? mission.enemyCount ?? 0);
+  return (
+    (mission.encounter.totalEnemyCount ?? 0) >
+    (mission.encounter.initialEnemyCount ?? mission.enemyCount ?? 0)
+  );
 }
 
 export function normalizeEncounterForMission(mission: Mission): Mission {
   if (!mission.encounter) return mission;
   const encounter = cloneEncounter(mission.encounter);
-  encounter.initialEnemyCount = Math.max(1, encounter.initialEnemyCount || mission.enemyCount || 1);
-  encounter.totalEnemyCount = Math.max(encounter.initialEnemyCount, encounter.totalEnemyCount || encounter.initialEnemyCount);
-  encounter.maxConcurrentEnemies = Math.max(1, encounter.maxConcurrentEnemies || 8);
-  encounter.reinforceIntervalMs = Math.max(0, encounter.reinforceIntervalMs || 0);
+  encounter.initialEnemyCount = Math.max(
+    1,
+    encounter.initialEnemyCount || mission.enemyCount || 1,
+  );
+  encounter.totalEnemyCount = Math.max(
+    encounter.initialEnemyCount,
+    encounter.totalEnemyCount || encounter.initialEnemyCount,
+  );
+  encounter.maxConcurrentEnemies = Math.max(
+    1,
+    encounter.maxConcurrentEnemies || 8,
+  );
+  encounter.reinforceIntervalMs = Math.max(
+    0,
+    encounter.reinforceIntervalMs || 0,
+  );
   encounter.reinforceSetupMs = Math.max(0, encounter.reinforceSetupMs || 2000);
-  encounter.rolesInitial = normalizeRoleMix(encounter.initialEnemyCount, encounter.rolesInitial);
-  encounter.rolesReinforcement = normalizeRoleMix(encounter.totalEnemyCount - encounter.initialEnemyCount, encounter.rolesReinforcement);
-  encounter.eliteCount = Math.max(0, Math.min(encounter.initialEnemyCount, encounter.eliteCount || 0));
-  encounter.grenadeThrowers = Math.max(0, Math.min(encounter.initialEnemyCount, encounter.grenadeThrowers || 0));
+  encounter.rolesInitial = normalizeRoleMix(
+    encounter.initialEnemyCount,
+    encounter.rolesInitial,
+  );
+  encounter.rolesReinforcement = normalizeRoleMix(
+    encounter.totalEnemyCount - encounter.initialEnemyCount,
+    encounter.rolesReinforcement,
+  );
+  encounter.eliteCount = Math.max(
+    0,
+    Math.min(encounter.initialEnemyCount, encounter.eliteCount || 0),
+  );
+  encounter.grenadeThrowers = Math.max(
+    0,
+    Math.min(encounter.initialEnemyCount, encounter.grenadeThrowers || 0),
+  );
   encounter.medicHealsPerMedic = Math.max(0, encounter.medicHealsPerMedic || 0);
-  encounter.supportSuppressUses = Math.max(0, encounter.supportSuppressUses || 0);
+  encounter.supportSuppressUses = Math.max(
+    0,
+    encounter.supportSuppressUses || 0,
+  );
   return {
     ...mission,
     enemyCount: encounter.initialEnemyCount,

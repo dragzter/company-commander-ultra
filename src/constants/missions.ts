@@ -2,7 +2,7 @@ export const MISSION_KINDS = {
   defend_objective: "defend_objective",
   ambush: "ambush",
   attack_objective: "attack_objective",
-  seek_and_destroy: "seek_and_destroy",
+  skirmish: "skirmish",
   manhunt: "manhunt",
 } as const;
 
@@ -20,7 +20,7 @@ export interface MissionKindDefinition {
 
 export const ACTIVE_MISSION_KINDS: MissionKind[] = [
   MISSION_KINDS.defend_objective,
-  MISSION_KINDS.seek_and_destroy, // Shown as "Skirmish"
+  MISSION_KINDS.skirmish, // Shown as "Skirmish"
   MISSION_KINDS.manhunt,
 ];
 
@@ -66,7 +66,7 @@ export const MISSION_KIND_DEFINITIONS: MissionKindDefinition[] = [
     epicWeight: 0,
   },
   {
-    kind: MISSION_KINDS.seek_and_destroy,
+    kind: MISSION_KINDS.skirmish,
     name: "Skirmish",
     description: "Standard deathmatch against hostile forces.",
     flavorTemplates: [
@@ -91,30 +91,39 @@ export const MISSION_KIND_DEFINITIONS: MissionKindDefinition[] = [
   },
 ];
 
-export const MISSION_KIND_META: Record<MissionKind, { name: string; description: string }> =
-  MISSION_KIND_DEFINITIONS.reduce(
-    (acc, def) => {
-      acc[def.kind] = { name: def.name, description: def.description };
-      return acc;
-    },
-    {} as Record<MissionKind, { name: string; description: string }>,
-  );
+export const MISSION_KIND_META: Record<
+  MissionKind,
+  { name: string; description: string }
+> = MISSION_KIND_DEFINITIONS.reduce(
+  (acc, def) => {
+    acc[def.kind] = { name: def.name, description: def.description };
+    return acc;
+  },
+  {} as Record<MissionKind, { name: string; description: string }>,
+);
 
 export const MISSION_KIND_ORDER: MissionKind[] = [...MISSION_KIND_DEFINITIONS]
   .filter((d) => ACTIVE_MISSION_KINDS.includes(d.kind))
   .sort((a, b) => a.displayOrder - b.displayOrder)
   .map((d) => d.kind);
 
-export function getMissionKindDefinition(kind: MissionKind): MissionKindDefinition {
+export function getMissionKindDefinition(
+  kind: MissionKind,
+): MissionKindDefinition {
   const found = MISSION_KIND_DEFINITIONS.find((d) => d.kind === kind);
   if (found) return found;
   throw new Error(`Mission kind definition missing for '${kind}'`);
 }
 
-export function getMissionKindsForGeneration(mode: "regular" | "epic"): MissionKind[] {
+export function getMissionKindsForGeneration(
+  mode: "regular" | "epic",
+): MissionKind[] {
   const weightedKinds: MissionKind[] = [];
-  for (const def of MISSION_KIND_DEFINITIONS.filter((d) => ACTIVE_MISSION_KINDS.includes(d.kind))) {
-    const weight = mode === "epic" ? (def.epicWeight ?? 1) : (def.regularWeight ?? 1);
+  for (const def of MISSION_KIND_DEFINITIONS.filter((d) =>
+    ACTIVE_MISSION_KINDS.includes(d.kind),
+  )) {
+    const weight =
+      mode === "epic" ? (def.epicWeight ?? 1) : (def.regularWeight ?? 1);
     const copies = Math.max(0, Math.floor(weight));
     for (let i = 0; i < copies; i++) weightedKinds.push(def.kind);
   }
@@ -129,6 +138,76 @@ export const DIFFICULTY_LABELS: Record<number, string> = {
 };
 
 export type MissionRarity = "normal" | "rare" | "epic";
+export type MissionFactionId =
+  | "desert_wolves"
+  | "iron_corps"
+  | "liberties_vanguard"
+  | "scarlet_accord";
+
+export const MISSION_FACTION_ORDER: MissionFactionId[] = [
+  "desert_wolves",
+  "iron_corps",
+  "liberties_vanguard",
+  "scarlet_accord",
+];
+
+export const MISSION_FACTION_META: Record<
+  MissionFactionId,
+  { name: string; emblem: string; accent: string }
+> = {
+  desert_wolves: {
+    name: "Desert Wolves",
+    emblem: "/images/desert_wolves.png",
+    accent: "#d7b85c",
+  },
+  iron_corps: {
+    name: "Iron Corps",
+    emblem: "/images/iron_corps.png",
+    accent: "#8ca8c8",
+  },
+  liberties_vanguard: {
+    name: "Liberties Vanguard",
+    emblem: "/images/liberties_vanguard.png",
+    accent: "#78c98a",
+  },
+  scarlet_accord: {
+    name: "Scarlet Accord",
+    emblem: "/images/scarlett_accord.png",
+    accent: "#d16f79",
+  },
+};
+
+export type MissionEnvironmentId =
+  | "city"
+  | "forest"
+  | "harbor"
+  | "village";
+
+export const MISSION_ENVIRONMENT_META: Record<
+  MissionEnvironmentId,
+  { name: string; titleCue: string; battleBackgrounds: string[] }
+> = {
+  city: {
+    name: "City",
+    titleCue: "Urban",
+    battleBackgrounds: ["city_0.png", "city_1.png", "city_2.png"],
+  },
+  forest: {
+    name: "Forest",
+    titleCue: "Woodland",
+    battleBackgrounds: ["forrest_0.png"],
+  },
+  harbor: {
+    name: "Harbor",
+    titleCue: "Harbor",
+    battleBackgrounds: ["harbor_0.png"],
+  },
+  village: {
+    name: "Village",
+    titleCue: "Village",
+    battleBackgrounds: ["village_0.png"],
+  },
+};
 
 export interface MissionEnemyRoleMix {
   rifleman: number;
@@ -160,6 +239,9 @@ export const LOOT_COMMON_SUPPLY_CHANCE = 0.03;
 export type Mission = {
   id: string;
   kind: MissionKind;
+  factionId?: MissionFactionId;
+  environmentId?: MissionEnvironmentId;
+  battleBackground?: string;
   name: string;
   difficulty: number;
   enemyCount: number;

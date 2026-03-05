@@ -38,8 +38,15 @@ import {
   buildCombatSummaryData,
   combatSummaryTemplate,
 } from "../html-templates/combat-summary-template.ts";
-import { soldierToCombatant, createEnemyCombatant } from "../combat/combatant-utils.ts";
-import { getActiveSlots, getFormationSlots, getSoldierById } from "../../constants/company-slots.ts";
+import {
+  soldierToCombatant,
+  createEnemyCombatant,
+} from "../combat/combatant-utils.ts";
+import {
+  getActiveSlots,
+  getFormationSlots,
+  getSoldierById,
+} from "../../constants/company-slots.ts";
 import { getMaxSoldierLevel } from "../../utils/company-utils.ts";
 import { Styler } from "../../utils/styler-manager.ts";
 import { SoldierManager } from "../entities/soldier/soldier-manager.ts";
@@ -47,8 +54,14 @@ import type { Designation, Soldier } from "../entities/types.ts";
 import type { Mission } from "../../constants/missions.ts";
 import { generateDevTestMissions } from "../../services/missions/mission-generator.ts";
 import { normalizeEncounterForMission } from "../../services/missions/mission-scenarios.ts";
-import { RARE_WEAPON_BASES, createRareWeapon } from "../../constants/items/rare-weapon-bases.ts";
-import { RARE_ARMOR_BASES, createRareArmor } from "../../constants/items/rare-armor-bases.ts";
+import {
+  RARE_WEAPON_BASES,
+  createRareWeapon,
+} from "../../constants/items/rare-weapon-bases.ts";
+import {
+  RARE_ARMOR_BASES,
+  createRareArmor,
+} from "../../constants/items/rare-armor-bases.ts";
 import { MedicalItems } from "../../constants/items/medical-items.ts";
 import { ThrowableItems } from "../../constants/items/throwable.ts";
 import { getScaledThrowableDamage } from "../../constants/items/throwable-scaling.ts";
@@ -93,7 +106,12 @@ function ScreenManager() {
     return Math.max(1, Math.ceil(sum / activeSoldiers.length));
   }
 
-  function getRecruitLevelFromCompany(company: import("../entities/company/company.ts").Company | null | undefined): number {
+  function getRecruitLevelFromCompany(
+    company:
+      | import("../entities/company/company.ts").Company
+      | null
+      | undefined,
+  ): number {
     const companyRef = company ?? null;
     const slots = getFormationSlots(companyRef);
     const activeCount = getActiveSlots(company ?? null);
@@ -101,7 +119,8 @@ function ScreenManager() {
       .slice(0, activeCount)
       .map((id) => (id ? getSoldierById(companyRef, id) : null))
       .filter((s): s is Soldier => s != null);
-    const source = activeSoldiers.length > 0 ? activeSoldiers : (company?.soldiers ?? []);
+    const source =
+      activeSoldiers.length > 0 ? activeSoldiers : (company?.soldiers ?? []);
     const enemyBase = getEnemyLevelFromActiveSquad(source);
     return Math.max(1, Math.min(20, enemyBase - 1));
   }
@@ -114,7 +133,10 @@ function ScreenManager() {
     return rifle === 6 && medic === 2 && support === 2;
   }
 
-  function hasExpectedRecruitLevel(soldiers: Soldier[], expectedLevel: number): boolean {
+  function hasExpectedRecruitLevel(
+    soldiers: Soldier[],
+    expectedLevel: number,
+  ): boolean {
     return soldiers.every((s) => (s.level ?? 1) === expectedLevel);
   }
 
@@ -193,19 +215,27 @@ function ScreenManager() {
 
   function createMissionsPage(mode?: "menu" | "normal" | "epic" | "dev") {
     UiManager.clear.center();
+    const st = usePlayerCompanyStore.getState();
+    st.addInitialTroopsIfEmpty();
     const store = usePlayerCompanyStore.getState();
     const onboardingFirstMission = !!store.onboardingFirstMissionPending;
-    store.setMissionsViewMode(onboardingFirstMission ? "normal" : (mode ?? "menu"));
+    store.setMissionsViewMode(
+      onboardingFirstMission ? "normal" : (mode ?? "menu"),
+    );
     store.ensureMissionBoard();
     const createOnboardingSkirmish = (): Mission => ({
       id: "onboarding_skirmish_1",
-      kind: "seek_and_destroy",
-      name: "Skirmish",
+      kind: "skirmish",
+      factionId: "desert_wolves",
+      environmentId: "city",
+      battleBackground: "city_1.png",
+      name: "Urban Skirmish",
       difficulty: 1,
       enemyCount: 3,
       creditReward: 120,
       xpReward: 40,
-      flavorText: "Hostile scouts have entered the sector. Engage and eliminate all enemy soldiers.",
+      flavorText:
+        "Hostile scouts have entered the sector. Engage and eliminate all enemy soldiers.",
       rarity: "normal",
       encounter: {
         initialEnemyCount: 3,
@@ -226,11 +256,31 @@ function ScreenManager() {
       ? [normalizeEncounterForMission(createOnboardingSkirmish())]
       : (usePlayerCompanyStore.getState().missionBoard ?? []);
     const companyLevel = usePlayerCompanyStore.getState().companyLevel ?? 1;
-    const activeMode = usePlayerCompanyStore.getState().missionsViewMode ?? "menu";
+    const activeMode =
+      usePlayerCompanyStore.getState().missionsViewMode ?? "menu";
+    const resumeStep = usePlayerCompanyStore.getState().missionsResumeStep;
+    const initialKindFilter =
+      activeMode === "normal" &&
+      (resumeStep === "all" ||
+        resumeStep === "defend_objective" ||
+        resumeStep === "skirmish" ||
+        resumeStep === "manhunt")
+        ? resumeStep
+        : "all";
     const devMissions = activeMode === "dev" ? generateDevTestMissions() : [];
-    const content = parseHTML(missionsTemplate(missions, companyLevel, activeMode, devMissions));
+    const content = parseHTML(
+      missionsTemplate(
+        missions,
+        companyLevel,
+        activeMode,
+        devMissions,
+        initialKindFilter,
+      ),
+    );
     center.appendChild(content as Element);
-    DomEventManager.initEventArray(ec().companyHome().concat(ec().missionsScreen()));
+    DomEventManager.initEventArray(
+      ec().companyHome().concat(ec().missionsScreen()),
+    );
     UiManager.selectCompanyHomeButton(DOM.company.missions);
     Styler.setCenterBG("bg_81.jpg", true);
     show.center();
@@ -242,7 +292,9 @@ function ScreenManager() {
       return;
     }
     if (mission) {
-      usePlayerCompanyStore.getState().setMissionsResumeState("ready_room", mission);
+      usePlayerCompanyStore
+        .getState()
+        .setMissionsResumeState("ready_room", mission);
     }
     const isRefresh = document.getElementById("ready-room-screen") != null;
     UiManager.clear.center();
@@ -254,9 +306,16 @@ function ScreenManager() {
     const content = parseHTML(readyRoomTemplate(mission ?? null));
     center.appendChild(content as Element);
     setTimeout(clearLastEquipMoveSoldierIds, 450);
-    DomEventManager.initEventArray(ec().companyHome().concat(ec().readyRoomScreen()));
+    DomEventManager.initEventArray(
+      ec().companyHome().concat(ec().readyRoomScreen()),
+    );
     UiManager.selectCompanyHomeButton(DOM.company.missions);
-    Styler.setCenterBG("bg_81.jpg", true);
+    const missionBattleBg = mission?.battleBackground;
+    if (missionBattleBg) {
+      Styler.setCenterBG(`battle_bg/${missionBattleBg}`, true);
+    } else {
+      Styler.setCenterBG("bg_81.jpg", true);
+    }
     show.center();
   }
 
@@ -279,14 +338,18 @@ function ScreenManager() {
         .filter((s): s is NonNullable<typeof s> => s != null);
       players = activeSoldiers.map((s) => soldierToCombatant(s));
       const encounter = mission?.encounter;
-      const enemyCount = encounter?.initialEnemyCount ?? mission?.enemyCount ?? 4;
+      const enemyCount =
+        encounter?.initialEnemyCount ?? mission?.enemyCount ?? 4;
       const enemyBaseLevel = getEnemyLevelFromActiveSquad(activeSoldiers);
       const isEpicMission = !!(mission?.isEpic ?? mission?.rarity === "epic");
       const roles: Designation[] = [];
       if (encounter) {
-        for (let i = 0; i < encounter.rolesInitial.rifleman; i++) roles.push("rifleman");
-        for (let i = 0; i < encounter.rolesInitial.support; i++) roles.push("support");
-        for (let i = 0; i < encounter.rolesInitial.medic; i++) roles.push("medic");
+        for (let i = 0; i < encounter.rolesInitial.rifleman; i++)
+          roles.push("rifleman");
+        for (let i = 0; i < encounter.rolesInitial.support; i++)
+          roles.push("support");
+        for (let i = 0; i < encounter.rolesInitial.medic; i++)
+          roles.push("medic");
       }
       while (roles.length < enemyCount) roles.push("rifleman");
       roles.length = enemyCount;
@@ -296,7 +359,13 @@ function ScreenManager() {
         roles[i] = roles[j];
         roles[j] = t;
       }
-      const eliteCount = encounter?.eliteCount ?? (mission?.kind === "manhunt" ? 1 : 0);
+      const missionDifficulty = Math.max(
+        1,
+        Math.floor(mission?.difficulty ?? 1),
+      );
+      const eliteCount = mission?.kind === "manhunt"
+        ? (missionDifficulty >= 3 ? 2 : 1)
+        : (encounter?.eliteCount ?? 0);
       const eliteIndices = new Set<number>();
       if (eliteCount > 0) {
         const idxPool = Array.from({ length: enemyCount }, (_, i) => i);
@@ -309,7 +378,8 @@ function ScreenManager() {
       const ENEMY_SLOT_ORDER = [0, 1, 2, 3, 5, 6, 4, 7];
       enemies = Array.from({ length: enemyCount }, (_, i) => {
         const role = roles[i] ?? "rifleman";
-        const isManhuntElite = mission?.kind === "manhunt" && eliteIndices.has(i);
+        const isManhuntElite =
+          mission?.kind === "manhunt" && eliteIndices.has(i);
         const c = createEnemyCombatant(
           i,
           enemyCount,
@@ -322,28 +392,44 @@ function ScreenManager() {
         );
         const isMedic = role === "medic";
         const isSupport = role === "support";
-        c.enemyMedkitUses = isMedic ? (encounter?.medicHealsPerMedic ?? c.enemyMedkitUses ?? 0) : 0;
-        c.enemySuppressUses = isSupport ? (encounter?.supportSuppressUses ?? 0) : 0;
+        c.enemyMedkitUses = isMedic
+          ? (encounter?.medicHealsPerMedic ?? c.enemyMedkitUses ?? 0)
+          : 0;
+        c.enemySuppressUses = isSupport
+          ? (encounter?.supportSuppressUses ?? 0)
+          : 0;
         c.enemyGrenadeThrowsRemaining = 0;
-        c.enemySlotIndex = ENEMY_SLOT_ORDER[i] ?? (i % 8);
+        c.enemySlotIndex = ENEMY_SLOT_ORDER[i] ?? i % 8;
         return c;
       });
       if (encounter && encounter.grenadeThrowers > 0 && enemyCount > 0) {
-        const grenadeCandidates = mission?.kind === "manhunt"
-          ? enemies.filter((e) => e.isManhuntTarget)
-          : enemies.filter((e) => e.hp > 0 && !e.downState);
+        const grenadeCandidates =
+          mission?.kind === "manhunt"
+            ? enemies.filter((e) => e.isManhuntTarget)
+            : enemies.filter((e) => e.hp > 0 && !e.downState);
         const pool = grenadeCandidates.length > 0 ? grenadeCandidates : enemies;
-        for (let i = 0; i < Math.min(encounter.grenadeThrowers, pool.length); i++) {
+        for (
+          let i = 0;
+          i < Math.min(encounter.grenadeThrowers, pool.length);
+          i++
+        ) {
           const idx = Math.floor(Math.random() * pool.length);
           const selected = pool[idx];
-          selected.enemyGrenadeThrowsRemaining = Math.max(1, selected.enemyGrenadeThrowsRemaining ?? 0);
+          selected.enemyGrenadeThrowsRemaining = Math.max(
+            1,
+            selected.enemyGrenadeThrowsRemaining ?? 0,
+          );
           pool.splice(idx, 1);
         }
       }
     }
-    const content = parseHTML(combatTemplate(mission ?? null, players, enemies));
+    const content = parseHTML(
+      combatTemplate(mission ?? null, players, enemies),
+    );
     center.appendChild(content as Element);
-    DomEventManager.initEventArray(ec().companyHome().concat(ec().combatScreen(players, enemies)));
+    DomEventManager.initEventArray(
+      ec().companyHome().concat(ec().combatScreen(players, enemies)),
+    );
     if (mission?.id?.startsWith("dev-trait-summary-preview-")) {
       const beginBtn = document.getElementById("combat-begin");
       const beginOverlay = document.getElementById("combat-begin-overlay");
@@ -364,7 +450,9 @@ function ScreenManager() {
         if (p.soldierRef) {
           soldiersAfterCombat.set(p.id, {
             ...p.soldierRef,
-            experience: (p.soldierRef.experience ?? 0) + (xpEarnedBySoldier.get(p.id) ?? 0),
+            experience:
+              (p.soldierRef.experience ?? 0) +
+              (xpEarnedBySoldier.get(p.id) ?? 0),
           });
         }
       }
@@ -425,7 +513,9 @@ function ScreenManager() {
       const container = document.getElementById("combat-summary-container");
       if (container) {
         container.innerHTML = combatSummaryTemplate(summaryData);
-        const overlay = container.querySelector(".combat-summary-overlay") as HTMLElement | null;
+        const overlay = container.querySelector(
+          ".combat-summary-overlay",
+        ) as HTMLElement | null;
         if (overlay) overlay.classList.add("combat-summary-visible");
       }
     }
@@ -444,13 +534,17 @@ function ScreenManager() {
       onboardingRecruitStep,
       onboardingRecruitSoldier,
       setOnboardingRecruitSoldier,
-    } =
-      usePlayerCompanyStore.getState();
+    } = usePlayerCompanyStore.getState();
 
     let soldiers: Soldier[];
-    const guidedRecruit = onboardingRecruitStep === "troops_recruit" || onboardingRecruitStep === "troops_confirm";
+    const guidedRecruit =
+      onboardingRecruitStep === "troops_recruit" ||
+      onboardingRecruitStep === "troops_confirm";
     const computedRecruitLevel = getRecruitLevelFromCompany(company);
-    const recruitLevel = Math.max(highestRecruitLevelAchieved ?? 1, computedRecruitLevel);
+    const recruitLevel = Math.max(
+      highestRecruitLevelAchieved ?? 1,
+      computedRecruitLevel,
+    );
     if (recruitLevel > (highestRecruitLevelAchieved ?? 1)) {
       setHighestRecruitLevelAchieved(recruitLevel);
     }
@@ -458,16 +552,17 @@ function ScreenManager() {
     if (guidedRecruit) {
       let guided = onboardingRecruitSoldier;
       if (!guided) {
-        const trait = SoldierManager.getSoldierTraitProfileByName("sharpshooter");
+        const trait =
+          SoldierManager.getSoldierTraitProfileByName("sharpshooter");
         guided = SoldierManager.getNewSupportMan(recruitLevel, trait);
         setOnboardingRecruitSoldier(guided);
       }
       soldiers = [guided];
     } else {
       if (
-        !marketAvailableTroops.length
-        || !hasValidRecruitMarketComposition(marketAvailableTroops)
-        || !hasExpectedRecruitLevel(marketAvailableTroops, recruitLevel)
+        !marketAvailableTroops.length ||
+        !hasValidRecruitMarketComposition(marketAvailableTroops) ||
+        !hasExpectedRecruitLevel(marketAvailableTroops, recruitLevel)
       ) {
         soldiers = SoldierManager.generateTroopList(recruitLevel);
         setMarketAvailableTroops(soldiers);
@@ -479,7 +574,9 @@ function ScreenManager() {
     const content = parseHTML(troopsMarketTemplate(soldiers));
     center.appendChild(content as Element);
 
-    DomEventManager.initEventArray(ec().companyHome().concat(ec().troopsScreen()));
+    DomEventManager.initEventArray(
+      ec().companyHome().concat(ec().troopsScreen()),
+    );
 
     UiManager.selectCompanyHomeButton(DOM.company.market);
     Styler.setCenterBG("bg_76.jpg", true);
@@ -507,7 +604,11 @@ function ScreenManager() {
     const content = parseHTML(weaponsMarketTemplate());
     center.appendChild(content as Element);
     DomEventManager.initEventArray(ec().companyHome().concat(ec().market()));
-    DomEventManager.initDelegatedEventArray(center as HTMLElement, ec().weaponsScreen(), "weapons-screen");
+    DomEventManager.initDelegatedEventArray(
+      center as HTMLElement,
+      ec().weaponsScreen(),
+      "weapons-screen",
+    );
     UiManager.selectCompanyHomeButton(DOM.company.market);
     Styler.setCenterBG("weapons_market.png", true);
     show.center();
@@ -519,7 +620,11 @@ function ScreenManager() {
     const content = parseHTML(armorMarketTemplate());
     center.appendChild(content as Element);
     DomEventManager.initEventArray(ec().companyHome().concat(ec().market()));
-    DomEventManager.initDelegatedEventArray(center as HTMLElement, ec().armorScreen(), "armor-screen");
+    DomEventManager.initDelegatedEventArray(
+      center as HTMLElement,
+      ec().armorScreen(),
+      "armor-screen",
+    );
     UiManager.selectCompanyHomeButton(DOM.company.market);
     Styler.setCenterBG("armor_market.png", true);
     show.center();
@@ -531,7 +636,11 @@ function ScreenManager() {
     const content = parseHTML(devCatalogMarketTemplate());
     center.appendChild(content as Element);
     DomEventManager.initEventArray(ec().companyHome().concat(ec().market()));
-    DomEventManager.initDelegatedEventArray(center as HTMLElement, ec().devCatalogScreen(), "dev-catalog-screen");
+    DomEventManager.initDelegatedEventArray(
+      center as HTMLElement,
+      ec().devCatalogScreen(),
+      "dev-catalog-screen",
+    );
     UiManager.selectCompanyHomeButton(DOM.company.market);
     Styler.setCenterBG("bg_76.jpg", true);
     show.center();
@@ -543,7 +652,11 @@ function ScreenManager() {
     const content = parseHTML(suppliesMarketTemplate());
     center.appendChild(content as Element);
     DomEventManager.initEventArray(ec().companyHome().concat(ec().market()));
-    DomEventManager.initDelegatedEventArray(center as HTMLElement, ec().suppliesScreen(), "supplies-screen");
+    DomEventManager.initDelegatedEventArray(
+      center as HTMLElement,
+      ec().suppliesScreen(),
+      "supplies-screen",
+    );
     UiManager.selectCompanyHomeButton(DOM.company.market);
     Styler.setCenterBG("equipment_market.png", true);
     show.center();
@@ -553,7 +666,9 @@ function ScreenManager() {
     UiManager.clear.center();
     const content = parseHTML(formationTemplate());
     center.appendChild(content as Element);
-    DomEventManager.initEventArray(ec().companyHome().concat(ec().formationScreen()));
+    DomEventManager.initEventArray(
+      ec().companyHome().concat(ec().formationScreen()),
+    );
     UiManager.selectCompanyHomeButton(DOM.company.roster);
     Styler.setCenterBG("bg_81.jpg", true);
     show.center();
@@ -580,15 +695,23 @@ function ScreenManager() {
         </div>`;
       } catch (innerErr) {
         console.error("[Roster] Fallback also threw:", innerErr);
-        html = '<div id="roster-screen" style="padding:20px;color:white;"><p>Roster error.</p></div>';
+        html =
+          '<div id="roster-screen" style="padding:20px;color:white;"><p>Roster error.</p></div>';
       }
     }
     if (!html || !html.trim()) {
-      html = '<div id="roster-screen" style="padding:20px;color:white;"><p>Roster empty.</p></div>';
+      html =
+        '<div id="roster-screen" style="padding:20px;color:white;"><p>Roster empty.</p></div>';
     }
     target.innerHTML = html;
-    DomEventManager.initEventArray(ec().companyHome().concat(ec().rosterScreen()));
-    DomEventManager.initDelegatedEventArray(document, ec().equipPicker(), "equip-picker");
+    DomEventManager.initEventArray(
+      ec().companyHome().concat(ec().rosterScreen()),
+    );
+    DomEventManager.initDelegatedEventArray(
+      document,
+      ec().equipPicker(),
+      "equip-picker",
+    );
     DomEventManager.initEquipSlotTooltipHideOnClick();
     UiManager.selectCompanyHomeButton(DOM.company.roster);
     Styler.setCenterBG("bg_81.jpg", true);
@@ -600,8 +723,14 @@ function ScreenManager() {
     UiManager.clear.center();
     const content = parseHTML(inventoryTemplate());
     center.appendChild(content as Element);
-    DomEventManager.initEventArray(ec().companyHome().concat(ec().inventoryScreen()));
-    DomEventManager.initDelegatedEventArray(document, ec().equipPicker(), "equip-picker");
+    DomEventManager.initEventArray(
+      ec().companyHome().concat(ec().inventoryScreen()),
+    );
+    DomEventManager.initDelegatedEventArray(
+      document,
+      ec().equipPicker(),
+      "equip-picker",
+    );
     DomEventManager.initEquipSlotTooltipHideOnClick();
     UiManager.selectCompanyHomeButton(DOM.company.inventory);
     Styler.setCenterBG("bg_81.jpg", true);
@@ -612,7 +741,9 @@ function ScreenManager() {
     UiManager.clear.center();
     const content = parseHTML(memorialTemplate());
     center.appendChild(content as Element);
-    DomEventManager.initEventArray(ec().companyHome().concat(ec().memorialScreen()));
+    DomEventManager.initEventArray(
+      ec().companyHome().concat(ec().memorialScreen()),
+    );
     UiManager.selectCompanyHomeButton(DOM.company.heroes);
     Styler.setCenterBG("bg_81.jpg", true);
     show.center();
@@ -622,7 +753,9 @@ function ScreenManager() {
     UiManager.clear.center();
     const content = parseHTML(trainingTemplate());
     center.appendChild(content as Element);
-    DomEventManager.initEventArray(ec().companyHome().concat(ec().trainingScreen()));
+    DomEventManager.initEventArray(
+      ec().companyHome().concat(ec().trainingScreen()),
+    );
     UiManager.selectCompanyHomeButton(DOM.company.training);
     Styler.setCenterBG("bg_81.jpg", true);
     show.center();
@@ -632,7 +765,9 @@ function ScreenManager() {
     UiManager.clear.center();
     const content = parseHTML(abilitiesTemplate());
     center.appendChild(content as Element);
-    DomEventManager.initEventArray(ec().companyHome().concat(ec().abilitiesScreen()));
+    DomEventManager.initEventArray(
+      ec().companyHome().concat(ec().abilitiesScreen()),
+    );
     UiManager.selectCompanyHomeButton(DOM.company.abilities);
     Styler.setCenterBG("bg_81.jpg", true);
     show.center();
@@ -666,80 +801,124 @@ function ScreenManager() {
 const singleton = ScreenManager();
 
 export { singleton as ScreenManager };
-  const DEV_TEST_LEVEL = 999;
-  const DEV_TEST_GEAR_LEVEL = 999 as import("../../constants/items/types.ts").GearLevel;
-  const DEV_TEST_SQUAD: Designation[] = ["rifleman", "rifleman", "support", "medic"];
+const DEV_TEST_LEVEL = 999;
+const DEV_TEST_GEAR_LEVEL =
+  999 as import("../../constants/items/types.ts").GearLevel;
+const DEV_TEST_SQUAD: Designation[] = [
+  "rifleman",
+  "rifleman",
+  "support",
+  "medic",
+];
 
-  function getDevWeaponBaseId(designation: Designation): string {
-    if (designation === "support") return "suppressor_mg";
-    if (designation === "medic") return "field_medic_smg";
-    return "stinger_smg";
+function getDevWeaponBaseId(designation: Designation): string {
+  if (designation === "support") return "suppressor_mg";
+  if (designation === "medic") return "field_medic_smg";
+  return "stinger_smg";
+}
+
+function getDevArmorBaseId(designation: Designation): string {
+  if (designation === "support") return "ironclad_resolve";
+  if (designation === "medic") return "revenant_shell";
+  return "vipers_embrace";
+}
+
+function createDevSoldier(
+  designation: Designation,
+  index: number,
+  side: "player" | "enemy",
+): Soldier {
+  const weaponBaseId = getDevWeaponBaseId(designation);
+  const armorBaseId = getDevArmorBaseId(designation);
+  const weaponBase =
+    RARE_WEAPON_BASES.find((b) => b.baseId === weaponBaseId) ??
+    RARE_WEAPON_BASES[0];
+  const armorBase =
+    RARE_ARMOR_BASES.find((b) => b.baseId === armorBaseId) ??
+    RARE_ARMOR_BASES[0];
+  const weapon = createRareWeapon(weaponBase, DEV_TEST_GEAR_LEVEL);
+  const armor = createRareArmor(armorBase, DEV_TEST_GEAR_LEVEL);
+  const soldier = SoldierManager.generateSoldierAtLevel(
+    20,
+    designation,
+    armor as import("../../constants/items/types.ts").Armor,
+    weapon as import("../../constants/items/types.ts").BallisticWeapon,
+    [],
+  );
+  for (let lvl = 21; lvl <= DEV_TEST_LEVEL; lvl++) {
+    SoldierManager.levelUpSoldier(soldier, lvl);
   }
+  SoldierManager.refreshCombatProfile(soldier);
+  soldier.level = DEV_TEST_LEVEL;
+  soldier.name = `${side === "player" ? "Dev" : "Enemy"} ${designation.charAt(0).toUpperCase() + designation.slice(1)} ${index + 1}`;
+  soldier.weapon = {
+    ...(soldier.weapon ?? {}),
+    ...weapon,
+    level: DEV_TEST_GEAR_LEVEL,
+  };
+  soldier.armor = {
+    ...(soldier.armor ?? {}),
+    ...armor,
+    level: DEV_TEST_GEAR_LEVEL,
+  };
+  const frag = {
+    ...ThrowableItems.common.m3_frag_grenade,
+    level: DEV_TEST_GEAR_LEVEL,
+    damage: getScaledThrowableDamage(
+      ThrowableItems.common.m3_frag_grenade.damage ?? 30,
+      DEV_TEST_LEVEL,
+    ),
+  };
+  const smoke = {
+    ...ThrowableItems.common.mk18_smoke,
+    level: DEV_TEST_GEAR_LEVEL,
+  };
+  const medkit = {
+    ...MedicalItems.common.standard_medkit,
+    level: DEV_TEST_GEAR_LEVEL,
+  };
+  soldier.inventory =
+    designation === "medic" ? [medkit, frag, smoke] : [frag, smoke];
+  return soldier;
+}
 
-  function getDevArmorBaseId(designation: Designation): string {
-    if (designation === "support") return "ironclad_resolve";
-    if (designation === "medic") return "revenant_shell";
-    return "vipers_embrace";
-  }
-
-  function createDevSoldier(designation: Designation, index: number, side: "player" | "enemy"): Soldier {
-    const weaponBaseId = getDevWeaponBaseId(designation);
-    const armorBaseId = getDevArmorBaseId(designation);
-    const weaponBase = RARE_WEAPON_BASES.find((b) => b.baseId === weaponBaseId) ?? RARE_WEAPON_BASES[0];
-    const armorBase = RARE_ARMOR_BASES.find((b) => b.baseId === armorBaseId) ?? RARE_ARMOR_BASES[0];
-    const weapon = createRareWeapon(weaponBase, DEV_TEST_GEAR_LEVEL);
-    const armor = createRareArmor(armorBase, DEV_TEST_GEAR_LEVEL);
-    const soldier = SoldierManager.generateSoldierAtLevel(
-      20,
-      designation,
-      armor as import("../../constants/items/types.ts").Armor,
-      weapon as import("../../constants/items/types.ts").BallisticWeapon,
-      [],
-    );
-    for (let lvl = 21; lvl <= DEV_TEST_LEVEL; lvl++) {
-      SoldierManager.levelUpSoldier(soldier, lvl);
+function createDevCombatants(mission: Mission): {
+  players: ReturnType<typeof soldierToCombatant>[];
+  enemies: ReturnType<typeof soldierToCombatant>[];
+} {
+  const squadSize = Math.max(1, Math.min(4, mission.forcedSquadSize ?? 4));
+  const playerSoldiers = DEV_TEST_SQUAD.slice(0, squadSize).map((d, i) =>
+    createDevSoldier(d, i, "player"),
+  );
+  const enemySoldiers = DEV_TEST_SQUAD.slice(0, squadSize).map((d, i) =>
+    createDevSoldier(d, i, "enemy"),
+  );
+  const players = playerSoldiers.map((s) => soldierToCombatant(s));
+  const redKeys = Object.keys(Images.red_portrait);
+  const enemies = enemySoldiers.map((s, i) => {
+    const c = soldierToCombatant(s);
+    c.side = "enemy";
+    c.id = `dev-enemy-${i}-${Date.now()}`;
+    c.enemySlotIndex = i;
+    c.soldierRef = undefined;
+    c.avatar =
+      Images.red_portrait[
+        redKeys[i % redKeys.length] as keyof typeof Images.red_portrait
+      ];
+    const isEnemyMedic = (c.designation ?? "").toLowerCase() === "medic";
+    if (isEnemyMedic) {
+      const medkit = (s.inventory ?? []).find(
+        (item) => item.id === "standard_medkit",
+      );
+      c.enemyMedkitUses = medkit
+        ? Math.min(2, medkit.uses ?? medkit.quantity ?? 1)
+        : 0;
+      c.enemyMedkitLevel = Math.max(1, Math.min(999, medkit?.level ?? 20));
+    } else {
+      c.enemyMedkitUses = 0;
+      c.enemyMedkitLevel = undefined;
     }
-    SoldierManager.refreshCombatProfile(soldier);
-    soldier.level = DEV_TEST_LEVEL;
-    soldier.name = `${side === "player" ? "Dev" : "Enemy"} ${designation.charAt(0).toUpperCase() + designation.slice(1)} ${index + 1}`;
-    soldier.weapon = { ...(soldier.weapon ?? {}), ...weapon, level: DEV_TEST_GEAR_LEVEL };
-    soldier.armor = { ...(soldier.armor ?? {}), ...armor, level: DEV_TEST_GEAR_LEVEL };
-    const frag = {
-      ...ThrowableItems.common.m3_frag_grenade,
-      level: DEV_TEST_GEAR_LEVEL,
-      damage: getScaledThrowableDamage(ThrowableItems.common.m3_frag_grenade.damage ?? 30, DEV_TEST_LEVEL),
-    };
-    const smoke = { ...ThrowableItems.common.mk18_smoke, level: DEV_TEST_GEAR_LEVEL };
-    const medkit = { ...MedicalItems.common.standard_medkit, level: DEV_TEST_GEAR_LEVEL };
-    soldier.inventory = designation === "medic"
-      ? [medkit, frag, smoke]
-      : [frag, smoke];
-    return soldier;
-  }
-
-  function createDevCombatants(mission: Mission): { players: ReturnType<typeof soldierToCombatant>[]; enemies: ReturnType<typeof soldierToCombatant>[] } {
-    const squadSize = Math.max(1, Math.min(4, mission.forcedSquadSize ?? 4));
-    const playerSoldiers = DEV_TEST_SQUAD.slice(0, squadSize).map((d, i) => createDevSoldier(d, i, "player"));
-    const enemySoldiers = DEV_TEST_SQUAD.slice(0, squadSize).map((d, i) => createDevSoldier(d, i, "enemy"));
-    const players = playerSoldiers.map((s) => soldierToCombatant(s));
-    const redKeys = Object.keys(Images.red_portrait);
-    const enemies = enemySoldiers.map((s, i) => {
-      const c = soldierToCombatant(s);
-      c.side = "enemy";
-      c.id = `dev-enemy-${i}-${Date.now()}`;
-      c.enemySlotIndex = i;
-      c.soldierRef = undefined;
-      c.avatar = Images.red_portrait[redKeys[i % redKeys.length] as keyof typeof Images.red_portrait];
-      const isEnemyMedic = (c.designation ?? "").toLowerCase() === "medic";
-      if (isEnemyMedic) {
-        const medkit = (s.inventory ?? []).find((item) => item.id === "standard_medkit");
-        c.enemyMedkitUses = medkit ? Math.min(2, (medkit.uses ?? medkit.quantity ?? 1)) : 0;
-        c.enemyMedkitLevel = Math.max(1, Math.min(999, medkit?.level ?? 20));
-      } else {
-        c.enemyMedkitUses = 0;
-        c.enemyMedkitLevel = undefined;
-      }
-      return c;
-    });
-    return { players, enemies };
-  }
+    return c;
+  });
+  return { players, enemies };
+}

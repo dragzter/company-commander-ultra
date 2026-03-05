@@ -7,7 +7,7 @@ import type { Soldier } from "../game/entities/types.ts";
 import type { MemorialEntry } from "../game/entities/memorial-types.ts";
 import { StoreActions } from "./action.ts";
 import { STARTING_CREDITS } from "../constants/economy.ts";
-import type { Mission } from "../constants/missions.ts";
+import type { Mission, MissionKind } from "../constants/missions.ts";
 import { getSoldierVeterancyDefaults } from "../constants/veterancy-traits.ts";
 import type { EarnedTraitAward } from "../constants/veterancy-traits.ts";
 
@@ -29,7 +29,11 @@ export type RecruitOnboardingStep =
   | "market"
   | "troops_recruit"
   | "troops_confirm";
-export type MissionsResumeStep = "none" | "ready_room";
+export type MissionsResumeStep =
+  | "none"
+  | "all"
+  | MissionKind
+  | "ready_room";
 
 export type CompanyStore = {
   // State
@@ -65,6 +69,7 @@ export type CompanyStore = {
   missionsResumeMission: Mission | null;
   onboardingHomeIntroPending: boolean;
   onboardingFirstMissionPending: boolean;
+  onboardingReadyRoomIntroPending: boolean;
   onboardingRecruitStep: RecruitOnboardingStep;
   onboardingRecruitSoldier: Soldier | null;
 
@@ -81,16 +86,23 @@ export type CompanyStore = {
   setMarketTierLevel: (n: number) => void;
   setDevCatalogTierLevel: (n: number) => void;
   setMissionsViewMode: (mode: "menu" | "normal" | "epic" | "dev") => void;
-  setMissionsResumeState: (step: MissionsResumeStep, mission: Mission | null) => void;
+  setMissionsResumeState: (
+    step: MissionsResumeStep,
+    mission: Mission | null,
+  ) => void;
   setOnboardingHomeIntroPending: (pending: boolean) => void;
   setOnboardingFirstMissionPending: (pending: boolean) => void;
+  setOnboardingReadyRoomIntroPending: (pending: boolean) => void;
   setOnboardingRecruitStep: (step: RecruitOnboardingStep) => void;
   setOnboardingRecruitSoldier: (soldier: Soldier | null) => void;
   ensureMissionBoard: () => void;
   refreshMissionBoard: () => void;
   addSoldierToCompany: (soldier: Soldier) => void;
   addToRecruitStaging: (soldier: Soldier) => void;
-  tryAddToRecruitStaging: (soldier: Soldier) => { success: boolean; reason?: "capacity" | "afford" };
+  tryAddToRecruitStaging: (soldier: Soldier) => {
+    success: boolean;
+    reason?: "capacity" | "afford";
+  };
   removeFromRecruitStaging: (soldierId: string) => void;
   confirmRecruitment: () => void;
   rerollSoldier: (id: string) => Promise<void>;
@@ -104,13 +116,20 @@ export type CompanyStore = {
   releaseSoldier: (soldierId: string) => void;
   destroyCompanyItem: (index: number) => void;
   sellCompanyItem: (index: number) => { success: boolean; credits: number };
-  sellCompanyItems: (indices: number[]) => { success: boolean; soldCount: number; credits: number };
+  sellCompanyItems: (indices: number[]) => {
+    success: boolean;
+    soldCount: number;
+    credits: number;
+  };
   consumeSoldierMedical: (soldierId: string, inventoryIndex: number) => boolean;
   addItemsToCompanyInventory: (
     items: import("../constants/items/types.ts").Item[],
     totalCost: number,
   ) => { success: boolean; reason?: "capacity" | "credits" };
-  consumeSoldierThrowable: (soldierId: string, inventoryIndex: number) => boolean;
+  consumeSoldierThrowable: (
+    soldierId: string,
+    inventoryIndex: number,
+  ) => boolean;
   equipItemToSoldier: (
     soldierId: string,
     slotType: "weapon" | "armor" | "equipment",
@@ -122,14 +141,20 @@ export type CompanyStore = {
     slotType: "weapon" | "armor" | "equipment",
     equipmentIndex?: number,
   ) => { success: boolean; reason?: string };
-  emptySoldierToCompanyInventory: (soldierId: string) => { success: boolean; reason?: string };
+  emptySoldierToCompanyInventory: (soldierId: string) => {
+    success: boolean;
+    reason?: string;
+  };
   grantMissionRewards: (
     mission: import("../constants/missions.ts").Mission | null,
     victory: boolean,
     kiaCount?: number,
     missionLevel?: number,
     companyXpGainOverride?: number,
-  ) => { rewardItems: import("../constants/items/types.ts").Item[]; lootItems: import("../constants/items/types.ts").Item[] };
+  ) => {
+    rewardItems: import("../constants/items/types.ts").Item[];
+    lootItems: import("../constants/items/types.ts").Item[];
+  };
   syncSoldierLevelsFromExperience: () => void;
   grantSoldierCombatXP: (
     survivorIds: string[],
@@ -149,7 +174,14 @@ export type CompanyStore = {
     killsBySoldier: Map<string, number>,
     missionCompleted: boolean,
     victory: boolean,
-    missionStatsBySoldier: Map<string, { grenadeThrows: number; grenadeHits: number; turnsBelow20Hp: number }>,
+    missionStatsBySoldier: Map<
+      string,
+      {
+        grenadeThrows: number;
+        grenadeHits: number;
+        turnsBelow20Hp: number;
+      }
+    >,
     incapacitatedIds?: string[],
   ) => Map<string, EarnedTraitAward[]>;
   processCombatKIA: (
@@ -174,7 +206,9 @@ export type CompanyStore = {
     reason?: "credits" | "no_selection" | "no_recovery";
   };
   moveZeroEnergySoldiersToReserve: () => void;
-  syncCombatHpToSoldiers: (playerCombatants: { id: string; hp: number }[]) => void;
+  syncCombatHpToSoldiers: (
+    playerCombatants: { id: string; hp: number }[],
+  ) => void;
   claimHoldingInventory: () => void;
   moveItemBetweenSlots: (op: {
     sourceSoldierId: string;
@@ -196,7 +230,10 @@ export const usePlayerCompanyStore = createStore<CompanyStore>()(
     ? persist((set, get) => StoreActions(set, get), {
         name: "cc-company-store",
         merge: (persisted, current) => {
-          const merged = { ...current, ...(persisted as object) } as CompanyStore;
+          const merged = {
+            ...current,
+            ...(persisted as object),
+          } as CompanyStore;
           const bal = merged.creditBalance as number | string;
           if (bal === 1000 || String(bal) === "1000") {
             merged.creditBalance = STARTING_CREDITS;
@@ -208,9 +245,18 @@ export const usePlayerCompanyStore = createStore<CompanyStore>()(
               return {
                 ...e,
                 enemiesKilled: Math.max(0, Math.floor(e.enemiesKilled ?? 0)),
-                missionKills: Math.max(0, Math.floor(e.missionKills ?? e.enemiesKilled ?? 0)),
-                missionsCompleted: Math.max(0, Math.floor(e.missionsCompleted ?? 0)),
-                totalKills: Math.max(0, Math.floor(e.totalKills ?? e.enemiesKilled ?? 0)),
+                missionKills: Math.max(
+                  0,
+                  Math.floor(e.missionKills ?? e.enemiesKilled ?? 0),
+                ),
+                missionsCompleted: Math.max(
+                  0,
+                  Math.floor(e.missionsCompleted ?? 0),
+                ),
+                totalKills: Math.max(
+                  0,
+                  Math.floor(e.totalKills ?? e.enemiesKilled ?? 0),
+                ),
               } as MemorialEntry;
             }
             const s = item as { name?: string; level?: number };
@@ -224,75 +270,122 @@ export const usePlayerCompanyStore = createStore<CompanyStore>()(
               totalKills: 0,
             };
           });
-          if (!Array.isArray(merged.company?.holding_inventory)) merged.company = { ...merged.company, holding_inventory: [] };
+          if (!Array.isArray(merged.company?.holding_inventory))
+            merged.company = {
+              ...merged.company,
+              holding_inventory: [],
+            };
           /* Sync totalMenInCompany with company.soldiers - avoid showing count when soldiers array is missing */
           const soldierCount = merged.company?.soldiers?.length ?? 0;
           if ((merged.totalMenInCompany as number) > 0 && soldierCount === 0) {
             merged.totalMenInCompany = 0;
           }
           const fs = getFormationSlots(merged.company);
-          if (fs.length > 0 && (!Array.isArray(merged.company?.formationSlots) || merged.company.formationSlots.length !== fs.length)) {
+          if (
+            fs.length > 0 &&
+            (!Array.isArray(merged.company?.formationSlots) ||
+              merged.company.formationSlots.length !== fs.length)
+          ) {
             merged.company = { ...merged.company, formationSlots: fs };
           }
           /* Ensure soldiers have energy for old saves */
           if (Array.isArray(merged.company?.soldiers)) {
             merged.company = {
               ...merged.company,
-              soldiers: merged.company!.soldiers!.map((s: Soldier) =>
-                ({
-                  ...s,
-                  energy: typeof s.energy === "number" ? s.energy : 100,
-                  missionsCompleted: typeof s.missionsCompleted === "number" ? s.missionsCompleted : 0,
-                  totalKills: typeof s.totalKills === "number" ? s.totalKills : 0,
-                  earnedTraitIds: Array.isArray((s as Soldier).earnedTraitIds) ? (s as Soldier).earnedTraitIds : [],
-                  grenadeHitBonusPct: typeof s.grenadeHitBonusPct === "number" ? s.grenadeHitBonusPct : 0,
-                  veterancy: {
-                    ...getSoldierVeterancyDefaults(),
-                    ...(typeof s.veterancy === "object" && s.veterancy ? s.veterancy : {}),
-                  },
-                }),
-              ),
+              soldiers: merged.company!.soldiers!.map((s: Soldier) => ({
+                ...s,
+                energy: typeof s.energy === "number" ? s.energy : 100,
+                missionsCompleted:
+                  typeof s.missionsCompleted === "number"
+                    ? s.missionsCompleted
+                    : 0,
+                totalKills: typeof s.totalKills === "number" ? s.totalKills : 0,
+                earnedTraitIds: Array.isArray((s as Soldier).earnedTraitIds)
+                  ? (s as Soldier).earnedTraitIds
+                  : [],
+                grenadeHitBonusPct:
+                  typeof s.grenadeHitBonusPct === "number"
+                    ? s.grenadeHitBonusPct
+                    : 0,
+                veterancy: {
+                  ...getSoldierVeterancyDefaults(),
+                  ...(typeof s.veterancy === "object" && s.veterancy
+                    ? s.veterancy
+                    : {}),
+                },
+              })),
             };
           }
           const mtl = merged.marketTierLevel as number | undefined;
           if (typeof mtl !== "number" || mtl < 0) merged.marketTierLevel = 0;
           const dctl = merged.devCatalogTierLevel as number | undefined;
-          if (typeof dctl !== "number" || dctl < 0) merged.devCatalogTierLevel = 0;
+          if (typeof dctl !== "number" || dctl < 0)
+            merged.devCatalogTierLevel = 0;
           if (!Array.isArray(merged.missionBoard)) merged.missionBoard = [];
-          if (typeof merged.missionBoardSchemaVersion !== "number") merged.missionBoardSchemaVersion = 0;
-          if (merged.missionsViewMode !== "menu" && merged.missionsViewMode !== "normal" && merged.missionsViewMode !== "epic" && merged.missionsViewMode !== "dev") {
+          if (typeof merged.missionBoardSchemaVersion !== "number")
+            merged.missionBoardSchemaVersion = 0;
+          if (
+            merged.missionsViewMode !== "menu" &&
+            merged.missionsViewMode !== "normal" &&
+            merged.missionsViewMode !== "epic" &&
+            merged.missionsViewMode !== "dev"
+          ) {
             merged.missionsViewMode = "menu";
           }
-          if (merged.missionsResumeStep !== "none" && merged.missionsResumeStep !== "ready_room") {
+          if (
+            merged.missionsResumeStep !== "none" &&
+            merged.missionsResumeStep !== "all" &&
+            merged.missionsResumeStep !== "defend_objective" &&
+            merged.missionsResumeStep !== "manhunt" &&
+            merged.missionsResumeStep !== "skirmish" &&
+            merged.missionsResumeStep !== "ready_room"
+          ) {
             merged.missionsResumeStep = "none";
           }
-          if (typeof merged.missionsResumeMission !== "object" && merged.missionsResumeMission !== null) {
+          if (
+            typeof merged.missionsResumeMission !== "object" &&
+            merged.missionsResumeMission !== null
+          ) {
             merged.missionsResumeMission = null;
           }
-          if (typeof merged.onboardingHomeIntroPending !== "boolean") merged.onboardingHomeIntroPending = false;
-          if (typeof merged.onboardingFirstMissionPending !== "boolean") merged.onboardingFirstMissionPending = false;
+          if (typeof merged.onboardingHomeIntroPending !== "boolean")
+            merged.onboardingHomeIntroPending = false;
+          if (typeof merged.onboardingFirstMissionPending !== "boolean")
+            merged.onboardingFirstMissionPending = false;
+          if (typeof merged.onboardingReadyRoomIntroPending !== "boolean")
+            merged.onboardingReadyRoomIntroPending = true;
           if (
-            merged.onboardingRecruitStep !== "none"
-            && merged.onboardingRecruitStep !== "home_popup"
-            && merged.onboardingRecruitStep !== "market"
-            && merged.onboardingRecruitStep !== "troops_recruit"
-            && merged.onboardingRecruitStep !== "troops_confirm"
+            merged.onboardingRecruitStep !== "none" &&
+            merged.onboardingRecruitStep !== "home_popup" &&
+            merged.onboardingRecruitStep !== "market" &&
+            merged.onboardingRecruitStep !== "troops_recruit" &&
+            merged.onboardingRecruitStep !== "troops_confirm"
           ) {
             merged.onboardingRecruitStep = "none";
           }
-          if (typeof merged.onboardingRecruitSoldier !== "object" && merged.onboardingRecruitSoldier !== null) {
+          if (
+            typeof merged.onboardingRecruitSoldier !== "object" &&
+            merged.onboardingRecruitSoldier !== null
+          ) {
             merged.onboardingRecruitSoldier = null;
           }
           /* Sync companyExperience with company.experience (avoid drift from old saves or partial updates) */
-          const companyExp = merged.company?.experience ?? merged.companyExperience ?? 0;
+          const companyExp =
+            merged.company?.experience ?? merged.companyExperience ?? 0;
           if (typeof merged.company === "object") {
             merged.company = { ...merged.company, experience: companyExp };
           }
           merged.companyExperience = companyExp;
-          if (typeof merged.companyLevel !== "number" || merged.companyLevel < 1) {
+          if (
+            typeof merged.companyLevel !== "number" ||
+            merged.companyLevel < 1
+          ) {
             merged.companyLevel = merged.company?.level ?? 1;
           }
-          if (typeof merged.highestRecruitLevelAchieved !== "number" || merged.highestRecruitLevelAchieved < 1) {
+          if (
+            typeof merged.highestRecruitLevelAchieved !== "number" ||
+            merged.highestRecruitLevelAchieved < 1
+          ) {
             merged.highestRecruitLevelAchieved = 1;
           }
           return merged;

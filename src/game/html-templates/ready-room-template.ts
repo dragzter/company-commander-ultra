@@ -129,7 +129,9 @@ export function readyRoomTemplate(mission: Mission | null): string {
   const activeSoldierCount = activeSoldiers.length;
   const hasLowEnergyActive = activeSoldiers.some((s) => (s.energy ?? 100) < ENERGY_COST_BASE);
   const proceedDisabled = activeSoldierCount === 0 || hasLowEnergyActive;
-  const showOnboardingPopup = !!mission?.id?.startsWith("onboarding_");
+  const showOnboardingPopup =
+    !!mission?.id?.startsWith("onboarding_") &&
+    !!store.onboardingReadyRoomIntroPending;
   const onboardingSoldiers = company?.soldiers ?? [];
   const onboardingFeatured = onboardingSoldiers.length > 0
     ? onboardingSoldiers[Math.floor(Math.random() * onboardingSoldiers.length)]

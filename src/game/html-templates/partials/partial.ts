@@ -1,9 +1,18 @@
 import type { Soldier, SoldierTraitProfile } from "../../entities/types.ts";
 import { getRecruitCost } from "../../../constants/economy.ts";
 import { soldierXpBar } from "../components/soldier-xp-bar.ts";
-import { formatPctOneDecimal, getSoldierAttackIntervalMs, getBaseAndGearStats, formatStatBaseAndGear } from "../../../utils/soldier-stats-utils.ts";
+import {
+  formatPctOneDecimal,
+  getSoldierAttackIntervalMs,
+  getBaseAndGearStats,
+  formatStatBaseAndGear,
+} from "../../../utils/soldier-stats-utils.ts";
 import { UiServiceManager } from "../../../services/ui/ui-service.ts";
-import { formatDesignation, formatDisplayName, getSoldierPortraitUrl } from "../../../utils/name-utils.ts";
+import {
+  formatDesignation,
+  formatDisplayName,
+  getSoldierPortraitUrl,
+} from "../../../utils/name-utils.ts";
 
 /**
  * Creates HTML partials
@@ -30,7 +39,9 @@ function Partial() {
   function _t(trooper: Soldier, canRecruit = true, canReroll = true) {
     const disabledClass = canRecruit ? "" : " recruit-disabled";
     const recruitDisabledAttr = canRecruit ? "" : ' aria-disabled="true"';
-    const rerollDisabledAttr = canReroll ? "" : ' disabled aria-disabled="true"';
+    const rerollDisabledAttr = canReroll
+      ? ""
+      : ' disabled aria-disabled="true"';
     const rerollDisabledClass = canReroll ? "" : " reroll-disabled";
     const bg = getBaseAndGearStats(trooper);
     const hp = formatStatBaseAndGear(bg.hp.base, bg.hp.gear);
@@ -42,7 +53,10 @@ function Partial() {
     const awr = formatStatBaseAndGear(bg.awr.base, bg.awr.gear);
     const dex = formatStatBaseAndGear(bg.dex.base, bg.dex.gear);
     const spdMs = getSoldierAttackIntervalMs(trooper);
-    const spdRow = spdMs != null ? `<div class="detail-item"><span class="stat-label">Spd</span><span class="stat-value">${(spdMs / 1000).toFixed(1)}s</span></div>` : "";
+    const spdRow =
+      spdMs != null
+        ? `<div class="detail-item"><span class="stat-label">Spd</span><span class="stat-value">${(spdMs / 1000).toFixed(1)}s</span></div>`
+        : "";
     return `
 			<div data-troopercard="${trooper.id}" class="entity-card designation-${trooper.designation}${disabledClass}" >
 				<div class="card-body">
@@ -87,12 +101,17 @@ function Partial() {
    * @param canRecruit: whether the player can add one more to staging
    * @param canReroll: whether reroll is available (counter > 0)
    */
-  function _pt(trooper: Soldier, canRecruit = true, canReroll = true): HTMLElement {
+  function _pt(
+    trooper: Soldier,
+    canRecruit = true,
+    canReroll = true,
+  ): HTMLElement {
     return parseHTML(_t(trooper, canRecruit, canReroll)) as HTMLElement;
   }
 
   /**
-   * Roster soldier card - same layout as troops market entity card but with Inventory and Release buttons.
+   * Roster soldier card - same layout as troops market entity card but with Inventory and Release
+   * buttons.
    */
   function _rsc(soldier: Soldier, index: number, isActive: boolean) {
     const slotClass = isActive ? "roster-active" : "roster-reserve";
@@ -110,12 +129,16 @@ function Partial() {
     const avatar = soldier.avatar ?? "default.png";
     const portraitUrl = getSoldierPortraitUrl(avatar, soldier.designation);
     const spdMs = getSoldierAttackIntervalMs(soldier);
-    const spdRow = spdMs != null ? `<div class="detail-item"><span class="stat-label">Spd</span><span class="stat-value">${(spdMs / 1000).toFixed(1)}s</span></div>` : "";
+    const spdRow =
+      spdMs != null
+        ? `<div class="detail-item"><span class="stat-label">Spd</span><span class="stat-value">${(spdMs / 1000).toFixed(1)}s</span></div>`
+        : "";
     return `
 <div data-soldier-id="${soldier.id}" data-soldier-index="${index}" class="entity-card roster-card designation-${soldier.designation ?? "rifleman"} ${slotClass}">
   <div class="card-body">
     <div class="card-row card-row-1">
-      <div class="roster-left">
+      <div class="roster-left pos-relative">
+        <span class="roster-level-badge item-level-badge">Lv${soldier.level}</span>
         <img class="card-image" src="${portraitUrl}" alt="">
         <div class="roster-hp-wrap">
           <div class="roster-hp-bar" style="width: ${hpPct}%"></div>
@@ -187,7 +210,9 @@ function Partial() {
    */
   function _rc(counter: number) {
     const emptyClass = counter <= 0 ? " reroll-empty" : "";
-    return parseHTML(`<div class="recruit-staging-reroll reroll-counter${emptyClass}">Rerolls: ${counter}</div>`);
+    return parseHTML(
+      `<div class="recruit-staging-reroll reroll-counter${emptyClass}">Rerolls: ${counter}</div>`,
+    );
   }
 
   const STAT_KEYS: Record<string, string> = {
@@ -219,7 +244,15 @@ function Partial() {
    * Reusable trait display with hover tooltip (same as market).
    * Use in both troops market cards and roster cards.
    */
-  function _traitWithTooltip(profile: { name: string; stats?: Record<string, number> } | null | undefined): string {
+  function _traitWithTooltip(
+    profile:
+      | {
+          name: string;
+          stats?: Record<string, number>;
+        }
+      | null
+      | undefined,
+  ): string {
     if (!profile?.name) return "";
     const name = profile.name.toUpperCase().replaceAll("_", " ");
     const stats = profile.stats ?? {};

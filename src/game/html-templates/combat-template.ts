@@ -89,7 +89,6 @@ export function combatTemplate(
   <div class="combat-main combat-main-with-drawer">
     <div id="combat-targeting-hint" class="combat-targeting-hint" aria-hidden="true"></div>
     <div id="combat-battle-area" class="combat-battle-area">
-      <div id="combat-objective-timer" class="combat-objective-timer" hidden>Hold: 2:00</div>
       <svg id="combat-attack-lines-svg" class="combat-attack-lines-svg" aria-hidden="true">
         <defs>
           <marker id="combat-arrow-player" markerWidth="6" markerHeight="6" refX="5.5" refY="3" orient="auto">
@@ -133,8 +132,13 @@ export function combatTemplate(
     </button>
   </div>
   <div class="combat-footer troops-market-footer combat-footer-layout">
-    <button type="button" id="combat-back-ready-room" class="game-btn game-btn-sm game-btn-blue combat-back-ready-room-btn">Back</button>
-    <button type="button" id="combat-quit" class="game-btn game-btn-sm game-btn-red">Quit</button>
+    <div class="combat-footer-top">
+      <div id="combat-objective-timer" class="combat-objective-timer" hidden>Hold: 2:00</div>
+    </div>
+    <div class="combat-footer-bottom">
+      <button type="button" id="combat-back-ready-room" class="game-btn game-btn-sm game-btn-blue combat-back-ready-room-btn">Back</button>
+      <button type="button" id="combat-quit" class="game-btn game-btn-sm game-btn-red">Quit</button>
+    </div>
   </div>
   <div id="combat-quit-confirm-popup" class="combat-quit-confirm-popup" role="dialog" aria-modal="true" hidden>
     <div class="combat-quit-confirm-inner">

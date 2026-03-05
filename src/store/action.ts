@@ -253,7 +253,7 @@ function normalizeRecruitMarketPool(pool: Soldier[], recruitLevel: number): Sold
       normalized.push(generateRecruitByRole(role, recruitLevel));
     }
   }
-  return shuffleSoldiers(normalized);
+  return shuffleSoldiers(SoldierManager.ensureUniquePlayerAvatars(normalized));
 }
 
 export const StoreActions = (set: any, get: () => CompanyStore) => ({
@@ -288,6 +288,7 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
   missionsResumeMission: null,
   onboardingHomeIntroPending: false,
   onboardingFirstMissionPending: false,
+  onboardingReadyRoomIntroPending: true,
   onboardingRecruitStep: "none" as RecruitOnboardingStep,
   onboardingRecruitSoldier: null,
 
@@ -315,13 +316,13 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
     );
 
     set((state: CompanyStore) => ({
-      marketAvailableTroops: state.marketAvailableTroops.map((troop, index) => {
+      marketAvailableTroops: SoldierManager.ensureUniquePlayerAvatars(state.marketAvailableTroops.map((troop, index) => {
         if (index === rerollIndex) {
           return newSoldier;
         }
 
         return troop;
-      }),
+      })),
     }));
     const trooperCard = document.querySelector(
       `[data-troopercard='${id}']`,
@@ -397,6 +398,7 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
         missionsResumeMission: null,
         onboardingHomeIntroPending: false,
         onboardingFirstMissionPending: false,
+        onboardingReadyRoomIntroPending: true,
         onboardingRecruitStep: "none",
         onboardingRecruitSoldier: null,
         company: {
@@ -446,6 +448,7 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
     set({ missionsResumeStep: step, missionsResumeMission: mission }),
   setOnboardingHomeIntroPending: (pending: boolean) => set({ onboardingHomeIntroPending: !!pending }),
   setOnboardingFirstMissionPending: (pending: boolean) => set({ onboardingFirstMissionPending: !!pending }),
+  setOnboardingReadyRoomIntroPending: (pending: boolean) => set({ onboardingReadyRoomIntroPending: !!pending }),
   setOnboardingRecruitStep: (step: RecruitOnboardingStep) => set({ onboardingRecruitStep: step }),
   setOnboardingRecruitSoldier: (soldier: Soldier | null) => set({ onboardingRecruitSoldier: soldier }),
   ensureMissionBoard: () => {
@@ -604,6 +607,7 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
         SoldierManager.getNewRifleman(1, nimbleTrait),
         SoldierManager.getNewRifleman(1, veteranTrait),
       ];
+      const uniqueInitial = SoldierManager.ensureUniquePlayerAvatars(initial);
       /* Ensure company has required fields (level, resourceProfile) for new-game flow */
       const companyBase = {
         ...state.company,
@@ -613,15 +617,15 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
         holding_inventory: state.company?.holding_inventory ?? [],
         resourceProfile: state.company?.resourceProfile ?? COMPANY_RESOURCES_BY_LEVEL[0],
       };
-      const companyWithSoldiers = { ...companyBase, soldiers: initial };
+      const companyWithSoldiers = { ...companyBase, soldiers: uniqueInitial };
       const formationSlots = getFormationSlots(companyWithSoldiers);
       return {
         company: {
           ...companyBase,
-          soldiers: initial,
+          soldiers: uniqueInitial,
           formationSlots,
         },
-        totalMenInCompany: initial.length,
+        totalMenInCompany: uniqueInitial.length,
         companyLevel: companyBase.level,
         companyExperience: companyBase.experience ?? 0,
         highestRecruitLevelAchieved: 1,
@@ -629,6 +633,7 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
         missionsResumeMission: null,
         onboardingHomeIntroPending: true,
         onboardingFirstMissionPending: true,
+        onboardingReadyRoomIntroPending: true,
         onboardingRecruitStep: "none",
         onboardingRecruitSoldier: null,
       };
@@ -899,10 +904,14 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
         if (sol.id !== soldierId) return sol;
         const inv = sol.inventory ?? [];
         if (slotType === "weapon") {
-          return { ...sol, weapon: { ...item } };
+          const updated = { ...sol, weapon: { ...item } };
+          SoldierManager.refreshCombatProfile(updated);
+          return updated;
         }
         if (slotType === "armor") {
-          return { ...sol, armor: { ...item } };
+          const updated = { ...sol, armor: { ...item } };
+          SoldierManager.refreshCombatProfile(updated);
+          return updated;
         }
         const eqIdx = options?.equipmentIndex ?? inv.length;
         const newInv = inv.slice();
@@ -914,7 +923,12 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
         } else if (newInv.length < MAX_EQUIPMENT_SLOTS) {
           newInv.push({ ...item });
         }
-        return { ...sol, inventory: newInv.slice(0, MAX_EQUIPMENT_SLOTS) };
+        const updated = {
+          ...sol,
+          inventory: newInv.slice(0, MAX_EQUIPMENT_SLOTS),
+        };
+        SoldierManager.refreshCombatProfile(updated);
+        return updated;
       }) ?? [];
       return {
         company: {
@@ -967,13 +981,23 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
 
       const newSoldiers = soldiers.map((sol) => {
         if (sol.id !== soldierId) return sol;
-        if (slotType === "weapon") return { ...sol, weapon: undefined };
-        if (slotType === "armor") return { ...sol, armor: undefined };
+        if (slotType === "weapon") {
+          const updated = { ...sol, weapon: undefined };
+          SoldierManager.refreshCombatProfile(updated);
+          return updated;
+        }
+        if (slotType === "armor") {
+          const updated = { ...sol, armor: undefined };
+          SoldierManager.refreshCombatProfile(updated);
+          return updated;
+        }
         const inv = (sol.inventory ?? []).slice();
         if (equipmentIndex != null && equipmentIndex >= 0 && equipmentIndex < inv.length) {
           inv[equipmentIndex] = undefined as any; /* Leave hole, don't shift slot 4 → 3 */
         }
-        return { ...sol, inventory: inv };
+        const updated = { ...sol, inventory: inv };
+        SoldierManager.refreshCombatProfile(updated);
+        return updated;
       });
 
       const armory = s.company?.inventory ?? [];
@@ -1077,29 +1101,47 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
           const destIdx = op.destEqIndex;
           while (inv.length <= Math.max(srcIdx, destIdx)) inv.push(undefined as any);
           [inv[srcIdx], inv[destIdx]] = [inv[destIdx], inv[srcIdx]];
-          return { ...sol, inventory: inv.slice(0, MAX_EQUIPMENT_SLOTS) };
+          const updated = {
+            ...sol,
+            inventory: inv.slice(0, MAX_EQUIPMENT_SLOTS),
+          };
+          SoldierManager.refreshCombatProfile(updated);
+          return updated;
         }
         if (sol.id === op.sourceSoldierId) {
           if (op.sourceSlotType === "weapon") {
-            return { ...sol, weapon: destWithTarget };
+            const updated = { ...sol, weapon: destWithTarget };
+            SoldierManager.refreshCombatProfile(updated);
+            return updated;
           }
           if (op.sourceSlotType === "armor") {
-            return { ...sol, armor: destWithTarget };
+            const updated = { ...sol, armor: destWithTarget };
+            SoldierManager.refreshCombatProfile(updated);
+            return updated;
           }
           const inv = (sol.inventory ?? []).slice();
           if (op.sourceEqIndex != null && op.sourceEqIndex < inv.length) {
             if (destWithTarget) inv[op.sourceEqIndex] = destWithTarget as any;
             else inv[op.sourceEqIndex] = undefined as any; /* Leave hole, don't shift slot 4 → 3 */
           }
-          return { ...sol, inventory: inv.slice(0, MAX_EQUIPMENT_SLOTS) };
+          const updated = {
+            ...sol,
+            inventory: inv.slice(0, MAX_EQUIPMENT_SLOTS),
+          };
+          SoldierManager.refreshCombatProfile(updated);
+          return updated;
         }
         if (sol.id === op.destSoldierId) {
           const srcWithTarget = { ...srcItem, target: (srcItem as any).target ?? TARGET_TYPES.none };
           if (op.destSlotType === "weapon") {
-            return { ...sol, weapon: srcWithTarget };
+            const updated = { ...sol, weapon: srcWithTarget as any };
+            SoldierManager.refreshCombatProfile(updated);
+            return updated;
           }
           if (op.destSlotType === "armor") {
-            return { ...sol, armor: srcWithTarget };
+            const updated = { ...sol, armor: srcWithTarget as any };
+            SoldierManager.refreshCombatProfile(updated);
+            return updated;
           }
           const inv = (sol.inventory ?? []).slice();
           const idx = op.destEqIndex ?? inv.length;
@@ -1112,7 +1154,12 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
           } else if (inv.length < MAX_EQUIPMENT_SLOTS) {
             inv.push(srcWithTarget as any);
           }
-          return { ...sol, inventory: inv.slice(0, MAX_EQUIPMENT_SLOTS) };
+          const updated = {
+            ...sol,
+            inventory: inv.slice(0, MAX_EQUIPMENT_SLOTS),
+          };
+          SoldierManager.refreshCombatProfile(updated);
+          return updated;
         }
         return sol;
       });

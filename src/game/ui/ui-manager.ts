@@ -154,7 +154,10 @@ function UiManager() {
   function showTroopsRecruitError(reason: "capacity" | "afford") {
     const el = document.getElementById("troops-recruit-error");
     if (!el) return;
-    el.textContent = reason === "afford" ? "Not enough credits to recruit this soldier." : "Company is at full capacity.";
+    el.textContent =
+      reason === "afford"
+        ? "Not enough credits to recruit this soldier."
+        : "Company is at full capacity.";
     el.classList.add("visible");
     setTimeout(() => el.classList.remove("visible"), 3500);
   }
@@ -196,13 +199,29 @@ function UiManager() {
   }
 
   function renderMissionsScreen(mode?: "menu" | "normal" | "epic" | "dev") {
+    const store = usePlayerCompanyStore.getState();
+
     if (mode == null) {
-      const store = usePlayerCompanyStore.getState();
-      if (store.missionsResumeStep === "ready_room" && store.missionsResumeMission) {
-        _ScreenManager.generate.createReadyRoomPage(store.missionsResumeMission);
+      if (
+        store.missionsResumeStep === "ready_room" &&
+        store.missionsResumeMission
+      ) {
+        _ScreenManager.generate.createReadyRoomPage(
+          store.missionsResumeMission,
+        );
+        return;
+      }
+
+      if (
+        ["all", "manhunt", "skirmish", "defend_objective"].includes(
+          store.missionsResumeStep,
+        )
+      ) {
+        _ScreenManager.generate.createMissionsPage("normal");
         return;
       }
     }
+
     _ScreenManager.generate.createMissionsPage(mode);
   }
 

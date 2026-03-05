@@ -16,7 +16,12 @@ function styler() {
   }
 
   function setCenterBG(img: string, applyOverlay = false) {
-    center.style.backgroundImage = "url(/images/bg/" + img + ")";
+    const source = img.startsWith("/")
+      ? img
+      : img.includes("/")
+        ? `/images/${img}`
+        : `/images/bg/${img}`;
+    center.style.backgroundImage = `url(${source})`;
     center.style.backgroundRepeat = "no-repeat";
     center.style.backgroundSize = "cover";
 

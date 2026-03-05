@@ -5,6 +5,7 @@ import {
 import type { Mission, MissionKind } from "../../constants/missions.ts";
 import {
   DIFFICULTY_LABELS,
+  MISSION_FACTION_META,
   MISSION_KIND_META,
   MISSION_KIND_ORDER,
 } from "../../constants/missions.ts";
@@ -13,6 +14,11 @@ import { getItemIconUrl } from "../../utils/item-utils.ts";
 import { getDisplayEnemyCount } from "../../services/missions/mission-scenarios.ts";
 
 const ENEMY_COUNT_ICON = `<img src="/images/soldier_count.png" alt="" class="mission-enemies-icon" aria-hidden="true" width="20" height="24">`;
+const MISSION_CARD_INSTRUCTION: Partial<Record<MissionKind, string>> = {
+  skirmish: "Eliminate all hostile targets.",
+  manhunt: "Neutralize the high-value target and clear remaining hostiles.",
+  defend_objective: "Hold the objective until time expires or enemy forces break.",
+};
 
 function escapeHtml(s: string): string {
   return s
@@ -62,19 +68,21 @@ function missionCard(m: Mission): string {
   const onboardingClass = m.id?.startsWith("onboarding_")
     ? " mission-card-onboarding-target"
     : "";
-  const flavorText = m.flavorText ?? meta.description;
   const totalEnemies = getDisplayEnemyCount(m);
   const initialEnemies = m.encounter?.initialEnemyCount ?? m.enemyCount;
   const hasReinforcements = totalEnemies > initialEnemies;
-  const enemyLabel = hasReinforcements
-    ? `Enemies: ${totalEnemies} total`
-    : `Enemies: ${initialEnemies}`;
-  const defendNote =
-    m.kind === "defend_objective"
-      ? '<p class="mission-card-note">Reinforcements arrive every 30s. Win by holding out or wiping the force.</p>'
-      : hasReinforcements
-        ? '<p class="mission-card-note">Enemy reinforcements are expected when slots open.</p>'
-        : "";
+  const reinforcements = Math.max(0, totalEnemies - initialEnemies);
+  const instruction =
+    MISSION_CARD_INSTRUCTION[m.kind] ?? "Complete mission objectives and survive.";
+  const factionMeta = m.factionId ? MISSION_FACTION_META[m.factionId] : null;
+  const factionName = factionMeta?.name ?? "Unknown Faction";
+  const factionEmblem = factionMeta?.emblem ?? "/images/desert_wolves.png";
+  const enemyPrimary = hasReinforcements
+    ? `${initialEnemies} deployed`
+    : `${initialEnemies} deployed`;
+  const enemySecondary = hasReinforcements
+    ? `+${reinforcements} reinforcing · ${totalEnemies} max`
+    : "No reinforcements expected";
   const rewards = buildRewardsEntries(m);
   const rewardsHtml = rewards
     .map((e) => {
@@ -87,18 +95,32 @@ function missionCard(m: Mission): string {
     .join("");
 
   return `
-<div class="mission-card${epicClass}${onboardingClass}" data-mission-id="${m.id}" data-kind="${m.kind}" data-level="${m.difficulty}" data-rarity="${rarity}" data-mission-json="${escapeAttr(JSON.stringify(m))}">
+<div class="mission-card${epicClass}${onboardingClass}" data-mission-id="${m.id}" data-kind="${m.kind}" data-level="${m.difficulty}" data-rarity="${rarity}" data-faction="${escapeAttr(m.factionId ?? "unknown")}" data-mission-json="${escapeAttr(JSON.stringify(m))}">
   <span class="mission-card-rarity-badge mission-card-rarity-badge-${rarity}">${rarity === "epic" ? "Epic" : rarity === "rare" ? "Rare" : "Normal"}</span>
-  <div class="mission-card-kind-badge">${meta.name}</div>
-  <h4 class="mission-card-name">${escapeHtml(m.name)}</h4>
-  <div class="mission-card-body">
-    <p class="mission-card-desc">${escapeHtml(flavorText)}</p>
-    ${defendNote}
+  <div class="mission-card-head">
+    <div class="mission-card-branding">
+      <img src="${escapeAttr(factionEmblem)}" alt="${escapeAttr(factionName)} emblem" class="mission-faction-emblem" width="64" height="64">
+      <div class="mission-card-branding-copy">
+        <div class="mission-card-branding-row">
+          <span class="mission-card-kind-badge">${meta.name}</span>
+          <span class="mission-card-faction-tag">${escapeHtml(factionName)}</span>
+        </div>
+        <h4 class="mission-card-name">${escapeHtml(m.name)}</h4>
+      </div>
+    </div>
+  </div>
+  <div class="mission-card-threat-block">
+    <p class="mission-card-instruction">${escapeHtml(instruction)}</p>
+    <div class="mission-card-threat-label">Enemy Force</div>
+    <div class="mission-card-enemies" data-kind="${m.kind}">
+      ${ENEMY_COUNT_ICON}
+      <span class="mission-enemies-count">${enemyPrimary}</span>
+    </div>
+    <div class="mission-card-threat-sub">${enemySecondary}</div>
   </div>
   <div class="mission-card-difficulty" title="${diffLabel}" aria-label="${diffLabel}">
     <div class="mission-card-difficulty-row">
       <span class="mission-diff-bars"><span class="mission-diff-fill" style="width: ${(m.difficulty / 4) * 100}%"></span></span>
-      <span class="mission-card-enemies" data-kind="${m.kind}">${ENEMY_COUNT_ICON}<span class="mission-enemies-count">${enemyLabel}</span></span>
     </div>
     <span class="mission-diff-label">${diffLabel}</span>
   </div>
@@ -116,14 +138,20 @@ function sortMissionsByDifficulty(ms: Mission[]): Mission[] {
   return [...ms].sort((a, b) => a.difficulty - b.difficulty);
 }
 
-function missionSectionByKind(missions: Mission[], kind: MissionKind): string {
+function missionSectionByKind(
+  missions: Mission[],
+  kind: MissionKind,
+  activeKindFilter: MissionKind | "all" = "all",
+): string {
   const meta = MISSION_KIND_META[kind];
   const kindMissions = sortMissionsByDifficulty(
     missions.filter((m) => m.kind === kind),
   );
   if (kindMissions.length === 0) return "";
+  const sectionHidden =
+    activeKindFilter !== "all" && activeKindFilter !== kind ? " hidden" : "";
   return `
-    <div class="missions-section missions-section-kind" data-kind="${kind}">
+    <div class="missions-section missions-section-kind" data-kind="${kind}"${sectionHidden}>
       <div class="missions-kind-banner">${meta.name}</div>
       <div class="missions-grid">
         ${kindMissions.map((m) => missionCard(m)).join("")}
@@ -131,19 +159,24 @@ function missionSectionByKind(missions: Mission[], kind: MissionKind): string {
     </div>`;
 }
 
-function buildMissionFilters(missions: Mission[]): string {
+function buildMissionFilters(
+  missions: Mission[],
+  activeKindFilter: MissionKind | "all",
+): string {
   const kindsPresent = MISSION_KIND_ORDER.filter((k) =>
-    missions.some((m) => m.kind === k),
+    missions.some((m) => {
+      return m.kind === k;
+    }),
   );
   const difficultiesPresent = [1, 2, 3, 4].filter((d) =>
     missions.some((m) => m.difficulty === d),
   );
   if (kindsPresent.length === 0) return "";
   return `
-  <div class="missions-filters" data-kind-filter="all" data-difficulty-filter="all">
+  <div class="missions-filters" data-kind-filter="${activeKindFilter}" data-difficulty-filter="all">
     <div class="missions-filter-row">
-      <button type="button" class="missions-filter-chip  blue is-active" data-filter-group="kind" data-filter-value="all">All</button>
-      ${kindsPresent.map((k) => `<button type="button" class="missions-filter-chip  blue" data-filter-group="kind" data-filter-value="${k}">${MISSION_KIND_META[k].name}</button>`).join("")}
+      <button type="button" class="missions-filter-chip  blue${activeKindFilter === "all" ? " is-active" : ""}" data-filter-group="kind" data-filter-value="all">All</button>
+      ${kindsPresent.map((k) => `<button type="button" class="missions-filter-chip  blue${activeKindFilter === k ? " is-active" : ""}" data-filter-group="kind" data-filter-value="${k}">${MISSION_KIND_META[k].name}</button>`).join("")}
     </div>
    <!-- <div class="missions-filter-row mission-difficulties">
       <button type="button" class="missions-filter-chip is-active" data-filter-group="difficulty" data-filter-value="all">All</button>
@@ -157,6 +190,7 @@ export function missionsTemplate(
   companyLevel = 1,
   activeMode: "menu" | "normal" | "epic" | "dev" = "menu",
   devMissions: Mission[] = [],
+  initialKindFilter: MissionKind | "all" = "all",
 ): string {
   const regular = missions.filter(
     (m) => (m.rarity ?? (m.isEpic ? "epic" : "normal")) !== "epic",
@@ -169,11 +203,11 @@ export function missionsTemplate(
   const mainClass =
     mode === "menu" ? "missions-main missions-main-menu" : "missions-main";
   const regularSections = MISSION_KIND_ORDER.map((k) =>
-    missionSectionByKind(regular, k),
+    missionSectionByKind(regular, k, initialKindFilter),
   )
     .filter(Boolean)
     .join("");
-  const regularFilters = buildMissionFilters(regular);
+  const regularFilters = buildMissionFilters(regular, initialKindFilter);
   const epicSection = `
     <div class="missions-section missions-section-epic">
       <div class="missions-kind-banner missions-kind-banner-epic">Epic Missions</div>

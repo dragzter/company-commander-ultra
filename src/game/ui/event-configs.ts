@@ -1,5 +1,8 @@
 import type { HandlerInitConfig } from "../../constants/types.ts";
-import { getItemPopupBodyHtml, getItemPopupBodyHtmlCompact } from "../html-templates/inventory-template.ts";
+import {
+  getItemPopupBodyHtml,
+  getItemPopupBodyHtmlCompact,
+} from "../html-templates/inventory-template.ts";
 import {
   STARTING_CREDITS,
   getArmorySlotsForCategory,
@@ -21,9 +24,18 @@ import {
   isFormationReassignmentAllowed,
 } from "../../constants/company-slots.ts";
 import { setFormationSwapIndices } from "../html-templates/formation-template.ts";
-import { setLastEquipMoveSoldierIds, setLastReadyRoomMoveSlotIndices } from "../html-templates/ready-room-template.ts";
-import { usePlayerCompanyStore } from "../../store/ui-store.ts";
-import { getMaxSoldierLevel, getAverageCompanyLevel } from "../../utils/company-utils.ts";
+import {
+  setLastEquipMoveSoldierIds,
+  setLastReadyRoomMoveSlotIndices,
+} from "../html-templates/ready-room-template.ts";
+import {
+  type MissionsResumeStep,
+  usePlayerCompanyStore,
+} from "../../store/ui-store.ts";
+import {
+  getMaxSoldierLevel,
+  getAverageCompanyLevel,
+} from "../../utils/company-utils.ts";
 import { disableBtn, enableBtn, s_, sa_ } from "../../utils/html-utils.ts";
 import { DOM } from "../../constants/css-selectors.ts";
 import { Styler } from "../../utils/styler-manager.ts";
@@ -54,12 +66,20 @@ import {
 } from "../combat/combat-loop.ts";
 import type { TargetMap } from "../combat/types.ts";
 import { getItemIconUrl } from "../../utils/item-utils.ts";
-import { weaponWieldOk, itemFitsSlot, canEquipItemLevel, getWeaponRestrictRole } from "../../utils/equip-utils.ts";
+import {
+  weaponWieldOk,
+  itemFitsSlot,
+  canEquipItemLevel,
+  getWeaponRestrictRole,
+} from "../../utils/equip-utils.ts";
 import { resolveGrenadeThrow } from "../../services/combat/grenade-resolver.ts";
 import { WEAPON_EFFECTS } from "../../constants/items/weapon-effects.ts";
 import type { Combatant } from "../combat/types.ts";
-import type { Mission } from "../../constants/missions.ts";
-import { MISSION_KIND_META, DIFFICULTY_LABELS } from "../../constants/missions.ts";
+import { type Mission } from "../../constants/missions.ts";
+import {
+  MISSION_KIND_META,
+  DIFFICULTY_LABELS,
+} from "../../constants/missions.ts";
 import {
   combatSummaryTemplate,
   buildCombatSummaryData,
@@ -70,7 +90,10 @@ import { createEnemyCombatant } from "../combat/combatant-utils.ts";
 import { formatDisplayName } from "../../utils/name-utils.ts";
 import { MAX_GEAR_LEVEL } from "../../constants/items/types.ts";
 import type { Item } from "../../constants/items/types.ts";
-import { getItemMarketBuyPrice, getItemSellPrice } from "../../utils/sell-pricing.ts";
+import {
+  getItemMarketBuyPrice,
+  getItemSellPrice,
+} from "../../utils/sell-pricing.ts";
 import { CREDIT_SYMBOL } from "../../constants/currency.ts";
 import { TRAIT_CODEX } from "../../constants/trait-codex.ts";
 import { TraitProfileStats } from "../entities/soldier/soldier-traits.ts";
@@ -141,21 +164,42 @@ export function eventConfigs() {
       });
     if (grenadeHitBonusPct > 0) {
       const pct = Math.round(grenadeHitBonusPct * 1000) / 10;
-      rows.push(`<span class="roster-trait-item-badge positive">Chance to hit with grenades +${esc(String(pct))}%</span>`);
+      rows.push(
+        `<span class="roster-trait-item-badge positive">Chance to hit with grenades +${esc(String(pct))}%</span>`,
+      );
     }
     return rows.join("");
   }
 
-  function buildSoldierTraitEntries(soldier: Soldier): Array<{ title: string; type: string; desc: string; stats?: Record<string, number>; grenadeHitBonusPct?: number; primary?: boolean }> {
-    const entries: Array<{ title: string; type: string; desc: string; stats?: Record<string, number>; grenadeHitBonusPct?: number; primary?: boolean }> = [];
+  function buildSoldierTraitEntries(soldier: Soldier): Array<{
+    title: string;
+    type: string;
+    desc: string;
+    stats?: Record<string, number>;
+    grenadeHitBonusPct?: number;
+    primary?: boolean;
+  }> {
+    const entries: Array<{
+      title: string;
+      type: string;
+      desc: string;
+      stats?: Record<string, number>;
+      grenadeHitBonusPct?: number;
+      primary?: boolean;
+    }> = [];
     const primaryRaw = (soldier.trait_profile?.name ?? "unremarkable").trim();
     const primaryKey = primaryRaw.toLowerCase().replace(/\s+/g, "_");
     const codex = TRAIT_CODEX[primaryKey];
     entries.push({
       title: toTitle(primaryRaw),
       type: "Primary",
-      desc: codex?.flavor ?? codex?.description ?? "Original trait rolled at recruitment.",
-      stats: (TraitProfileStats[primaryKey] as Record<string, number> | undefined) ?? undefined,
+      desc:
+        codex?.flavor ??
+        codex?.description ??
+        "Original trait rolled at recruitment.",
+      stats:
+        (TraitProfileStats[primaryKey] as Record<string, number> | undefined) ??
+        undefined,
       primary: true,
     });
     for (const traitId of soldier.earnedTraitIds ?? []) {
@@ -163,7 +207,12 @@ export function eventConfigs() {
       if (!def) continue;
       entries.push({
         title: def.name,
-        type: def.kind === "positive" ? "Veterancy" : def.kind === "severe" ? "Severe Scar" : "Scar",
+        type:
+          def.kind === "positive"
+            ? "Veterancy"
+            : def.kind === "severe"
+              ? "Severe Scar"
+              : "Scar",
         desc: def.flavor,
         stats: def.stats,
         grenadeHitBonusPct: def.grenadeHitBonusPct ?? 0,
@@ -180,16 +229,24 @@ export function eventConfigs() {
     const soldiers = usePlayerCompanyStore.getState().company?.soldiers ?? [];
     const sourceSoldier = soldiers.find((s) => s.id === sourceSoldierId);
     const destSoldierId = destSlotEl.dataset.soldierId;
-    const destSoldier = destSoldierId ? soldiers.find((s) => s.id === destSoldierId) : null;
+    const destSoldier = destSoldierId
+      ? soldiers.find((s) => s.id === destSoldierId)
+      : null;
     if (!sourceSoldier || !destSoldier) return false;
 
-    if (!weaponWieldOk(sourceWeapon, destSoldier) || !canEquipItemLevel(sourceWeapon, destSoldier)) {
+    if (
+      !weaponWieldOk(sourceWeapon, destSoldier) ||
+      !canEquipItemLevel(sourceWeapon, destSoldier)
+    ) {
       return false;
     }
 
     const destWeapon = parseSlotItemFromData(destSlotEl);
     if (isWeaponItem(destWeapon)) {
-      if (!weaponWieldOk(destWeapon, sourceSoldier) || !canEquipItemLevel(destWeapon, sourceSoldier)) {
+      if (
+        !weaponWieldOk(destWeapon, sourceSoldier) ||
+        !canEquipItemLevel(destWeapon, sourceSoldier)
+      ) {
         return false;
       }
     }
@@ -198,7 +255,11 @@ export function eventConfigs() {
   }
 
   const initHelperDialogTypewriter = () => {
-    const textEls = Array.from(document.querySelectorAll(".helper-onboarding-typed-text[data-full-text]")) as HTMLElement[];
+    const textEls = Array.from(
+      document.querySelectorAll(
+        ".helper-onboarding-typed-text[data-full-text]",
+      ),
+    ) as HTMLElement[];
     for (const textEl of textEls) {
       const fullText = textEl.dataset.fullText ?? "";
       if (fullText.length === 0) continue;
@@ -246,10 +307,16 @@ export function eventConfigs() {
     const missionBtn = s_(DOM.company.missions) as HTMLElement | null;
     const marketBtn = s_(DOM.company.market) as HTMLElement | null;
     if (missionBtn) {
-      missionBtn.classList.toggle("onboarding-mission-focus", !!st.onboardingFirstMissionPending && !st.onboardingHomeIntroPending);
+      missionBtn.classList.toggle(
+        "onboarding-mission-focus",
+        !!st.onboardingFirstMissionPending && !st.onboardingHomeIntroPending,
+      );
     }
     if (marketBtn) {
-      marketBtn.classList.toggle("onboarding-market-focus", st.onboardingRecruitStep === "market");
+      marketBtn.classList.toggle(
+        "onboarding-market-focus",
+        st.onboardingRecruitStep === "market",
+      );
     }
   };
 
@@ -266,7 +333,9 @@ export function eventConfigs() {
         const st = usePlayerCompanyStore.getState();
         const useDevTier = options?.tierSource === "devCatalog";
         const max = maxOverride ?? getMaxSoldierLevel(st.company);
-        const cur = (useDevTier ? st.devCatalogTierLevel : st.marketTierLevel) || (maxOverride ?? max);
+        const cur =
+          (useDevTier ? st.devCatalogTierLevel : st.marketTierLevel) ||
+          (maxOverride ?? max);
         if (cur > 1) {
           if (useDevTier) st.setDevCatalogTierLevel(cur - 1);
           else st.setMarketTierLevel(cur - 1);
@@ -281,7 +350,9 @@ export function eventConfigs() {
         const st = usePlayerCompanyStore.getState();
         const useDevTier = options?.tierSource === "devCatalog";
         const max = maxOverride ?? getMaxSoldierLevel(st.company);
-        const cur = (useDevTier ? st.devCatalogTierLevel : st.marketTierLevel) || (maxOverride ?? max);
+        const cur =
+          (useDevTier ? st.devCatalogTierLevel : st.marketTierLevel) ||
+          (maxOverride ?? max);
         if (cur < max) {
           if (useDevTier) st.setDevCatalogTierLevel(cur + 1);
           else st.setMarketTierLevel(cur + 1);
@@ -296,9 +367,15 @@ export function eventConfigs() {
         const st = usePlayerCompanyStore.getState();
         const useDevTier = options?.tierSource === "devCatalog";
         const max = maxOverride ?? getMaxSoldierLevel(st.company);
-        const cur = (useDevTier ? st.devCatalogTierLevel : st.marketTierLevel) || (maxOverride ?? max);
-        const trigger = (e.target as HTMLElement | null)?.closest("[data-market-tier-delta]") as HTMLElement | null;
-        const deltaRaw = Number(trigger?.getAttribute("data-market-tier-delta") ?? 0);
+        const cur =
+          (useDevTier ? st.devCatalogTierLevel : st.marketTierLevel) ||
+          (maxOverride ?? max);
+        const trigger = (e.target as HTMLElement | null)?.closest(
+          "[data-market-tier-delta]",
+        ) as HTMLElement | null;
+        const deltaRaw = Number(
+          trigger?.getAttribute("data-market-tier-delta") ?? 0,
+        );
         const delta = Number.isFinite(deltaRaw) ? Math.trunc(deltaRaw) : 0;
         if (delta === 0) return;
         const next = Math.max(1, Math.min(max, cur + delta));
@@ -316,10 +393,16 @@ export function eventConfigs() {
         const st = usePlayerCompanyStore.getState();
         const useDevTier = options?.tierSource === "devCatalog";
         const max = maxOverride ?? getMaxSoldierLevel(st.company);
-        const cur = (useDevTier ? st.devCatalogTierLevel : st.marketTierLevel) || (maxOverride ?? max);
-        const trigger = (e.target as HTMLElement | null)?.closest("[data-market-tier-go]") as HTMLElement | null;
+        const cur =
+          (useDevTier ? st.devCatalogTierLevel : st.marketTierLevel) ||
+          (maxOverride ?? max);
+        const trigger = (e.target as HTMLElement | null)?.closest(
+          "[data-market-tier-go]",
+        ) as HTMLElement | null;
         const nav = trigger?.closest(".market-level-nav");
-        const input = nav?.querySelector("[data-market-tier-input]") as HTMLInputElement | null;
+        const input = nav?.querySelector(
+          "[data-market-tier-input]",
+        ) as HTMLInputElement | null;
         if (!input) return;
         const parsed = Number(input.value);
         if (!Number.isFinite(parsed)) return;
@@ -341,7 +424,9 @@ export function eventConfigs() {
         const st = usePlayerCompanyStore.getState();
         const useDevTier = options?.tierSource === "devCatalog";
         const max = maxOverride ?? getMaxSoldierLevel(st.company);
-        const cur = (useDevTier ? st.devCatalogTierLevel : st.marketTierLevel) || (maxOverride ?? max);
+        const cur =
+          (useDevTier ? st.devCatalogTierLevel : st.marketTierLevel) ||
+          (maxOverride ?? max);
         const input = e.currentTarget as HTMLInputElement | null;
         if (!input) return;
         const parsed = Number(input.value);
@@ -600,7 +685,9 @@ export function eventConfigs() {
       selector: DOM.company.settingsResetBtn,
       eventType: "click",
       callback: () => {
-        const popup = s_(DOM.company.settingsResetConfirmPopup) as HTMLElement | null;
+        const popup = s_(
+          DOM.company.settingsResetConfirmPopup,
+        ) as HTMLElement | null;
         if (popup) popup.hidden = false;
       },
     },
@@ -608,7 +695,9 @@ export function eventConfigs() {
       selector: DOM.company.settingsResetConfirmNo,
       eventType: "click",
       callback: () => {
-        const popup = s_(DOM.company.settingsResetConfirmPopup) as HTMLElement | null;
+        const popup = s_(
+          DOM.company.settingsResetConfirmPopup,
+        ) as HTMLElement | null;
         if (popup) popup.hidden = true;
       },
     },
@@ -625,10 +714,16 @@ export function eventConfigs() {
       selector: DOM.company.settingsResetConfirmYes,
       eventType: "click",
       callback: () => {
-        const resetBtn = s_(DOM.company.settingsResetConfirmYes) as HTMLButtonElement | null;
+        const resetBtn = s_(
+          DOM.company.settingsResetConfirmYes,
+        ) as HTMLButtonElement | null;
         if (resetBtn) resetBtn.disabled = true;
         try {
-          ((usePlayerCompanyStore as unknown as { persist?: { clearStorage?: () => void } }).persist?.clearStorage?.());
+          (
+            usePlayerCompanyStore as unknown as {
+              persist?: { clearStorage?: () => void };
+            }
+          ).persist?.clearStorage?.();
         } catch {
           //
         }
@@ -651,7 +746,9 @@ export function eventConfigs() {
       callback: () => {
         usePlayerCompanyStore.getState().setOnboardingHomeIntroPending(false);
         usePlayerCompanyStore.getState().setOnboardingFirstMissionPending(true);
-        const popup = s_(DOM.company.onboardingIntroPopup) as HTMLElement | null;
+        const popup = s_(
+          DOM.company.onboardingIntroPopup,
+        ) as HTMLElement | null;
         if (popup) {
           popup.classList.add("home-onboarding-popup-hide");
           window.setTimeout(() => {
@@ -670,7 +767,9 @@ export function eventConfigs() {
       callback: () => {
         const st = usePlayerCompanyStore.getState();
         st.setOnboardingRecruitStep("market");
-        const popup = s_(DOM.company.onboardingRecruitPopup) as HTMLElement | null;
+        const popup = s_(
+          DOM.company.onboardingRecruitPopup,
+        ) as HTMLElement | null;
         if (popup) {
           popup.classList.add("home-onboarding-popup-hide");
           window.setTimeout(() => {
@@ -729,13 +828,17 @@ export function eventConfigs() {
       selector: ".codex-tab",
       eventType: "click",
       callback: (e: Event) => {
-        const tab = (e.currentTarget as HTMLElement);
+        const tab = e.currentTarget as HTMLElement;
         const tabName = tab.dataset.tab;
         if (!tabName) return;
         const popup = s_(DOM.company.codexPopup);
         if (!popup) return;
-        popup.querySelectorAll(".codex-tab").forEach((t) => t.classList.remove("active"));
-        popup.querySelectorAll(".codex-tab-panel").forEach((p) => p.classList.remove("active"));
+        popup
+          .querySelectorAll(".codex-tab")
+          .forEach((t) => t.classList.remove("active"));
+        popup
+          .querySelectorAll(".codex-tab-panel")
+          .forEach((p) => p.classList.remove("active"));
         tab.classList.add("active");
         const panel = popup.querySelector(`[data-panel="${tabName}"]`);
         if (panel) panel.classList.add("active");
@@ -795,27 +898,51 @@ export function eventConfigs() {
         const chip = e.currentTarget as HTMLElement;
         const group = chip.dataset.filterGroup;
         const value = chip.dataset.filterValue;
+
         if (!group || !value) return;
-        const filtersRoot = chip.closest(".missions-filters") as HTMLElement | null;
+        const filtersRoot = chip.closest(
+          ".missions-filters",
+        ) as HTMLElement | null;
         if (!filtersRoot) return;
         if (group === "kind") filtersRoot.dataset.kindFilter = value;
-        if (group === "difficulty") filtersRoot.dataset.difficultyFilter = value;
-        filtersRoot.querySelectorAll(`.missions-filter-chip[data-filter-group="${group}"]`).forEach((el) => {
-          el.classList.toggle("is-active", el === chip);
-        });
+        if (group === "difficulty")
+          filtersRoot.dataset.difficultyFilter = value;
+        filtersRoot
+          .querySelectorAll(
+            `.missions-filter-chip[data-filter-group="${group}"]`,
+          )
+          .forEach((el) => {
+            el.classList.toggle("is-active", el === chip);
+          });
 
         const kindFilter = filtersRoot.dataset.kindFilter ?? "all";
+        if (group === "kind") {
+          const resumeStep: MissionsResumeStep =
+            value === "all" ||
+            value === "defend_objective" ||
+            value === "skirmish" ||
+            value === "manhunt"
+              ? (value as MissionsResumeStep)
+              : "all";
+          store.setMissionsResumeState(resumeStep, null);
+        }
+
         const difficultyFilter = filtersRoot.dataset.difficultyFilter ?? "all";
-        const sections = Array.from(document.querySelectorAll(".missions-section-kind")) as HTMLElement[];
+        const sections = Array.from(
+          document.querySelectorAll(".missions-section-kind"),
+        ) as HTMLElement[];
         let visibleCards = 0;
         sections.forEach((section) => {
-          const cards = Array.from(section.querySelectorAll(".mission-card")) as HTMLElement[];
+          const cards = Array.from(
+            section.querySelectorAll(".mission-card"),
+          ) as HTMLElement[];
           let sectionVisible = false;
           cards.forEach((card) => {
             const cardKind = card.dataset.kind ?? "";
             const cardDifficulty = card.dataset.level ?? "";
             const kindOk = kindFilter === "all" || cardKind === kindFilter;
-            const diffOk = difficultyFilter === "all" || cardDifficulty === difficultyFilter;
+            const diffOk =
+              difficultyFilter === "all" || cardDifficulty === difficultyFilter;
             const showCard = kindOk && diffOk;
             card.hidden = !showCard;
             if (showCard) {
@@ -825,15 +952,40 @@ export function eventConfigs() {
           });
           section.hidden = !sectionVisible;
         });
-        const empty = document.querySelector(".missions-filter-empty-state") as HTMLElement | null;
+        const empty = document.querySelector(
+          ".missions-filter-empty-state",
+        ) as HTMLElement | null;
         if (empty) empty.hidden = visibleCards > 0;
+
+        const visibleAfter = Array.from(
+          document.querySelectorAll(
+            ".missions-section-kind:not([hidden]) .mission-card:not([hidden])",
+          ),
+        ) as HTMLElement[];
+        visibleAfter.forEach((card, idx) => {
+          card.classList.remove("mission-card-view-switch");
+          card.style.setProperty(
+            "--mission-switch-delay",
+            `${Math.min(idx, 10) * 18}ms`,
+          );
+        });
+        requestAnimationFrame(() => {
+          visibleAfter.forEach((card) =>
+            card.classList.add("mission-card-view-switch"),
+          );
+          window.setTimeout(() => {
+            visibleAfter.forEach((card) => {
+              card.classList.remove("mission-card-view-switch");
+              card.style.removeProperty("--mission-switch-delay");
+            });
+          }, 260);
+        });
       },
     },
     {
       selector: DOM.missions.modeNormalBtn,
       eventType: "click",
       callback: () => {
-        usePlayerCompanyStore.getState().setMissionsResumeState("none", null);
         UiManager.renderMissionsScreen("normal");
       },
     },
@@ -875,7 +1027,9 @@ export function eventConfigs() {
         const mission = JSON.parse(json) as Mission;
         console.log("Launch mission", mission);
         if (mission.id?.startsWith("onboarding_")) {
-          usePlayerCompanyStore.getState().setOnboardingFirstMissionPending(false);
+          usePlayerCompanyStore
+            .getState()
+            .setOnboardingFirstMissionPending(false);
         }
         if (mission.isDevTest) {
           UiManager.renderCombatScreen(mission);
@@ -889,14 +1043,23 @@ export function eventConfigs() {
       eventType: "click",
       callback: (e: Event) => {
         const btn = e.currentTarget as HTMLButtonElement;
-        const desc = btn.closest(".mission-card-body")?.querySelector(".mission-card-desc");
+        const desc = btn
+          .closest(".mission-card-body")
+          ?.querySelector(".mission-card-desc");
         const fullText = desc?.getAttribute("data-full-text");
         const popup = s_(DOM.missions.flavorPopup);
-        const titleEl = popup?.querySelector("#mission-flavor-popup-title") as HTMLElement;
-        const textEl = popup?.querySelector("#mission-flavor-popup-text") as HTMLElement;
+        const titleEl = popup?.querySelector(
+          "#mission-flavor-popup-title",
+        ) as HTMLElement;
+        const textEl = popup?.querySelector(
+          "#mission-flavor-popup-text",
+        ) as HTMLElement;
         if (popup && titleEl && textEl && fullText) {
           const card = btn.closest(".mission-card");
-          titleEl.textContent = (card?.querySelector(".mission-card-name")?.textContent ?? "Mission Brief").trim();
+          titleEl.textContent = (
+            card?.querySelector(".mission-card-name")?.textContent ??
+            "Mission Brief"
+          ).trim();
           textEl.textContent = fullText;
           popup.removeAttribute("hidden");
         }
@@ -916,8 +1079,12 @@ export function eventConfigs() {
     players: Combatant[],
     enemies: Combatant[],
   ): HandlerInitConfig[] {
-    let grenadeTargetingMode: { thrower: Combatant; grenade: SoldierGrenade } | null = null;
-    let medTargetingMode: { user: Combatant; medItem: SoldierMedItem } | null = null;
+    let grenadeTargetingMode: {
+      thrower: Combatant;
+      grenade: SoldierGrenade;
+    } | null = null;
+    let medTargetingMode: { user: Combatant; medItem: SoldierMedItem } | null =
+      null;
     let suppressTargetingMode: { user: Combatant } | null = null;
     let combatStarted = false;
     let combatWinner: "player" | "enemy" | null = null;
@@ -928,33 +1095,61 @@ export function eventConfigs() {
     const playerDamage = new Map<string, number>();
     const playerDamageTaken = new Map<string, number>();
     const playerAbilitiesUsed = new Map<string, number>();
-    const missionStatsBySoldier = new Map<string, { grenadeThrows: number; grenadeHits: number; turnsBelow20Hp: number }>();
+    const missionStatsBySoldier = new Map<
+      string,
+      {
+        grenadeThrows: number;
+        grenadeHits: number;
+        turnsBelow20Hp: number;
+      }
+    >();
     for (const p of players) {
       playerKills.set(p.id, 0);
       playerDamage.set(p.id, 0);
       playerDamageTaken.set(p.id, 0);
       playerAbilitiesUsed.set(p.id, 0);
-      missionStatsBySoldier.set(p.id, { grenadeThrows: 0, grenadeHits: 0, turnsBelow20Hp: 0 });
+      missionStatsBySoldier.set(p.id, {
+        grenadeThrows: 0,
+        grenadeHits: 0,
+        turnsBelow20Hp: 0,
+      });
     }
     const screen = document.getElementById("combat-screen");
     const missionJson = screen?.getAttribute("data-mission-json");
     let missionForCombat: Mission | null = null;
     if (missionJson) {
       try {
-        missionForCombat = JSON.parse(missionJson.replace(/&quot;/g, '"')) as Mission;
+        missionForCombat = JSON.parse(
+          missionJson.replace(/&quot;/g, '"'),
+        ) as Mission;
       } catch {
         missionForCombat = null;
       }
     }
     const isDevTestCombat = Boolean(missionForCombat?.isDevTest);
-    const isDefendObjectiveMission = missionForCombat?.kind === "defend_objective";
+    const isDefendObjectiveMission =
+      missionForCombat?.kind === "defend_objective";
     const missionEncounter = missionForCombat?.encounter;
     const DEFEND_DURATION_MS = 120_000;
-    const DEFEND_REINFORCE_INTERVAL_MS = Math.max(0, missionEncounter?.reinforceIntervalMs ?? (isDefendObjectiveMission ? 30_000 : 0));
-    const DEFEND_REINFORCE_SETUP_MS = Math.max(0, missionEncounter?.reinforceSetupMs ?? 2_000);
-    const DEFEND_MAX_ENEMIES = Math.max(1, missionEncounter?.maxConcurrentEnemies ?? 8);
-    const MISSION_TOTAL_ENEMY_BUDGET = Math.max(enemies.length, missionEncounter?.totalEnemyCount ?? enemies.length);
-    const HAS_MISSION_REINFORCEMENTS = MISSION_TOTAL_ENEMY_BUDGET > enemies.length;
+    const DEFEND_REINFORCE_INTERVAL_MS = Math.max(
+      0,
+      missionEncounter?.reinforceIntervalMs ??
+        (isDefendObjectiveMission ? 30_000 : 0),
+    );
+    const DEFEND_REINFORCE_SETUP_MS = Math.max(
+      0,
+      missionEncounter?.reinforceSetupMs ?? 2_000,
+    );
+    const DEFEND_MAX_ENEMIES = Math.max(
+      1,
+      missionEncounter?.maxConcurrentEnemies ?? 8,
+    );
+    const MISSION_TOTAL_ENEMY_BUDGET = Math.max(
+      enemies.length,
+      missionEncounter?.totalEnemyCount ?? enemies.length,
+    );
+    const HAS_MISSION_REINFORCEMENTS =
+      MISSION_TOTAL_ENEMY_BUDGET > enemies.length;
     const DEFEND_DEATH_NOTICE_MS = 1_000;
     const TAKE_COVER_COOLDOWN_MS = 60_000;
     const DEFEND_WAVE_STAGGER_MIN_MS = 450;
@@ -1000,9 +1195,15 @@ export function eventConfigs() {
       return {
         card,
         hpBar: card.querySelector(".combat-card-hp-bar") as HTMLElement | null,
-        hpValue: card.querySelector(".combat-card-hp-value") as HTMLElement | null,
-        avatarWrap: card.querySelector(".combat-card-avatar-wrap") as HTMLElement | null,
-        spdBadge: card.querySelector(".combat-card-spd-badge") as HTMLElement | null,
+        hpValue: card.querySelector(
+          ".combat-card-hp-value",
+        ) as HTMLElement | null,
+        avatarWrap: card.querySelector(
+          ".combat-card-avatar-wrap",
+        ) as HTMLElement | null,
+        spdBadge: card.querySelector(
+          ".combat-card-spd-badge",
+        ) as HTMLElement | null,
       };
     }
 
@@ -1024,7 +1225,9 @@ export function eventConfigs() {
     function getCombatantDomRefs(id: string): CombatantDomRefs | null {
       const cached = combatantDomCache.get(id);
       if (cached?.card.isConnected) return cached;
-      const card = document.querySelector(`[data-combatant-id="${id}"]`) as HTMLElement | null;
+      const card = document.querySelector(
+        `[data-combatant-id="${id}"]`,
+      ) as HTMLElement | null;
       if (!card) {
         removeCombatantCardFromCache(id);
         return null;
@@ -1039,9 +1242,11 @@ export function eventConfigs() {
     }
 
     function primeCombatantDomCache(): void {
-      document.querySelectorAll(".combat-card[data-combatant-id]").forEach((node) => {
-        cacheCombatantCard(node as HTMLElement);
-      });
+      document
+        .querySelectorAll(".combat-card[data-combatant-id]")
+        .forEach((node) => {
+          cacheCombatantCard(node as HTMLElement);
+        });
     }
 
     function markCombatantsDirty(
@@ -1068,7 +1273,10 @@ export function eventConfigs() {
     function markAllCombatantsDirty(
       flags: { hp?: boolean; status?: boolean; speed?: boolean } = {},
     ): void {
-      markCombatantsDirty(allCombatants.map((c) => c.id), flags);
+      markCombatantsDirty(
+        allCombatants.map((c) => c.id),
+        flags,
+      );
     }
 
     function roleBadge(designation: string | undefined): string {
@@ -1085,15 +1293,21 @@ export function eventConfigs() {
       const downClass = isDown ? " combat-card-down" : "";
       const des = (c.designation ?? "rifleman").toLowerCase();
       const epicEliteClass = c.isEpicElite ? " combat-card-epic-elite" : "";
-      const manhuntTargetClass = c.isManhuntTarget ? " combat-card-manhunt-target" : "";
-      const slotAttr = c.enemySlotIndex != null ? ` data-enemy-slot="${c.enemySlotIndex}"` : "";
+      const manhuntTargetClass = c.isManhuntTarget
+        ? " combat-card-manhunt-target"
+        : "";
+      const slotAttr =
+        c.enemySlotIndex != null
+          ? ` data-enemy-slot="${c.enemySlotIndex}"`
+          : "";
       const weaponIcon = c.weaponIconUrl ?? "";
       const weaponHtml = weaponIcon
         ? `<img class="combat-card-weapon" src="${weaponIcon}" alt="" width="18" height="18">`
         : '<span class="combat-card-weapon combat-card-weapon-placeholder"></span>';
       const rb = roleBadge(c.designation);
       const spdMs = c.attackIntervalMs;
-      const spdText = spdMs != null && spdMs > 0 ? `SPD: ${(spdMs / 1000).toFixed(1)}s` : "";
+      const spdText =
+        spdMs != null && spdMs > 0 ? `SPD: ${(spdMs / 1000).toFixed(1)}s` : "";
       const lvl = c.level ?? 1;
       const imgSrc = `/images/red-portrait/${c.avatar}`;
       return `
@@ -1135,7 +1349,9 @@ export function eventConfigs() {
 
     function insertEnemyCardBySlot(c: Combatant, fadeIn = false): void {
       const slot = c.enemySlotIndex ?? 0;
-      const slotCell = document.querySelector(`.combat-enemy-slot[data-enemy-slot-cell="${slot}"]`) as HTMLElement | null;
+      const slotCell = document.querySelector(
+        `.combat-enemy-slot[data-enemy-slot-cell="${slot}"]`,
+      ) as HTMLElement | null;
       if (!slotCell) return;
       const t = document.createElement("template");
       t.innerHTML = enemyCardHtml(c).trim();
@@ -1157,12 +1373,16 @@ export function eventConfigs() {
     }
 
     function getAliveEnemyCount(): number {
-      return enemies.filter((e) => e.hp > 0 && !e.downState && !e.removedFromCombat).length;
+      return enemies.filter(
+        (e) => e.hp > 0 && !e.downState && !e.removedFromCombat,
+      ).length;
     }
 
     function isEnemySlotOpen(slot: number): boolean {
       if (slot < 0 || slot >= DEFEND_MAX_ENEMIES) return false;
-      return !enemies.some((e) => e.enemySlotIndex === slot && !e.removedFromCombat);
+      return !enemies.some(
+        (e) => e.enemySlotIndex === slot && !e.removedFromCombat,
+      );
     }
 
     function getNextOpenEnemySlot(): number | null {
@@ -1177,20 +1397,27 @@ export function eventConfigs() {
       return null;
     }
 
-    function updateDefendObjectiveTimer(now: number, defendEndAt: number): void {
+    function updateDefendObjectiveTimer(
+      now: number,
+      defendEndAt: number,
+    ): void {
       if (!defendTimerEl || !isDefendObjectiveMission) return;
       const remainingMs = Math.max(0, defendEndAt - now);
       const totalSec = Math.ceil(remainingMs / 1000);
       const mins = Math.floor(totalSec / 60);
       const secs = totalSec % 60;
       defendTimerEl.textContent = `Hold: ${mins}:${String(secs).padStart(2, "0")}`;
-      defendTimerEl.classList.toggle("combat-objective-timer-urgent", totalSec <= 30);
+      defendTimerEl.classList.toggle(
+        "combat-objective-timer-urgent",
+        totalSec <= 30,
+      );
       defendTimerEl.hidden = false;
     }
 
     function getSoldierFromStore(soldierId: string) {
       const company = usePlayerCompanyStore.getState().company;
-      const storeSoldier = company?.soldiers?.find((s) => s.id === soldierId) ?? null;
+      const storeSoldier =
+        company?.soldiers?.find((s) => s.id === soldierId) ?? null;
       if (storeSoldier) return storeSoldier;
       const combatant = players.find((p) => p.id === soldierId);
       return combatant?.soldierRef ?? null;
@@ -1202,16 +1429,20 @@ export function eventConfigs() {
       type: "medical" | "throwable",
     ): void {
       const store = usePlayerCompanyStore.getState();
-      const storeSoldier = store.company?.soldiers?.find((s) => s.id === soldierId) ?? null;
+      const storeSoldier =
+        store.company?.soldiers?.find((s) => s.id === soldierId) ?? null;
       if (storeSoldier) {
-        if (type === "medical") store.consumeSoldierMedical(soldierId, inventoryIndex);
+        if (type === "medical")
+          store.consumeSoldierMedical(soldierId, inventoryIndex);
         else store.consumeSoldierThrowable(soldierId, inventoryIndex);
         return;
       }
       const combatant = players.find((p) => p.id === soldierId);
       const inv = combatant?.soldierRef?.inventory;
       if (!inv || inventoryIndex < 0 || inventoryIndex >= inv.length) return;
-      const item = inv[inventoryIndex] as { uses?: number; quantity?: number } | undefined;
+      const item = inv[inventoryIndex] as
+        | { uses?: number; quantity?: number }
+        | undefined;
       if (!item) return;
       const current = item.uses ?? item.quantity;
       if (typeof current === "number") {
@@ -1224,7 +1455,10 @@ export function eventConfigs() {
       inv.splice(inventoryIndex, 1);
     }
 
-    function positionPopupUnderCard(popup: HTMLElement, card: HTMLElement | null) {
+    function positionPopupUnderCard(
+      popup: HTMLElement,
+      card: HTMLElement | null,
+    ) {
       const combatScreen = document.getElementById("combat-screen");
       if (!combatScreen || !card) {
         popup.style.left = "50%";
@@ -1238,7 +1472,10 @@ export function eventConfigs() {
       const popupRect = popup.getBoundingClientRect();
       const gap = 4;
       let leftV = (cardRect.left + cardRect.right) / 2 - popupRect.width / 2;
-      leftV = Math.max(screenRect.left + 12, Math.min(screenRect.right - popupRect.width - 12, leftV));
+      leftV = Math.max(
+        screenRect.left + 12,
+        Math.min(screenRect.right - popupRect.width - 12, leftV),
+      );
       let topV = cardRect.bottom + gap;
       const spaceAbove = cardRect.top - screenRect.top;
       const spaceBelow = screenRect.bottom - cardRect.bottom;
@@ -1262,21 +1499,32 @@ export function eventConfigs() {
         });
     }
 
-    function openAbilitiesPopup(combatant: Combatant, card?: HTMLElement | null) {
+    function openAbilitiesPopup(
+      combatant: Combatant,
+      card?: HTMLElement | null,
+    ) {
       if (combatWinner || combatant.side !== "player") return;
       grenadeTargetingMode = null;
       medTargetingMode = null;
       suppressTargetingMode = null;
-      document.querySelectorAll(".combat-card-grenade-target").forEach((el) => el.classList.remove("combat-card-grenade-target"));
-      document.querySelectorAll(".combat-card-heal-target").forEach((el) => el.classList.remove("combat-card-heal-target"));
-      document.querySelectorAll(".combat-ability-selected").forEach((el) => el.classList.remove("combat-ability-selected"));
+      document
+        .querySelectorAll(".combat-card-grenade-target")
+        .forEach((el) => el.classList.remove("combat-card-grenade-target"));
+      document
+        .querySelectorAll(".combat-card-heal-target")
+        .forEach((el) => el.classList.remove("combat-card-heal-target"));
+      document
+        .querySelectorAll(".combat-ability-selected")
+        .forEach((el) => el.classList.remove("combat-ability-selected"));
       const th = document.getElementById("combat-targeting-hint");
       if (th) {
         th.textContent = "";
         th.setAttribute("aria-hidden", "true");
       }
       const popup = document.getElementById("combat-abilities-popup");
-      const contentEl = document.getElementById("combat-abilities-popup-content");
+      const contentEl = document.getElementById(
+        "combat-abilities-popup-content",
+      );
       const hintEl = document.getElementById("combat-abilities-popup-hint");
       const listEl = document.getElementById("combat-abilities-list");
       const titleEl = document.getElementById("combat-abilities-popup-title");
@@ -1299,53 +1547,76 @@ export function eventConfigs() {
 
       const now = Date.now();
       const takeCoverOnCooldown = (combatant.takeCoverCooldownUntil ?? 0) > now;
-      const takeCoverRemainingSec = takeCoverOnCooldown ? Math.ceil((combatant.takeCoverCooldownUntil! - now) / 1000) : 0;
+      const takeCoverRemainingSec = takeCoverOnCooldown
+        ? Math.ceil((combatant.takeCoverCooldownUntil! - now) / 1000)
+        : 0;
       const suppressOnCooldown = (combatant.suppressCooldownUntil ?? 0) > now;
-      const suppressRemainingSec = suppressOnCooldown ? Math.ceil((combatant.suppressCooldownUntil! - now) / 1000) : 0;
+      const suppressRemainingSec = suppressOnCooldown
+        ? Math.ceil((combatant.suppressCooldownUntil! - now) / 1000)
+        : 0;
       const designation = (combatant.designation ?? "").toLowerCase();
       const abilities = getSoldierAbilities().filter((a) => {
         if (a.designationRestrict) return designation === a.designationRestrict;
         return true;
       });
-      const abilityButtons = abilities.map((a) => {
-        const isTakeCover = a.actionId === "take_cover";
-        const isSuppress = a.actionId === "suppress";
-        const disabled = isTakeCover ? (!canUse || takeCoverOnCooldown) : isSuppress ? (!canUse || suppressOnCooldown) : !canUse;
-        const cooldownClass = (isTakeCover && takeCoverOnCooldown) || (isSuppress && suppressOnCooldown) ? " combat-ability-cooldown" : "";
-        const slotClass = a.slotClassName ? ` ${a.slotClassName}` : "";
-        const timerHtml = isTakeCover && takeCoverOnCooldown
-          ? `<span class="combat-ability-cooldown-timer" data-ability-cooldown="take_cover">${takeCoverRemainingSec}</span>`
-          : isSuppress && suppressOnCooldown
-            ? `<span class="combat-ability-cooldown-timer" data-ability-cooldown="suppress">${suppressRemainingSec}</span>`
-            : "";
-        const labelHtml = isTakeCover ? "" : `<span class="combat-ability-label">${a.name}</span>`;
-        return `<button type="button" class="combat-ability-icon-slot${slotClass}${cooldownClass}" data-ability-id="${a.id}" data-soldier-id="${combatant.id}" ${disabled ? "disabled" : ""} title="${a.name}" aria-label="${a.name}">
+      const abilityButtons = abilities
+        .map((a) => {
+          const isTakeCover = a.actionId === "take_cover";
+          const isSuppress = a.actionId === "suppress";
+          const disabled = isTakeCover
+            ? !canUse || takeCoverOnCooldown
+            : isSuppress
+              ? !canUse || suppressOnCooldown
+              : !canUse;
+          const cooldownClass =
+            (isTakeCover && takeCoverOnCooldown) ||
+            (isSuppress && suppressOnCooldown)
+              ? " combat-ability-cooldown"
+              : "";
+          const slotClass = a.slotClassName ? ` ${a.slotClassName}` : "";
+          const timerHtml =
+            isTakeCover && takeCoverOnCooldown
+              ? `<span class="combat-ability-cooldown-timer" data-ability-cooldown="take_cover">${takeCoverRemainingSec}</span>`
+              : isSuppress && suppressOnCooldown
+                ? `<span class="combat-ability-cooldown-timer" data-ability-cooldown="suppress">${suppressRemainingSec}</span>`
+                : "";
+          const labelHtml = isTakeCover
+            ? ""
+            : `<span class="combat-ability-label">${a.name}</span>`;
+          return `<button type="button" class="combat-ability-icon-slot${slotClass}${cooldownClass}" data-ability-id="${a.id}" data-soldier-id="${combatant.id}" ${disabled ? "disabled" : ""} title="${a.name}" aria-label="${a.name}">
             <img src="${a.icon}" alt="" width="48" height="48">
             ${timerHtml}
             ${labelHtml}
           </button>`;
-      }).join("");
+        })
+        .join("");
 
       function buildEquipmentHtml(c: Combatant) {
         const eqNow = Date.now();
         const grenadeOnCooldown = (c.grenadeCooldownUntil ?? 0) > eqNow;
-        const grenadeRemainingSec = grenadeOnCooldown ? Math.ceil((c.grenadeCooldownUntil! - eqNow) / 1000) : 0;
-        return equipmentSlots.map((slot) => {
-          if (slot.type === "grenade") {
-            const g = slot.data;
-            const isKnife = g.item.id === "tk21_throwing_knife";
-            const qty = g.item.uses ?? g.item.quantity ?? 1;
-            const level = g.item.level ?? 1;
-            const rarity = g.item.rarity ?? "common";
-            const iconUrl = getItemIconUrl(g.item);
-            const hasUses = g.item.uses != null || g.item.quantity != null;
-            const btnRarity = rarity !== "common" ? ` rarity-${rarity}` : "";
-            const grenadeDisabled = !canUse || (!isKnife && grenadeOnCooldown);
-            const cooldownClass = !isKnife && grenadeOnCooldown ? " combat-grenade-cooldown" : "";
-            const timerHtml = !isKnife && grenadeOnCooldown
-              ? `<span class="combat-grenade-cooldown-timer">${grenadeRemainingSec}</span>`
-              : "";
-            return `<button type="button" class="combat-grenade-item${btnRarity}${cooldownClass}" data-inventory-index="${g.inventoryIndex}" data-soldier-id="${c.id}" title="${g.item.name}" aria-label="${g.item.name}" ${grenadeDisabled ? "disabled" : ""}>
+        const grenadeRemainingSec = grenadeOnCooldown
+          ? Math.ceil((c.grenadeCooldownUntil! - eqNow) / 1000)
+          : 0;
+        return equipmentSlots
+          .map((slot) => {
+            if (slot.type === "grenade") {
+              const g = slot.data;
+              const isKnife = g.item.id === "tk21_throwing_knife";
+              const qty = g.item.uses ?? g.item.quantity ?? 1;
+              const level = g.item.level ?? 1;
+              const rarity = g.item.rarity ?? "common";
+              const iconUrl = getItemIconUrl(g.item);
+              const hasUses = g.item.uses != null || g.item.quantity != null;
+              const btnRarity = rarity !== "common" ? ` rarity-${rarity}` : "";
+              const grenadeDisabled =
+                !canUse || (!isKnife && grenadeOnCooldown);
+              const cooldownClass =
+                !isKnife && grenadeOnCooldown ? " combat-grenade-cooldown" : "";
+              const timerHtml =
+                !isKnife && grenadeOnCooldown
+                  ? `<span class="combat-grenade-cooldown-timer">${grenadeRemainingSec}</span>`
+                  : "";
+              return `<button type="button" class="combat-grenade-item${btnRarity}${cooldownClass}" data-inventory-index="${g.inventoryIndex}" data-soldier-id="${c.id}" title="${g.item.name}" aria-label="${g.item.name}" ${grenadeDisabled ? "disabled" : ""}>
             <div class="combat-grenade-icon-wrap item-icon-wrap">
               <img class="combat-grenade-icon" src="${iconUrl}" alt="" width="48" height="48">
               <span class="item-level-badge rarity-${rarity}">Lv${level}</span>
@@ -1353,21 +1624,22 @@ export function eventConfigs() {
             </div>
             ${timerHtml}
           </button>`;
-          } else {
-            const m = slot.data;
-            const qty = m.item.uses ?? m.item.quantity ?? 1;
-            const rarity = m.item.rarity ?? "common";
-            const iconUrl = getItemIconUrl(m.item);
-            const hasUses = m.item.uses != null || m.item.quantity != null;
-            const btnRarity = rarity !== "common" ? ` rarity-${rarity}` : "";
-            return `<button type="button" class="combat-med-item${btnRarity}" data-inventory-index="${m.inventoryIndex}" data-soldier-id="${c.id}" title="${m.item.name}" aria-label="${m.item.name}" ${!canUse ? "disabled" : ""}>
+            } else {
+              const m = slot.data;
+              const qty = m.item.uses ?? m.item.quantity ?? 1;
+              const rarity = m.item.rarity ?? "common";
+              const iconUrl = getItemIconUrl(m.item);
+              const hasUses = m.item.uses != null || m.item.quantity != null;
+              const btnRarity = rarity !== "common" ? ` rarity-${rarity}` : "";
+              return `<button type="button" class="combat-med-item${btnRarity}" data-inventory-index="${m.inventoryIndex}" data-soldier-id="${c.id}" title="${m.item.name}" aria-label="${m.item.name}" ${!canUse ? "disabled" : ""}>
             <div class="combat-grenade-icon-wrap item-icon-wrap">
               <img class="combat-grenade-icon" src="${iconUrl}" alt="" width="48" height="48">
               ${hasUses ? `<span class="inventory-item-qty inventory-uses-badge">×${qty}</span>` : ""}
             </div>
           </button>`;
-          }
-        }).join("");
+            }
+          })
+          .join("");
       }
 
       listElNode.innerHTML = abilityButtons + buildEquipmentHtml(combatant);
@@ -1375,35 +1647,53 @@ export function eventConfigs() {
       function refreshAbilitiesList() {
         const c = players.find((p) => p.id === combatant.id);
         if (!c || popupEl.getAttribute("aria-hidden") === "true") return;
-        if (grenadeTargetingMode || medTargetingMode || suppressTargetingMode) return;
+        if (grenadeTargetingMode || medTargetingMode || suppressTargetingMode)
+          return;
         const now = Date.now();
         const takeCoverOnCooldown = (c.takeCoverCooldownUntil ?? 0) > now;
-        const takeCoverRemainingSec = takeCoverOnCooldown ? Math.ceil((c.takeCoverCooldownUntil! - now) / 1000) : 0;
+        const takeCoverRemainingSec = takeCoverOnCooldown
+          ? Math.ceil((c.takeCoverCooldownUntil! - now) / 1000)
+          : 0;
         const suppressOnCooldown = (c.suppressCooldownUntil ?? 0) > now;
-        const suppressRemainingSec = suppressOnCooldown ? Math.ceil((c.suppressCooldownUntil! - now) / 1000) : 0;
+        const suppressRemainingSec = suppressOnCooldown
+          ? Math.ceil((c.suppressCooldownUntil! - now) / 1000)
+          : 0;
         const des = (c.designation ?? "").toLowerCase();
         const abils = getSoldierAbilities().filter((a) => {
           if (a.designationRestrict) return des === a.designationRestrict;
           return true;
         });
-        const btns = abils.map((a) => {
-          const isTakeCover = a.actionId === "take_cover";
-          const isSuppress = a.actionId === "suppress";
-          const disabled = isTakeCover ? (!canUse || takeCoverOnCooldown) : isSuppress ? (!canUse || suppressOnCooldown) : !canUse;
-          const cooldownClass = (isTakeCover && takeCoverOnCooldown) || (isSuppress && suppressOnCooldown) ? " combat-ability-cooldown" : "";
-          const slotClass = a.slotClassName ? ` ${a.slotClassName}` : "";
-          const timerHtml = isTakeCover && takeCoverOnCooldown
-            ? `<span class="combat-ability-cooldown-timer" data-ability-cooldown="take_cover">${takeCoverRemainingSec}</span>`
-            : isSuppress && suppressOnCooldown
-              ? `<span class="combat-ability-cooldown-timer" data-ability-cooldown="suppress">${suppressRemainingSec}</span>`
-              : "";
-          const labelHtml = isTakeCover ? "" : `<span class="combat-ability-label">${a.name}</span>`;
-          return `<button type="button" class="combat-ability-icon-slot${slotClass}${cooldownClass}" data-ability-id="${a.id}" data-soldier-id="${c.id}" ${disabled ? "disabled" : ""} title="${a.name}" aria-label="${a.name}">
+        const btns = abils
+          .map((a) => {
+            const isTakeCover = a.actionId === "take_cover";
+            const isSuppress = a.actionId === "suppress";
+            const disabled = isTakeCover
+              ? !canUse || takeCoverOnCooldown
+              : isSuppress
+                ? !canUse || suppressOnCooldown
+                : !canUse;
+            const cooldownClass =
+              (isTakeCover && takeCoverOnCooldown) ||
+              (isSuppress && suppressOnCooldown)
+                ? " combat-ability-cooldown"
+                : "";
+            const slotClass = a.slotClassName ? ` ${a.slotClassName}` : "";
+            const timerHtml =
+              isTakeCover && takeCoverOnCooldown
+                ? `<span class="combat-ability-cooldown-timer" data-ability-cooldown="take_cover">${takeCoverRemainingSec}</span>`
+                : isSuppress && suppressOnCooldown
+                  ? `<span class="combat-ability-cooldown-timer" data-ability-cooldown="suppress">${suppressRemainingSec}</span>`
+                  : "";
+            const labelHtml = isTakeCover
+              ? ""
+              : `<span class="combat-ability-label">${a.name}</span>`;
+            return `<button type="button" class="combat-ability-icon-slot${slotClass}${cooldownClass}" data-ability-id="${a.id}" data-soldier-id="${c.id}" ${disabled ? "disabled" : ""} title="${a.name}" aria-label="${a.name}">
             <img src="${a.icon}" alt="" width="48" height="48">
             ${timerHtml}
             ${labelHtml}
           </button>`;
-        }).join("");
+          })
+          .join("");
         listElNode.innerHTML = btns + buildEquipmentHtml(c);
       }
 
@@ -1414,7 +1704,9 @@ export function eventConfigs() {
       popupEl.classList.remove("combat-abilities-popup-hint-only");
       clearPopupCardSelection();
       const selectedCard = (card ??
-        document.querySelector(`[data-combatant-id="${combatant.id}"]`)) as HTMLElement | null;
+        document.querySelector(
+          `[data-combatant-id="${combatant.id}"]`,
+        )) as HTMLElement | null;
       if (selectedCard) {
         selectedCard.classList.remove("combat-card-pressing");
         selectedCard.classList.add("combat-card-latched");
@@ -1426,12 +1718,15 @@ export function eventConfigs() {
 
       void popupEl.offsetHeight;
 
-      if (abilitiesPopupRefreshIntervalId != null) clearInterval(abilitiesPopupRefreshIntervalId);
+      if (abilitiesPopupRefreshIntervalId != null)
+        clearInterval(abilitiesPopupRefreshIntervalId);
       abilitiesPopupRefreshIntervalId = setInterval(refreshAbilitiesList, 1000);
     }
 
     function clearSelectedHighlight() {
-      document.querySelectorAll(".combat-ability-selected").forEach((el) => el.classList.remove("combat-ability-selected"));
+      document
+        .querySelectorAll(".combat-ability-selected")
+        .forEach((el) => el.classList.remove("combat-ability-selected"));
     }
 
     function highlightSelectedAbility(
@@ -1445,15 +1740,23 @@ export function eventConfigs() {
       if (!popup) return;
       let btn: HTMLElement | null = null;
       if (type === "grenade" || type === "med") {
-        const sel = type === "grenade" ? ".combat-grenade-item" : ".combat-med-item";
-        btn = popup.querySelector(`${sel}[data-soldier-id="${soldierId}"][data-inventory-index="${String(inventoryIndex)}"]`) as HTMLElement | null;
+        const sel =
+          type === "grenade" ? ".combat-grenade-item" : ".combat-med-item";
+        btn = popup.querySelector(
+          `${sel}[data-soldier-id="${soldierId}"][data-inventory-index="${String(inventoryIndex)}"]`,
+        ) as HTMLElement | null;
       } else {
-        btn = popup.querySelector(`.combat-ability-icon-slot[data-soldier-id="${soldierId}"][data-ability-id="${abilityId ?? ""}"]`) as HTMLElement | null;
+        btn = popup.querySelector(
+          `.combat-ability-icon-slot[data-soldier-id="${soldierId}"][data-ability-id="${abilityId ?? ""}"]`,
+        ) as HTMLElement | null;
       }
       if (btn) btn.classList.add("combat-ability-selected");
     }
 
-    function showGrenadeTargetingHint(thrower: Combatant, _grenade: SoldierGrenade) {
+    function showGrenadeTargetingHint(
+      thrower: Combatant,
+      _grenade: SoldierGrenade,
+    ) {
       const hintEl = document.getElementById("combat-targeting-hint");
       if (!hintEl) return;
       hintEl.textContent = "Click an enemy to throw";
@@ -1485,7 +1788,8 @@ export function eventConfigs() {
       }
     }
 
-    let abilitiesPopupRefreshIntervalId: ReturnType<typeof setInterval> | null = null;
+    let abilitiesPopupRefreshIntervalId: ReturnType<typeof setInterval> | null =
+      null;
 
     function closeAbilitiesPopup() {
       if (abilitiesPopupRefreshIntervalId != null) {
@@ -1496,8 +1800,12 @@ export function eventConfigs() {
       medTargetingMode = null;
       suppressTargetingMode = null;
       popupCombatantId = null;
-      document.querySelectorAll(".combat-card-grenade-target").forEach((el) => el.classList.remove("combat-card-grenade-target"));
-      document.querySelectorAll(".combat-card-heal-target").forEach((el) => el.classList.remove("combat-card-heal-target"));
+      document
+        .querySelectorAll(".combat-card-grenade-target")
+        .forEach((el) => el.classList.remove("combat-card-grenade-target"));
+      document
+        .querySelectorAll(".combat-card-heal-target")
+        .forEach((el) => el.classList.remove("combat-card-heal-target"));
       clearSelectedHighlight();
       clearPopupCardSelection();
       const popup = document.getElementById("combat-abilities-popup");
@@ -1508,7 +1816,8 @@ export function eventConfigs() {
       hideTargetingHint();
     }
 
-    const BULLET_ICON = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3E%3Cellipse cx='4' cy='4' rx='3.2' ry='1.2' fill='%23ffcc44' stroke='%23fff' stroke-width='0.4'/%3E%3C/svg%3E";
+    const BULLET_ICON =
+      "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3E%3Cellipse cx='4' cy='4' rx='3.2' ry='1.2' fill='%23ffcc44' stroke='%23fff' stroke-width='0.4'/%3E%3C/svg%3E";
 
     function animateProjectile(
       attackerCard: Element,
@@ -1536,16 +1845,21 @@ export function eventConfigs() {
       const ty = (tr.top + tr.bottom) / 2;
       const angle = Math.atan2(ty - ay, tx - ax);
       const deg = (angle * 180) / Math.PI;
-      const img = document.createElementNS("http://www.w3.org/2000/svg", "image");
+      const img = document.createElementNS(
+        "http://www.w3.org/2000/svg",
+        "image",
+      );
       img.setAttribute("href", iconUrl);
       img.setAttribute("x", String(ax - size / 2));
       img.setAttribute("y", String(ay - size / 2));
       img.setAttribute("width", String(size));
       img.setAttribute("height", String(size));
-      if (!isGrenade) img.setAttribute("transform", `rotate(${deg} ${ax} ${ay})`);
+      if (!isGrenade)
+        img.setAttribute("transform", `rotate(${deg} ${ax} ${ay})`);
       if (isGrenade) img.classList.add("combat-projectile-grenade");
       projectilesG.appendChild(img);
       const tStart = performance.now();
+
       function tick(now: number) {
         const t = Math.min(1, (now - tStart) / durationMs);
         const eased = t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
@@ -1553,15 +1867,29 @@ export function eventConfigs() {
         const y = ay + (ty - ay) * eased;
         img.setAttribute("x", String(x - size / 2));
         img.setAttribute("y", String(y - size / 2));
-        if (!isGrenade) img.setAttribute("transform", `rotate(${deg} ${x} ${y})`);
+        if (!isGrenade)
+          img.setAttribute("transform", `rotate(${deg} ${x} ${y})`);
         if (t < 1) requestAnimationFrame(tick);
         else img.remove();
       }
+
       requestAnimationFrame(tick);
     }
 
-    function animateGrenadeProjectile(attackerCard: Element, targetCard: Element, iconUrl: string, durationMs: number) {
-      animateProjectile(attackerCard, targetCard, iconUrl, durationMs, 28, true);
+    function animateGrenadeProjectile(
+      attackerCard: Element,
+      targetCard: Element,
+      iconUrl: string,
+      durationMs: number,
+    ) {
+      animateProjectile(
+        attackerCard,
+        targetCard,
+        iconUrl,
+        durationMs,
+        28,
+        true,
+      );
     }
 
     function playGrenadeImpactFX(
@@ -1569,7 +1897,9 @@ export function eventConfigs() {
       affectedTargetIds: string[],
       variant: "frag" | "incendiary" | "stun" | "smoke",
     ) {
-      const battleArea = document.querySelector("#combat-battle-area") as HTMLElement | null;
+      const battleArea = document.querySelector(
+        "#combat-battle-area",
+      ) as HTMLElement | null;
       const impactCard = getCombatantCard(impactTargetId) as HTMLElement | null;
       if (!battleArea || !impactCard) return;
 
@@ -1581,7 +1911,10 @@ export function eventConfigs() {
       battleArea.classList.remove("combat-battle-area-grenade-kick");
       void battleArea.offsetWidth;
       battleArea.classList.add("combat-battle-area-grenade-kick");
-      window.setTimeout(() => battleArea.classList.remove("combat-battle-area-grenade-kick"), 280);
+      window.setTimeout(
+        () => battleArea.classList.remove("combat-battle-area-grenade-kick"),
+        280,
+      );
 
       const fx = document.createElement("div");
       fx.className = `combat-grenade-impact-fx combat-grenade-impact-${variant}`;
@@ -1607,9 +1940,18 @@ export function eventConfigs() {
       for (let i = 0; i < shardCount; i++) {
         const shard = document.createElement("span");
         shard.className = "combat-grenade-impact-shard";
-        shard.style.setProperty("--shard-angle", `${(360 / shardCount) * i}deg`);
-        shard.style.setProperty("--shard-dist", `${50 + Math.round(Math.random() * 22)}px`);
-        shard.style.setProperty("--shard-delay", `${Math.round(Math.random() * 45)}ms`);
+        shard.style.setProperty(
+          "--shard-angle",
+          `${(360 / shardCount) * i}deg`,
+        );
+        shard.style.setProperty(
+          "--shard-dist",
+          `${50 + Math.round(Math.random() * 22)}px`,
+        );
+        shard.style.setProperty(
+          "--shard-delay",
+          `${Math.round(Math.random() * 45)}ms`,
+        );
         fx.appendChild(shard);
       }
 
@@ -1625,7 +1967,10 @@ export function eventConfigs() {
           card.classList.remove("combat-card-grenade-jolt");
           void card.offsetWidth;
           card.classList.add("combat-card-grenade-jolt");
-          window.setTimeout(() => card.classList.remove("combat-card-grenade-jolt"), 250);
+          window.setTimeout(
+            () => card.classList.remove("combat-card-grenade-jolt"),
+            250,
+          );
         }, 22 * idx);
       });
     }
@@ -1651,7 +1996,10 @@ export function eventConfigs() {
         return;
       }
       const label = c.downState === "incapacitated" ? "INCAP" : "KIA";
-      const cls = c.downState === "incapacitated" ? "combat-card-down-incap" : "combat-card-down-kia";
+      const cls =
+        c.downState === "incapacitated"
+          ? "combat-card-down-incap"
+          : "combat-card-down-kia";
       if (existing) {
         existing.textContent = label;
         (existing as HTMLElement).className = `combat-card-down-state ${cls}`;
@@ -1665,17 +2013,28 @@ export function eventConfigs() {
       else card.appendChild(badge);
     }
 
-    function executeMedicalUse(user: Combatant, target: Combatant, medItem: SoldierMedItem) {
-      playerAbilitiesUsed.set(user.id, (playerAbilitiesUsed.get(user.id) ?? 0) + 1);
+    function executeMedicalUse(
+      user: Combatant,
+      target: Combatant,
+      medItem: SoldierMedItem,
+    ) {
+      playerAbilitiesUsed.set(
+        user.id,
+        (playerAbilitiesUsed.get(user.id) ?? 0) + 1,
+      );
       const isStimPack = medItem.item.id === "stim_pack";
       consumeCombatantItem(user.id, medItem.inventoryIndex, "medical");
       medTargetingMode = null;
-      document.querySelectorAll(".combat-card-heal-target").forEach((el) => el.classList.remove("combat-card-heal-target"));
+      document
+        .querySelectorAll(".combat-card-heal-target")
+        .forEach((el) => el.classList.remove("combat-card-heal-target"));
       closeAbilitiesPopup();
 
       if (isStimPack) {
         const now = Date.now();
-        const eff = medItem.item.effect as { duration?: number; effect_value?: number } | undefined;
+        const eff = medItem.item.effect as
+          | { duration?: number; effect_value?: number }
+          | undefined;
         const durationSec = eff?.duration ?? 10;
         const multiplier = eff?.effect_value ?? 2 / 3;
         target.attackSpeedBuffUntil = now + durationSec * 1000;
@@ -1694,7 +2053,12 @@ export function eventConfigs() {
         markCombatantDirty(target.id, { hp: false, status: true, speed: true });
       } else {
         const isMedic = (user.designation ?? "").toLowerCase() === "medic";
-        const baseHeal = (medItem.item as { effect?: { effect_value?: number } }).effect?.effect_value ?? 20;
+        const baseHeal =
+          (
+            medItem.item as {
+              effect?: { effect_value?: number };
+            }
+          ).effect?.effect_value ?? 20;
         let healAmount: number;
         if (medItem.item.id === "standard_medkit") {
           const itemLevel = (medItem.item as { level?: number }).level ?? 1;
@@ -1703,14 +2067,20 @@ export function eventConfigs() {
         } else {
           healAmount = baseHeal;
         }
-        const userWeaponEffect = user.weaponEffect as keyof typeof WEAPON_EFFECTS | undefined;
+        const userWeaponEffect = user.weaponEffect as
+          | keyof typeof WEAPON_EFFECTS
+          | undefined;
         const medkitHealPercent = userWeaponEffect
-          ? WEAPON_EFFECTS[userWeaponEffect]?.modifiers?.medkitHealPercent ?? 0
+          ? (WEAPON_EFFECTS[userWeaponEffect]?.modifiers?.medkitHealPercent ??
+            0)
           : 0;
         if (medkitHealPercent > 0) {
           healAmount = Math.round(healAmount * (1 + medkitHealPercent));
         }
-        const newHp = Math.min(target.maxHp, Math.floor(target.hp) + healAmount);
+        const newHp = Math.min(
+          target.maxHp,
+          Math.floor(target.hp) + healAmount,
+        );
         target.hp = newHp;
         if (target.downState === "incapacitated") delete target.downState;
         const card = getCombatantCard(target.id);
@@ -1732,7 +2102,10 @@ export function eventConfigs() {
       if (uses <= 0 || target.hp <= 0 || target.downState) return false;
 
       // Enemy medic uses medkit tier scaling (supports post-20 medkits too).
-      const medLevel = Math.max(1, Math.min(999, user.enemyMedkitLevel ?? user.level ?? 1));
+      const medLevel = Math.max(
+        1,
+        Math.min(999, user.enemyMedkitLevel ?? user.level ?? 1),
+      );
       const healAmount = getMedKitHealValues(medLevel).medic;
       const newHp = Math.min(target.maxHp, Math.floor(target.hp) + healAmount);
       if (newHp <= target.hp) return false;
@@ -1755,11 +2128,15 @@ export function eventConfigs() {
 
     function applyAutoAttackHitFlash(targetCard: Element, target: Combatant) {
       targetCard.classList.add("combat-card-weapon-hit-flash");
-      setTimeout(() => targetCard.classList.remove("combat-card-weapon-hit-flash"), 180);
+      setTimeout(
+        () => targetCard.classList.remove("combat-card-weapon-hit-flash"),
+        180,
+      );
 
-      const sideClass = target.side === "player"
-        ? "combat-card-hit-flash-player"
-        : "combat-card-hit-flash-enemy";
+      const sideClass =
+        target.side === "player"
+          ? "combat-card-hit-flash-player"
+          : "combat-card-hit-flash-enemy";
       targetCard.classList.add(sideClass);
       setTimeout(() => targetCard.classList.remove(sideClass), 220);
     }
@@ -1770,14 +2147,23 @@ export function eventConfigs() {
 
     const SUPPRESS_COOLDOWN_MS = 60_000;
 
-    function executeSuppress(user: Combatant, target: Combatant, opts?: { fromEnemyAi?: boolean }) {
+    function executeSuppress(
+      user: Combatant,
+      target: Combatant,
+      opts?: { fromEnemyAi?: boolean },
+    ) {
       if (user.side === "player") {
-        playerAbilitiesUsed.set(user.id, (playerAbilitiesUsed.get(user.id) ?? 0) + 1);
+        playerAbilitiesUsed.set(
+          user.id,
+          (playerAbilitiesUsed.get(user.id) ?? 0) + 1,
+        );
       }
       user.suppressCooldownUntil = Date.now() + SUPPRESS_COOLDOWN_MS;
       if (!opts?.fromEnemyAi) {
         suppressTargetingMode = null;
-        document.querySelectorAll("#combat-enemies-grid .combat-card-grenade-target").forEach((el) => el.classList.remove("combat-card-grenade-target"));
+        document
+          .querySelectorAll("#combat-enemies-grid .combat-card-grenade-target")
+          .forEach((el) => el.classList.remove("combat-card-grenade-target"));
         closeAbilitiesPopup();
       }
 
@@ -1792,7 +2178,13 @@ export function eventConfigs() {
         if (target.hp <= 0 || target.downState) return;
         const result = resolveAttack(user, target, now);
         if (result.hit && !result.evaded) anyHit = true;
-        animateProjectile(attackerCard, targetCard, BULLET_ICON, ATTACK_PROJECTILE_MS, 10);
+        animateProjectile(
+          attackerCard,
+          targetCard,
+          BULLET_ICON,
+          ATTACK_PROJECTILE_MS,
+          10,
+        );
         if (result.damage > 0 && shouldShowCombatFeedback(target.id)) {
           const popup = document.createElement("span");
           popup.className = "combat-damage-popup combat-suppress-damage-popup";
@@ -1800,8 +2192,15 @@ export function eventConfigs() {
           targetCard.appendChild(popup);
           setTimeout(() => popup.remove(), 1500);
           targetCard.classList.add("combat-card-shake");
-          setTimeout(() => targetCard.classList.remove("combat-card-shake"), 350);
-        } else if (result.hit && result.evaded && shouldShowCombatFeedback(target.id)) {
+          setTimeout(
+            () => targetCard.classList.remove("combat-card-shake"),
+            350,
+          );
+        } else if (
+          result.hit &&
+          result.evaded &&
+          shouldShowCombatFeedback(target.id)
+        ) {
           const popup = document.createElement("span");
           popup.className = "combat-evade-popup";
           popup.textContent = "Evade";
@@ -1815,7 +2214,11 @@ export function eventConfigs() {
           setTimeout(() => popup.remove(), 2200);
         }
         if (target.hp <= 0) {
-          target.downState = target.side === "player" && Math.random() < getIncapacitationChance(target) ? "incapacitated" : "kia";
+          target.downState =
+            target.side === "player" &&
+            Math.random() < getIncapacitationChance(target)
+              ? "incapacitated"
+              : "kia";
           if (target.downState === "kia") target.killedBy = user.name;
           clearCombatantEffectsOnDeath(target);
           markCombatantDirty(target.id);
@@ -1827,7 +2230,12 @@ export function eventConfigs() {
       setTimeout(() => doBurst(), SUPPRESS_BURST_INTERVAL_MS);
       setTimeout(() => {
         doBurst();
-        if (anyHit && target.hp > 0 && !target.downState && !target.immuneToSuppression) {
+        if (
+          anyHit &&
+          target.hp > 0 &&
+          !target.downState &&
+          !target.immuneToSuppression
+        ) {
           const applyNow = Date.now();
           target.suppressedUntil = applyNow + SUPPRESS_DURATION_MS;
           const popup = document.createElement("span");
@@ -1835,10 +2243,17 @@ export function eventConfigs() {
           popup.textContent = "Suppressed";
           targetCard.appendChild(popup);
           setTimeout(() => popup.remove(), 1500);
-          markCombatantDirty(target.id, { hp: false, status: true, speed: false });
+          markCombatantDirty(target.id, {
+            hp: false,
+            status: true,
+            speed: false,
+          });
         }
         if (user.side === "enemy") {
-          user.enemySuppressUses = Math.max(0, (user.enemySuppressUses ?? 0) - 1);
+          user.enemySuppressUses = Math.max(
+            0,
+            (user.enemySuppressUses ?? 0) - 1,
+          );
         }
         updateCombatUI();
       }, SUPPRESS_BURST_INTERVAL_MS * 2);
@@ -1865,7 +2280,8 @@ export function eventConfigs() {
         if (ms) ms.grenadeThrows += 1;
       }
       const isThrowingKnife = grenade.item.id === "tk21_throwing_knife";
-      if (!isThrowingKnife) thrower.grenadeCooldownUntil = Date.now() + GRENADE_COOLDOWN_MS;
+      if (!isThrowingKnife)
+        thrower.grenadeCooldownUntil = Date.now() + GRENADE_COOLDOWN_MS;
 
       const throwerCard = getCombatantCard(thrower.id);
       const targetCard = getCombatantCard(target.id);
@@ -1925,8 +2341,15 @@ export function eventConfigs() {
         }
       };
 
-      type GrenadeOverlayType = "explosion" | "throwing-knife" | "stun" | "incendiary";
-      const addGrenadeOverlay = (targetCard: Element, overlayType: GrenadeOverlayType) => {
+      type GrenadeOverlayType =
+        | "explosion"
+        | "throwing-knife"
+        | "stun"
+        | "incendiary";
+      const addGrenadeOverlay = (
+        targetCard: Element,
+        overlayType: GrenadeOverlayType,
+      ) => {
         const classes: Record<GrenadeOverlayType, string> = {
           explosion: "combat-explosion-overlay",
           "throwing-knife": "combat-throwing-knife-overlay",
@@ -1940,7 +2363,9 @@ export function eventConfigs() {
       };
 
       setTimeout(() => {
-        const aliveTargetPool = (options?.targetPool ?? enemies).filter((c) => c.hp > 0 && !c.downState);
+        const aliveTargetPool = (options?.targetPool ?? enemies).filter(
+          (c) => c.hp > 0 && !c.downState,
+        );
         const impactPrimaryTarget =
           target.hp > 0 && !target.downState
             ? target
@@ -1949,32 +2374,58 @@ export function eventConfigs() {
               : null;
         if (!impactPrimaryTarget) {
           if (consumeThrowable) {
-            consumeCombatantItem(thrower.id, grenade.inventoryIndex, "throwable");
+            consumeCombatantItem(
+              thrower.id,
+              grenade.inventoryIndex,
+              "throwable",
+            );
           }
           if (resetTargetingUi) {
             grenadeTargetingMode = null;
-            document.querySelectorAll(".combat-card-grenade-target").forEach((el) => el.classList.remove("combat-card-grenade-target"));
+            document
+              .querySelectorAll(".combat-card-grenade-target")
+              .forEach((el) =>
+                el.classList.remove("combat-card-grenade-target"),
+              );
             closeAbilitiesPopup();
           }
           return;
         }
-        const result = resolveGrenadeThrow(thrower, impactPrimaryTarget, grenade.item, aliveTargetPool);
+        const result = resolveGrenadeThrow(
+          thrower,
+          impactPrimaryTarget,
+          grenade.item,
+          aliveTargetPool,
+        );
         const impactTargetCard = getCombatantCard(result.primary.targetId);
         const isThrowingKnife = grenade.item.id === "tk21_throwing_knife";
-        const isStun = (grenade.item.tags as string[] | undefined)?.includes("stun") || grenade.item.id === "m84_flashbang";
+        const isStun =
+          (grenade.item.tags as string[] | undefined)?.includes("stun") ||
+          grenade.item.id === "m84_flashbang";
         const isIncendiary = grenade.item.id === "incendiary_grenade";
-        const isFrag = (grenade.item.tags as string[] | undefined)?.includes("explosive");
-        const isSmoke = (grenade.item.tags as string[] | undefined)?.includes("smoke") || grenade.item.id === "mk18_smoke";
-        const overlayType: GrenadeOverlayType =
-          isThrowingKnife ? "throwing-knife"
-          : isStun ? "stun"
-          : isIncendiary ? "incendiary"
-          : "explosion";
-        if (impactTargetCard && shouldShowCombatFeedback(result.primary.targetId)) addGrenadeOverlay(impactTargetCard, overlayType);
+        const isFrag = (grenade.item.tags as string[] | undefined)?.includes(
+          "explosive",
+        );
+        const isSmoke =
+          (grenade.item.tags as string[] | undefined)?.includes("smoke") ||
+          grenade.item.id === "mk18_smoke";
+        const overlayType: GrenadeOverlayType = isThrowingKnife
+          ? "throwing-knife"
+          : isStun
+            ? "stun"
+            : isIncendiary
+              ? "incendiary"
+              : "explosion";
+        if (
+          impactTargetCard &&
+          shouldShowCombatFeedback(result.primary.targetId)
+        )
+          addGrenadeOverlay(impactTargetCard, overlayType);
         for (const s of result.splash) {
           if (!s.evaded && s.hit) {
             const splashCard = getCombatantCard(s.targetId);
-            if (splashCard && shouldShowCombatFeedback(s.targetId)) addGrenadeOverlay(splashCard, overlayType);
+            if (splashCard && shouldShowCombatFeedback(s.targetId))
+              addGrenadeOverlay(splashCard, overlayType);
           }
         }
         const flashHit = (id: string) => {
@@ -1982,10 +2433,16 @@ export function eventConfigs() {
           if (!card) return;
           if (isThrowingKnife) {
             card.classList.add("combat-card-knife-hit-flash");
-            setTimeout(() => card.classList.remove("combat-card-knife-hit-flash"), 500);
+            setTimeout(
+              () => card.classList.remove("combat-card-knife-hit-flash"),
+              500,
+            );
           } else {
             card.classList.add("combat-card-grenade-hit-flash");
-            setTimeout(() => card.classList.remove("combat-card-grenade-hit-flash"), 450);
+            setTimeout(
+              () => card.classList.remove("combat-card-grenade-hit-flash"),
+              450,
+            );
           }
         };
         const shakeTargetCard = (id: string) => {
@@ -2009,24 +2466,47 @@ export function eventConfigs() {
             }
           }
         }
-        if (impactTargetCard && isFrag && result.primary.damageDealt > 0 && shouldShowCombatFeedback(result.primary.targetId)) {
+        if (
+          impactTargetCard &&
+          isFrag &&
+          result.primary.damageDealt > 0 &&
+          shouldShowCombatFeedback(result.primary.targetId)
+        ) {
           impactTargetCard.classList.add("combat-card-frag-flash");
-          setTimeout(() => impactTargetCard.classList.remove("combat-card-frag-flash"), 150);
+          setTimeout(
+            () => impactTargetCard.classList.remove("combat-card-frag-flash"),
+            150,
+          );
         }
         if (!isThrowingKnife) {
           const affectedForJolt: string[] = [];
-          if (result.primary.hit && !result.primary.evaded) affectedForJolt.push(result.primary.targetId);
+          if (result.primary.hit && !result.primary.evaded)
+            affectedForJolt.push(result.primary.targetId);
           for (const s of result.splash) {
             if (s.hit && !s.evaded) affectedForJolt.push(s.targetId);
           }
           const impactVariant: "frag" | "incendiary" | "stun" | "smoke" =
-            isIncendiary ? "incendiary" : isStun ? "stun" : isSmoke ? "smoke" : "frag";
-          playGrenadeImpactFX(result.primary.targetId, affectedForJolt, impactVariant);
+            isIncendiary
+              ? "incendiary"
+              : isStun
+                ? "stun"
+                : isSmoke
+                  ? "smoke"
+                  : "frag";
+          playGrenadeImpactFX(
+            result.primary.targetId,
+            affectedForJolt,
+            impactVariant,
+          );
         }
-        if (!result.primary.hit) showThrowMiss(result.primary.targetId, isThrowingKnife);
-        else if (result.primary.evaded) showEvaded(result.primary.targetId, isThrowingKnife);
-        else if (isSmoke && result.primary.hit) showSmokeEffect(result.primary.targetId, 40);
-        else if (result.primary.damageDealt > 0) showDamage(result.primary.targetId, result.primary.damageDealt);
+        if (!result.primary.hit)
+          showThrowMiss(result.primary.targetId, isThrowingKnife);
+        else if (result.primary.evaded)
+          showEvaded(result.primary.targetId, isThrowingKnife);
+        else if (isSmoke && result.primary.hit)
+          showSmokeEffect(result.primary.targetId, 40);
+        else if (result.primary.damageDealt > 0)
+          showDamage(result.primary.targetId, result.primary.damageDealt);
         for (const s of result.splash) {
           if (s.evaded) showEvaded(s.targetId, isThrowingKnife);
           else if (isSmoke && s.hit) showSmokeEffect(s.targetId, 10);
@@ -2037,10 +2517,15 @@ export function eventConfigs() {
         }
         if (resetTargetingUi) {
           grenadeTargetingMode = null;
-          document.querySelectorAll(".combat-card-grenade-target").forEach((el) => el.classList.remove("combat-card-grenade-target"));
+          document
+            .querySelectorAll(".combat-card-grenade-target")
+            .forEach((el) => el.classList.remove("combat-card-grenade-target"));
           closeAbilitiesPopup();
         }
-        const affectedIds = new Set<string>([thrower.id, result.primary.targetId]);
+        const affectedIds = new Set<string>([
+          thrower.id,
+          result.primary.targetId,
+        ]);
         for (const s of result.splash) affectedIds.add(s.targetId);
         markCombatantsDirty(affectedIds);
         updateCombatUI(true);
@@ -2051,19 +2536,31 @@ export function eventConfigs() {
           if (s.targetDown) killsFromGrenade++;
         }
         if (trackPlayerStats) {
-          playerAbilitiesUsed.set(thrower.id, (playerAbilitiesUsed.get(thrower.id) ?? 0) + 1);
-          const hitCount = (result.primary.hit && !result.primary.evaded ? 1 : 0)
-            + result.splash.filter((s) => s.hit && !s.evaded).length;
+          playerAbilitiesUsed.set(
+            thrower.id,
+            (playerAbilitiesUsed.get(thrower.id) ?? 0) + 1,
+          );
+          const hitCount =
+            (result.primary.hit && !result.primary.evaded ? 1 : 0) +
+            result.splash.filter((s) => s.hit && !s.evaded).length;
           if (hitCount > 0) {
             const ms = missionStatsBySoldier.get(thrower.id);
             if (ms) ms.grenadeHits += hitCount;
           }
           if (killsFromGrenade > 0) {
-            playerKills.set(thrower.id, (playerKills.get(thrower.id) ?? 0) + killsFromGrenade);
+            playerKills.set(
+              thrower.id,
+              (playerKills.get(thrower.id) ?? 0) + killsFromGrenade,
+            );
           }
-          const grenadeDmg = result.primary.damageDealt + result.splash.reduce((a, s) => a + s.damageDealt, 0);
+          const grenadeDmg =
+            result.primary.damageDealt +
+            result.splash.reduce((a, s) => a + s.damageDealt, 0);
           if (grenadeDmg > 0) {
-            playerDamage.set(thrower.id, (playerDamage.get(thrower.id) ?? 0) + grenadeDmg);
+            playerDamage.set(
+              thrower.id,
+              (playerDamage.get(thrower.id) ?? 0) + grenadeDmg,
+            );
           }
         }
       }, 400);
@@ -2097,15 +2594,22 @@ export function eventConfigs() {
         const r = toArea(card.getBoundingClientRect());
         return { x: (r.left + r.right) / 2, y: r.bottom };
       };
-      const getCombatant = (id: string) => allCombatants.find((c) => c.id === id);
+      const getCombatant = (id: string) =>
+        allCombatants.find((c) => c.id === id);
       const isAlive = (c: Combatant) => c.hp > 0 && !c.downState;
-      const isSupport = (c: Combatant) => (c.designation ?? "").toLowerCase() === "support";
+      const isSupport = (c: Combatant) =>
+        (c.designation ?? "").toLowerCase() === "support";
 
-      const segments: { attackerId: string; targetId: string; attackerSide: "player" | "enemy" }[] = [];
+      const segments: {
+        attackerId: string;
+        targetId: string;
+        attackerSide: "player" | "enemy";
+      }[] = [];
       for (const [attackerId, targetId] of targets) {
         const attacker = getCombatant(attackerId);
         const target = getCombatant(targetId);
-        if (!attacker || !target || !isAlive(attacker) || !isAlive(target)) continue;
+        if (!attacker || !target || !isAlive(attacker) || !isAlive(target))
+          continue;
         segments.push({
           attackerId,
           targetId,
@@ -2113,7 +2617,8 @@ export function eventConfigs() {
         });
       }
 
-      const pairKey = (a: string, b: string) => (a < b ? `${a}|${b}` : `${b}|${a}`);
+      const pairKey = (a: string, b: string) =>
+        a < b ? `${a}|${b}` : `${b}|${a}`;
       const pairCounts = new Map<string, number>();
       for (const s of segments) {
         const key = pairKey(s.attackerId, s.targetId);
@@ -2126,12 +2631,14 @@ export function eventConfigs() {
         pairIndices.set(key, idx + 1);
         const attacker = getCombatant(s.attackerId);
         const target = getCombatant(s.targetId);
-        const ac = attacker?.side === "player"
-          ? getTopCenter(s.attackerId)
-          : getBottomCenter(s.attackerId);
-        const tc = target?.side === "player"
-          ? getTopCenter(s.targetId)
-          : getBottomCenter(s.targetId);
+        const ac =
+          attacker?.side === "player"
+            ? getTopCenter(s.attackerId)
+            : getBottomCenter(s.attackerId);
+        const tc =
+          target?.side === "player"
+            ? getTopCenter(s.targetId)
+            : getBottomCenter(s.targetId);
         if (!ac || !tc) continue;
         const dx = tc.x - ac.x;
         const dy = tc.y - ac.y;
@@ -2142,22 +2649,36 @@ export function eventConfigs() {
         const perpY = (dx / len) * canonical;
         const mutualCount = pairCounts.get(key) ?? 1;
         const myIdx = pairIndices.get(key)! - 1;
-        const offset = mutualCount > 1 ? (myIdx === 0 ? -LINE_OFFSET_PX : LINE_OFFSET_PX) : 0;
+        const offset =
+          mutualCount > 1
+            ? myIdx === 0
+              ? -LINE_OFFSET_PX
+              : LINE_OFFSET_PX
+            : 0;
         const x1 = ac.x + perpX * offset;
         const y1 = ac.y + perpY * offset;
         const x2 = tc.x + perpX * offset;
         const y2 = tc.y + perpY * offset;
-        const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+        const line = document.createElementNS(
+          "http://www.w3.org/2000/svg",
+          "line",
+        );
         line.setAttribute("x1", String(x1));
         line.setAttribute("y1", String(y1));
         line.setAttribute("x2", String(x2));
         line.setAttribute("y2", String(y2));
         const isPlayer = s.attackerSide === "player";
         const isSupportAttacker = attacker != null && isSupport(attacker);
-        line.setAttribute("stroke", isPlayer ? "rgba(100, 200, 100, 0.6)" : "rgba(220, 80, 80, 0.6)");
+        line.setAttribute(
+          "stroke",
+          isPlayer ? "rgba(100, 200, 100, 0.6)" : "rgba(220, 80, 80, 0.6)",
+        );
         line.setAttribute("stroke-width", isSupportAttacker ? "3" : "1");
         if (!isSupportAttacker) line.setAttribute("stroke-dasharray", "4 6");
-        line.setAttribute("marker-end", isPlayer ? "url(#combat-arrow-player)" : "url(#combat-arrow-enemy)");
+        line.setAttribute(
+          "marker-end",
+          isPlayer ? "url(#combat-arrow-player)" : "url(#combat-arrow-enemy)",
+        );
         line.setAttribute("stroke-linecap", "round");
         linesG.appendChild(line);
       }
@@ -2172,7 +2693,12 @@ export function eventConfigs() {
         const pct = Math.max(0, Math.min(100, (c.hp / c.maxHp) * 100));
         const hpText = `${Math.floor(c.hp)}/${Math.floor(c.maxHp)}`;
         const isDown = Boolean(c.hp <= 0 || c.downState);
-        const isLowHealth = c.side === "player" && c.hp > 0 && !c.downState && c.maxHp > 0 && (c.hp / c.maxHp) < 0.2;
+        const isLowHealth =
+          c.side === "player" &&
+          c.hp > 0 &&
+          !c.downState &&
+          c.maxHp > 0 &&
+          c.hp / c.maxHp < 0.2;
         domWrites.push(() => {
           if (refs.hpBar) refs.hpBar.style.width = `${pct}%`;
           if (refs.hpValue) refs.hpValue.textContent = hpText;
@@ -2197,8 +2723,10 @@ export function eventConfigs() {
       }
       const domWrites: Array<() => void> = [];
       for (const c of allCombatants) {
-        const needsStatus = force || timedUpdate || dirtyStatusCombatantIds.has(c.id);
-        const needsSpeed = force || timedUpdate || dirtySpeedCombatantIds.has(c.id);
+        const needsStatus =
+          force || timedUpdate || dirtyStatusCombatantIds.has(c.id);
+        const needsSpeed =
+          force || timedUpdate || dirtySpeedCombatantIds.has(c.id);
         if (!needsStatus && !needsSpeed) continue;
         const refs = getCombatantDomRefs(c.id);
         if (!refs) continue;
@@ -2210,13 +2738,16 @@ export function eventConfigs() {
         const panicked = c.panicUntil != null && now < c.panicUntil;
         const burning = c.burningUntil != null && now < c.burningUntil;
         const bleeding = c.bleedingUntil != null && now < c.bleedingUntil;
-        const stimmed = c.attackSpeedBuffUntil != null && now < c.attackSpeedBuffUntil;
+        const stimmed =
+          c.attackSpeedBuffUntil != null && now < c.attackSpeedBuffUntil;
         const blinded = c.blindedUntil != null && now < c.blindedUntil;
         const suppressed = c.suppressedUntil != null && now < c.suppressedUntil;
-        const settingUp = c.side === "enemy" && c.setupUntil != null && now < c.setupUntil;
+        const settingUp =
+          c.side === "enemy" && c.setupUntil != null && now < c.setupUntil;
         const baseInterval = c.attackIntervalMs ?? 1500;
         let speedMult = 1;
-        if (stimmed && c.attackSpeedBuffMultiplier != null) speedMult *= c.attackSpeedBuffMultiplier;
+        if (stimmed && c.attackSpeedBuffMultiplier != null)
+          speedMult *= c.attackSpeedBuffMultiplier;
         if (panicked) speedMult *= 2;
         const effectiveInterval = baseInterval * speedMult;
         const nextSnapshot: CombatantUiSnapshot = {
@@ -2235,20 +2766,23 @@ export function eventConfigs() {
           settingUp,
           effectiveIntervalMs: effectiveInterval,
         };
-        const statusChanged = !prevSnapshot
-          || prevSnapshot.inCover !== nextSnapshot.inCover
-          || prevSnapshot.smoked !== nextSnapshot.smoked
-          || prevSnapshot.stunned !== nextSnapshot.stunned
-          || prevSnapshot.panicked !== nextSnapshot.panicked
-          || prevSnapshot.burning !== nextSnapshot.burning
-          || prevSnapshot.bleeding !== nextSnapshot.bleeding
-          || prevSnapshot.stimmed !== nextSnapshot.stimmed
-          || prevSnapshot.blinded !== nextSnapshot.blinded
-          || prevSnapshot.suppressed !== nextSnapshot.suppressed
-          || prevSnapshot.settingUp !== nextSnapshot.settingUp;
-        const speedChanged = !prevSnapshot
-          || prevSnapshot.effectiveIntervalMs !== nextSnapshot.effectiveIntervalMs
-          || prevSnapshot.stimmed !== nextSnapshot.stimmed;
+        const statusChanged =
+          !prevSnapshot ||
+          prevSnapshot.inCover !== nextSnapshot.inCover ||
+          prevSnapshot.smoked !== nextSnapshot.smoked ||
+          prevSnapshot.stunned !== nextSnapshot.stunned ||
+          prevSnapshot.panicked !== nextSnapshot.panicked ||
+          prevSnapshot.burning !== nextSnapshot.burning ||
+          prevSnapshot.bleeding !== nextSnapshot.bleeding ||
+          prevSnapshot.stimmed !== nextSnapshot.stimmed ||
+          prevSnapshot.blinded !== nextSnapshot.blinded ||
+          prevSnapshot.suppressed !== nextSnapshot.suppressed ||
+          prevSnapshot.settingUp !== nextSnapshot.settingUp;
+        const speedChanged =
+          !prevSnapshot ||
+          prevSnapshot.effectiveIntervalMs !==
+            nextSnapshot.effectiveIntervalMs ||
+          prevSnapshot.stimmed !== nextSnapshot.stimmed;
         combatantUiSnapshotCache.set(c.id, nextSnapshot);
         if (needsStatus && (statusChanged || timedUpdate || force)) {
           const refreshTimerText = force || timedUpdate || statusChanged;
@@ -2268,7 +2802,9 @@ export function eventConfigs() {
               className: string,
               parent: HTMLElement,
             ): HTMLElement => {
-              const existing = parent.querySelector(selector) as HTMLElement | null;
+              const existing = parent.querySelector(
+                selector,
+              ) as HTMLElement | null;
               if (existing) return existing;
               const timerEl = document.createElement("span");
               timerEl.className = className;
@@ -2276,26 +2812,52 @@ export function eventConfigs() {
               return timerEl;
             };
             if (smoked) {
-              const timerEl = ensureTimer(".combat-card-smoke-timer", "combat-card-smoke-timer", card);
-              if (refreshTimerText) timerEl.textContent = (((c.smokedUntil ?? 0) - now) / 1000).toFixed(1);
+              const timerEl = ensureTimer(
+                ".combat-card-smoke-timer",
+                "combat-card-smoke-timer",
+                card,
+              );
+              if (refreshTimerText)
+                timerEl.textContent = (
+                  ((c.smokedUntil ?? 0) - now) /
+                  1000
+                ).toFixed(1);
             } else {
               card.querySelector(".combat-card-smoke-timer")?.remove();
             }
             if (stunned) {
-              const timerEl = ensureTimer(".combat-card-stun-timer", "combat-card-stun-timer", card);
-              if (refreshTimerText) timerEl.textContent = (((c.stunUntil ?? 0) - now) / 1000).toFixed(1);
+              const timerEl = ensureTimer(
+                ".combat-card-stun-timer",
+                "combat-card-stun-timer",
+                card,
+              );
+              if (refreshTimerText)
+                timerEl.textContent = (
+                  ((c.stunUntil ?? 0) - now) /
+                  1000
+                ).toFixed(1);
             } else {
               card.querySelector(".combat-card-stun-timer")?.remove();
             }
             if (burning) {
-              const timerEl = ensureTimer(".combat-card-burn-timer", "combat-card-burn-timer", card);
-              if (refreshTimerText) timerEl.textContent = (((c.burningUntil ?? 0) - now) / 1000).toFixed(1);
+              const timerEl = ensureTimer(
+                ".combat-card-burn-timer",
+                "combat-card-burn-timer",
+                card,
+              );
+              if (refreshTimerText)
+                timerEl.textContent = (
+                  ((c.burningUntil ?? 0) - now) /
+                  1000
+                ).toFixed(1);
             } else {
               card.querySelector(".combat-card-burn-timer")?.remove();
             }
             const dotActive = burning || bleeding;
             if (dotActive) {
-              let flameEl = card.querySelector(".combat-card-dot-flame") as HTMLElement | null;
+              let flameEl = card.querySelector(
+                ".combat-card-dot-flame",
+              ) as HTMLElement | null;
               if (!flameEl && refs.avatarWrap) {
                 flameEl = document.createElement("div");
                 flameEl.className = "combat-card-dot-flame";
@@ -2310,20 +2872,38 @@ export function eventConfigs() {
             }
             if (stimmed) {
               if (refs.avatarWrap) {
-                const timerEl = ensureTimer(".combat-card-stim-timer", "combat-card-stim-timer", refs.avatarWrap);
-                if (refreshTimerText) timerEl.textContent = (((c.attackSpeedBuffUntil ?? 0) - now) / 1000).toFixed(1);
+                const timerEl = ensureTimer(
+                  ".combat-card-stim-timer",
+                  "combat-card-stim-timer",
+                  refs.avatarWrap,
+                );
+                if (refreshTimerText)
+                  timerEl.textContent = (
+                    ((c.attackSpeedBuffUntil ?? 0) - now) /
+                    1000
+                  ).toFixed(1);
               }
             } else {
               card.querySelector(".combat-card-stim-timer")?.remove();
             }
             if (blinded) {
-              const timerEl = ensureTimer(".combat-card-blind-timer", "combat-card-blind-timer", card);
-              if (refreshTimerText) timerEl.textContent = (((c.blindedUntil ?? 0) - now) / 1000).toFixed(1);
+              const timerEl = ensureTimer(
+                ".combat-card-blind-timer",
+                "combat-card-blind-timer",
+                card,
+              );
+              if (refreshTimerText)
+                timerEl.textContent = (
+                  ((c.blindedUntil ?? 0) - now) /
+                  1000
+                ).toFixed(1);
             } else {
               card.querySelector(".combat-card-blind-timer")?.remove();
             }
             if (suppressed) {
-              let arrowWrap = card.querySelector(".combat-card-suppress-arrow-wrap") as HTMLElement | null;
+              let arrowWrap = card.querySelector(
+                ".combat-card-suppress-arrow-wrap",
+              ) as HTMLElement | null;
               if (!arrowWrap && refs.avatarWrap) {
                 arrowWrap = document.createElement("div");
                 arrowWrap.className = "combat-card-suppress-arrow-wrap";
@@ -2333,19 +2913,34 @@ export function eventConfigs() {
                 arrowWrap.appendChild(arrow);
                 card.insertBefore(arrowWrap, card.firstChild);
               }
-              const timerEl = ensureTimer(".combat-card-suppress-timer", "combat-card-suppress-timer", card);
-              if (refreshTimerText) timerEl.textContent = (((c.suppressedUntil ?? 0) - now) / 1000).toFixed(1);
+              const timerEl = ensureTimer(
+                ".combat-card-suppress-timer",
+                "combat-card-suppress-timer",
+                card,
+              );
+              if (refreshTimerText)
+                timerEl.textContent = (
+                  ((c.suppressedUntil ?? 0) - now) /
+                  1000
+                ).toFixed(1);
             } else {
               card.querySelector(".combat-card-suppress-arrow-wrap")?.remove();
               card.querySelector(".combat-card-suppress-timer")?.remove();
             }
             if (settingUp) {
-              const timerEl = ensureTimer(".combat-card-setup-timer", "combat-card-setup-timer", card);
-              if (refreshTimerText) timerEl.textContent = `SETUP ${(((c.setupUntil ?? 0) - now) / 1000).toFixed(1)}s`;
+              const timerEl = ensureTimer(
+                ".combat-card-setup-timer",
+                "combat-card-setup-timer",
+                card,
+              );
+              if (refreshTimerText)
+                timerEl.textContent = `SETUP ${(((c.setupUntil ?? 0) - now) / 1000).toFixed(1)}s`;
             } else {
               card.querySelector(".combat-card-setup-timer")?.remove();
             }
-            let shieldWrap = card.querySelector(".combat-card-cover-shield") as HTMLElement | null;
+            let shieldWrap = card.querySelector(
+              ".combat-card-cover-shield",
+            ) as HTMLElement | null;
             if (inCover) {
               if (!shieldWrap && refs.avatarWrap) {
                 shieldWrap = document.createElement("div");
@@ -2356,21 +2951,37 @@ export function eventConfigs() {
                 shieldWrap.appendChild(img);
                 refs.avatarWrap.appendChild(shieldWrap);
               }
-              const timerEl = ensureTimer(".combat-card-cover-timer", "combat-card-cover-timer", card);
-              if (refreshTimerText) timerEl.textContent = (((c.takeCoverUntil ?? 0) - now) / 1000).toFixed(1);
+              const timerEl = ensureTimer(
+                ".combat-card-cover-timer",
+                "combat-card-cover-timer",
+                card,
+              );
+              if (refreshTimerText)
+                timerEl.textContent = (
+                  ((c.takeCoverUntil ?? 0) - now) /
+                  1000
+                ).toFixed(1);
               timerEl.style.opacity = "1";
             } else {
               shieldWrap?.remove();
-              const timerEl = card.querySelector(".combat-card-cover-timer") as HTMLElement | null;
+              const timerEl = card.querySelector(
+                ".combat-card-cover-timer",
+              ) as HTMLElement | null;
               if (timerEl) {
                 timerEl.textContent = "0";
-                timerEl.style.animation = "combat-timer-fade 0.45s ease-out forwards";
+                timerEl.style.animation =
+                  "combat-timer-fade 0.45s ease-out forwards";
                 setTimeout(() => timerEl.remove(), 450);
               }
             }
           });
         }
-        if (needsSpeed && (speedChanged || timedUpdate || force) && refs.spdBadge && baseInterval > 0) {
+        if (
+          needsSpeed &&
+          (speedChanged || timedUpdate || force) &&
+          refs.spdBadge &&
+          baseInterval > 0
+        ) {
           domWrites.push(() => {
             refs.spdBadge!.textContent = `SPD: ${(effectiveInterval / 1000).toFixed(1)}s`;
             refs.spdBadge!.classList.toggle("combat-card-spd-buffed", stimmed);
@@ -2386,13 +2997,20 @@ export function eventConfigs() {
     let combatTickId: number | null = null;
     const lastBurnTickTimeRef = { current: 0 };
     const lastBleedTickTimeRef = { current: 0 };
+
     function startCombatLoop() {
       const now = Date.now();
-      const defendEndAt = isDefendObjectiveMission ? now + DEFEND_DURATION_MS : Number.POSITIVE_INFINITY;
-      let nextDefendReinforcementAt = HAS_MISSION_REINFORCEMENTS
-        ? now + (DEFEND_REINFORCE_INTERVAL_MS > 0 ? DEFEND_REINFORCE_INTERVAL_MS : 0)
+      const defendEndAt = isDefendObjectiveMission
+        ? now + DEFEND_DURATION_MS
         : Number.POSITIVE_INFINITY;
-      const enemyMedicState = new Map<string, { threshold: number; nextCheckAt: number }>();
+      let nextDefendReinforcementAt = HAS_MISSION_REINFORCEMENTS
+        ? now +
+          (DEFEND_REINFORCE_INTERVAL_MS > 0 ? DEFEND_REINFORCE_INTERVAL_MS : 0)
+        : Number.POSITIVE_INFINITY;
+      const enemyMedicState = new Map<
+        string,
+        { threshold: number; nextCheckAt: number }
+      >();
       const enemySuppressState = new Map<string, { nextCheckAt: number }>();
       const enemyGrenadeState = new Map<string, { nextCheckAt: number }>();
       const enemyCoverState = new Map<string, { nextCheckAt: number }>();
@@ -2424,35 +3042,60 @@ export function eventConfigs() {
       lastBurnTickTimeRef.current = now;
       lastBleedTickTimeRef.current = now;
       for (const c of allCombatants) {
-        if (c.hp > 0 && !c.downState) nextAttackAt.set(c.id, now + Math.random() * 500);
+        if (c.hp > 0 && !c.downState)
+          nextAttackAt.set(c.id, now + Math.random() * 500);
       }
       markAllCombatantsDirty();
-      if (isDefendObjectiveMission) updateDefendObjectiveTimer(now, defendEndAt);
+      if (isDefendObjectiveMission)
+        updateDefendObjectiveTimer(now, defendEndAt);
       const reinforcementRolesLeft = {
-        rifleman: Math.max(0, missionEncounter?.rolesReinforcement?.rifleman ?? 0),
-        support: Math.max(0, missionEncounter?.rolesReinforcement?.support ?? 0),
+        rifleman: Math.max(
+          0,
+          missionEncounter?.rolesReinforcement?.rifleman ?? 0,
+        ),
+        support: Math.max(
+          0,
+          missionEncounter?.rolesReinforcement?.support ?? 0,
+        ),
         medic: Math.max(0, missionEncounter?.rolesReinforcement?.medic ?? 0),
       };
+
       function pickReinforcementRole(): "rifleman" | "support" | "medic" {
         const pool: Array<"rifleman" | "support" | "medic"> = [];
-        for (let i = 0; i < reinforcementRolesLeft.rifleman; i++) pool.push("rifleman");
-        for (let i = 0; i < reinforcementRolesLeft.support; i++) pool.push("support");
-        for (let i = 0; i < reinforcementRolesLeft.medic; i++) pool.push("medic");
+        for (let i = 0; i < reinforcementRolesLeft.rifleman; i++)
+          pool.push("rifleman");
+        for (let i = 0; i < reinforcementRolesLeft.support; i++)
+          pool.push("support");
+        for (let i = 0; i < reinforcementRolesLeft.medic; i++)
+          pool.push("medic");
         if (pool.length <= 0) return "rifleman";
         const picked = pool[Math.floor(Math.random() * pool.length)];
-        reinforcementRolesLeft[picked] = Math.max(0, reinforcementRolesLeft[picked] - 1);
+        reinforcementRolesLeft[picked] = Math.max(
+          0,
+          reinforcementRolesLeft[picked] - 1,
+        );
         return picked;
       }
+
       function spawnMissionReinforcement(spawnAt: number): boolean {
         if (!HAS_MISSION_REINFORCEMENTS) return false;
         if (enemies.length >= MISSION_TOTAL_ENEMY_BUDGET) return false;
         if (getAliveEnemyCount() >= DEFEND_MAX_ENEMIES) return false;
         const slot = getNextOpenEnemySlot();
         if (slot == null) return false;
-        const enemyBaseLevel = Math.max(1, Math.min(20, Math.round(
-          enemies.reduce((sum, e) => sum + (e.level ?? 1), 0) / Math.max(1, enemies.length),
-        )));
-        const isEpicMission = !!(missionForCombat?.isEpic ?? missionForCombat?.rarity === "epic");
+        const enemyBaseLevel = Math.max(
+          1,
+          Math.min(
+            20,
+            Math.round(
+              enemies.reduce((sum, e) => sum + (e.level ?? 1), 0) /
+                Math.max(1, enemies.length),
+            ),
+          ),
+        );
+        const isEpicMission = !!(
+          missionForCombat?.isEpic ?? missionForCombat?.rarity === "epic"
+        );
         const role = pickReinforcementRole();
         const newcomer = createEnemyCombatant(
           reinforcementSerial++,
@@ -2464,8 +3107,10 @@ export function eventConfigs() {
           undefined,
           { designation: role },
         );
-        newcomer.enemyMedkitUses = role === "medic" ? (missionEncounter?.medicHealsPerMedic ?? 0) : 0;
-        newcomer.enemySuppressUses = role === "support" ? (missionEncounter?.supportSuppressUses ?? 0) : 0;
+        newcomer.enemyMedkitUses =
+          role === "medic" ? (missionEncounter?.medicHealsPerMedic ?? 0) : 0;
+        newcomer.enemySuppressUses =
+          role === "support" ? (missionEncounter?.supportSuppressUses ?? 0) : 0;
         newcomer.enemyGrenadeThrowsRemaining = 0;
         newcomer.enemySlotIndex = slot;
         newcomer.setupUntil = spawnAt + DEFEND_REINFORCE_SETUP_MS;
@@ -2482,18 +3127,35 @@ export function eventConfigs() {
             nextCheckAt: spawnAt + 2200 + Math.floor(Math.random() * 1600),
           });
         }
-        enemyCoverState.set(newcomer.id, { nextCheckAt: spawnAt + 1000 + Math.floor(Math.random() * 1200) });
+        enemyCoverState.set(newcomer.id, {
+          nextCheckAt: spawnAt + 1000 + Math.floor(Math.random() * 1200),
+        });
         insertEnemyCardBySlot(newcomer, true);
         nextAttackAt.set(newcomer.id, newcomer.setupUntil + 120);
-        markCombatantDirty(newcomer.id, { hp: true, status: true, speed: true });
+        markCombatantDirty(newcomer.id, {
+          hp: true,
+          status: true,
+          speed: true,
+        });
         return true;
       }
-      function scheduleMissionReinforcementWave(spawnAt: number, count: number): number {
+
+      function scheduleMissionReinforcementWave(
+        spawnAt: number,
+        count: number,
+      ): number {
         let spawned = 0;
         for (let i = 0; i < count; i++) {
-          const delay = i === 0
-            ? 0
-            : DEFEND_WAVE_STAGGER_MIN_MS + Math.floor(Math.random() * (DEFEND_WAVE_STAGGER_MAX_MS - DEFEND_WAVE_STAGGER_MIN_MS + 1));
+          const delay =
+            i === 0
+              ? 0
+              : DEFEND_WAVE_STAGGER_MIN_MS +
+                Math.floor(
+                  Math.random() *
+                    (DEFEND_WAVE_STAGGER_MAX_MS -
+                      DEFEND_WAVE_STAGGER_MIN_MS +
+                      1),
+                );
           if (delay === 0) {
             if (spawnMissionReinforcement(spawnAt)) spawned += 1;
             continue;
@@ -2505,24 +3167,37 @@ export function eventConfigs() {
         }
         return spawned;
       }
+
       function getEnemyDefeatedCount(): number {
-        return enemies.filter((e) => e.hp <= 0 || e.downState || e.removedFromCombat).length;
+        return enemies.filter(
+          (e) => e.hp <= 0 || e.downState || e.removedFromCombat,
+        ).length;
       }
+
       function tick() {
         const now = Date.now();
         if (now >= nextLowHpSampleAt) {
           for (const p of players) {
             if (p.hp <= 0 || p.downState || p.maxHp <= 0) continue;
-            if ((p.hp / p.maxHp) < 0.2) {
+            if (p.hp / p.maxHp < 0.2) {
               const ms = missionStatsBySoldier.get(p.id);
               if (ms) ms.turnsBelow20Hp += 1;
             }
           }
           nextLowHpSampleAt = now + 1000;
         }
-        if (isDefendObjectiveMission) updateDefendObjectiveTimer(now, defendEndAt);
-        const burnEvents = applyBurnTicks(allCombatants, now, lastBurnTickTimeRef);
-        const bleedEvents = applyBleedTicks(allCombatants, now, lastBleedTickTimeRef);
+        if (isDefendObjectiveMission)
+          updateDefendObjectiveTimer(now, defendEndAt);
+        const burnEvents = applyBurnTicks(
+          allCombatants,
+          now,
+          lastBurnTickTimeRef,
+        );
+        const bleedEvents = applyBleedTicks(
+          allCombatants,
+          now,
+          lastBleedTickTimeRef,
+        );
         for (const ev of burnEvents) {
           if (!shouldShowCombatFeedback(ev.targetId)) continue;
           const card = getCombatantCard(ev.targetId);
@@ -2533,7 +3208,11 @@ export function eventConfigs() {
             card.appendChild(popup);
             setTimeout(() => popup.remove(), 1500);
           }
-          markCombatantDirty(ev.targetId, { hp: true, status: true, speed: false });
+          markCombatantDirty(ev.targetId, {
+            hp: true,
+            status: true,
+            speed: false,
+          });
         }
         for (const ev of bleedEvents) {
           if (!shouldShowCombatFeedback(ev.targetId)) continue;
@@ -2545,7 +3224,11 @@ export function eventConfigs() {
             card.appendChild(popup);
             setTimeout(() => popup.remove(), 1500);
           }
-          markCombatantDirty(ev.targetId, { hp: true, status: true, speed: false });
+          markCombatantDirty(ev.targetId, {
+            hp: true,
+            status: true,
+            speed: false,
+          });
         }
         clearExpiredEffects(allCombatants, now);
         if (HAS_MISSION_REINFORCEMENTS) {
@@ -2562,17 +3245,28 @@ export function eventConfigs() {
               }, 350);
             }
             e.removedFromCombat = true;
-            if (e.enemySlotIndex != null && !enemySlotRecycleQueue.includes(e.enemySlotIndex)) {
+            if (
+              e.enemySlotIndex != null &&
+              !enemySlotRecycleQueue.includes(e.enemySlotIndex)
+            ) {
               enemySlotRecycleQueue.push(e.enemySlotIndex);
             }
           }
           if (getAliveEnemyCount() === 0) {
             if (scheduleMissionReinforcementWave(now, 1) > 0) {
-              nextDefendReinforcementAt = now + (DEFEND_REINFORCE_INTERVAL_MS > 0 ? DEFEND_REINFORCE_INTERVAL_MS : 0);
+              nextDefendReinforcementAt =
+                now +
+                (DEFEND_REINFORCE_INTERVAL_MS > 0
+                  ? DEFEND_REINFORCE_INTERVAL_MS
+                  : 0);
             }
           } else if (now >= nextDefendReinforcementAt) {
             scheduleMissionReinforcementWave(now, 1);
-            nextDefendReinforcementAt = now + (DEFEND_REINFORCE_INTERVAL_MS > 0 ? DEFEND_REINFORCE_INTERVAL_MS : 0);
+            nextDefendReinforcementAt =
+              now +
+              (DEFEND_REINFORCE_INTERVAL_MS > 0
+                ? DEFEND_REINFORCE_INTERVAL_MS
+                : 0);
           }
         }
         assignTargets(players, enemies, targets, now);
@@ -2580,7 +3274,8 @@ export function eventConfigs() {
         if (isDefendObjectiveMission) {
           combatWinner = players.every((p) => p.hp <= 0 || p.downState)
             ? "enemy"
-            : defeatedEnemies >= MISSION_TOTAL_ENEMY_BUDGET || now >= defendEndAt
+            : defeatedEnemies >= MISSION_TOTAL_ENEMY_BUDGET ||
+                now >= defendEndAt
               ? "player"
               : null;
         } else if (HAS_MISSION_REINFORCEMENTS) {
@@ -2590,19 +3285,32 @@ export function eventConfigs() {
               ? "player"
               : null;
         } else {
-          combatWinner = players.every((p) => p.hp <= 0 || p.downState) ? "enemy" : enemies.every((e) => e.hp <= 0 || e.downState) ? "player" : null;
+          combatWinner = players.every((p) => p.hp <= 0 || p.downState)
+            ? "enemy"
+            : enemies.every((e) => e.hp <= 0 || e.downState)
+              ? "player"
+              : null;
         }
         if (combatWinner) {
           closeAbilitiesPopup();
-          const missionDetailsPopup = document.getElementById("combat-mission-details-popup");
+          const missionDetailsPopup = document.getElementById(
+            "combat-mission-details-popup",
+          );
           if (missionDetailsPopup) missionDetailsPopup.hidden = true;
-          const quitConfirmPopup = document.getElementById("combat-quit-confirm-popup");
+          const quitConfirmPopup = document.getElementById(
+            "combat-quit-confirm-popup",
+          );
           if (quitConfirmPopup) quitConfirmPopup.hidden = true;
           if (defendTimerEl) defendTimerEl.hidden = true;
           updateCombatUI();
           const victory = combatWinner === "player";
-          const playOutcomeBannerThen = (isVictory: boolean, done: () => void) => {
-            const combatMain = document.querySelector("#combat-screen .combat-main") as HTMLElement | null;
+          const playOutcomeBannerThen = (
+            isVictory: boolean,
+            done: () => void,
+          ) => {
+            const combatMain = document.querySelector(
+              "#combat-screen .combat-main",
+            ) as HTMLElement | null;
             if (!combatMain) {
               done();
               return;
@@ -2610,7 +3318,9 @@ export function eventConfigs() {
             combatMain.querySelector(".combat-outcome-banner")?.remove();
             const banner = document.createElement("div");
             banner.className = `combat-outcome-banner ${isVictory ? "combat-outcome-victory" : "combat-outcome-failed"}`;
-            banner.textContent = isVictory ? "MISSION COMPLETE!" : "MISSION FAILED!";
+            banner.textContent = isVictory
+              ? "MISSION COMPLETE!"
+              : "MISSION FAILED!";
             combatMain.appendChild(banner);
             window.setTimeout(() => {
               banner.remove();
@@ -2628,49 +3338,108 @@ export function eventConfigs() {
                 //
               }
             }
-            const kiaIds = players.filter((p) => p.downState === "kia").map((p) => p.id);
-            const incapIds = players.filter((p) => p.downState === "incapacitated").map((p) => p.id);
+            const kiaIds = players
+              .filter((p) => p.downState === "kia")
+              .map((p) => p.id);
+            const incapIds = players
+              .filter((p) => p.downState === "incapacitated")
+              .map((p) => p.id);
             const missionName = mission?.name ?? "Unknown";
             const isDevTest = Boolean(mission?.isDevTest);
             const kiaKilledBy = new Map<string, string>();
             for (const p of players) {
-              if (p.downState === "kia" && p.killedBy) kiaKilledBy.set(p.id, p.killedBy);
+              if (p.downState === "kia" && p.killedBy)
+                kiaKilledBy.set(p.id, p.killedBy);
             }
             const participantIds = players.map((p) => p.id);
             if (!isDevTest) {
-              usePlayerCompanyStore.getState().recordSoldierCombatStats(participantIds, playerKills, true);
-              usePlayerCompanyStore.getState().processCombatKIA(kiaIds, missionName, playerKills, kiaKilledBy);
+              usePlayerCompanyStore
+                .getState()
+                .recordSoldierCombatStats(participantIds, playerKills, true);
+              usePlayerCompanyStore
+                .getState()
+                .processCombatKIA(
+                  kiaIds,
+                  missionName,
+                  playerKills,
+                  kiaKilledBy,
+                );
             }
             const traitAwardsBySoldier = !isDevTest
-              ? usePlayerCompanyStore.getState().awardSoldierVeterancyTraits(participantIds, playerKills, true, victory, missionStatsBySoldier, incapIds)
+              ? usePlayerCompanyStore
+                  .getState()
+                  .awardSoldierVeterancyTraits(
+                    participantIds,
+                    playerKills,
+                    true,
+                    victory,
+                    missionStatsBySoldier,
+                    incapIds,
+                  )
               : new Map<string, EarnedTraitAward[]>();
-            const survivorIds = players.filter((p) => !kiaIds.includes(p.id)).map((p) => p.id);
-            const lowHealthSurvivorIds = players
-              .filter((p) => !kiaIds.includes(p.id) && p.maxHp > 0 && (p.hp / p.maxHp) < 0.3)
+            const survivorIds = players
+              .filter((p) => !kiaIds.includes(p.id))
               .map((p) => p.id);
-            const hasCasualty = players.some((p) => p.downState === "kia" || p.downState === "incapacitated");
+            const lowHealthSurvivorIds = players
+              .filter(
+                (p) =>
+                  !kiaIds.includes(p.id) && p.maxHp > 0 && p.hp / p.maxHp < 0.3,
+              )
+              .map((p) => p.id);
+            const hasCasualty = players.some(
+              (p) => p.downState === "kia" || p.downState === "incapacitated",
+            );
             const store = usePlayerCompanyStore.getState();
             /* Same derivation as enemy soldiers: getAverageCompanyLevel(company) - compute before XP to match combat setup */
-            const missionLevel = Math.max(1, Math.min(20, getAverageCompanyLevel(store.company)));
+            const missionLevel = Math.max(
+              1,
+              Math.min(20, getAverageCompanyLevel(store.company)),
+            );
             if (!isDevTest) {
-              store.deductMissionEnergy(survivorIds, players.length, hasCasualty, !victory, lowHealthSurvivorIds);
+              store.deductMissionEnergy(
+                survivorIds,
+                players.length,
+                hasCasualty,
+                !victory,
+                lowHealthSurvivorIds,
+              );
             }
             const oldLevels = isDevTest
               ? new Map<string, number>()
-              : new Map(store.company?.soldiers?.filter((s) => survivorIds.includes(s.id)).map((s) => [s.id, s.level ?? 1]) ?? []);
+              : new Map(
+                  store.company?.soldiers
+                    ?.filter((s) => survivorIds.includes(s.id))
+                    .map((s) => [s.id, s.level ?? 1]) ?? [],
+                );
             if (!isDevTest) {
-              store.grantSoldierCombatXP(survivorIds, playerDamage, playerDamageTaken, playerKills, playerAbilitiesUsed, victory);
-              store.syncCombatHpToSoldiers(players.map((p) => ({ id: p.id, hp: p.maxHp })));
+              store.grantSoldierCombatXP(
+                survivorIds,
+                playerDamage,
+                playerDamageTaken,
+                playerKills,
+                playerAbilitiesUsed,
+                victory,
+              );
+              store.syncCombatHpToSoldiers(
+                players.map((p) => ({ id: p.id, hp: p.maxHp })),
+              );
             }
             const kiaCount = kiaIds.length;
-            const baseXp = victory ? SOLDIER_XP_BASE_SURVIVE_VICTORY : SOLDIER_XP_BASE_SURVIVE_DEFEAT;
+            const baseXp = victory
+              ? SOLDIER_XP_BASE_SURVIVE_VICTORY
+              : SOLDIER_XP_BASE_SURVIVE_DEFEAT;
             const xpEarnedBySoldier = new Map<string, number>();
             for (const id of participantIds) {
               const dmg = playerDamage.get(id) ?? 0;
               const dmgTaken = playerDamageTaken.get(id) ?? 0;
               const kills = playerKills.get(id) ?? 0;
               const abilitiesUsed = playerAbilitiesUsed.get(id) ?? 0;
-              const xp = baseXp + dmg * SOLDIER_XP_PER_DAMAGE + dmgTaken * SOLDIER_XP_PER_DAMAGE_TAKEN + kills * SOLDIER_XP_PER_KILL + abilitiesUsed * SOLDIER_XP_PER_ABILITY_USE;
+              const xp =
+                baseXp +
+                dmg * SOLDIER_XP_PER_DAMAGE +
+                dmgTaken * SOLDIER_XP_PER_DAMAGE_TAKEN +
+                kills * SOLDIER_XP_PER_KILL +
+                abilitiesUsed * SOLDIER_XP_PER_ABILITY_USE;
               xpEarnedBySoldier.set(id, Math.round(xp * 10) / 10);
             }
             let companyXpEarned = 0;
@@ -2679,30 +3448,82 @@ export function eventConfigs() {
               xpEarnedBySoldier.forEach((xp) => {
                 totalSoldierXp += Math.max(0, xp);
               });
-              const companyDivisor = mission.kind === "defend_objective" ? 6 : 5;
-              companyXpEarned = Math.max(1, Math.floor(totalSoldierXp / companyDivisor));
+              const companyDivisor =
+                mission.kind === "defend_objective" ? 6 : 5;
+              companyXpEarned = Math.max(
+                1,
+                Math.floor(totalSoldierXp / companyDivisor),
+              );
             }
-            const { rewardItems, lootItems } = !isDevTest && victory && mission
-              ? store.grantMissionRewards(mission, true, kiaCount, missionLevel, companyXpEarned)
-              : { rewardItems: [] as import("../../constants/items/types.ts").Item[], lootItems: [] as import("../../constants/items/types.ts").Item[] };
+            const { rewardItems, lootItems } =
+              !isDevTest && victory && mission
+                ? store.grantMissionRewards(
+                    mission,
+                    true,
+                    kiaCount,
+                    missionLevel,
+                    companyXpEarned,
+                  )
+                : {
+                    rewardItems:
+                      [] as import("../../constants/items/types.ts").Item[],
+                    lootItems:
+                      [] as import("../../constants/items/types.ts").Item[],
+                  };
             const newLevels = isDevTest
               ? new Map<string, number>()
-              : new Map(usePlayerCompanyStore.getState().company?.soldiers?.filter((s) => survivorIds.includes(s.id)).map((s) => [s.id, s.level ?? 1]) ?? []);
+              : new Map(
+                  usePlayerCompanyStore
+                    .getState()
+                    .company?.soldiers?.filter((s) =>
+                      survivorIds.includes(s.id),
+                    )
+                    .map((s) => [s.id, s.level ?? 1]) ?? [],
+                );
             const leveledUpIds = new Set<string>();
             for (const id of survivorIds) {
-              if ((newLevels.get(id) ?? 1) > (oldLevels.get(id) ?? 1)) leveledUpIds.add(id);
+              if ((newLevels.get(id) ?? 1) > (oldLevels.get(id) ?? 1))
+                leveledUpIds.add(id);
             }
             const soldiersAfterCombat = isDevTest
               ? new Map<string, import("../entities/types.ts").Soldier>()
-              : new Map(usePlayerCompanyStore.getState().company?.soldiers?.filter((s) => players.some((p) => p.id === s.id)).map((s) => [s.id, s]) ?? []);
+              : new Map(
+                  usePlayerCompanyStore
+                    .getState()
+                    .company?.soldiers?.filter((s) =>
+                      players.some((p) => p.id === s.id),
+                    )
+                    .map((s) => [s.id, s]) ?? [],
+                );
             const st = usePlayerCompanyStore.getState();
-            const companyExpTotal = st.company?.experience ?? st.companyExperience ?? 0;
+            const companyExpTotal =
+              st.company?.experience ?? st.companyExperience ?? 0;
             const companyLvlTotal = st.company?.level ?? st.companyLevel ?? 1;
-            const summaryData = buildCombatSummaryData(victory, mission, players, playerKills, leveledUpIds.size, rewardItems, lootItems, leveledUpIds, newLevels, soldiersAfterCombat, xpEarnedBySoldier, companyXpEarned, companyExpTotal, companyLvlTotal, traitAwardsBySoldier);
-            const container = document.getElementById("combat-summary-container");
+            const summaryData = buildCombatSummaryData(
+              victory,
+              mission,
+              players,
+              playerKills,
+              leveledUpIds.size,
+              rewardItems,
+              lootItems,
+              leveledUpIds,
+              newLevels,
+              soldiersAfterCombat,
+              xpEarnedBySoldier,
+              companyXpEarned,
+              companyExpTotal,
+              companyLvlTotal,
+              traitAwardsBySoldier,
+            );
+            const container = document.getElementById(
+              "combat-summary-container",
+            );
             if (container) {
               container.innerHTML = combatSummaryTemplate(summaryData);
-              const overlay = container.querySelector(".combat-summary-overlay") as HTMLElement;
+              const overlay = container.querySelector(
+                ".combat-summary-overlay",
+              ) as HTMLElement;
               if (overlay) overlay.classList.add("combat-summary-visible");
             }
           };
@@ -2718,16 +3539,28 @@ export function eventConfigs() {
           for (const medic of enemies) {
             if ((medic.designation ?? "").toLowerCase() !== "medic") continue;
             if ((medic.enemyMedkitUses ?? 0) <= 0) continue;
-            if (medic.hp <= 0 || medic.downState || isInCover(medic, now) || isStunned(medic, now)) continue;
+            if (
+              medic.hp <= 0 ||
+              medic.downState ||
+              isInCover(medic, now) ||
+              isStunned(medic, now)
+            )
+              continue;
             if (medic.setupUntil != null && now < medic.setupUntil) continue;
             const st = enemyMedicState.get(medic.id);
             if (!st || now < st.nextCheckAt) continue;
 
-            const dynamicThreshold = Math.max(0.3, Math.min(0.6, st.threshold + (Math.random() * 0.1 - 0.05)));
-            const allies = enemies.filter((a) => a.id !== medic.id && a.hp > 0 && !a.downState && a.maxHp > 0);
+            const dynamicThreshold = Math.max(
+              0.3,
+              Math.min(0.6, st.threshold + (Math.random() * 0.1 - 0.05)),
+            );
+            const allies = enemies.filter(
+              (a) =>
+                a.id !== medic.id && a.hp > 0 && !a.downState && a.maxHp > 0,
+            );
             const candidates = allies
-              .filter((a) => (a.hp / a.maxHp) <= dynamicThreshold)
-              .sort((a, b) => (a.hp / a.maxHp) - (b.hp / b.maxHp));
+              .filter((a) => a.hp / a.maxHp <= dynamicThreshold)
+              .sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp);
             if (candidates.length === 0) {
               st.nextCheckAt = now + 700 + Math.floor(Math.random() * 1100);
               continue;
@@ -2756,22 +3589,26 @@ export function eventConfigs() {
 
         // Enemy support: suppress with staggered timing and limited uses.
         if (!didAttack) {
-          const supports = enemies.filter((e) =>
-            (e.designation ?? "").toLowerCase() === "support"
-            && (e.enemySuppressUses ?? 0) > 0
-            && e.hp > 0
-            && !e.downState
-            && !isInCover(e, now)
-            && !isStunned(e, now)
-            && (e.setupUntil ?? 0) <= now
-            && (e.suppressCooldownUntil ?? 0) <= now
+          const supports = enemies.filter(
+            (e) =>
+              (e.designation ?? "").toLowerCase() === "support" &&
+              (e.enemySuppressUses ?? 0) > 0 &&
+              e.hp > 0 &&
+              !e.downState &&
+              !isInCover(e, now) &&
+              !isStunned(e, now) &&
+              (e.setupUntil ?? 0) <= now &&
+              (e.suppressCooldownUntil ?? 0) <= now,
           );
           for (const support of supports) {
             const st = enemySuppressState.get(support.id);
             if (!st || now < st.nextCheckAt) continue;
             const viableTargets = players
               .filter((p) => p.hp > 0 && !p.downState)
-              .sort((a, b) => (a.hp / Math.max(1, a.maxHp)) - (b.hp / Math.max(1, b.maxHp)));
+              .sort(
+                (a, b) =>
+                  a.hp / Math.max(1, a.maxHp) - b.hp / Math.max(1, b.maxHp),
+              );
             const target = viableTargets[0];
             if (!target) {
               st.nextCheckAt = now + 1200 + Math.floor(Math.random() * 1200);
@@ -2793,11 +3630,19 @@ export function eventConfigs() {
         if (!didAttack) {
           for (const thrower of enemies) {
             if ((thrower.enemyGrenadeThrowsRemaining ?? 0) <= 0) continue;
-            if (thrower.hp <= 0 || thrower.downState || isInCover(thrower, now) || isStunned(thrower, now)) continue;
+            if (
+              thrower.hp <= 0 ||
+              thrower.downState ||
+              isInCover(thrower, now) ||
+              isStunned(thrower, now)
+            )
+              continue;
             if ((thrower.setupUntil ?? 0) > now) continue;
             const st = enemyGrenadeState.get(thrower.id);
             if (!st || now < st.nextCheckAt) continue;
-            const alivePlayers = players.filter((p) => p.hp > 0 && !p.downState);
+            const alivePlayers = players.filter(
+              (p) => p.hp > 0 && !p.downState,
+            );
             if (alivePlayers.length === 0) {
               st.nextCheckAt = now + 1200;
               continue;
@@ -2806,20 +3651,31 @@ export function eventConfigs() {
               st.nextCheckAt = now + 1000 + Math.floor(Math.random() * 1600);
               continue;
             }
-            const target = alivePlayers[Math.floor(Math.random() * alivePlayers.length)];
+            const target =
+              alivePlayers[Math.floor(Math.random() * alivePlayers.length)];
             const grenadePool = [
               ThrowableItems.common.m3_frag_grenade,
               ThrowableItems.common.m84_flashbang,
               ThrowableItems.common.incendiary_grenade,
             ];
-            const grenadeItem = { ...grenadePool[Math.floor(Math.random() * grenadePool.length)] };
+            const grenadeItem = {
+              ...grenadePool[Math.floor(Math.random() * grenadePool.length)],
+            };
             executeGrenadeThrow(
               thrower,
               target,
               { item: grenadeItem, inventoryIndex: -1 },
-              { consumeThrowable: false, trackPlayerStats: false, targetPool: alivePlayers, resetTargetingUi: false },
+              {
+                consumeThrowable: false,
+                trackPlayerStats: false,
+                targetPool: alivePlayers,
+                resetTargetingUi: false,
+              },
             );
-            thrower.enemyGrenadeThrowsRemaining = Math.max(0, (thrower.enemyGrenadeThrowsRemaining ?? 0) - 1);
+            thrower.enemyGrenadeThrowsRemaining = Math.max(
+              0,
+              (thrower.enemyGrenadeThrowsRemaining ?? 0) - 1,
+            );
             st.nextCheckAt = now + 2400 + Math.floor(Math.random() * 2200);
             nextAttackAt.set(thrower.id, getNextAttackAt(thrower, now));
             didAttack = true;
@@ -2837,63 +3693,108 @@ export function eventConfigs() {
             coverEvalOrder[j] = tmp;
           }
           for (const enemy of coverEvalOrder) {
-            if (enemy.hp <= 0 || enemy.downState || isInCover(enemy, now) || isStunned(enemy, now)) continue;
+            if (
+              enemy.hp <= 0 ||
+              enemy.downState ||
+              isInCover(enemy, now) ||
+              isStunned(enemy, now)
+            )
+              continue;
             if ((enemy.setupUntil ?? 0) > now) continue;
             if ((enemy.takeCoverCooldownUntil ?? 0) > now) continue;
             if (now < nextEnemyCoverGlobalAt) continue;
             const coverState = enemyCoverState.get(enemy.id);
             if (coverState && now < coverState.nextCheckAt) continue;
             const hpPct = enemy.maxHp > 0 ? enemy.hp / enemy.maxHp : 1;
-            const focusedByPlayers = Array.from(targets.entries()).reduce((acc, [attackerId, targetId]) => {
-              const attacker = players.find((p) => p.id === attackerId);
-              return attacker && targetId === enemy.id ? acc + 1 : acc;
-            }, 0);
+            const focusedByPlayers = Array.from(targets.entries()).reduce(
+              (acc, [attackerId, targetId]) => {
+                const attacker = players.find((p) => p.id === attackerId);
+                return attacker && targetId === enemy.id ? acc + 1 : acc;
+              },
+              0,
+            );
             if (hpPct > 0.65 && focusedByPlayers < 2) {
-              if (coverState) coverState.nextCheckAt = now + 350 + Math.floor(Math.random() * 850);
+              if (coverState)
+                coverState.nextCheckAt =
+                  now + 350 + Math.floor(Math.random() * 850);
               continue;
             }
-            const chance = hpPct <= 0.4 ? 0.32 : focusedByPlayers >= 2 ? 0.24 : 0.14;
+            const chance =
+              hpPct <= 0.4 ? 0.32 : focusedByPlayers >= 2 ? 0.24 : 0.14;
             if (Math.random() > chance) {
-              if (coverState) coverState.nextCheckAt = now + 450 + Math.floor(Math.random() * 1200);
+              if (coverState)
+                coverState.nextCheckAt =
+                  now + 450 + Math.floor(Math.random() * 1200);
               continue;
             }
             if (executeTakeCover(enemy, { closePopup: false })) {
-              if (coverState) coverState.nextCheckAt = now + 1800 + Math.floor(Math.random() * 1800);
-              nextEnemyCoverGlobalAt = now + 700 + Math.floor(Math.random() * 1100);
+              if (coverState)
+                coverState.nextCheckAt =
+                  now + 1800 + Math.floor(Math.random() * 1800);
+              nextEnemyCoverGlobalAt =
+                now + 700 + Math.floor(Math.random() * 1100);
               nextAttackAt.set(enemy.id, getNextAttackAt(enemy, now));
               didAttack = true;
               break;
             }
-            if (coverState) coverState.nextCheckAt = now + 500 + Math.floor(Math.random() * 900);
+            if (coverState)
+              coverState.nextCheckAt =
+                now + 500 + Math.floor(Math.random() * 900);
           }
         }
 
         for (const c of all) {
-          if (c.hp <= 0 || c.downState || isInCover(c, now) || isStunned(c, now)) continue;
+          if (
+            c.hp <= 0 ||
+            c.downState ||
+            isInCover(c, now) ||
+            isStunned(c, now)
+          )
+            continue;
           if (c.side === "enemy" && (c.setupUntil ?? 0) > now) continue;
           const due = nextAttackAt.get(c.id) ?? now;
           if (!didAttack && due <= now) {
             const targetId = targets.get(c.id);
             const target = all.find((x) => x.id === targetId);
-            if (target && target.hp > 0 && !target.downState && !isInCover(target, now)) {
+            if (
+              target &&
+              target.hp > 0 &&
+              !target.downState &&
+              !isInCover(target, now)
+            ) {
               const result = resolveAttack(c, target, now);
               if (c.side === "player") {
-                if (target.side === "enemy" && (target.hp <= 0 || target.downState === "kia")) {
+                if (
+                  target.side === "enemy" &&
+                  (target.hp <= 0 || target.downState === "kia")
+                ) {
                   playerKills.set(c.id, (playerKills.get(c.id) ?? 0) + 1);
                 }
                 if (result.damage > 0) {
-                  playerDamage.set(c.id, (playerDamage.get(c.id) ?? 0) + result.damage);
+                  playerDamage.set(
+                    c.id,
+                    (playerDamage.get(c.id) ?? 0) + result.damage,
+                  );
                 }
               }
               if (target.side === "player" && result.damage > 0) {
-                playerDamageTaken.set(target.id, (playerDamageTaken.get(target.id) ?? 0) + result.damage);
+                playerDamageTaken.set(
+                  target.id,
+                  (playerDamageTaken.get(target.id) ?? 0) + result.damage,
+                );
               }
               nextAttackAt.set(c.id, getNextAttackAt(c, now));
               const attackerCard = getCombatantCard(c.id);
               const targetCard = getCombatantCard(result.targetId);
               const ATTACK_PROJECTILE_MS = 220;
               if (attackerCard && targetCard) {
-                animateProjectile(attackerCard, targetCard, BULLET_ICON, ATTACK_PROJECTILE_MS, 10);
+                animateProjectile(
+                  attackerCard,
+                  targetCard,
+                  BULLET_ICON,
+                  ATTACK_PROJECTILE_MS,
+                  10,
+                );
               }
               const showAttackResult = () => {
                 if (!targetCard) return;
@@ -2917,7 +3818,10 @@ export function eventConfigs() {
                   targetCard.appendChild(popup);
                   setTimeout(() => popup.remove(), 1500);
                   targetCard.classList.add("combat-card-shake");
-                  setTimeout(() => targetCard.classList.remove("combat-card-shake"), 350);
+                  setTimeout(
+                    () => targetCard.classList.remove("combat-card-shake"),
+                    350,
+                  );
                   applyAutoAttackHitFlash(targetCard, target);
                 }
               };
@@ -2930,8 +3834,13 @@ export function eventConfigs() {
           if (due2 < nextDue) nextDue = due2;
         }
         updateCombatUI();
-        if (!combatWinner) combatTickId = window.setTimeout(tick, Math.min(50, Math.max(0, nextDue - now)));
+        if (!combatWinner)
+          combatTickId = window.setTimeout(
+            tick,
+            Math.min(50, Math.max(0, nextDue - now)),
+          );
       }
+
       combatTickId = window.setTimeout(tick, 50);
     }
 
@@ -2947,13 +3856,18 @@ export function eventConfigs() {
           mission = null;
         }
       }
-      const kiaIds = players.filter((p) => p.downState === "kia").map((p) => p.id);
+      const kiaIds = players
+        .filter((p) => p.downState === "kia")
+        .map((p) => p.id);
       const missionName = mission?.name ?? "Unknown";
       const kiaKilledBy = new Map<string, string>();
       for (const p of players) {
-        if (p.downState === "kia" && p.killedBy) kiaKilledBy.set(p.id, p.killedBy);
+        if (p.downState === "kia" && p.killedBy)
+          kiaKilledBy.set(p.id, p.killedBy);
       }
-      const survivorIds = players.filter((p) => !kiaIds.includes(p.id)).map((p) => p.id);
+      const survivorIds = players
+        .filter((p) => !kiaIds.includes(p.id))
+        .map((p) => p.id);
       const participantIds = players.map((p) => p.id);
       const store = usePlayerCompanyStore.getState();
       if (!mission?.isDevTest) {
@@ -2968,7 +3882,12 @@ export function eventConfigs() {
           false,
         );
         // Survivors return to roster at full HP after mission end/quit.
-        const survivors = players.filter((p) => !kiaIds.includes(p.id)).map((p) => ({ id: p.id, hp: p.maxHp }));
+        const survivors = players
+          .filter((p) => !kiaIds.includes(p.id))
+          .map((p) => ({
+            id: p.id,
+            hp: p.maxHp,
+          }));
         store.syncCombatHpToSoldiers(survivors);
         store.grantMissionRewards(mission, false, kiaIds.length);
       }
@@ -2989,9 +3908,16 @@ export function eventConfigs() {
       combatant.takeCoverCooldownUntil = now + TAKE_COVER_COOLDOWN_MS;
       removeTargetsForCombatantInCover(targets, combatant.id);
       assignTargets(players, enemies, targets, now);
-      markCombatantDirty(combatant.id, { hp: false, status: true, speed: false });
+      markCombatantDirty(combatant.id, {
+        hp: false,
+        status: true,
+        speed: false,
+      });
       if (options.trackPlayerAbility) {
-        playerAbilitiesUsed.set(combatant.id, (playerAbilitiesUsed.get(combatant.id) ?? 0) + 1);
+        playerAbilitiesUsed.set(
+          combatant.id,
+          (playerAbilitiesUsed.get(combatant.id) ?? 0) + 1,
+        );
       }
       if (options.closePopup !== false) closeAbilitiesPopup();
       updateCombatUI(true);
@@ -2999,7 +3925,10 @@ export function eventConfigs() {
     }
 
     function handleTakeCoverAbility(combatant: Combatant): void {
-      void executeTakeCover(combatant, { trackPlayerAbility: true, closePopup: true });
+      void executeTakeCover(combatant, {
+        trackPlayerAbility: true,
+        closePopup: true,
+      });
     }
 
     function handleSuppressAbility(combatant: Combatant): void {
@@ -3007,9 +3936,13 @@ export function eventConfigs() {
       if (combatant.hp <= 0 || combatant.downState || onCooldown) return;
       suppressTargetingMode = { user: combatant };
       showSuppressTargetingHint(combatant);
-      document.querySelectorAll("#combat-enemies-grid .combat-card:not(.combat-card-down)").forEach((card) => {
-        card.classList.add("combat-card-grenade-target");
-      });
+      document
+        .querySelectorAll(
+          "#combat-enemies-grid .combat-card:not(.combat-card-down)",
+        )
+        .forEach((card) => {
+          card.classList.add("combat-card-grenade-target");
+        });
     }
 
     function executeAbilityAction(abilityId: string, soldierId: string): void {
@@ -3027,7 +3960,11 @@ export function eventConfigs() {
     function handleCombatCardClick(e: Event, card: HTMLElement | null): void {
       e.stopPropagation();
       if (medTargetingMode) {
-        if (!card || card.dataset.side !== "player" || card.classList.contains("combat-card-down")) {
+        if (
+          !card ||
+          card.dataset.side !== "player" ||
+          card.classList.contains("combat-card-down")
+        ) {
           closeAbilitiesPopup();
           return;
         }
@@ -3035,11 +3972,19 @@ export function eventConfigs() {
         if (!targetId) return;
         const target = players.find((c) => c.id === targetId);
         if (!target || target.hp <= 0 || target.downState) return;
-        executeMedicalUse(medTargetingMode.user, target, medTargetingMode.medItem);
+        executeMedicalUse(
+          medTargetingMode.user,
+          target,
+          medTargetingMode.medItem,
+        );
         return;
       }
       if (suppressTargetingMode) {
-        if (!card || card.dataset.side !== "enemy" || card.classList.contains("combat-card-down")) {
+        if (
+          !card ||
+          card.dataset.side !== "enemy" ||
+          card.classList.contains("combat-card-down")
+        ) {
           closeAbilitiesPopup();
           return;
         }
@@ -3051,7 +3996,11 @@ export function eventConfigs() {
         return;
       }
       if (grenadeTargetingMode) {
-        if (!card || card.dataset.side !== "enemy" || card.classList.contains("combat-card-down")) {
+        if (
+          !card ||
+          card.dataset.side !== "enemy" ||
+          card.classList.contains("combat-card-down")
+        ) {
           closeAbilitiesPopup();
           return;
         }
@@ -3059,7 +4008,11 @@ export function eventConfigs() {
         if (!targetId) return;
         const target = enemies.find((c) => c.id === targetId);
         if (!target || target.hp <= 0 || target.downState) return;
-        executeGrenadeThrow(grenadeTargetingMode.thrower, target, grenadeTargetingMode.grenade);
+        executeGrenadeThrow(
+          grenadeTargetingMode.thrower,
+          target,
+          grenadeTargetingMode.grenade,
+        );
         return;
       }
 
@@ -3075,13 +4028,28 @@ export function eventConfigs() {
       void card.offsetWidth;
       card.classList.add("combat-card-pressing");
       card.classList.add("combat-card-tap-flash");
-      window.setTimeout(() => card.classList.remove("combat-card-pressing"), 100);
-      window.setTimeout(() => card.classList.remove("combat-card-tap-flash"), 180);
+      window.setTimeout(
+        () => card.classList.remove("combat-card-pressing"),
+        100,
+      );
+      window.setTimeout(
+        () => card.classList.remove("combat-card-tap-flash"),
+        180,
+      );
       openAbilitiesPopup(combatant, card);
     }
 
     primeCombatantDomCache();
     markAllCombatantsDirty();
+    const setBackButtonEnabled = (enabled: boolean) => {
+      const backBtn = s_(DOM.combat.backToReadyRoomBtn) as
+        | HTMLButtonElement
+        | null;
+      if (!backBtn) return;
+      backBtn.disabled = !enabled;
+      backBtn.setAttribute("aria-disabled", enabled ? "false" : "true");
+    };
+    setBackButtonEnabled(true);
     const startCombatSession = () => {
       if (combatStarted) return;
       const store = usePlayerCompanyStore.getState();
@@ -3091,14 +4059,21 @@ export function eventConfigs() {
         return (s?.energy ?? 100) < minEnergy;
       });
       if (lowEnergy.length > 0) {
-        const names = lowEnergy.map((p) => formatDisplayName(p.name)).join(", ");
-        alert(`Need at least ${minEnergy} energy to deploy. Soldiers low on energy: ${names}`);
+        const names = lowEnergy
+          .map((p) => formatDisplayName(p.name))
+          .join(", ");
+        alert(
+          `Need at least ${minEnergy} energy to deploy. Soldiers low on energy: ${names}`,
+        );
         return;
       }
       combatStarted = true;
+      setBackButtonEnabled(false);
       const btn = s_(DOM.combat.beginBtn) as HTMLButtonElement | null;
       if (btn) btn.setAttribute("hidden", "");
-      const beginOverlay = document.getElementById("combat-begin-overlay") as HTMLElement | null;
+      const beginOverlay = document.getElementById(
+        "combat-begin-overlay",
+      ) as HTMLElement | null;
       if (beginOverlay) beginOverlay.setAttribute("hidden", "");
       primeCombatantDomCache();
       markAllCombatantsDirty();
@@ -3129,8 +4104,12 @@ export function eventConfigs() {
             const user = players.find((p) => p.id === soldierId);
             if (!user || user.hp <= 0 || user.downState) return;
             const soldier = getSoldierFromStore(soldierId);
-            const medItemsList = soldier ? getSoldierMedItems(soldier.inventory) : [];
-            const m = medItemsList.find((mr) => mr.inventoryIndex === inventoryIndex);
+            const medItemsList = soldier
+              ? getSoldierMedItems(soldier.inventory)
+              : [];
+            const m = medItemsList.find(
+              (mr) => mr.inventoryIndex === inventoryIndex,
+            );
             if (!m) return;
             const isMedic = (user.designation ?? "").toLowerCase() === "medic";
             /* Non-medics can only use stim/medkit on themselves; medic can target allies */
@@ -3140,9 +4119,13 @@ export function eventConfigs() {
             }
             medTargetingMode = { user, medItem: m };
             showMedTargetingHint(user, m);
-            document.querySelectorAll("#combat-players-grid .combat-card:not(.combat-card-down)").forEach((card) => {
-              card.classList.add("combat-card-heal-target");
-            });
+            document
+              .querySelectorAll(
+                "#combat-players-grid .combat-card:not(.combat-card-down)",
+              )
+              .forEach((card) => {
+                card.classList.add("combat-card-heal-target");
+              });
             return;
           }
           if (grenadeBtn && !(grenadeBtn as HTMLButtonElement).disabled) {
@@ -3155,17 +4138,26 @@ export function eventConfigs() {
             const thrower = players.find((p) => p.id === soldierId);
             if (!thrower || thrower.hp <= 0 || thrower.downState) return;
             const soldier = getSoldierFromStore(soldierId);
-            const grenades = soldier ? getSoldierGrenades(soldier.inventory) : [];
-            const g = grenades.find((gr) => gr.inventoryIndex === inventoryIndex);
+            const grenades = soldier
+              ? getSoldierGrenades(soldier.inventory)
+              : [];
+            const g = grenades.find(
+              (gr) => gr.inventoryIndex === inventoryIndex,
+            );
             if (!g) return;
             const isKnife = g.item.id === "tk21_throwing_knife";
-            const grenadeOnCooldown = !isKnife && (thrower.grenadeCooldownUntil ?? 0) > Date.now();
+            const grenadeOnCooldown =
+              !isKnife && (thrower.grenadeCooldownUntil ?? 0) > Date.now();
             if (grenadeOnCooldown) return;
             grenadeTargetingMode = { thrower, grenade: g };
             showGrenadeTargetingHint(thrower, g);
-            document.querySelectorAll("#combat-enemies-grid .combat-card:not(.combat-card-down)").forEach((card) => {
-              card.classList.add("combat-card-grenade-target");
-            });
+            document
+              .querySelectorAll(
+                "#combat-enemies-grid .combat-card:not(.combat-card-down)",
+              )
+              .forEach((card) => {
+                card.classList.add("combat-card-grenade-target");
+              });
             return;
           }
           if (abilityBtn && !(abilityBtn as HTMLButtonElement).disabled) {
@@ -3187,7 +4179,11 @@ export function eventConfigs() {
           const popup = document.getElementById("combat-abilities-popup");
           if (popup?.contains(target)) return;
           if (target.closest(".combat-card")) return;
-          if (grenadeTargetingMode || medTargetingMode || suppressTargetingMode) {
+          if (
+            grenadeTargetingMode ||
+            medTargetingMode ||
+            suppressTargetingMode
+          ) {
             closeAbilitiesPopup();
             return;
           }
@@ -3203,7 +4199,11 @@ export function eventConfigs() {
           if (popup?.getAttribute("aria-hidden") === "true") return;
           if (popup?.contains(target)) return;
           if (target.closest(".combat-card")) return;
-          if (grenadeTargetingMode || medTargetingMode || suppressTargetingMode) {
+          if (
+            grenadeTargetingMode ||
+            medTargetingMode ||
+            suppressTargetingMode
+          ) {
             closeAbilitiesPopup();
             return;
           }
@@ -3216,7 +4216,9 @@ export function eventConfigs() {
         callback: (e: Event) => {
           const ev = e as PointerEvent;
           if (ev.pointerType === "mouse" && ev.button !== 0) return;
-          const card = (e.currentTarget as HTMLElement).closest(".combat-card") as HTMLElement | null;
+          const card = (e.currentTarget as HTMLElement).closest(
+            ".combat-card",
+          ) as HTMLElement | null;
           if (!card) return;
           combatCardLastPointerUpAt.set(card, Date.now());
           handleCombatCardClick(e, card);
@@ -3226,7 +4228,9 @@ export function eventConfigs() {
         selector: ".combat-card",
         eventType: "click",
         callback: (e: Event) => {
-          const card = (e.currentTarget as HTMLElement).closest(".combat-card") as HTMLElement | null;
+          const card = (e.currentTarget as HTMLElement).closest(
+            ".combat-card",
+          ) as HTMLElement | null;
           if (!card) return;
           const lastPointerUpAt = combatCardLastPointerUpAt.get(card) ?? 0;
           if (Date.now() - lastPointerUpAt < 400) return;
@@ -3259,12 +4263,16 @@ export function eventConfigs() {
           const screen = document.getElementById("combat-screen");
           const missionJson = screen?.getAttribute("data-mission-json");
           const popup = document.getElementById("combat-mission-details-popup");
-          const titleEl = document.getElementById("combat-mission-details-title");
+          const titleEl = document.getElementById(
+            "combat-mission-details-title",
+          );
           const bodyEl = document.getElementById("combat-mission-details-body");
           if (!popup || !titleEl || !bodyEl) return;
           if (missionJson) {
             try {
-              const m = JSON.parse(missionJson.replace(/&quot;/g, '"')) as Mission;
+              const m = JSON.parse(
+                missionJson.replace(/&quot;/g, '"'),
+              ) as Mission;
               const meta = MISSION_KIND_META[m.kind];
               const kindName = meta?.name ?? m.kind.replace(/_/g, " ");
               const diffLabel = DIFFICULTY_LABELS[m.difficulty] ?? "Unknown";
@@ -3335,22 +4343,40 @@ export function eventConfigs() {
         eventType: "click",
         callback: (e: Event) => {
           const clicked = e.target as HTMLElement;
-          const summaryInner = clicked.closest(".combat-summary-inner") as HTMLElement | null;
-          if (!clicked.closest(".combat-summary-new-trait-btn") && !clicked.closest(".combat-summary-trait-popup")) {
-            summaryInner?.querySelector(".combat-summary-trait-popup")?.remove();
+          const summaryInner = clicked.closest(
+            ".combat-summary-inner",
+          ) as HTMLElement | null;
+          if (
+            !clicked.closest(".combat-summary-new-trait-btn") &&
+            !clicked.closest(".combat-summary-trait-popup")
+          ) {
+            summaryInner
+              ?.querySelector(".combat-summary-trait-popup")
+              ?.remove();
           }
-          const traitBtn = clicked.closest(".combat-summary-new-trait-btn") as HTMLButtonElement | null;
+          const traitBtn = clicked.closest(
+            ".combat-summary-new-trait-btn",
+          ) as HTMLButtonElement | null;
           if (traitBtn) {
             e.stopPropagation();
             const card = traitBtn.closest(".combat-card") as HTMLElement | null;
             if (!card) return;
-            const hostSummaryInner = card.closest(".combat-summary-inner") as HTMLElement | null;
-            hostSummaryInner?.querySelector(".combat-summary-trait-popup")?.remove();
+            const hostSummaryInner = card.closest(
+              ".combat-summary-inner",
+            ) as HTMLElement | null;
+            hostSummaryInner
+              ?.querySelector(".combat-summary-trait-popup")
+              ?.remove();
             let awards: EarnedTraitAward[] = [];
             try {
-              const parsed = JSON.parse(traitBtn.dataset.traitsJson ?? "[]") as unknown;
+              const parsed = JSON.parse(
+                traitBtn.dataset.traitsJson ?? "[]",
+              ) as unknown;
               if (Array.isArray(parsed)) {
-                awards = parsed.filter((x): x is EarnedTraitAward => typeof x === "object" && x != null && "id" in x) as EarnedTraitAward[];
+                awards = parsed.filter(
+                  (x): x is EarnedTraitAward =>
+                    typeof x === "object" && x != null && "id" in x,
+                ) as EarnedTraitAward[];
               }
             } catch {
               awards = [];
@@ -3358,22 +4384,39 @@ export function eventConfigs() {
             if (awards.length === 0) return;
             const popup = document.createElement("div");
             popup.className = "combat-summary-trait-popup";
-            popup.innerHTML = awards.map((a) => {
-              const badges = traitStatBadgesHtml(a.stats, a.grenadeHitBonusPct ?? 0);
-              return `<div class="combat-summary-trait-popup-entry">
+            popup.innerHTML = awards
+              .map((a) => {
+                const badges = traitStatBadgesHtml(
+                  a.stats,
+                  a.grenadeHitBonusPct ?? 0,
+                );
+                return `<div class="combat-summary-trait-popup-entry">
                 <div class="combat-summary-trait-popup-title">${esc(a.name)}</div>
                 <div class="combat-summary-trait-popup-text">${esc(a.flavor)}</div>
                 ${badges ? `<div class="combat-summary-trait-popup-badges">${badges}</div>` : ""}
               </div>`;
-            }).join("");
+              })
+              .join("");
             if (hostSummaryInner) {
               const cardRect = card.getBoundingClientRect();
               const hostRect = hostSummaryInner.getBoundingClientRect();
-              const popupWidth = Math.min(360, Math.max(240, hostRect.width - 20));
+              const popupWidth = Math.min(
+                360,
+                Math.max(240, hostRect.width - 20),
+              );
               popup.style.width = `${popupWidth}px`;
               const maxLeft = Math.max(10, hostRect.width - popupWidth - 10);
-              const left = Math.max(10, Math.min(maxLeft, cardRect.left - hostRect.left - 10));
-              const top = Math.max(56, Math.min(hostRect.height - 120, cardRect.top - hostRect.top + 10));
+              const left = Math.max(
+                10,
+                Math.min(maxLeft, cardRect.left - hostRect.left - 10),
+              );
+              const top = Math.max(
+                56,
+                Math.min(
+                  hostRect.height - 120,
+                  cardRect.top - hostRect.top + 10,
+                ),
+              );
               popup.style.left = `${left}px`;
               popup.style.top = `${top}px`;
               hostSummaryInner.appendChild(popup);
@@ -3388,14 +4431,17 @@ export function eventConfigs() {
           e.stopPropagation();
           if (!isDevTestCombat) {
             const store = usePlayerCompanyStore.getState();
-            store.syncCombatHpToSoldiers(players.map((p) => ({ id: p.id, hp: p.maxHp })));
+            store.syncCombatHpToSoldiers(
+              players.map((p) => ({ id: p.id, hp: p.maxHp })),
+            );
           }
           if (combatTickId != null) {
             clearTimeout(combatTickId);
             combatTickId = null;
           }
           closeAbilitiesPopup();
-          const onboardingMission = missionForCombat?.id?.startsWith("onboarding_");
+          const onboardingMission =
+            missionForCombat?.id?.startsWith("onboarding_");
           if (onboardingMission) {
             const st = usePlayerCompanyStore.getState();
             st.setOnboardingRecruitStep("home_popup");
@@ -3413,7 +4459,11 @@ export function eventConfigs() {
       (tt as HTMLElement).hidden = true;
       tt.classList.remove("equip-slot-tooltip-visible");
     });
-    document.querySelectorAll(".equip-slot").forEach((el) => el.classList.remove("equip-slot-selected", "equip-slot-highlight"));
+    document
+      .querySelectorAll(".equip-slot")
+      .forEach((el) =>
+        el.classList.remove("equip-slot-selected", "equip-slot-highlight"),
+      );
   }
 
   function openAvailableSuppliesPopup(
@@ -3439,24 +4489,47 @@ export function eventConfigs() {
     const popup = document.getElementById("equip-supplies-popup");
     const titleEl = document.getElementById("equip-supplies-title");
     if (!grid || !popup) return;
-    const titleByType = { weapon: "Weapons", armor: "Armor", equipment: "Supplies" };
+    const titleByType = {
+      weapon: "Weapons",
+      armor: "Armor",
+      equipment: "Supplies",
+    };
     if (titleEl) titleEl.textContent = titleByType[slotType] ?? "Armory";
-    const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-    const WEAPON_ROLE_LABELS: Record<string, string> = { rifleman: "Rifleman", support: "Gunner", medic: "Medic", any: "Any" };
-    grid.innerHTML = itemsWithMeta.length === 0
-      ? '<div class="equip-supplies-empty">No items in armory for this slot.</div>'
-      : itemsWithMeta
-          .map(
-            ({ item, armoryIndex, canEquip }) => {
+    const esc = (s: string) =>
+      s
+        .replace(/&/g, "&amp;")
+        .replace(/"/g, "&quot;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+    const WEAPON_ROLE_LABELS: Record<string, string> = {
+      rifleman: "Rifleman",
+      support: "Gunner",
+      medic: "Medic",
+      any: "Any",
+    };
+    grid.innerHTML =
+      itemsWithMeta.length === 0
+        ? '<div class="equip-supplies-empty">No items in armory for this slot.</div>'
+        : itemsWithMeta
+            .map(({ item, armoryIndex, canEquip }) => {
               const iconUrl = getItemIconUrl(item);
               const uses = item.uses ?? item.quantity;
               const level = item.level ?? 1;
               const rarity = item.rarity ?? "common";
               const json = JSON.stringify(item).replace(/"/g, "&quot;");
-              const unusableClass = canEquip ? "" : " equip-supplies-item-unusable";
-              const weaponRole = slotType === "weapon"
-                ? (getWeaponRestrictRole(item) ?? (item as { restrictRole?: string }).restrictRole ?? "any")
-                : null;
+              const unusableClass = canEquip
+                ? ""
+                : " equip-supplies-item-unusable";
+              const weaponRole =
+                slotType === "weapon"
+                  ? (getWeaponRestrictRole(item) ??
+                    (
+                      item as {
+                        restrictRole?: string;
+                      }
+                    ).restrictRole ??
+                    "any")
+                  : null;
               const roleLabelHtml = weaponRole
                 ? `<span class="equip-supplies-role-label role-${weaponRole}">${WEAPON_ROLE_LABELS[weaponRole] ?? weaponRole}</span>`
                 : "";
@@ -3469,9 +4542,8 @@ export function eventConfigs() {
     ${roleLabelHtml}
   </div>
 </button>`;
-            },
-          )
-          .join("");
+            })
+            .join("");
     (picker as HTMLElement).dataset.suppliesTargetSoldierId = soldierId;
     (picker as HTMLElement).dataset.suppliesTargetSlotType = slotType;
     (picker as HTMLElement).dataset.suppliesTargetEqIndex = String(eqIndex);
@@ -3483,15 +4555,29 @@ export function eventConfigs() {
       selector: ".item-stats-popup-unequip-btn",
       eventType: "click",
       callback: (e: Event) => {
-        const btn = (e.target as HTMLElement).closest(".item-stats-popup-unequip-btn") as HTMLElement | null;
+        const btn = (e.target as HTMLElement).closest(
+          ".item-stats-popup-unequip-btn",
+        ) as HTMLElement | null;
         if (!btn) return;
         e.preventDefault();
         const soldierId = btn.dataset.unequipSoldierId;
-        const slotType = btn.dataset.unequipSlotType as "weapon" | "armor" | "equipment";
+        const slotType = btn.dataset.unequipSlotType as
+          | "weapon"
+          | "armor"
+          | "equipment";
         const eqIdxStr = btn.dataset.unequipEqIndex;
         if (!soldierId || !slotType) return;
-        const eqIndex = slotType === "equipment" && eqIdxStr != null ? parseInt(eqIdxStr, 10) : 0;
-        const result = usePlayerCompanyStore.getState().unequipItemToArmory(soldierId, slotType, slotType === "equipment" ? eqIndex : undefined);
+        const eqIndex =
+          slotType === "equipment" && eqIdxStr != null
+            ? parseInt(eqIdxStr, 10)
+            : 0;
+        const result = usePlayerCompanyStore
+          .getState()
+          .unequipItemToArmory(
+            soldierId,
+            slotType,
+            slotType === "equipment" ? eqIndex : undefined,
+          );
         if (result.success) {
           const popup = document.getElementById("item-stats-popup");
           const picker = document.getElementById("equip-picker-popup");
@@ -3502,12 +4588,29 @@ export function eventConfigs() {
             (popup as HTMLElement).style.cssText = "";
             popup.hidden = true;
           }
-          if (tt) { tt.hidden = true; tt.classList.remove("equip-slot-tooltip-visible"); }
-          document.querySelectorAll(".equip-slot").forEach((el) => el.classList.remove("equip-slot-selected", "equip-slot-highlight"));
+          if (tt) {
+            tt.hidden = true;
+            tt.classList.remove("equip-slot-tooltip-visible");
+          }
+          document
+            .querySelectorAll(".equip-slot")
+            .forEach((el) =>
+              el.classList.remove(
+                "equip-slot-selected",
+                "equip-slot-highlight",
+              ),
+            );
           if (picker) {
-            picker.querySelectorAll(".equip-slot-unequip-wrap").forEach((el) => el.remove());
+            picker
+              .querySelectorAll(".equip-slot-unequip-wrap")
+              .forEach((el) => el.remove());
             UiManager.refreshEquipPickerContent?.();
-            openAvailableSuppliesPopup(picker as HTMLElement, soldierId, slotType, eqIndex);
+            openAvailableSuppliesPopup(
+              picker as HTMLElement,
+              soldierId,
+              slotType,
+              eqIndex,
+            );
           }
         }
       },
@@ -3519,10 +4622,15 @@ export function eventConfigs() {
         const picker = document.getElementById("equip-picker-popup");
         if (!picker) return;
         const tt = document.getElementById("equip-slot-tooltip");
-        if (tt) { tt.hidden = true; tt.classList.remove("equip-slot-tooltip-visible"); }
+        if (tt) {
+          tt.hidden = true;
+          tt.classList.remove("equip-slot-tooltip-visible");
+        }
         const supplies = document.getElementById("equip-supplies-popup");
         if (supplies) supplies.setAttribute("hidden", "");
-        picker.querySelectorAll(".equip-slot-unequip-wrap").forEach((el) => el.remove());
+        picker
+          .querySelectorAll(".equip-slot-unequip-wrap")
+          .forEach((el) => el.remove());
         const openedFrom = (picker as HTMLElement).dataset.openedFrom;
         picker.setAttribute("hidden", "");
         if (openedFrom === "roster") UiManager.renderRosterScreen();
@@ -3536,10 +4644,19 @@ export function eventConfigs() {
         const supplies = document.getElementById("equip-supplies-popup");
         const picker = document.getElementById("equip-picker-popup");
         const tt = document.getElementById("equip-slot-tooltip");
-        if (tt) { tt.hidden = true; tt.classList.remove("equip-slot-tooltip-visible"); }
+        if (tt) {
+          tt.hidden = true;
+          tt.classList.remove("equip-slot-tooltip-visible");
+        }
         if (supplies) supplies.setAttribute("hidden", "");
-        document.querySelectorAll(".equip-slot").forEach((el) => el.classList.remove("equip-slot-selected", "equip-slot-highlight"));
-        document.querySelectorAll(".equip-supplies-item").forEach((el) => el.classList.remove("equip-supplies-item-selected"));
+        document
+          .querySelectorAll(".equip-slot")
+          .forEach((el) =>
+            el.classList.remove("equip-slot-selected", "equip-slot-highlight"),
+          );
+        document
+          .querySelectorAll(".equip-supplies-item")
+          .forEach((el) => el.classList.remove("equip-supplies-item-selected"));
         if (picker) {
           (picker as HTMLElement).dataset.preselectedItem = "";
           (picker as HTMLElement).dataset.preselectedArmoryIndex = "";
@@ -3558,8 +4675,14 @@ export function eventConfigs() {
         if (target.closest("#equip-supplies-close")) return;
 
         /* Dismiss unequip wrap when clicking outside slots/unequip */
-        const existingUnequip = picker.querySelector(".equip-slot-unequip-wrap");
-        if (existingUnequip && !target.closest(".equip-slot-unequip-wrap") && !target.closest(".equip-slot")) {
+        const existingUnequip = picker.querySelector(
+          ".equip-slot-unequip-wrap",
+        );
+        if (
+          existingUnequip &&
+          !target.closest(".equip-slot-unequip-wrap") &&
+          !target.closest(".equip-slot")
+        ) {
           existingUnequip.remove();
           hideEquipSlotTooltipAndDeselectSlots();
         }
@@ -3575,7 +4698,9 @@ export function eventConfigs() {
         ) {
           hideEquipSlotTooltipAndDeselectSlots();
           supplies.setAttribute("hidden", "");
-          picker.querySelectorAll(".equip-slot-unequip-wrap").forEach((el) => el.remove());
+          picker
+            .querySelectorAll(".equip-slot-unequip-wrap")
+            .forEach((el) => el.remove());
         }
 
         const unequipPopBtn = target.closest(".equip-slot-unequip-btn");
@@ -3583,27 +4708,56 @@ export function eventConfigs() {
           e.preventDefault();
           const btn = unequipPopBtn as HTMLElement;
           const soldierId = btn.dataset.unequipSoldierId;
-          const slotType = btn.dataset.unequipSlotType as "weapon" | "armor" | "equipment";
+          const slotType = btn.dataset.unequipSlotType as
+            | "weapon"
+            | "armor"
+            | "equipment";
           const eqIdxStr = btn.dataset.unequipEqIndex;
           if (soldierId && slotType) {
-            const eqIndex = slotType === "equipment" && eqIdxStr != null ? parseInt(eqIdxStr, 10) : 0;
-            const result = usePlayerCompanyStore.getState().unequipItemToArmory(soldierId, slotType, slotType === "equipment" ? eqIndex : undefined);
+            const eqIndex =
+              slotType === "equipment" && eqIdxStr != null
+                ? parseInt(eqIdxStr, 10)
+                : 0;
+            const result = usePlayerCompanyStore
+              .getState()
+              .unequipItemToArmory(
+                soldierId,
+                slotType,
+                slotType === "equipment" ? eqIndex : undefined,
+              );
             if (result.success) {
               btn.closest(".equip-slot-unequip-wrap")?.remove();
-              document.querySelectorAll(".equip-slot").forEach((el) => el.classList.remove("equip-slot-selected", "equip-slot-highlight"));
+              document
+                .querySelectorAll(".equip-slot")
+                .forEach((el) =>
+                  el.classList.remove(
+                    "equip-slot-selected",
+                    "equip-slot-highlight",
+                  ),
+                );
               UiManager.refreshEquipPickerContent?.();
-              openAvailableSuppliesPopup(picker as HTMLElement, soldierId, slotType, eqIndex);
+              openAvailableSuppliesPopup(
+                picker as HTMLElement,
+                soldierId,
+                slotType,
+                eqIndex,
+              );
             }
           }
           return;
         }
 
-        const suppliesItem = target.closest(".equip-supplies-item") as HTMLElement | null;
+        const suppliesItem = target.closest(
+          ".equip-supplies-item",
+        ) as HTMLElement | null;
         if (suppliesItem) {
           e.preventDefault();
-          const soldierId = (picker as HTMLElement).dataset.suppliesTargetSoldierId;
-          const slotType = (picker as HTMLElement).dataset.suppliesTargetSlotType as "weapon" | "armor" | "equipment";
-          const eqIdxStr = (picker as HTMLElement).dataset.suppliesTargetEqIndex;
+          const soldierId = (picker as HTMLElement).dataset
+            .suppliesTargetSoldierId;
+          const slotType = (picker as HTMLElement).dataset
+            .suppliesTargetSlotType as "weapon" | "armor" | "equipment";
+          const eqIdxStr = (picker as HTMLElement).dataset
+            .suppliesTargetEqIndex;
           const armoryIdxStr = suppliesItem.dataset.armoryIndex;
           const itemJson = suppliesItem.dataset.itemJson;
 
@@ -3611,25 +4765,59 @@ export function eventConfigs() {
           if (!soldierId && armoryIdxStr != null && itemJson) {
             const item = JSON.parse(itemJson.replace(/&quot;/g, '"'));
             (picker as HTMLElement).dataset.preselectedItem = itemJson;
-            (picker as HTMLElement).dataset.preselectedArmoryIndex = armoryIdxStr;
-            document.querySelectorAll(".equip-slot").forEach((el) => el.classList.remove("equip-slot-selected", "equip-slot-highlight"));
-            picker.querySelectorAll(".equip-slot-unequip-wrap").forEach((el) => el.remove());
-            const soldiers = usePlayerCompanyStore.getState().company?.soldiers ?? [];
+            (picker as HTMLElement).dataset.preselectedArmoryIndex =
+              armoryIdxStr;
+            document
+              .querySelectorAll(".equip-slot")
+              .forEach((el) =>
+                el.classList.remove(
+                  "equip-slot-selected",
+                  "equip-slot-highlight",
+                ),
+              );
+            picker
+              .querySelectorAll(".equip-slot-unequip-wrap")
+              .forEach((el) => el.remove());
+            const soldiers =
+              usePlayerCompanyStore.getState().company?.soldiers ?? [];
             soldiers.forEach((s) => {
-              const slotsToCheck: { type: "weapon" | "armor" | "equipment"; eqIndex: number }[] =
-                itemFitsSlot(item, "weapon") ? [{ type: "weapon", eqIndex: 0 }] :
-                itemFitsSlot(item, "armor") ? [{ type: "armor", eqIndex: 0 }] :
-                itemFitsSlot(item, "equipment") ? [{ type: "equipment", eqIndex: 0 }, { type: "equipment", eqIndex: 1 }] : [];
+              const slotsToCheck: {
+                type: "weapon" | "armor" | "equipment";
+                eqIndex: number;
+              }[] = itemFitsSlot(item, "weapon")
+                ? [{ type: "weapon", eqIndex: 0 }]
+                : itemFitsSlot(item, "armor")
+                  ? [{ type: "armor", eqIndex: 0 }]
+                  : itemFitsSlot(item, "equipment")
+                    ? [
+                        {
+                          type: "equipment",
+                          eqIndex: 0,
+                        },
+                        { type: "equipment", eqIndex: 1 },
+                      ]
+                    : [];
               for (const { type, eqIndex } of slotsToCheck) {
-                const canReceive = canEquipItemLevel(item, s) &&
+                const canReceive =
+                  canEquipItemLevel(item, s) &&
                   (type !== "weapon" || weaponWieldOk(item, s));
                 if (canReceive) {
                   const sel = `.equip-slot[data-soldier-id="${s.id}"][data-slot-type="${type}"]${type === "equipment" ? `[data-eq-index="${eqIndex}"]` : ""}`;
-                  picker.querySelectorAll(sel).forEach((destSlot) => (destSlot as HTMLElement).classList.add("equip-slot-highlight"));
+                  picker
+                    .querySelectorAll(sel)
+                    .forEach((destSlot) =>
+                      (destSlot as HTMLElement).classList.add(
+                        "equip-slot-highlight",
+                      ),
+                    );
                 }
               }
             });
-            document.querySelectorAll(".equip-supplies-item").forEach((el) => el.classList.remove("equip-supplies-item-selected"));
+            document
+              .querySelectorAll(".equip-supplies-item")
+              .forEach((el) =>
+                el.classList.remove("equip-supplies-item-selected"),
+              );
             suppliesItem.classList.add("equip-supplies-item-selected");
             return;
           }
@@ -3637,31 +4825,65 @@ export function eventConfigs() {
           /* Slot-first: block unusable items (e.g. medic weapon for rifleman slot) */
           if (soldierId && suppliesItem.dataset.canEquip === "false") return;
 
-          if (soldierId && slotType && eqIdxStr != null && armoryIdxStr != null && itemJson) {
+          if (
+            soldierId &&
+            slotType &&
+            eqIdxStr != null &&
+            armoryIdxStr != null &&
+            itemJson
+          ) {
             const eqIndex = parseInt(eqIdxStr, 10);
             const slotSelector = `.equip-slot[data-soldier-id="${soldierId}"][data-slot-type="${slotType}"]${slotType === "equipment" ? `[data-eq-index="${eqIndex}"]` : ""}`;
-            const slotEl = picker.querySelector(slotSelector) as HTMLElement | null;
+            const slotEl = picker.querySelector(
+              slotSelector,
+            ) as HTMLElement | null;
             const item = JSON.parse(itemJson.replace(/&quot;/g, '"'));
             const armoryIndex = parseInt(armoryIdxStr, 10);
             const slot = slotType === "equipment" ? "equipment" : slotType;
 
             const runEquipAndRefresh = () => {
-              const result = usePlayerCompanyStore.getState().equipItemToSoldier(soldierId!, slot, item, {
-                fromArmoryIndex: armoryIndex,
-                equipmentIndex: slotType === "equipment" ? eqIndex : undefined,
-              });
+              const result = usePlayerCompanyStore
+                .getState()
+                .equipItemToSoldier(soldierId!, slot, item, {
+                  fromArmoryIndex: armoryIndex,
+                  equipmentIndex:
+                    slotType === "equipment" ? eqIndex : undefined,
+                });
               if (result.success) {
                 UiManager.refreshEquipPickerContent?.();
-                document.querySelectorAll(".equip-slot").forEach((el) => el.classList.remove("equip-slot-selected", "equip-slot-highlight"));
-                picker.querySelectorAll(".equip-slot-unequip-wrap").forEach((el) => el.remove());
-                document.querySelectorAll(".equip-supplies-item").forEach((el) => el.classList.remove("equip-supplies-item-selected"));
-                openAvailableSuppliesPopup(picker as HTMLElement, soldierId, slotType, eqIndex);
+                document
+                  .querySelectorAll(".equip-slot")
+                  .forEach((el) =>
+                    el.classList.remove(
+                      "equip-slot-selected",
+                      "equip-slot-highlight",
+                    ),
+                  );
+                picker
+                  .querySelectorAll(".equip-slot-unequip-wrap")
+                  .forEach((el) => el.remove());
+                document
+                  .querySelectorAll(".equip-supplies-item")
+                  .forEach((el) =>
+                    el.classList.remove("equip-supplies-item-selected"),
+                  );
+                openAvailableSuppliesPopup(
+                  picker as HTMLElement,
+                  soldierId,
+                  slotType,
+                  eqIndex,
+                );
                 (picker as HTMLElement).dataset.suppliesTargetSoldierId = "";
                 requestAnimationFrame(() => {
-                  const newSlot = picker.querySelector(slotSelector) as HTMLElement | null;
+                  const newSlot = picker.querySelector(
+                    slotSelector,
+                  ) as HTMLElement | null;
                   if (newSlot) {
                     newSlot.classList.add("equip-slot-plop");
-                    setTimeout(() => newSlot.classList.remove("equip-slot-plop"), 450);
+                    setTimeout(
+                      () => newSlot.classList.remove("equip-slot-plop"),
+                      450,
+                    );
                   }
                 });
               }
@@ -3688,16 +4910,21 @@ export function eventConfigs() {
               clone.style.top = `${startY}px`;
               const dx = endX - startX;
               const dy = endY - startY;
-              clone.animate(
-                [
-                  { transform: "translate(0, 0) scale(1)" },
-                  { transform: `translate(${dx}px, ${dy}px) scale(1.15)` },
-                ],
-                { duration: 280, easing: "cubic-bezier(0.25, 0.46, 0.45, 0.94)" },
-              ).finished.then(() => {
-                clone.remove();
-                runEquipAndRefresh();
-              });
+              clone
+                .animate(
+                  [
+                    { transform: "translate(0, 0) scale(1)" },
+                    { transform: `translate(${dx}px, ${dy}px) scale(1.15)` },
+                  ],
+                  {
+                    duration: 280,
+                    easing: "cubic-bezier(0.25, 0.46, 0.45, 0.94)",
+                  },
+                )
+                .finished.then(() => {
+                  clone.remove();
+                  runEquipAndRefresh();
+                });
             } else {
               runEquipAndRefresh();
             }
@@ -3705,12 +4932,17 @@ export function eventConfigs() {
           return;
         }
 
-        const unequipBtn = target.closest(".equip-unequip-all-btn") as HTMLElement | null;
+        const unequipBtn = target.closest(
+          ".equip-unequip-all-btn",
+        ) as HTMLElement | null;
         if (unequipBtn) {
           const soldierId = unequipBtn.dataset.soldierId;
           if (soldierId) {
             const store = usePlayerCompanyStore.getState();
-            const slots: { type: "weapon" | "armor" | "equipment"; eqIndex?: number }[] = [
+            const slots: {
+              type: "weapon" | "armor" | "equipment";
+              eqIndex?: number;
+            }[] = [
               { type: "weapon" },
               { type: "armor" },
               { type: "equipment", eqIndex: 0 },
@@ -3727,62 +4959,114 @@ export function eventConfigs() {
 
         if (!target.closest(".equip-picker-inner")) {
           const tt = document.getElementById("equip-slot-tooltip");
-          if (tt) { tt.hidden = true; tt.classList.remove("equip-slot-tooltip-visible"); }
+          if (tt) {
+            tt.hidden = true;
+            tt.classList.remove("equip-slot-tooltip-visible");
+          }
           picker.setAttribute("hidden", "");
           const openedFrom = (picker as HTMLElement).dataset.openedFrom;
           if (openedFrom === "roster") UiManager.renderRosterScreen();
-          else if (openedFrom === "inventory") UiManager.renderInventoryScreen();
+          else if (openedFrom === "inventory")
+            UiManager.renderInventoryScreen();
           return;
         }
 
         const preselectedJson = (picker as HTMLElement).dataset.preselectedItem;
-        const preselectedIdxStr = (picker as HTMLElement).dataset.preselectedArmoryIndex;
+        const preselectedIdxStr = (picker as HTMLElement).dataset
+          .preselectedArmoryIndex;
         /* Only match slots in soldier cards, not supplies grid items */
-        const slotEl = target.closest(".equip-picker-soldiers-list .equip-slot[data-soldier-id]") as HTMLElement | null;
+        const slotEl = target.closest(
+          ".equip-picker-soldiers-list .equip-slot[data-soldier-id]",
+        ) as HTMLElement | null;
 
         /* Click outside slots (header, empty area, armory popup): hide tooltip and deselect */
         if (!slotEl) {
           hideEquipSlotTooltipAndDeselectSlots();
-          picker.querySelectorAll(".equip-slot-unequip-wrap").forEach((el) => el.remove());
+          picker
+            .querySelectorAll(".equip-slot-unequip-wrap")
+            .forEach((el) => el.remove());
           return;
         }
 
-        const soldiers = usePlayerCompanyStore.getState().company?.soldiers ?? [];
+        const soldiers =
+          usePlayerCompanyStore.getState().company?.soldiers ?? [];
 
         if (slotEl) {
           e.preventDefault();
           const soldierId = slotEl.dataset.soldierId;
           if (!soldierId) return;
-          const slotType = slotEl.dataset.slotType as "weapon" | "armor" | "equipment";
+          const slotType = slotEl.dataset.slotType as
+            | "weapon"
+            | "armor"
+            | "equipment";
           const slotItemJson = slotEl.dataset.slotItem;
-          const eqIndex = slotEl.dataset.eqIndex !== undefined ? parseInt(slotEl.dataset.eqIndex, 10) : 0;
-          const selectedSlot = picker.querySelector(".equip-picker-soldiers-list .equip-slot-selected") as HTMLElement | null;
+          const eqIndex =
+            slotEl.dataset.eqIndex !== undefined
+              ? parseInt(slotEl.dataset.eqIndex, 10)
+              : 0;
+          const selectedSlot = picker.querySelector(
+            ".equip-picker-soldiers-list .equip-slot-selected",
+          ) as HTMLElement | null;
 
           /* Move between soldiers: click highlighted destination to move */
-          if (selectedSlot && slotEl.classList.contains("equip-slot-highlight")) {
+          if (
+            selectedSlot &&
+            slotEl.classList.contains("equip-slot-highlight")
+          ) {
             const tt = document.getElementById("equip-slot-tooltip");
-            if (tt) { tt.hidden = true; tt.classList.remove("equip-slot-tooltip-visible"); }
+            if (tt) {
+              tt.hidden = true;
+              tt.classList.remove("equip-slot-tooltip-visible");
+            }
             const srcSoldierId = selectedSlot.dataset.soldierId!;
-            const srcSlotType = selectedSlot.dataset.slotType as "weapon" | "armor" | "equipment";
-            const srcEqIdx = selectedSlot.dataset.eqIndex != null ? parseInt(selectedSlot.dataset.eqIndex, 10) : undefined;
+            const srcSlotType = selectedSlot.dataset.slotType as
+              | "weapon"
+              | "armor"
+              | "equipment";
+            const srcEqIdx =
+              selectedSlot.dataset.eqIndex != null
+                ? parseInt(selectedSlot.dataset.eqIndex, 10)
+                : undefined;
             const destSoldierId = slotEl.dataset.soldierId!;
-            const destSlotType = slotEl.dataset.slotType as "weapon" | "armor" | "equipment";
-            const destEqIdx = slotEl.dataset.eqIndex != null ? parseInt(slotEl.dataset.eqIndex, 10) : undefined;
+            const destSlotType = slotEl.dataset.slotType as
+              | "weapon"
+              | "armor"
+              | "equipment";
+            const destEqIdx =
+              slotEl.dataset.eqIndex != null
+                ? parseInt(slotEl.dataset.eqIndex, 10)
+                : undefined;
             selectedSlot.classList.add("equip-slot-swap-source");
             slotEl.classList.add("equip-slot-swap-dest");
-            document.querySelectorAll(".equip-slot").forEach((el) => el.classList.remove("equip-slot-selected", "equip-slot-highlight"));
+            document
+              .querySelectorAll(".equip-slot")
+              .forEach((el) =>
+                el.classList.remove(
+                  "equip-slot-selected",
+                  "equip-slot-highlight",
+                ),
+              );
             setTimeout(() => {
-              const result = usePlayerCompanyStore.getState().moveItemBetweenSlots({
-                sourceSoldierId: srcSoldierId,
-                sourceSlotType: srcSlotType,
-                sourceEqIndex: srcSlotType === "equipment" ? srcEqIdx : undefined,
-                destSoldierId,
-                destSlotType,
-                destEqIndex: destSlotType === "equipment" ? destEqIdx : undefined,
-              });
+              const result = usePlayerCompanyStore
+                .getState()
+                .moveItemBetweenSlots({
+                  sourceSoldierId: srcSoldierId,
+                  sourceSlotType: srcSlotType,
+                  sourceEqIndex:
+                    srcSlotType === "equipment" ? srcEqIdx : undefined,
+                  destSoldierId,
+                  destSlotType,
+                  destEqIndex:
+                    destSlotType === "equipment" ? destEqIdx : undefined,
+                });
               if (result.success) {
                 UiManager.refreshEquipPickerContent?.();
-                openAvailableSuppliesPopup(picker as HTMLElement, srcSoldierId, srcSlotType, srcEqIdx ?? 0);
+                openAvailableSuppliesPopup(
+                  picker as HTMLElement,
+                  srcSoldierId,
+                  srcSlotType,
+                  srcEqIdx ?? 0,
+                );
               }
             }, 280);
             return;
@@ -3791,10 +5075,17 @@ export function eventConfigs() {
           /* Deselect: click same selected slot again */
           if (selectedSlot === slotEl) {
             const tt = document.getElementById("equip-slot-tooltip");
-            if (tt) { tt.hidden = true; tt.classList.remove("equip-slot-tooltip-visible"); }
+            if (tt) {
+              tt.hidden = true;
+              tt.classList.remove("equip-slot-tooltip-visible");
+            }
             slotEl.classList.remove("equip-slot-selected");
-            document.querySelectorAll(".equip-slot").forEach((el) => el.classList.remove("equip-slot-highlight"));
-            picker.querySelectorAll(".equip-slot-unequip-wrap").forEach((el) => el.remove());
+            document
+              .querySelectorAll(".equip-slot")
+              .forEach((el) => el.classList.remove("equip-slot-highlight"));
+            picker
+              .querySelectorAll(".equip-slot-unequip-wrap")
+              .forEach((el) => el.remove());
             return;
           }
 
@@ -3804,36 +5095,79 @@ export function eventConfigs() {
             const soldier = soldiers.find((s) => s.id === soldierId);
             if (soldier) {
               let valid = false;
-              if (slotType === "weapon" && itemFitsSlot(item, "weapon") && weaponWieldOk(item, soldier)) valid = true;
-              else if (slotType === "armor" && item.type === "armor") valid = true;
-              else if (slotType === "equipment" && itemFitsSlot(item, "equipment")) valid = true;
+              if (
+                slotType === "weapon" &&
+                itemFitsSlot(item, "weapon") &&
+                weaponWieldOk(item, soldier)
+              )
+                valid = true;
+              else if (slotType === "armor" && item.type === "armor")
+                valid = true;
+              else if (
+                slotType === "equipment" &&
+                itemFitsSlot(item, "equipment")
+              )
+                valid = true;
               if (valid) {
                 const armoryIndex = parseInt(preselectedIdxStr, 10);
                 const slot = slotType === "equipment" ? "equipment" : slotType;
-                const eqIdx = slotType === "equipment" && slotEl.dataset.eqIndex !== undefined
-                  ? parseInt(slotEl.dataset.eqIndex, 10)
-                  : undefined;
-                const suppliesItem = document.querySelector(".equip-supplies-item.equip-supplies-item-selected") as HTMLElement | null;
+                const eqIdx =
+                  slotType === "equipment" &&
+                  slotEl.dataset.eqIndex !== undefined
+                    ? parseInt(slotEl.dataset.eqIndex, 10)
+                    : undefined;
+                const suppliesItem = document.querySelector(
+                  ".equip-supplies-item.equip-supplies-item-selected",
+                ) as HTMLElement | null;
                 const slotSelector = `.equip-slot[data-soldier-id="${soldierId}"][data-slot-type="${slotType}"]${slotType === "equipment" ? `[data-eq-index="${eqIdx ?? 0}"]` : ""}`;
 
                 const runEquipAndRefresh = () => {
-                  const result = usePlayerCompanyStore.getState().equipItemToSoldier(soldierId, slot, item, { fromArmoryIndex: armoryIndex, equipmentIndex: eqIdx });
+                  const result = usePlayerCompanyStore
+                    .getState()
+                    .equipItemToSoldier(soldierId, slot, item, {
+                      fromArmoryIndex: armoryIndex,
+                      equipmentIndex: eqIdx,
+                    });
                   if (result.success) {
                     (picker as HTMLElement).dataset.preselectedItem = "";
                     (picker as HTMLElement).dataset.preselectedArmoryIndex = "";
-                    document.querySelectorAll(".equip-slot").forEach((el) => el.classList.remove("equip-slot-highlight"));
-                    document.querySelectorAll(".equip-supplies-item").forEach((el) => el.classList.remove("equip-supplies-item-selected"));
+                    document
+                      .querySelectorAll(".equip-slot")
+                      .forEach((el) =>
+                        el.classList.remove("equip-slot-highlight"),
+                      );
+                    document
+                      .querySelectorAll(".equip-supplies-item")
+                      .forEach((el) =>
+                        el.classList.remove("equip-supplies-item-selected"),
+                      );
                     UiManager.refreshEquipPickerContent?.();
-                    const suppliesPopup = document.getElementById("equip-supplies-popup");
-                    if (suppliesPopup && !suppliesPopup.hasAttribute("hidden")) {
-                      openAvailableSuppliesPopup(picker as HTMLElement, soldierId, slotType, eqIdx ?? 0);
-                      (picker as HTMLElement).dataset.suppliesTargetSoldierId = "";
+                    const suppliesPopup = document.getElementById(
+                      "equip-supplies-popup",
+                    );
+                    if (
+                      suppliesPopup &&
+                      !suppliesPopup.hasAttribute("hidden")
+                    ) {
+                      openAvailableSuppliesPopup(
+                        picker as HTMLElement,
+                        soldierId,
+                        slotType,
+                        eqIdx ?? 0,
+                      );
+                      (picker as HTMLElement).dataset.suppliesTargetSoldierId =
+                        "";
                     }
                     requestAnimationFrame(() => {
-                      const newSlot = picker.querySelector(slotSelector) as HTMLElement | null;
+                      const newSlot = picker.querySelector(
+                        slotSelector,
+                      ) as HTMLElement | null;
                       if (newSlot) {
                         newSlot.classList.add("equip-slot-plop");
-                        setTimeout(() => newSlot.classList.remove("equip-slot-plop"), 450);
+                        setTimeout(
+                          () => newSlot.classList.remove("equip-slot-plop"),
+                          450,
+                        );
                       }
                     });
                   }
@@ -3860,16 +5194,23 @@ export function eventConfigs() {
                   clone.style.top = `${startY}px`;
                   const dx = endX - startX;
                   const dy = endY - startY;
-                  clone.animate(
-                    [
-                      { transform: "translate(0, 0) scale(1)" },
-                      { transform: `translate(${dx}px, ${dy}px) scale(1.15)` },
-                    ],
-                    { duration: 280, easing: "cubic-bezier(0.25, 0.46, 0.45, 0.94)" },
-                  ).finished.then(() => {
-                    clone.remove();
-                    runEquipAndRefresh();
-                  });
+                  clone
+                    .animate(
+                      [
+                        { transform: "translate(0, 0) scale(1)" },
+                        {
+                          transform: `translate(${dx}px, ${dy}px) scale(1.15)`,
+                        },
+                      ],
+                      {
+                        duration: 280,
+                        easing: "cubic-bezier(0.25, 0.46, 0.45, 0.94)",
+                      },
+                    )
+                    .finished.then(() => {
+                      clone.remove();
+                      runEquipAndRefresh();
+                    });
                 } else {
                   runEquipAndRefresh();
                 }
@@ -3885,51 +5226,96 @@ export function eventConfigs() {
             slotTooltip.hidden = true;
             slotTooltip.classList.remove("equip-slot-tooltip-visible");
           }
-          document.querySelectorAll(".equip-slot").forEach((el) => el.classList.remove("equip-slot-selected", "equip-slot-highlight"));
-          picker.querySelectorAll(".equip-slot-unequip-wrap").forEach((el) => el.remove());
+          document
+            .querySelectorAll(".equip-slot")
+            .forEach((el) =>
+              el.classList.remove(
+                "equip-slot-selected",
+                "equip-slot-highlight",
+              ),
+            );
+          picker
+            .querySelectorAll(".equip-slot-unequip-wrap")
+            .forEach((el) => el.remove());
           slotEl.classList.add("equip-slot-selected");
           if (slotItemJson) {
             const slotItem = JSON.parse(slotItemJson.replace(/&quot;/g, '"'));
             soldiers.forEach((s) => {
-              document.querySelectorAll(`.equip-slot[data-soldier-id="${s.id}"]`).forEach((destSlot) => {
-                const destType = (destSlot as HTMLElement).dataset.slotType as "weapon" | "armor" | "equipment";
-                if (destSlot === slotEl) return;
-                let canMove = false;
-                if (destType === "weapon" && isWeaponItem(slotItem)) {
-                  canMove = isStrictWeaponSwapAllowed(soldierId, slotItem, destSlot as HTMLElement);
-                }
-                else if (destType === "armor" && slotItem.type === "armor") canMove = true;
-                else if (destType === "equipment" && itemFitsSlot(slotItem, "equipment")) canMove = true;
-                if (canMove) (destSlot as HTMLElement).classList.add("equip-slot-highlight");
-              });
+              document
+                .querySelectorAll(`.equip-slot[data-soldier-id="${s.id}"]`)
+                .forEach((destSlot) => {
+                  const destType = (destSlot as HTMLElement).dataset
+                    .slotType as "weapon" | "armor" | "equipment";
+                  if (destSlot === slotEl) return;
+                  let canMove = false;
+                  if (destType === "weapon" && isWeaponItem(slotItem)) {
+                    canMove = isStrictWeaponSwapAllowed(
+                      soldierId,
+                      slotItem,
+                      destSlot as HTMLElement,
+                    );
+                  } else if (destType === "armor" && slotItem.type === "armor")
+                    canMove = true;
+                  else if (
+                    destType === "equipment" &&
+                    itemFitsSlot(slotItem, "equipment")
+                  )
+                    canMove = true;
+                  if (canMove)
+                    (destSlot as HTMLElement).classList.add(
+                      "equip-slot-highlight",
+                    );
+                });
             });
             /* Show tooltip on click: append to body (no clipping), position above slot, left-aligned with icon */
-            let tooltip = picker.querySelector("#equip-slot-tooltip") ?? document.querySelector("body > [id='equip-slot-tooltip']");
+            let tooltip =
+              picker.querySelector("#equip-slot-tooltip") ??
+              document.querySelector("body > [id='equip-slot-tooltip']");
             if (tooltip && tooltip.parentElement === document.body) {
               /* Tooltip already in body (re-opening): remove any *other* tooltips in body (orphans from a different screen) */
-              document.querySelectorAll("body > [id='equip-slot-tooltip']").forEach((el) => { if (el !== tooltip) el.remove(); });
+              document
+                .querySelectorAll("body > [id='equip-slot-tooltip']")
+                .forEach((el) => {
+                  if (el !== tooltip) el.remove();
+                });
             } else if (picker.querySelector("#equip-slot-tooltip")) {
               /* Tooltip in picker: remove orphans from body so we don't have duplicates */
-              document.querySelectorAll("body > [id='equip-slot-tooltip']").forEach((el) => el.remove());
+              document
+                .querySelectorAll("body > [id='equip-slot-tooltip']")
+                .forEach((el) => el.remove());
               tooltip = picker.querySelector("#equip-slot-tooltip");
             }
-            const tooltipContent = tooltip?.querySelector("#equip-slot-tooltip-content") ?? document.getElementById("equip-slot-tooltip-content");
+            const tooltipContent =
+              tooltip?.querySelector("#equip-slot-tooltip-content") ??
+              document.getElementById("equip-slot-tooltip-content");
             if (tooltip && tooltipContent) {
               const eqIdx = slotType === "equipment" ? eqIndex : 0;
               const unequipHtml = `<div class="item-popup-unequip-wrap"><button type="button" class="item-stats-popup-unequip-btn" data-unequip-soldier-id="${soldierId}" data-unequip-slot-type="${slotType}" data-unequip-eq-index="${eqIdx}"><span class="item-stats-popup-unequip-label">Unequip</span> <span aria-hidden="true">⏏</span></button></div>`;
-              tooltipContent.innerHTML = getItemPopupBodyHtmlCompact(slotItem) + unequipHtml;
-              (tooltip as HTMLElement).dataset.rarity = (slotItem.rarity as string) ?? "common";
+              tooltipContent.innerHTML =
+                getItemPopupBodyHtmlCompact(slotItem) + unequipHtml;
+              (tooltip as HTMLElement).dataset.rarity =
+                (slotItem.rarity as string) ?? "common";
               document.body.appendChild(tooltip as HTMLElement);
               const popupWidth = 240;
-              const gameRect = document.querySelector("#game")?.getBoundingClientRect();
+              const gameRect = document
+                .querySelector("#game")
+                ?.getBoundingClientRect();
               const top = gameRect ? gameRect.top + 10 : 10;
-              const rightOffset = gameRect ? window.innerWidth - gameRect.right + 10 : 10;
-              (tooltip as HTMLElement).style.cssText = `position:fixed;top:${top}px;right:${rightOffset}px;left:auto;width:${popupWidth}px;z-index:2500;`;
+              const rightOffset = gameRect
+                ? window.innerWidth - gameRect.right + 10
+                : 10;
+              (tooltip as HTMLElement).style.cssText =
+                `position:fixed;top:${top}px;right:${rightOffset}px;left:auto;width:${popupWidth}px;z-index:2500;`;
               tooltip.classList.add("equip-slot-tooltip-visible");
               (tooltip as HTMLElement).hidden = false;
             }
           }
-          openAvailableSuppliesPopup(picker as HTMLElement, soldierId, slotType, eqIndex);
+          openAvailableSuppliesPopup(
+            picker as HTMLElement,
+            soldierId,
+            slotType,
+            eqIndex,
+          );
         }
       },
     },
@@ -3938,7 +5324,8 @@ export function eventConfigs() {
       selector: "#equip-slot-tooltip",
       eventType: "click",
       callback: (e: Event) => {
-        if ((e.target as HTMLElement).closest(".item-stats-popup-unequip-btn")) return;
+        if ((e.target as HTMLElement).closest(".item-stats-popup-unequip-btn"))
+          return;
         hideEquipSlotTooltipAndDeselectSlots();
       },
     },
@@ -3974,7 +5361,9 @@ export function eventConfigs() {
 
         const rawName = btn.dataset.soldierName ?? "Soldier";
         const soldierId = btn.dataset.soldierId ?? "";
-        const soldier = usePlayerCompanyStore.getState().company?.soldiers?.find((s) => s.id === soldierId);
+        const soldier = usePlayerCompanyStore
+          .getState()
+          .company?.soldiers?.find((s) => s.id === soldierId);
         const titleEl = document.getElementById("roster-traits-popup-title");
         const listEl = document.getElementById("roster-traits-popup-list");
         if (!titleEl || !listEl) return;
@@ -3986,7 +5375,10 @@ export function eventConfigs() {
           const entries = buildSoldierTraitEntries(soldier);
           listEl.innerHTML = entries
             .map((entry, idx) => {
-              const statBadges = traitStatBadgesHtml(entry.stats, entry.grenadeHitBonusPct ?? 0);
+              const statBadges = traitStatBadgesHtml(
+                entry.stats,
+                entry.grenadeHitBonusPct ?? 0,
+              );
               return `<li class="roster-traits-popup-item${entry.primary ? " roster-traits-popup-primary" : ""}">
                 <div class="roster-trait-item-head">
                   <span class="roster-trait-item-title">${esc(entry.title)}</span>
@@ -4024,13 +5416,21 @@ export function eventConfigs() {
       callback: () => {
         const popup = document.getElementById("roster-rest-popup");
         if (!popup) return;
-        const feedback = popup.querySelector("#rest-popup-feedback") as HTMLElement | null;
-        const progressWrap = popup.querySelector("#rest-popup-progress-wrap") as HTMLElement | null;
-        const progressFill = popup.querySelector("#rest-popup-progress-fill") as HTMLElement | null;
+        const feedback = popup.querySelector(
+          "#rest-popup-feedback",
+        ) as HTMLElement | null;
+        const progressWrap = popup.querySelector(
+          "#rest-popup-progress-wrap",
+        ) as HTMLElement | null;
+        const progressFill = popup.querySelector(
+          "#rest-popup-progress-fill",
+        ) as HTMLElement | null;
         popup.removeAttribute("hidden");
         popup.classList.remove("rest-popup-running");
         popup.setAttribute("aria-busy", "false");
-        popup.querySelectorAll(".rest-soldier-pill.selected").forEach((el) => el.classList.remove("selected"));
+        popup
+          .querySelectorAll(".rest-soldier-pill.selected")
+          .forEach((el) => el.classList.remove("selected"));
         if (feedback) feedback.textContent = "";
         if (progressWrap) progressWrap.hidden = true;
         if (progressFill) {
@@ -4038,19 +5438,30 @@ export function eventConfigs() {
           progressFill.style.width = "0%";
         }
         const updateSummary = () => {
-          const selected = Array.from(popup.querySelectorAll(".rest-soldier-pill.selected")) as HTMLElement[];
+          const selected = Array.from(
+            popup.querySelectorAll(".rest-soldier-pill.selected"),
+          ) as HTMLElement[];
           let totalRecover = 0;
           let totalCost = 0;
           selected.forEach((card) => {
             totalRecover += Number(card.dataset.restRecover ?? 0);
             totalCost += Number(card.dataset.restCost ?? 0);
           });
-          const selectedEl = popup.querySelector("#rest-popup-selected-count") as HTMLElement | null;
-          const previewEl = popup.querySelector("#rest-popup-preview") as HTMLElement | null;
-          const sendBtn = popup.querySelector("#rest-popup-send-btn") as HTMLButtonElement | null;
-          if (selectedEl) selectedEl.textContent = `${selected.length} selected`;
-          if (previewEl) previewEl.textContent = `Recovery +${totalRecover} | Cost $${totalCost}`;
-          if (sendBtn) sendBtn.disabled = selected.length === 0 || totalRecover <= 0;
+          const selectedEl = popup.querySelector(
+            "#rest-popup-selected-count",
+          ) as HTMLElement | null;
+          const previewEl = popup.querySelector(
+            "#rest-popup-preview",
+          ) as HTMLElement | null;
+          const sendBtn = popup.querySelector(
+            "#rest-popup-send-btn",
+          ) as HTMLButtonElement | null;
+          if (selectedEl)
+            selectedEl.textContent = `${selected.length} selected`;
+          if (previewEl)
+            previewEl.textContent = `Recovery +${totalRecover} | Cost $${totalCost}`;
+          if (sendBtn)
+            sendBtn.disabled = selected.length === 0 || totalRecover <= 0;
         };
         updateSummary();
       },
@@ -4082,19 +5493,29 @@ export function eventConfigs() {
         if (!popup || popup.classList.contains("rest-popup-running")) return;
         if (card.disabled || card.classList.contains("disabled")) return;
         card.classList.toggle("selected");
-        const selected = Array.from(popup.querySelectorAll(".rest-soldier-pill.selected")) as HTMLElement[];
+        const selected = Array.from(
+          popup.querySelectorAll(".rest-soldier-pill.selected"),
+        ) as HTMLElement[];
         let totalRecover = 0;
         let totalCost = 0;
         selected.forEach((el) => {
           totalRecover += Number(el.dataset.restRecover ?? 0);
           totalCost += Number(el.dataset.restCost ?? 0);
         });
-        const selectedEl = popup.querySelector("#rest-popup-selected-count") as HTMLElement | null;
-        const previewEl = popup.querySelector("#rest-popup-preview") as HTMLElement | null;
-        const sendBtn = popup.querySelector("#rest-popup-send-btn") as HTMLButtonElement | null;
+        const selectedEl = popup.querySelector(
+          "#rest-popup-selected-count",
+        ) as HTMLElement | null;
+        const previewEl = popup.querySelector(
+          "#rest-popup-preview",
+        ) as HTMLElement | null;
+        const sendBtn = popup.querySelector(
+          "#rest-popup-send-btn",
+        ) as HTMLButtonElement | null;
         if (selectedEl) selectedEl.textContent = `${selected.length} selected`;
-        if (previewEl) previewEl.textContent = `Recovery +${totalRecover} | Cost $${totalCost}`;
-        if (sendBtn) sendBtn.disabled = selected.length === 0 || totalRecover <= 0;
+        if (previewEl)
+          previewEl.textContent = `Recovery +${totalRecover} | Cost $${totalCost}`;
+        if (sendBtn)
+          sendBtn.disabled = selected.length === 0 || totalRecover <= 0;
       },
     },
     {
@@ -4104,7 +5525,9 @@ export function eventConfigs() {
         const popup = document.getElementById("roster-rest-popup");
         if (!popup || popup.classList.contains("rest-popup-running")) return;
 
-        const selectedCards = Array.from(popup.querySelectorAll(".rest-soldier-pill.selected")) as HTMLButtonElement[];
+        const selectedCards = Array.from(
+          popup.querySelectorAll(".rest-soldier-pill.selected"),
+        ) as HTMLButtonElement[];
         if (selectedCards.length === 0) return;
 
         const selectedIds = selectedCards
@@ -4112,13 +5535,27 @@ export function eventConfigs() {
           .filter((id) => id.length > 0);
         if (selectedIds.length === 0) return;
 
-        const sendBtn = popup.querySelector("#rest-popup-send-btn") as HTMLButtonElement | null;
-        const closeBtn = popup.querySelector("#rest-popup-close") as HTMLButtonElement | null;
-        const progressWrap = popup.querySelector("#rest-popup-progress-wrap") as HTMLElement | null;
-        const progressFill = popup.querySelector("#rest-popup-progress-fill") as HTMLElement | null;
-        const feedback = popup.querySelector("#rest-popup-feedback") as HTMLElement | null;
-        const selectedEl = popup.querySelector("#rest-popup-selected-count") as HTMLElement | null;
-        const previewEl = popup.querySelector("#rest-popup-preview") as HTMLElement | null;
+        const sendBtn = popup.querySelector(
+          "#rest-popup-send-btn",
+        ) as HTMLButtonElement | null;
+        const closeBtn = popup.querySelector(
+          "#rest-popup-close",
+        ) as HTMLButtonElement | null;
+        const progressWrap = popup.querySelector(
+          "#rest-popup-progress-wrap",
+        ) as HTMLElement | null;
+        const progressFill = popup.querySelector(
+          "#rest-popup-progress-fill",
+        ) as HTMLElement | null;
+        const feedback = popup.querySelector(
+          "#rest-popup-feedback",
+        ) as HTMLElement | null;
+        const selectedEl = popup.querySelector(
+          "#rest-popup-selected-count",
+        ) as HTMLElement | null;
+        const previewEl = popup.querySelector(
+          "#rest-popup-preview",
+        ) as HTMLElement | null;
 
         popup.classList.add("rest-popup-running");
         popup.setAttribute("aria-busy", "true");
@@ -4137,11 +5574,16 @@ export function eventConfigs() {
         }
 
         window.setTimeout(() => {
-          const result = usePlayerCompanyStore.getState().runRestRound(selectedIds);
+          const result = usePlayerCompanyStore
+            .getState()
+            .runRestRound(selectedIds);
           if (!result.success) {
             if (feedback) {
-              if (result.reason === "credits") feedback.textContent = "Not enough credits.";
-              else if (result.reason === "no_recovery") feedback.textContent = "Selected troops are already fully rested.";
+              if (result.reason === "credits")
+                feedback.textContent = "Not enough credits.";
+              else if (result.reason === "no_recovery")
+                feedback.textContent =
+                  "Selected troops are already fully rested.";
               else feedback.textContent = "No troops selected.";
             }
           } else {
@@ -4153,12 +5595,17 @@ export function eventConfigs() {
               const nextEnergy = Math.max(0, Math.min(100, oldEnergy + gained));
               card.dataset.restEnergy = String(nextEnergy);
               const recover = Math.max(0, Math.min(30, 100 - nextEnergy));
-              const cost = recover <= 0 ? 0 : Math.max(1, Math.round((recover / 30) * 50));
+              const cost =
+                recover <= 0 ? 0 : Math.max(1, Math.round((recover / 30) * 50));
               card.dataset.restRecover = String(recover);
               card.dataset.restCost = String(cost);
 
-              const energyText = card.querySelector(".rest-soldier-energy") as HTMLElement | null;
-              const energyFill = card.querySelector(".rest-soldier-energyfill") as HTMLElement | null;
+              const energyText = card.querySelector(
+                ".rest-soldier-energy",
+              ) as HTMLElement | null;
+              const energyFill = card.querySelector(
+                ".rest-soldier-energyfill",
+              ) as HTMLElement | null;
               if (energyText) energyText.textContent = `EN ${nextEnergy}`;
               if (energyFill) energyFill.style.width = `${nextEnergy}%`;
 
@@ -4175,23 +5622,33 @@ export function eventConfigs() {
                 card.classList.add("disabled", "rest-soldier-maxed");
                 card.classList.remove("selected");
                 card.disabled = true;
-                window.setTimeout(() => card.classList.remove("rest-soldier-maxed"), 900);
+                window.setTimeout(
+                  () => card.classList.remove("rest-soldier-maxed"),
+                  900,
+                );
               }
             });
 
-            const remainingSelected = Array.from(popup.querySelectorAll(".rest-soldier-pill.selected")) as HTMLElement[];
+            const remainingSelected = Array.from(
+              popup.querySelectorAll(".rest-soldier-pill.selected"),
+            ) as HTMLElement[];
             let totalRecover = 0;
             let totalCost = 0;
             remainingSelected.forEach((card) => {
               totalRecover += Number(card.dataset.restRecover ?? 0);
               totalCost += Number(card.dataset.restCost ?? 0);
             });
-            if (selectedEl) selectedEl.textContent = `${remainingSelected.length} selected`;
-            if (previewEl) previewEl.textContent = `Recovery +${totalRecover} | Cost $${totalCost}`;
-            if (sendBtn) sendBtn.disabled = remainingSelected.length === 0 || totalRecover <= 0;
+            if (selectedEl)
+              selectedEl.textContent = `${remainingSelected.length} selected`;
+            if (previewEl)
+              previewEl.textContent = `Recovery +${totalRecover} | Cost $${totalCost}`;
+            if (sendBtn)
+              sendBtn.disabled =
+                remainingSelected.length === 0 || totalRecover <= 0;
 
             if (feedback) {
-              const creditLeft = usePlayerCompanyStore.getState().creditBalance ?? 0;
+              const creditLeft =
+                usePlayerCompanyStore.getState().creditBalance ?? 0;
               const maxMsg = hitMaxCount > 0 ? ` ${hitMaxCount} maxed.` : "";
               feedback.textContent = `Recovered +${result.totalRecovered} energy for $${result.totalCost}.${maxMsg} Credits: $${creditLeft}`;
             }
@@ -4238,14 +5695,22 @@ export function eventConfigs() {
         const picker = document.getElementById("equip-picker-popup");
         if (!picker) return;
         const tt = document.getElementById("equip-slot-tooltip");
-        if (tt) { tt.hidden = true; tt.classList.remove("equip-slot-tooltip-visible"); }
+        if (tt) {
+          tt.hidden = true;
+          tt.classList.remove("equip-slot-tooltip-visible");
+        }
         (picker as HTMLElement).dataset.focusSoldierId = soldierId;
         (picker as HTMLElement).dataset.openedFrom = "roster";
-        (document.getElementById("equip-picker-title") as HTMLElement).textContent = "Inventory";
+        (
+          document.getElementById("equip-picker-title") as HTMLElement
+        ).textContent = "Inventory";
         picker.removeAttribute("hidden");
         UiManager.refreshEquipPickerContent?.();
-        const soldierEl = picker.querySelector(`.equip-picker-soldier[data-soldier-id="${soldierId}"]`);
-        if (soldierEl) soldierEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        const soldierEl = picker.querySelector(
+          `.equip-picker-soldier[data-soldier-id="${soldierId}"]`,
+        );
+        if (soldierEl)
+          soldierEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
       },
     },
   ];
@@ -4266,11 +5731,16 @@ export function eventConfigs() {
         const picker = document.getElementById("equip-picker-popup");
         if (!picker) return;
         const tt = document.getElementById("equip-slot-tooltip");
-        if (tt) { tt.hidden = true; tt.classList.remove("equip-slot-tooltip-visible"); }
+        if (tt) {
+          tt.hidden = true;
+          tt.classList.remove("equip-slot-tooltip-visible");
+        }
         (picker as HTMLElement).dataset.openedFrom = "inventory";
         picker.dataset.preselectedItem = "";
         picker.dataset.preselectedArmoryIndex = "";
-        (document.getElementById("equip-picker-title") as HTMLElement).textContent = "Equip Troops";
+        (
+          document.getElementById("equip-picker-title") as HTMLElement
+        ).textContent = "Equip Troops";
         picker.removeAttribute("hidden");
         UiManager.refreshEquipPickerContent?.();
       },
@@ -4293,7 +5763,11 @@ export function eventConfigs() {
       eventType: "click",
       callback: (e: Event) => {
         const card = (e.target as HTMLElement).closest(".inventory-item-card");
-        if (!card || (e.target as HTMLElement).closest(".inventory-destroy-btn")) return;
+        if (
+          !card ||
+          (e.target as HTMLElement).closest(".inventory-destroy-btn")
+        )
+          return;
         const json = (card as HTMLElement).getAttribute("data-item-json");
         const indexStr = (card as HTMLElement).dataset.itemIndex;
         if (!json) return;
@@ -4309,7 +5783,8 @@ export function eventConfigs() {
           (popup as HTMLElement).dataset.itemJson = json;
           (popup as HTMLElement).dataset.itemIndex = indexStr ?? "";
           (popup as HTMLElement).dataset.itemSource = "inventory";
-          (popup as HTMLElement).dataset.rarity = (item.rarity as string) ?? "common";
+          (popup as HTMLElement).dataset.rarity =
+            (item.rarity as string) ?? "common";
           delete (popup as HTMLElement).dataset.unequipSoldierId;
           delete (popup as HTMLElement).dataset.unequipSlotType;
           delete (popup as HTMLElement).dataset.unequipEqIndex;
@@ -4322,12 +5797,17 @@ export function eventConfigs() {
             (item.type as string) === "medical" ||
             (item.type as string) === "gear";
           if (equipBtn) {
-            (equipBtn as HTMLElement).style.display = isEquippable ? "" : "none";
+            (equipBtn as HTMLElement).style.display = isEquippable
+              ? ""
+              : "none";
           }
           if (sellBtn) {
             const inArmory = indexStr != null && indexStr !== "";
             if (inArmory) {
-              const companyLevel = usePlayerCompanyStore.getState().company?.level ?? usePlayerCompanyStore.getState().companyLevel ?? 1;
+              const companyLevel =
+                usePlayerCompanyStore.getState().company?.level ??
+                usePlayerCompanyStore.getState().companyLevel ??
+                1;
               const sellValue = getItemSellPrice(item, companyLevel);
               sellBtn.innerHTML = `<span class="sell-btn-coin">${CREDIT_SYMBOL}</span><span class="sell-btn-text">Sell</span><span class="sell-btn-amount">${sellValue.toLocaleString()}</span>`;
               (sellBtn as HTMLElement).style.display = "";
@@ -4339,7 +5819,9 @@ export function eventConfigs() {
           if (actionsWrap) (actionsWrap as HTMLElement).style.display = "";
           const gameEl = document.querySelector(DOM.game) as HTMLElement;
           if (gameEl) {
-            gameEl.querySelectorAll("[id=item-stats-popup]").forEach((el) => { if (el !== popup) el.remove(); });
+            gameEl.querySelectorAll("[id=item-stats-popup]").forEach((el) => {
+              if (el !== popup) el.remove();
+            });
             gameEl.appendChild(popup as HTMLElement);
           }
           popup.hidden = false;
@@ -4354,7 +5836,10 @@ export function eventConfigs() {
         const picker = document.getElementById("equip-picker-popup");
         if (!popup || !picker) return;
         const tt = document.getElementById("equip-slot-tooltip");
-        if (tt) { tt.hidden = true; tt.classList.remove("equip-slot-tooltip-visible"); }
+        if (tt) {
+          tt.hidden = true;
+          tt.classList.remove("equip-slot-tooltip-visible");
+        }
         const json = (popup as HTMLElement).dataset.itemJson;
         const idxStr = (popup as HTMLElement).dataset.itemIndex;
         if (!json) return;
@@ -4362,37 +5847,76 @@ export function eventConfigs() {
         (picker as HTMLElement).dataset.openedFrom = "inventory";
         (picker as HTMLElement).dataset.preselectedItem = json;
         (picker as HTMLElement).dataset.preselectedArmoryIndex = idxStr ?? "";
-        (document.getElementById("equip-picker-title") as HTMLElement).textContent = `Equip: ${item.name}`;
+        (
+          document.getElementById("equip-picker-title") as HTMLElement
+        ).textContent = `Equip: ${item.name}`;
         picker.removeAttribute("hidden");
         popup.hidden = true;
         UiManager.refreshEquipPickerContent?.();
         /* Highlight slots that can receive this item (same as item-first armory click) */
-        document.querySelectorAll(".equip-slot").forEach((el) => el.classList.remove("equip-slot-selected", "equip-slot-highlight"));
-        picker.querySelectorAll(".equip-slot-unequip-wrap").forEach((el) => el.remove());
-        const soldiers = usePlayerCompanyStore.getState().company?.soldiers ?? [];
+        document
+          .querySelectorAll(".equip-slot")
+          .forEach((el) =>
+            el.classList.remove("equip-slot-selected", "equip-slot-highlight"),
+          );
+        picker
+          .querySelectorAll(".equip-slot-unequip-wrap")
+          .forEach((el) => el.remove());
+        const soldiers =
+          usePlayerCompanyStore.getState().company?.soldiers ?? [];
         soldiers.forEach((s) => {
-          const slotsToCheck: { type: "weapon" | "armor" | "equipment"; eqIndex: number }[] =
-            itemFitsSlot(item, "weapon") ? [{ type: "weapon", eqIndex: 0 }] :
-            itemFitsSlot(item, "armor") ? [{ type: "armor", eqIndex: 0 }] :
-            itemFitsSlot(item, "equipment") ? [{ type: "equipment", eqIndex: 0 }, { type: "equipment", eqIndex: 1 }] : [];
+          const slotsToCheck: {
+            type: "weapon" | "armor" | "equipment";
+            eqIndex: number;
+          }[] = itemFitsSlot(item, "weapon")
+            ? [{ type: "weapon", eqIndex: 0 }]
+            : itemFitsSlot(item, "armor")
+              ? [{ type: "armor", eqIndex: 0 }]
+              : itemFitsSlot(item, "equipment")
+                ? [
+                    {
+                      type: "equipment",
+                      eqIndex: 0,
+                    },
+                    { type: "equipment", eqIndex: 1 },
+                  ]
+                : [];
           for (const { type, eqIndex } of slotsToCheck) {
-            const canReceive = canEquipItemLevel(item, s) &&
+            const canReceive =
+              canEquipItemLevel(item, s) &&
               (type !== "weapon" || weaponWieldOk(item, s));
             if (canReceive) {
               const sel = `.equip-slot[data-soldier-id="${s.id}"][data-slot-type="${type}"]${type === "equipment" ? `[data-eq-index="${eqIndex}"]` : ""}`;
-              picker.querySelectorAll(sel).forEach((destSlot) => (destSlot as HTMLElement).classList.add("equip-slot-highlight"));
+              picker
+                .querySelectorAll(sel)
+                .forEach((destSlot) =>
+                  (destSlot as HTMLElement).classList.add(
+                    "equip-slot-highlight",
+                  ),
+                );
             }
           }
         });
         /* Open armory popup so user sees items and can tap highlighted slots or pick different item */
-        const slotType = itemFitsSlot(item, "weapon") ? "weapon" : itemFitsSlot(item, "armor") ? "armor" : "equipment";
+        const slotType = itemFitsSlot(item, "weapon")
+          ? "weapon"
+          : itemFitsSlot(item, "armor")
+            ? "armor"
+            : "equipment";
         const firstRecipient = soldiers.find((s) => {
-          if (slotType === "weapon") return weaponWieldOk(item, s) && canEquipItemLevel(item, s);
-          if (slotType === "armor") return item.type === "armor" && canEquipItemLevel(item, s);
+          if (slotType === "weapon")
+            return weaponWieldOk(item, s) && canEquipItemLevel(item, s);
+          if (slotType === "armor")
+            return item.type === "armor" && canEquipItemLevel(item, s);
           return itemFitsSlot(item, "equipment") && canEquipItemLevel(item, s);
         });
         if (firstRecipient) {
-          openAvailableSuppliesPopup(picker as HTMLElement, firstRecipient.id, slotType, 0);
+          openAvailableSuppliesPopup(
+            picker as HTMLElement,
+            firstRecipient.id,
+            slotType,
+            0,
+          );
           (picker as HTMLElement).dataset.suppliesTargetSoldierId = "";
         }
       },
@@ -4417,12 +5941,17 @@ export function eventConfigs() {
           item = null;
         }
         if (!item) return;
-        const companyLevel = usePlayerCompanyStore.getState().company?.level ?? usePlayerCompanyStore.getState().companyLevel ?? 1;
+        const companyLevel =
+          usePlayerCompanyStore.getState().company?.level ??
+          usePlayerCompanyStore.getState().companyLevel ??
+          1;
         const marketPrice = getItemMarketBuyPrice(item, companyLevel);
         const sellValue = getItemSellPrice(item, companyLevel);
         const rarity = (item.rarity ?? "common").toLowerCase();
         if (rarity === "rare" || rarity === "epic") {
-          const ok = window.confirm(`Sell ${item.name} for ${CREDIT_SYMBOL}${sellValue}?\n(Market ${CREDIT_SYMBOL}${marketPrice} -> 50% sell value${item.uses != null ? ", prorated by uses" : ""})`);
+          const ok = window.confirm(
+            `Sell ${item.name} for ${CREDIT_SYMBOL}${sellValue}?\n(Market ${CREDIT_SYMBOL}${marketPrice} -> 50% sell value${item.uses != null ? ", prorated by uses" : ""})`,
+          );
           if (!ok) return;
         }
         const result = usePlayerCompanyStore.getState().sellCompanyItem(index);
@@ -4453,35 +5982,57 @@ export function eventConfigs() {
   function clearFormationSelection() {
     const screen = document.getElementById("formation-screen");
     screen?.setAttribute("data-selected-index", "-1");
-    screen?.querySelectorAll(".formation-slot-selected").forEach((el) => el.classList.remove("formation-slot-selected"));
-    screen?.querySelectorAll(".formation-drop-zone").forEach((el) => el.classList.remove("formation-drop-zone"));
+    screen
+      ?.querySelectorAll(".formation-slot-selected")
+      .forEach((el) => el.classList.remove("formation-slot-selected"));
+    screen
+      ?.querySelectorAll(".formation-drop-zone")
+      .forEach((el) => el.classList.remove("formation-drop-zone"));
   }
 
   function clearFormationEquipSelection() {
     const screen = document.getElementById("formation-screen");
-    screen?.querySelectorAll(".formation-equip-slot-selected").forEach((el) => el.classList.remove("formation-equip-slot-selected"));
-    screen?.querySelectorAll(".formation-equip-slot-highlight").forEach((el) => el.classList.remove("formation-equip-slot-highlight"));
+    screen
+      ?.querySelectorAll(".formation-equip-slot-selected")
+      .forEach((el) => el.classList.remove("formation-equip-slot-selected"));
+    screen
+      ?.querySelectorAll(".formation-equip-slot-highlight")
+      .forEach((el) => el.classList.remove("formation-equip-slot-highlight"));
   }
 
   function applyFormationEquipDropZones(selectedSlot: HTMLElement) {
-    const slotType = selectedSlot.dataset.slotType as "weapon" | "armor" | "equipment";
+    const slotType = selectedSlot.dataset.slotType as
+      | "weapon"
+      | "armor"
+      | "equipment";
     const screen = document.getElementById("formation-screen");
     if (!screen || !slotType) return;
     if (slotType !== "weapon") {
-      screen.querySelectorAll(`.formation-equip-slot[data-slot-type="${slotType}"]`).forEach((el) => {
-        if (el !== selectedSlot) (el as HTMLElement).classList.add("formation-equip-slot-highlight");
-      });
+      screen
+        .querySelectorAll(`.formation-equip-slot[data-slot-type="${slotType}"]`)
+        .forEach((el) => {
+          if (el !== selectedSlot)
+            (el as HTMLElement).classList.add("formation-equip-slot-highlight");
+        });
       return;
     }
     const sourceSoldierId = selectedSlot.dataset.soldierId;
     const sourceWeapon = parseSlotItemFromData(selectedSlot);
     if (!sourceSoldierId || !isWeaponItem(sourceWeapon)) return;
-    screen.querySelectorAll(`.formation-equip-slot[data-slot-type="${slotType}"]`).forEach((el) => {
-      if (el === selectedSlot) return;
-      if (isStrictWeaponSwapAllowed(sourceSoldierId, sourceWeapon, el as HTMLElement)) {
-        (el as HTMLElement).classList.add("formation-equip-slot-highlight");
-      }
-    });
+    screen
+      .querySelectorAll(`.formation-equip-slot[data-slot-type="${slotType}"]`)
+      .forEach((el) => {
+        if (el === selectedSlot) return;
+        if (
+          isStrictWeaponSwapAllowed(
+            sourceSoldierId,
+            sourceWeapon,
+            el as HTMLElement,
+          )
+        ) {
+          (el as HTMLElement).classList.add("formation-equip-slot-highlight");
+        }
+      });
   }
 
   function applyFormationDropZones(selectedIndex: number) {
@@ -4494,7 +6045,8 @@ export function eventConfigs() {
       if (idxStr == null) return;
       const idx = parseInt(idxStr, 10);
       if (idx === selectedIndex) return;
-      if (!isFormationReassignmentAllowed(store.company, selectedIndex, idx)) return;
+      if (!isFormationReassignmentAllowed(store.company, selectedIndex, idx))
+        return;
       card.classList.add("formation-drop-zone");
     });
   }
@@ -4509,14 +6061,21 @@ export function eventConfigs() {
       selector: "#formation-screen",
       eventType: "click",
       callback: (e: Event) => {
-        const equipSlot = (e.target as HTMLElement).closest(".formation-equip-slot") as HTMLElement | null;
+        const equipSlot = (e.target as HTMLElement).closest(
+          ".formation-equip-slot",
+        ) as HTMLElement | null;
         if (equipSlot) {
           e.stopPropagation();
           clearFormationSelection();
           const screen = document.getElementById("formation-screen");
-          const selectedSlot = screen?.querySelector(".formation-equip-slot-selected") as HTMLElement | null;
+          const selectedSlot = screen?.querySelector(
+            ".formation-equip-slot-selected",
+          ) as HTMLElement | null;
           const soldierId = equipSlot.dataset.soldierId;
-          const slotType = equipSlot.dataset.slotType as "weapon" | "armor" | "equipment";
+          const slotType = equipSlot.dataset.slotType as
+            | "weapon"
+            | "armor"
+            | "equipment";
           const eqIndexStr = equipSlot.dataset.eqIndex;
 
           if (selectedSlot) {
@@ -4525,18 +6084,36 @@ export function eventConfigs() {
               return;
             }
             const srcSoldierId = selectedSlot.dataset.soldierId!;
-            const srcSlotType = selectedSlot.dataset.slotType as "weapon" | "armor" | "equipment";
-            const srcEqIdx = selectedSlot.dataset.eqIndex != null ? parseInt(selectedSlot.dataset.eqIndex, 10) : undefined;
-            if (equipSlot.classList.contains("formation-equip-slot-highlight") && soldierId && slotType) {
-              const destEqIdx = slotType === "equipment" ? (eqIndexStr != null ? parseInt(eqIndexStr, 10) : undefined) : undefined;
-              const result = usePlayerCompanyStore.getState().moveItemBetweenSlots({
-                sourceSoldierId: srcSoldierId,
-                sourceSlotType: srcSlotType,
-                sourceEqIndex: srcSlotType === "equipment" ? srcEqIdx : undefined,
-                destSoldierId: soldierId,
-                destSlotType: slotType,
-                destEqIndex: slotType === "equipment" ? destEqIdx : undefined,
-              });
+            const srcSlotType = selectedSlot.dataset.slotType as
+              | "weapon"
+              | "armor"
+              | "equipment";
+            const srcEqIdx =
+              selectedSlot.dataset.eqIndex != null
+                ? parseInt(selectedSlot.dataset.eqIndex, 10)
+                : undefined;
+            if (
+              equipSlot.classList.contains("formation-equip-slot-highlight") &&
+              soldierId &&
+              slotType
+            ) {
+              const destEqIdx =
+                slotType === "equipment"
+                  ? eqIndexStr != null
+                    ? parseInt(eqIndexStr, 10)
+                    : undefined
+                  : undefined;
+              const result = usePlayerCompanyStore
+                .getState()
+                .moveItemBetweenSlots({
+                  sourceSoldierId: srcSoldierId,
+                  sourceSlotType: srcSlotType,
+                  sourceEqIndex:
+                    srcSlotType === "equipment" ? srcEqIdx : undefined,
+                  destSoldierId: soldierId,
+                  destSlotType: slotType,
+                  destEqIndex: slotType === "equipment" ? destEqIdx : undefined,
+                });
               if (result.success) {
                 UiManager.renderFormationScreen();
               }
@@ -4553,7 +6130,9 @@ export function eventConfigs() {
           return;
         }
 
-        const card = (e.target as HTMLElement).closest(".formation-soldier-card") as HTMLElement | null;
+        const card = (e.target as HTMLElement).closest(
+          ".formation-soldier-card",
+        ) as HTMLElement | null;
         if (!card) {
           clearFormationEquipSelection();
           return;
@@ -4579,8 +6158,9 @@ export function eventConfigs() {
             return;
           }
           const targetFilled = hasSoldier;
-          const legalMove = card.classList.contains("formation-drop-zone")
-            && isFormationReassignmentAllowed(store.company, selected, slotIndex);
+          const legalMove =
+            card.classList.contains("formation-drop-zone") &&
+            isFormationReassignmentAllowed(store.company, selected, slotIndex);
           if (targetFilled && legalMove) {
             setFormationSwapIndices([selected, slotIndex]);
             store.swapSoldierPositions(selected, slotIndex);
@@ -4615,35 +6195,61 @@ export function eventConfigs() {
   function clearReadyRoomSelection() {
     const screen = document.getElementById("ready-room-screen");
     screen?.setAttribute("data-selected-index", "-1");
-    screen?.querySelectorAll(".ready-room-slot-selected").forEach((el) => el.classList.remove("ready-room-slot-selected"));
-    screen?.querySelectorAll(".ready-room-drop-zone").forEach((el) => el.classList.remove("ready-room-drop-zone"));
+    screen
+      ?.querySelectorAll(".ready-room-slot-selected")
+      .forEach((el) => el.classList.remove("ready-room-slot-selected"));
+    screen
+      ?.querySelectorAll(".ready-room-drop-zone")
+      .forEach((el) => el.classList.remove("ready-room-drop-zone"));
   }
 
   function clearReadyRoomEquipSelection() {
     const screen = document.getElementById("ready-room-screen");
-    screen?.querySelectorAll(".ready-room-equip-slot-selected").forEach((el) => el.classList.remove("ready-room-equip-slot-selected"));
-    screen?.querySelectorAll(".ready-room-equip-slot-highlight").forEach((el) => el.classList.remove("ready-room-equip-slot-highlight"));
+    screen
+      ?.querySelectorAll(".ready-room-equip-slot-selected")
+      .forEach((el) => el.classList.remove("ready-room-equip-slot-selected"));
+    screen
+      ?.querySelectorAll(".ready-room-equip-slot-highlight")
+      .forEach((el) => el.classList.remove("ready-room-equip-slot-highlight"));
   }
 
   function applyReadyRoomEquipDropZones(selectedSlot: HTMLElement) {
-    const slotType = selectedSlot.dataset.slotType as "weapon" | "armor" | "equipment";
+    const slotType = selectedSlot.dataset.slotType as
+      | "weapon"
+      | "armor"
+      | "equipment";
     const screen = document.getElementById("ready-room-screen");
     if (!screen || !slotType) return;
     if (slotType !== "weapon") {
-      screen.querySelectorAll(`.ready-room-equip-slot[data-slot-type="${slotType}"]`).forEach((el) => {
-        if (el !== selectedSlot) (el as HTMLElement).classList.add("ready-room-equip-slot-highlight");
-      });
+      screen
+        .querySelectorAll(
+          `.ready-room-equip-slot[data-slot-type="${slotType}"]`,
+        )
+        .forEach((el) => {
+          if (el !== selectedSlot)
+            (el as HTMLElement).classList.add(
+              "ready-room-equip-slot-highlight",
+            );
+        });
       return;
     }
     const sourceSoldierId = selectedSlot.dataset.soldierId;
     const sourceWeapon = parseSlotItemFromData(selectedSlot);
     if (!sourceSoldierId || !isWeaponItem(sourceWeapon)) return;
-    screen.querySelectorAll(`.ready-room-equip-slot[data-slot-type="${slotType}"]`).forEach((el) => {
-      if (el === selectedSlot) return;
-      if (isStrictWeaponSwapAllowed(sourceSoldierId, sourceWeapon, el as HTMLElement)) {
-        (el as HTMLElement).classList.add("ready-room-equip-slot-highlight");
-      }
-    });
+    screen
+      .querySelectorAll(`.ready-room-equip-slot[data-slot-type="${slotType}"]`)
+      .forEach((el) => {
+        if (el === selectedSlot) return;
+        if (
+          isStrictWeaponSwapAllowed(
+            sourceSoldierId,
+            sourceWeapon,
+            el as HTMLElement,
+          )
+        ) {
+          (el as HTMLElement).classList.add("ready-room-equip-slot-highlight");
+        }
+      });
   }
 
   function applyReadyRoomDropZones(selectedIndex: number) {
@@ -4656,7 +6262,8 @@ export function eventConfigs() {
       if (idxStr == null) return;
       const idx = parseInt(idxStr, 10);
       if (idx === selectedIndex) return;
-      if (!isFormationReassignmentAllowed(store.company, selectedIndex, idx)) return;
+      if (!isFormationReassignmentAllowed(store.company, selectedIndex, idx))
+        return;
       card.classList.add("ready-room-drop-zone");
     });
   }
@@ -4666,6 +6273,9 @@ export function eventConfigs() {
       selector: DOM.readyRoom.onboardingContinue,
       eventType: "click",
       callback: () => {
+        usePlayerCompanyStore
+          .getState()
+          .setOnboardingReadyRoomIntroPending(false);
         const popup = s_(DOM.readyRoom.onboardingPopup) as HTMLElement | null;
         if (!popup) return;
         popup.classList.add("ready-room-onboarding-popup-hide");
@@ -4676,7 +6286,11 @@ export function eventConfigs() {
       selector: DOM.readyRoom.onboardingPopup,
       eventType: "click",
       callback: (e: Event) => {
-        if ((e.target as HTMLElement).id !== "ready-room-onboarding-popup") return;
+        if ((e.target as HTMLElement).id !== "ready-room-onboarding-popup")
+          return;
+        usePlayerCompanyStore
+          .getState()
+          .setOnboardingReadyRoomIntroPending(false);
         const popup = e.currentTarget as HTMLElement;
         popup.classList.add("ready-room-onboarding-popup-hide");
         window.setTimeout(() => popup.remove(), 220);
@@ -4691,7 +6305,11 @@ export function eventConfigs() {
         const mission = json ? JSON.parse(json) : null;
         if (!mission) return;
         const btn = s_(DOM.readyRoom.proceedBtn);
-        if (btn?.classList.contains("disabled") || (btn as HTMLButtonElement | null)?.disabled) return;
+        if (
+          btn?.classList.contains("disabled") ||
+          (btn as HTMLButtonElement | null)?.disabled
+        )
+          return;
         usePlayerCompanyStore.getState().setMissionsResumeState("none", null);
         if (!mission?.isDevTest) {
           const store = usePlayerCompanyStore.getState();
@@ -4703,9 +6321,16 @@ export function eventConfigs() {
             .map((id) => (id ? getSoldierById(company, id) : null))
             .filter((s): s is NonNullable<typeof s> => s != null);
           const minEnergy = 5;
-          const lowEnergy = activeSoldiers.filter((s) => (s.energy ?? 100) < minEnergy);
+          const lowEnergy = activeSoldiers.filter(
+            (s) => (s.energy ?? 100) < minEnergy,
+          );
           if (lowEnergy.length > 0) return;
-          store.syncCombatHpToSoldiers(activeSoldiers.map((s) => ({ id: s.id, hp: s.attributes?.hit_points ?? 0 })));
+          store.syncCombatHpToSoldiers(
+            activeSoldiers.map((s) => ({
+              id: s.id,
+              hp: s.attributes?.hit_points ?? 0,
+            })),
+          );
         }
         console.log("Proceed to combat", mission);
         UiManager.renderCombatScreen(mission);
@@ -4727,7 +6352,9 @@ export function eventConfigs() {
       callback: () => {
         UiManager.renderRosterScreen();
         window.setTimeout(() => {
-          const btn = document.getElementById("roster-rest-btn") as HTMLButtonElement | null;
+          const btn = document.getElementById(
+            "roster-rest-btn",
+          ) as HTMLButtonElement | null;
           if (btn) btn.click();
         }, 0);
       },
@@ -4736,14 +6363,21 @@ export function eventConfigs() {
       selector: "#ready-room-screen",
       eventType: "click",
       callback: (e: Event) => {
-        const equipSlot = (e.target as HTMLElement).closest(".ready-room-equip-slot") as HTMLElement | null;
+        const equipSlot = (e.target as HTMLElement).closest(
+          ".ready-room-equip-slot",
+        ) as HTMLElement | null;
         if (equipSlot) {
           e.stopPropagation();
           clearReadyRoomSelection();
           const screen = document.getElementById("ready-room-screen");
-          const selectedSlot = screen?.querySelector(".ready-room-equip-slot-selected") as HTMLElement | null;
+          const selectedSlot = screen?.querySelector(
+            ".ready-room-equip-slot-selected",
+          ) as HTMLElement | null;
           const soldierId = equipSlot.dataset.soldierId;
-          const slotType = equipSlot.dataset.slotType as "weapon" | "armor" | "equipment";
+          const slotType = equipSlot.dataset.slotType as
+            | "weapon"
+            | "armor"
+            | "equipment";
           const eqIndexStr = equipSlot.dataset.eqIndex;
           if (selectedSlot) {
             if (selectedSlot === equipSlot) {
@@ -4751,21 +6385,41 @@ export function eventConfigs() {
               return;
             }
             const srcSoldierId = selectedSlot.dataset.soldierId!;
-            const srcSlotType = selectedSlot.dataset.slotType as "weapon" | "armor" | "equipment";
-            const srcEqIdx = selectedSlot.dataset.eqIndex != null ? parseInt(selectedSlot.dataset.eqIndex, 10) : undefined;
-            if (equipSlot.classList.contains("ready-room-equip-slot-highlight") && soldierId && slotType) {
-              const destEqIdx = slotType === "equipment" ? (eqIndexStr != null ? parseInt(eqIndexStr, 10) : undefined) : undefined;
-              const result = usePlayerCompanyStore.getState().moveItemBetweenSlots({
-                sourceSoldierId: srcSoldierId,
-                sourceSlotType: srcSlotType,
-                sourceEqIndex: srcSlotType === "equipment" ? srcEqIdx : undefined,
-                destSoldierId: soldierId,
-                destSlotType: slotType,
-                destEqIndex: slotType === "equipment" ? destEqIdx : undefined,
-              });
+            const srcSlotType = selectedSlot.dataset.slotType as
+              | "weapon"
+              | "armor"
+              | "equipment";
+            const srcEqIdx =
+              selectedSlot.dataset.eqIndex != null
+                ? parseInt(selectedSlot.dataset.eqIndex, 10)
+                : undefined;
+            if (
+              equipSlot.classList.contains("ready-room-equip-slot-highlight") &&
+              soldierId &&
+              slotType
+            ) {
+              const destEqIdx =
+                slotType === "equipment"
+                  ? eqIndexStr != null
+                    ? parseInt(eqIndexStr, 10)
+                    : undefined
+                  : undefined;
+              const result = usePlayerCompanyStore
+                .getState()
+                .moveItemBetweenSlots({
+                  sourceSoldierId: srcSoldierId,
+                  sourceSlotType: srcSlotType,
+                  sourceEqIndex:
+                    srcSlotType === "equipment" ? srcEqIdx : undefined,
+                  destSoldierId: soldierId,
+                  destSlotType: slotType,
+                  destEqIndex: slotType === "equipment" ? destEqIdx : undefined,
+                });
               if (result.success) {
                 setLastEquipMoveSoldierIds(
-                  [srcSoldierId, soldierId].filter((v, i, a) => a.indexOf(v) === i),
+                  [srcSoldierId, soldierId].filter(
+                    (v, i, a) => a.indexOf(v) === i,
+                  ),
                 );
                 const json = screen?.getAttribute("data-mission-json");
                 const mission = json && json !== "" ? JSON.parse(json) : null;
@@ -4784,7 +6438,9 @@ export function eventConfigs() {
           return;
         }
 
-        const card = (e.target as HTMLElement).closest(".ready-room-soldier-card") as HTMLElement | null;
+        const card = (e.target as HTMLElement).closest(
+          ".ready-room-soldier-card",
+        ) as HTMLElement | null;
         if (!card) {
           clearReadyRoomEquipSelection();
           return;
@@ -4808,8 +6464,9 @@ export function eventConfigs() {
           }
           const json = screen?.getAttribute("data-mission-json");
           const mission = json && json !== "" ? JSON.parse(json) : null;
-          const legalMove = card.classList.contains("ready-room-drop-zone")
-            && isFormationReassignmentAllowed(store.company, selected, slotIndex);
+          const legalMove =
+            card.classList.contains("ready-room-drop-zone") &&
+            isFormationReassignmentAllowed(store.company, selected, slotIndex);
           if (hasSoldier && legalMove) {
             setLastReadyRoomMoveSlotIndices([selected, slotIndex]);
             store.swapSoldierPositions(selected, slotIndex);
@@ -4846,7 +6503,9 @@ export function eventConfigs() {
       eventType: "click",
       callback: (e: Event) => {
         const st = usePlayerCompanyStore.getState();
-        const guided = st.onboardingRecruitStep === "troops_recruit" || st.onboardingRecruitStep === "troops_confirm";
+        const guided =
+          st.onboardingRecruitStep === "troops_recruit" ||
+          st.onboardingRecruitStep === "troops_confirm";
         const target = e.target as HTMLElement;
         const recruitBtn = target.closest(".recruit-soldier");
         if (recruitBtn) {
@@ -4854,12 +6513,16 @@ export function eventConfigs() {
           if (btn.getAttribute("aria-disabled") === "true") return;
           const trooperId = btn.dataset.trooperId;
           if (!trooperId) return;
-          const soldier = st.marketAvailableTroops.find((s) => s.id === trooperId)
-            ?? (st.onboardingRecruitSoldier?.id === trooperId ? st.onboardingRecruitSoldier : null);
+          const soldier =
+            st.marketAvailableTroops.find((s) => s.id === trooperId) ??
+            (st.onboardingRecruitSoldier?.id === trooperId
+              ? st.onboardingRecruitSoldier
+              : null);
           if (!soldier) return;
           const result = st.tryAddToRecruitStaging(soldier);
           if (result.success) {
-            if (st.onboardingRecruitStep === "troops_recruit") st.setOnboardingRecruitStep("troops_confirm");
+            if (st.onboardingRecruitStep === "troops_recruit")
+              st.setOnboardingRecruitStep("troops_confirm");
             UiManager.renderMarketTroopsScreen();
           } else {
             UiManager.showTroopsRecruitError(result.reason ?? "capacity");
@@ -4871,7 +6534,8 @@ export function eventConfigs() {
           const soldierId = (removeBtn as HTMLElement).dataset.soldierId;
           if (soldierId) {
             st.removeFromRecruitStaging(soldierId);
-            if (st.onboardingRecruitStep === "troops_confirm") st.setOnboardingRecruitStep("troops_recruit");
+            if (st.onboardingRecruitStep === "troops_confirm")
+              st.setOnboardingRecruitStep("troops_recruit");
             UiManager.renderMarketTroopsScreen();
           }
           return;
@@ -4909,7 +6573,9 @@ export function eventConfigs() {
     const body = document.getElementById(popupBodyId);
     const armoryBtn = document.getElementById("company-go-inventory");
     if (!body || !armoryBtn) return;
-    const iconEl = body.querySelector(".item-popup-icon") as HTMLImageElement | null;
+    const iconEl = body.querySelector(
+      ".item-popup-icon",
+    ) as HTMLImageElement | null;
     if (!iconEl) return;
 
     const startRect = iconEl.getBoundingClientRect();
@@ -4937,25 +6603,39 @@ export function eventConfigs() {
     const dx = endX - startX;
     const dy = endY - startY;
 
-    clone.animate(
-      [
-        { transform: "translate(0, 0) scale(1)", opacity: 1 },
-        { transform: `translate(${dx * 0.5}px, ${dy * 0.45 - 28}px) scale(1.08)`, opacity: 1, offset: 0.58 },
-        { transform: `translate(${dx}px, ${dy}px) scale(0.5)`, opacity: 0.12 },
-      ],
-      { duration: 420, easing: "cubic-bezier(0.22, 0.8, 0.25, 1)" },
-    ).finished.finally(() => {
-      clone.remove();
-    });
+    clone
+      .animate(
+        [
+          { transform: "translate(0, 0) scale(1)", opacity: 1 },
+          {
+            transform: `translate(${dx * 0.5}px, ${dy * 0.45 - 28}px) scale(1.08)`,
+            opacity: 1,
+            offset: 0.58,
+          },
+          {
+            transform: `translate(${dx}px, ${dy}px) scale(0.5)`,
+            opacity: 0.12,
+          },
+        ],
+        { duration: 420, easing: "cubic-bezier(0.22, 0.8, 0.25, 1)" },
+      )
+      .finished.finally(() => {
+        clone.remove();
+      });
 
     armoryBtn.classList.remove("market-armory-hit");
     void armoryBtn.offsetWidth;
     armoryBtn.classList.add("market-armory-hit");
-    window.setTimeout(() => armoryBtn.classList.remove("market-armory-hit"), 380);
+    window.setTimeout(
+      () => armoryBtn.classList.remove("market-armory-hit"),
+      380,
+    );
   }
 
   const suppliesScreenEventConfig: HandlerInitConfig[] = [
-    ...marketLevelNavHandlers("supplies-market", () => UiManager.renderSuppliesMarketScreen()),
+    ...marketLevelNavHandlers("supplies-market", () =>
+      UiManager.renderSuppliesMarketScreen(),
+    ),
     ...marketSellPopupHandlers(() => UiManager.renderSuppliesMarketScreen()),
     {
       selector: DOM.supplies.item,
@@ -4977,15 +6657,21 @@ export function eventConfigs() {
         const popup = document.getElementById("supplies-buy-popup");
         const titleEl = document.getElementById("supplies-buy-title");
         const bodyEl = document.getElementById("supplies-buy-body");
-        const qtyInput = document.getElementById("supplies-qty-input") as HTMLInputElement;
+        const qtyInput = document.getElementById(
+          "supplies-qty-input",
+        ) as HTMLInputElement;
         const errorEl = document.getElementById("supplies-buy-error");
         const buyBtn = document.getElementById("supplies-buy-btn");
-        if (!popup || !titleEl || !bodyEl || !qtyInput || !errorEl || !buyBtn) return;
+        if (!popup || !titleEl || !bodyEl || !qtyInput || !errorEl || !buyBtn)
+          return;
         (popup as HTMLElement).dataset.suppliesItem = itemJson;
         (popup as HTMLElement).dataset.suppliesPrice = priceStr;
-        (popup as HTMLElement).dataset.rarity = (item.rarity as string) ?? "common";
+        (popup as HTMLElement).dataset.rarity =
+          (item.rarity as string) ?? "common";
         titleEl.textContent = "";
-        bodyEl.innerHTML = getItemPopupBodyHtml(item) + `<p class="item-popup-price" style="margin-top:12px;font-weight:700"><strong>$${price.toLocaleString()}</strong> each</p>`;
+        bodyEl.innerHTML =
+          getItemPopupBodyHtml(item) +
+          `<p class="item-popup-price" style="margin-top:12px;font-weight:700"><strong>$${price.toLocaleString()}</strong> each</p>`;
         const st = usePlayerCompanyStore.getState();
         const level = st.company?.level ?? st.companyLevel ?? 1;
         const inv = st.company?.inventory ?? [];
@@ -4999,36 +6685,49 @@ export function eventConfigs() {
         errorEl.classList.remove("visible");
         popup.removeAttribute("hidden");
         buyBtn.removeAttribute("disabled");
-        (buyBtn as HTMLElement).innerHTML = `Buy <span class="buy-btn-price">$${price.toLocaleString()}</span>`;
+        (buyBtn as HTMLElement).innerHTML =
+          `Buy <span class="buy-btn-price">$${price.toLocaleString()}</span>`;
       },
     },
     {
       selector: DOM.supplies.qtyMinus,
       eventType: "click",
       callback: () => {
-        const input = document.getElementById("supplies-qty-input") as HTMLInputElement;
+        const input = document.getElementById(
+          "supplies-qty-input",
+        ) as HTMLInputElement;
         const popup = document.getElementById("supplies-buy-popup");
         const buyBtn = document.getElementById("supplies-buy-btn");
         if (!input || !popup || !buyBtn) return;
         const v = Math.max(1, parseInt(input.value || "1", 10) - 1);
         input.value = String(v);
-        const price = parseInt((popup as HTMLElement).dataset.suppliesPrice ?? "0", 10);
-        (buyBtn as HTMLElement).innerHTML = `Buy <span class="buy-btn-price">$${(price * v).toLocaleString()}</span>`;
+        const price = parseInt(
+          (popup as HTMLElement).dataset.suppliesPrice ?? "0",
+          10,
+        );
+        (buyBtn as HTMLElement).innerHTML =
+          `Buy <span class="buy-btn-price">$${(price * v).toLocaleString()}</span>`;
       },
     },
     {
       selector: DOM.supplies.qtyPlus,
       eventType: "click",
       callback: () => {
-        const input = document.getElementById("supplies-qty-input") as HTMLInputElement;
+        const input = document.getElementById(
+          "supplies-qty-input",
+        ) as HTMLInputElement;
         const popup = document.getElementById("supplies-buy-popup");
         const buyBtn = document.getElementById("supplies-buy-btn");
         if (!input || !popup || !buyBtn) return;
         const max = parseInt(input.max || "1", 10);
         const v = Math.min(max, parseInt(input.value || "1", 10) + 1);
         input.value = String(v);
-        const price = parseInt((popup as HTMLElement).dataset.suppliesPrice ?? "0", 10);
-        (buyBtn as HTMLElement).innerHTML = `Buy <span class="buy-btn-price">$${(price * v).toLocaleString()}</span>`;
+        const price = parseInt(
+          (popup as HTMLElement).dataset.suppliesPrice ?? "0",
+          10,
+        );
+        (buyBtn as HTMLElement).innerHTML =
+          `Buy <span class="buy-btn-price">$${(price * v).toLocaleString()}</span>`;
       },
     },
     {
@@ -5036,7 +6735,9 @@ export function eventConfigs() {
       eventType: "click",
       callback: () => {
         const popup = document.getElementById("supplies-buy-popup");
-        const qtyInput = document.getElementById("supplies-qty-input") as HTMLInputElement;
+        const qtyInput = document.getElementById(
+          "supplies-qty-input",
+        ) as HTMLInputElement;
         const errorEl = document.getElementById("supplies-buy-error");
         if (!popup || !qtyInput || !errorEl) return;
         const itemJson = (popup as HTMLElement).dataset.suppliesItem;
@@ -5053,7 +6754,9 @@ export function eventConfigs() {
         if (qty < 1) return;
         const totalCost = price * qty;
         const items = Array.from({ length: qty }, () => ({ ...item }));
-        const result = usePlayerCompanyStore.getState().addItemsToCompanyInventory(items, totalCost);
+        const result = usePlayerCompanyStore
+          .getState()
+          .addItemsToCompanyInventory(items, totalCost);
         if (!result.success) {
           if (result.reason === "capacity") {
             errorEl.textContent = "You don't have enough room";
@@ -5076,11 +6779,15 @@ export function eventConfigs() {
         const cap = getArmorySlotsForCategory(level, cat);
         const slotsFree = Math.max(0, cap - count);
         qtyInput.max = String(Math.max(1, slotsFree));
-        const nextQty = Math.max(1, Math.min(parseInt(qtyInput.value || "1", 10), Math.max(1, slotsFree)));
+        const nextQty = Math.max(
+          1,
+          Math.min(parseInt(qtyInput.value || "1", 10), Math.max(1, slotsFree)),
+        );
         qtyInput.value = String(nextQty);
         const buyBtn = document.getElementById("supplies-buy-btn");
         if (buyBtn) {
-          (buyBtn as HTMLButtonElement).innerHTML = `Buy <span class="buy-btn-price">$${(price * nextQty).toLocaleString()}</span>`;
+          (buyBtn as HTMLButtonElement).innerHTML =
+            `Buy <span class="buy-btn-price">$${(price * nextQty).toLocaleString()}</span>`;
           (buyBtn as HTMLButtonElement).disabled = slotsFree <= 0;
         }
         if (slotsFree <= 0) {
@@ -5109,7 +6816,17 @@ export function eventConfigs() {
   ];
 
   function gearBuyHandlers(
-    ids: { popup: string; title: string; body: string; qtyInput: string; error: string; buyBtn: string; qtyMinus: string; qtyPlus: string; buyClose: string },
+    ids: {
+      popup: string;
+      title: string;
+      body: string;
+      qtyInput: string;
+      error: string;
+      buyBtn: string;
+      qtyMinus: string;
+      qtyPlus: string;
+      buyClose: string;
+    },
     // ids use element id (no #) for getElementById; selectors need # for querySelector
     itemSelector: string,
     _onSuccess: () => void,
@@ -5134,13 +6851,17 @@ export function eventConfigs() {
           const popup = document.getElementById(ids.popup);
           const titleEl = document.getElementById(ids.title);
           const bodyEl = document.getElementById(ids.body);
-          const qtyInput = document.getElementById(ids.qtyInput) as HTMLInputElement;
+          const qtyInput = document.getElementById(
+            ids.qtyInput,
+          ) as HTMLInputElement;
           const errorEl = document.getElementById(ids.error);
           const buyBtn = document.getElementById(ids.buyBtn);
-          if (!popup || !titleEl || !bodyEl || !qtyInput || !errorEl || !buyBtn) return;
+          if (!popup || !titleEl || !bodyEl || !qtyInput || !errorEl || !buyBtn)
+            return;
           (popup as HTMLElement).dataset.gearItem = itemJson;
           (popup as HTMLElement).dataset.gearPrice = priceStr;
-          (popup as HTMLElement).dataset.rarity = (item.rarity as string) ?? "common";
+          (popup as HTMLElement).dataset.rarity =
+            (item.rarity as string) ?? "common";
           titleEl.textContent = "";
           bodyEl.innerHTML = getItemPopupBodyHtml(item);
           const st = usePlayerCompanyStore.getState();
@@ -5155,36 +6876,49 @@ export function eventConfigs() {
           errorEl.textContent = "";
           errorEl.classList.remove("visible");
           popup.removeAttribute("hidden");
-          (buyBtn as HTMLElement).innerHTML = `Buy <span class="buy-btn-price">$${price.toLocaleString()}</span>`;
+          (buyBtn as HTMLElement).innerHTML =
+            `Buy <span class="buy-btn-price">$${price.toLocaleString()}</span>`;
         },
       },
       {
         selector: `#${ids.qtyMinus}`,
         eventType: "click",
         callback: () => {
-          const input = document.getElementById(ids.qtyInput) as HTMLInputElement;
+          const input = document.getElementById(
+            ids.qtyInput,
+          ) as HTMLInputElement;
           const popup = document.getElementById(ids.popup);
           const buyBtn = document.getElementById(ids.buyBtn);
           if (!input || !popup || !buyBtn) return;
           const v = Math.max(1, parseInt(input.value || "1", 10) - 1);
           input.value = String(v);
-          const price = parseInt((popup as HTMLElement).dataset.gearPrice ?? "0", 10);
-          (buyBtn as HTMLElement).innerHTML = `Buy <span class="buy-btn-price">$${(price * v).toLocaleString()}</span>`;
+          const price = parseInt(
+            (popup as HTMLElement).dataset.gearPrice ?? "0",
+            10,
+          );
+          (buyBtn as HTMLElement).innerHTML =
+            `Buy <span class="buy-btn-price">$${(price * v).toLocaleString()}</span>`;
         },
       },
       {
         selector: `#${ids.qtyPlus}`,
         eventType: "click",
         callback: () => {
-          const input = document.getElementById(ids.qtyInput) as HTMLInputElement;
+          const input = document.getElementById(
+            ids.qtyInput,
+          ) as HTMLInputElement;
           const popup = document.getElementById(ids.popup);
           const buyBtn = document.getElementById(ids.buyBtn);
           if (!input || !popup || !buyBtn) return;
           const max = parseInt(input.max || "1", 10);
           const v = Math.min(max, parseInt(input.value || "1", 10) + 1);
           input.value = String(v);
-          const price = parseInt((popup as HTMLElement).dataset.gearPrice ?? "0", 10);
-          (buyBtn as HTMLElement).innerHTML = `Buy <span class="buy-btn-price">$${(price * v).toLocaleString()}</span>`;
+          const price = parseInt(
+            (popup as HTMLElement).dataset.gearPrice ?? "0",
+            10,
+          );
+          (buyBtn as HTMLElement).innerHTML =
+            `Buy <span class="buy-btn-price">$${(price * v).toLocaleString()}</span>`;
         },
       },
       {
@@ -5192,7 +6926,9 @@ export function eventConfigs() {
         eventType: "click",
         callback: () => {
           const popup = document.getElementById(ids.popup);
-          const qtyInput = document.getElementById(ids.qtyInput) as HTMLInputElement;
+          const qtyInput = document.getElementById(
+            ids.qtyInput,
+          ) as HTMLInputElement;
           const errorEl = document.getElementById(ids.error);
           if (!popup || !qtyInput || !errorEl) return;
           const itemJson = (popup as HTMLElement).dataset.gearItem;
@@ -5221,9 +6957,14 @@ export function eventConfigs() {
             return;
           }
           const items = Array.from({ length: qty }, () => ({ ...item }));
-          const result = usePlayerCompanyStore.getState().addItemsToCompanyInventory(items, totalCost);
+          const result = usePlayerCompanyStore
+            .getState()
+            .addItemsToCompanyInventory(items, totalCost);
           if (!result.success) {
-            errorEl.textContent = result.reason === "capacity" ? "Not enough room" : "Not enough credits";
+            errorEl.textContent =
+              result.reason === "capacity"
+                ? "Not enough room"
+                : "Not enough credits";
             errorEl.classList.add("visible");
             return;
           }
@@ -5233,7 +6974,8 @@ export function eventConfigs() {
           updateMarketCreditsDisplay();
 
           const nextStore = usePlayerCompanyStore.getState();
-          const nextLevel = nextStore.company?.level ?? nextStore.companyLevel ?? 1;
+          const nextLevel =
+            nextStore.company?.level ?? nextStore.companyLevel ?? 1;
           const nextInv = nextStore.company?.inventory ?? [];
           const nextCat = getItemArmoryCategory(item);
           const nextCount = countArmoryByCategory(nextInv)[nextCat];
@@ -5241,9 +6983,14 @@ export function eventConfigs() {
           const nextSlotsFree = Math.max(0, nextCap - nextCount);
           const nextMax = Math.max(1, Math.min(nextSlotsFree, 10));
           qtyInput.max = String(nextMax);
-          const nextQty = Math.max(1, Math.min(parseInt(qtyInput.value || "1", 10), nextMax));
+          const nextQty = Math.max(
+            1,
+            Math.min(parseInt(qtyInput.value || "1", 10), nextMax),
+          );
           qtyInput.value = String(nextQty);
-          const buyBtn = document.getElementById(ids.buyBtn) as HTMLButtonElement | null;
+          const buyBtn = document.getElementById(
+            ids.buyBtn,
+          ) as HTMLButtonElement | null;
           if (buyBtn) {
             buyBtn.innerHTML = `Buy <span class="buy-btn-price">$${(price * nextQty).toLocaleString()}</span>`;
             buyBtn.disabled = nextSlotsFree <= 0;
@@ -5277,11 +7024,18 @@ export function eventConfigs() {
   function marketSellPopupHandlers(onDone: () => void): HandlerInitConfig[] {
     function updateSummary() {
       const popup = document.getElementById("market-sell-popup");
-      const btn = document.getElementById("market-sell-confirm") as HTMLButtonElement | null;
+      const btn = document.getElementById(
+        "market-sell-confirm",
+      ) as HTMLButtonElement | null;
       if (!popup || !btn) return;
-      const selected = Array.from(popup.querySelectorAll(".market-sell-item.selected")) as HTMLElement[];
+      const selected = Array.from(
+        popup.querySelectorAll(".market-sell-item.selected"),
+      ) as HTMLElement[];
       const count = selected.length;
-      const total = selected.reduce((sum, el) => sum + (parseInt(el.dataset.sellValue ?? "0", 10) || 0), 0);
+      const total = selected.reduce(
+        (sum, el) => sum + (parseInt(el.dataset.sellValue ?? "0", 10) || 0),
+        0,
+      );
       btn.disabled = count <= 0;
       btn.textContent = `${CREDIT_SYMBOL} Sell ${count} Item${count === 1 ? "" : "s"} • ${CREDIT_SYMBOL}${total.toLocaleString()}`;
     }
@@ -5293,7 +7047,9 @@ export function eventConfigs() {
         callback: () => {
           const popup = document.getElementById("market-sell-popup");
           if (!popup) return;
-          popup.querySelectorAll(".market-sell-item.selected").forEach((el) => el.classList.remove("selected"));
+          popup
+            .querySelectorAll(".market-sell-item.selected")
+            .forEach((el) => el.classList.remove("selected"));
           popup.removeAttribute("hidden");
           updateSummary();
         },
@@ -5302,7 +7058,9 @@ export function eventConfigs() {
         selector: "#market-sell-grid",
         eventType: "click",
         callback: (e: Event) => {
-          const target = (e.target as HTMLElement).closest(".market-sell-item") as HTMLElement | null;
+          const target = (e.target as HTMLElement).closest(
+            ".market-sell-item",
+          ) as HTMLElement | null;
           if (!target) return;
           target.classList.toggle("selected");
           updateSummary();
@@ -5322,7 +7080,9 @@ export function eventConfigs() {
         callback: () => {
           const popup = document.getElementById("market-sell-popup");
           if (!popup) return;
-          const selected = Array.from(popup.querySelectorAll(".market-sell-item.selected")) as HTMLElement[];
+          const selected = Array.from(
+            popup.querySelectorAll(".market-sell-item.selected"),
+          ) as HTMLElement[];
           const indices = selected
             .map((el) => parseInt(el.dataset.itemIndex ?? "-1", 10))
             .filter((n) => Number.isFinite(n) && n >= 0);
@@ -5332,11 +7092,19 @@ export function eventConfigs() {
             return rarity === "rare" || rarity === "epic";
           });
           if (hasRareOrEpic) {
-            const total = selected.reduce((sum, el) => sum + (parseInt(el.dataset.sellValue ?? "0", 10) || 0), 0);
-            const ok = window.confirm(`Sell ${indices.length} selected item(s) for ${CREDIT_SYMBOL}${total.toLocaleString()}?`);
+            const total = selected.reduce(
+              (sum, el) =>
+                sum + (parseInt(el.dataset.sellValue ?? "0", 10) || 0),
+              0,
+            );
+            const ok = window.confirm(
+              `Sell ${indices.length} selected item(s) for ${CREDIT_SYMBOL}${total.toLocaleString()}?`,
+            );
             if (!ok) return;
           }
-          const result = usePlayerCompanyStore.getState().sellCompanyItems(indices);
+          const result = usePlayerCompanyStore
+            .getState()
+            .sellCompanyItems(indices);
           if (!result.success) return;
           popup.setAttribute("hidden", "");
           onDone();
@@ -5354,7 +7122,9 @@ export function eventConfigs() {
   }
 
   const weaponsScreenEventConfig: HandlerInitConfig[] = [
-    ...marketLevelNavHandlers("weapons-market", () => UiManager.renderWeaponsMarketScreen()),
+    ...marketLevelNavHandlers("weapons-market", () =>
+      UiManager.renderWeaponsMarketScreen(),
+    ),
     ...marketSellPopupHandlers(() => UiManager.renderWeaponsMarketScreen()),
     ...gearBuyHandlers(
       {
@@ -5374,7 +7144,12 @@ export function eventConfigs() {
   ];
 
   const devCatalogScreenEventConfig: HandlerInitConfig[] = [
-    ...marketLevelNavHandlers("dev-catalog-market", () => UiManager.renderDevCatalogScreen(), MAX_GEAR_LEVEL, { tierSource: "devCatalog" }),
+    ...marketLevelNavHandlers(
+      "dev-catalog-market",
+      () => UiManager.renderDevCatalogScreen(),
+      MAX_GEAR_LEVEL,
+      { tierSource: "devCatalog" },
+    ),
     {
       selector: "#dev-catalog-market .dev-catalog-item",
       eventType: "click",
@@ -5406,8 +7181,14 @@ export function eventConfigs() {
           return;
         }
         const copy = { ...item };
-        if (copy.uses == null && (copy.type === "throwable" || copy.type === "medical")) copy.uses = 5;
-        const result = usePlayerCompanyStore.getState().addItemsToCompanyInventory([copy], 0);
+        if (
+          copy.uses == null &&
+          (copy.type === "throwable" || copy.type === "medical")
+        )
+          copy.uses = 5;
+        const result = usePlayerCompanyStore
+          .getState()
+          .addItemsToCompanyInventory([copy], 0);
         if (result.success) {
           popup?.setAttribute("hidden", "");
         }
@@ -5433,7 +7214,9 @@ export function eventConfigs() {
   ];
 
   const armorScreenEventConfig: HandlerInitConfig[] = [
-    ...marketLevelNavHandlers("armor-market", () => UiManager.renderArmorMarketScreen()),
+    ...marketLevelNavHandlers("armor-market", () =>
+      UiManager.renderArmorMarketScreen(),
+    ),
     ...marketSellPopupHandlers(() => UiManager.renderArmorMarketScreen()),
     ...gearBuyHandlers(
       {

@@ -2553,6 +2553,22 @@ button.missions-filter-chip {
 	transform: translateY(-2px);
 }
 
+.mission-card-view-switch {
+	animation: mission-card-view-switch 220ms cubic-bezier(0.2, 0.85, 0.25, 1) both;
+	animation-delay: var(--mission-switch-delay, 0ms);
+}
+
+@keyframes mission-card-view-switch {
+	0% {
+		opacity: 0.56;
+		transform: translateY(5px) scale(0.985);
+	}
+	100% {
+		opacity: 1;
+		transform: translateY(0) scale(1);
+	}
+}
+
 /* Kind-specific theming - roster card style */
 .mission-card[data-kind="defend_objective"] {
 	background: linear-gradient(145deg, rgba(45, 70, 35, 0.96) 0%, rgba(30, 50, 25, 0.98) 50%, rgba(20, 38, 18, 0.99) 100%);
@@ -2581,12 +2597,12 @@ button.missions-filter-chip {
 	background: repeating-linear-gradient(105deg, transparent 0, transparent 1px, rgba(220, 180, 90, 0.06) 1px, rgba(220, 180, 90, 0.06) 2px), radial-gradient(ellipse 80% 60% at 50% 0%, rgba(235, 195, 120, 0.06) 0%, transparent 60%);
 }
 
-.mission-card[data-kind="seek_and_destroy"] {
+.mission-card[data-kind="skirmish"] {
 	background: linear-gradient(145deg, rgba(55, 25, 22, 0.96) 0%, rgba(38, 16, 14, 0.98) 50%, rgba(28, 12, 10, 0.99) 100%);
 	border-color: rgba(200, 80, 75, 0.5);
 }
 
-.mission-card[data-kind="seek_and_destroy"]::before {
+.mission-card[data-kind="skirmish"]::before {
 	background: repeating-linear-gradient(105deg, transparent 0, transparent 1px, rgba(220, 90, 85, 0.06) 1px, rgba(220, 90, 85, 0.06) 2px), radial-gradient(ellipse 80% 60% at 50% 0%, rgba(230, 100, 95, 0.06) 0%, transparent 60%);
 }
 
@@ -2711,7 +2727,7 @@ button.missions-filter-chip {
 	border-left-color: #e8b840;
 }
 
-.mission-card[data-kind="seek_and_destroy"] .mission-card-kind-badge {
+.mission-card[data-kind="skirmish"] .mission-card-kind-badge {
 	color: #ffc0b8;
 	background: linear-gradient(135deg, rgba(90, 35, 32, 0.95) 0%, rgba(65, 22, 20, 0.98) 100%);
 	border-color: rgba(220, 100, 95, 0.6);
@@ -2937,7 +2953,7 @@ button.missions-filter-chip {
 	color: #e8b050;
 }
 
-.mission-card[data-kind="seek_and_destroy"] .mission-enemies-count {
+.mission-card[data-kind="skirmish"] .mission-enemies-count {
 	color: #e88080;
 }
 
@@ -2999,6 +3015,165 @@ button.missions-filter-chip {
 
 .mission-card-footer .mission-rewards-list {
 	align-items: center;
+}
+
+/* Mission card redesign: faction-forward + clearer force readout */
+.mission-card {
+	padding: 12px;
+	border-radius: 8px;
+}
+
+.mission-card-head {
+	position: relative;
+	z-index: 1;
+	margin-bottom: 10px;
+}
+
+.mission-card-branding {
+	display: grid;
+	grid-template-columns: 72px minmax(0, 1fr);
+	align-items: center;
+	gap: 10px;
+	padding: 8px;
+	border-radius: 8px;
+	border: 1px solid rgba(255, 255, 255, 0.1);
+	background: linear-gradient(
+		135deg,
+		rgba(14, 18, 16, 0.65) 0%,
+		rgba(22, 28, 22, 0.5) 100%
+	);
+}
+
+.mission-faction-emblem {
+	width: 68px;
+	height: 68px;
+	object-fit: contain;
+	filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.5));
+}
+
+.mission-card-branding-copy {
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.mission-card-branding-row {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	flex-wrap: wrap;
+}
+
+.mission-card-faction-tag {
+	display: inline-flex;
+	align-items: center;
+	padding: 2px 7px;
+	border-radius: 3px;
+	border: 1px solid rgba(255, 255, 255, 0.18);
+	background: rgba(20, 24, 26, 0.72);
+	color: rgba(236, 238, 234, 0.95);
+	font-size: 0.58rem;
+	font-weight: 800;
+	letter-spacing: 0.07em;
+	text-transform: uppercase;
+}
+
+.mission-card[data-faction="desert_wolves"] .mission-card-faction-tag {
+	border-color: rgba(215, 184, 92, 0.55);
+	color: #f1d48a;
+}
+
+.mission-card[data-faction="iron_corps"] .mission-card-faction-tag {
+	border-color: rgba(140, 168, 200, 0.55);
+	color: #bdd2ea;
+}
+
+.mission-card[data-faction="liberties_vanguard"] .mission-card-faction-tag {
+	border-color: rgba(120, 201, 138, 0.55);
+	color: #b4e6be;
+}
+
+.mission-card[data-faction="scarlet_accord"] .mission-card-faction-tag {
+	border-color: rgba(209, 111, 121, 0.55);
+	color: #efb3ba;
+}
+
+.mission-card-name {
+	margin: 0;
+	font-size: 0.92rem;
+	line-height: 1.2;
+}
+
+.mission-card-kind-badge {
+	margin-bottom: 0;
+	font-size: 0.56rem;
+	padding: 2px 6px 2px 5px;
+}
+
+.mission-card-threat-block {
+	position: relative;
+	z-index: 1;
+	display: grid;
+	grid-template-columns: minmax(0, 1fr);
+	gap: 4px;
+	padding: 8px 10px;
+	margin-bottom: 8px;
+	border-radius: 6px;
+	border: 1px solid rgba(255, 255, 255, 0.1);
+	background: linear-gradient(
+		135deg,
+		rgba(20, 16, 10, 0.58) 0%,
+		rgba(26, 20, 12, 0.45) 100%
+	);
+}
+
+.mission-card-instruction {
+	margin: 0 0 2px 0;
+	font-size: 0.72rem;
+	line-height: 1.35;
+	font-weight: 700;
+	letter-spacing: 0.01em;
+	color: rgba(243, 236, 220, 0.94);
+}
+
+.mission-card-threat-label {
+	font-size: 0.62rem;
+	font-weight: 900;
+	letter-spacing: 0.12em;
+	text-transform: uppercase;
+	color: rgba(255, 207, 122, 0.95);
+}
+
+.mission-card-threat-sub {
+	font-size: 0.68rem;
+	font-weight: 700;
+	letter-spacing: 0.03em;
+	color: rgba(233, 227, 213, 0.9);
+}
+
+.mission-card-enemies {
+	gap: 7px;
+}
+
+.mission-enemies-icon {
+	width: 28px;
+	height: 34px;
+}
+
+.mission-enemies-count {
+	font-size: 1rem;
+	font-weight: 900;
+	letter-spacing: 0.03em;
+	text-transform: uppercase;
+}
+
+.mission-card-difficulty {
+	margin-bottom: 10px;
+}
+
+.mission-diff-bars {
+	height: 18px;
 }
 
 /* Mission flavor popup - contained within #game */
@@ -3859,6 +4034,10 @@ button.missions-filter-chip {
 	text-shadow: none;
 	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 	border: 1px solid rgba(20, 24, 32, 0.65);
+}
+
+.roster-level-badge.item-level-badge {
+	font-size: 0.7rem;
 }
 
 .formation-details {
@@ -8278,12 +8457,12 @@ button.missions-filter-chip {
 
 .combat-footer.combat-footer-layout {
 	display: flex;
-	flex-direction: row;
+	flex-direction: column;
 	flex-wrap: nowrap;
 	justify-content: center;
 	align-items: center;
-	gap: 12px;
-	padding: 8px 16px;
+	gap: 8px;
+	padding: 8px 16px 10px;
 	height: auto;
 	min-height: unset;
 	max-height: none;
@@ -8299,6 +8478,22 @@ button.missions-filter-chip {
 	justify-content: space-between;
 	align-items: center;
 	padding: 12px 16px;
+}
+
+.combat-footer-top {
+	width: 100%;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	min-height: 28px;
+}
+
+.combat-footer-bottom {
+	width: 100%;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	gap: 12px;
 }
 
 .combat-outcome-banner {
@@ -9899,12 +10094,9 @@ button.missions-filter-chip {
 }
 
 .combat-objective-timer {
-	position: absolute;
-	top: 10px;
-	left: 10px;
-	transform: none;
-	padding: 6px 14px;
-	font-size: 0.86rem;
+	position: relative;
+	padding: 4px 12px;
+	font-size: 0.8rem;
 	font-weight: 900;
 	color: #fff2c5;
 	letter-spacing: 0.09em;
@@ -9916,7 +10108,7 @@ button.missions-filter-chip {
 	0 0 20px rgba(255, 188, 86, 0.24),
 	inset 0 1px 0 rgba(255, 255, 255, 0.22);
 	text-shadow: 0 1px 2px rgba(0, 0, 0, 0.65), 0 0 12px rgba(255, 220, 132, 0.35);
-	z-index: 110;
+	z-index: 1;
 	pointer-events: none;
 	animation: none;
 }
@@ -9927,13 +10119,18 @@ button.missions-filter-chip {
 
 @keyframes combat-objective-timer-pulse {
 	0%, 100% {
-		transform: scale(1);
 		filter: brightness(1);
 	}
 	50% {
-		transform: scale(1.02);
 		filter: brightness(1.06);
 	}
+}
+
+.combat-back-ready-room-btn:disabled {
+	opacity: 0.45;
+	filter: grayscale(0.45);
+	cursor: not-allowed;
+	box-shadow: none;
 }
 
 .combat-abilities-list {

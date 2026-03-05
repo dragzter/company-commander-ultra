@@ -16,6 +16,7 @@ import {
 } from "../levels.ts";
 import { getSoldierXpRequiredForLevel } from "../../../constants/economy.ts";
 import { generateName } from "../../../utils/name-utils.ts";
+import { getEarnedTraitById } from "../../../constants/veterancy-traits.ts";
 import type {
   Armor,
   ArmorBonus,
@@ -26,7 +27,6 @@ import type {
 } from "../../../constants/items/types.ts";
 import { WEAPON_EFFECTS } from "../../../constants/items/weapon-effects.ts";
 import {
-  getRandomPortraitImage,
   getRandomValueFromStringArray,
   toFNum,
 } from "../../../utils/math.ts";
@@ -58,6 +58,7 @@ function SoldierManager() {
     weapon = {} as BallisticWeapon,
     inventory = [] as Item[],
     traitOverride?: TraitDict,
+    usedAvatars?: Set<string>,
   ) {
     const soldier: Soldier = JSON.parse(
       JSON.stringify(SOLDIER_BASE),
@@ -67,24 +68,8 @@ function SoldierManager() {
     soldier.weapon = { ...weapon, level: tier };
     soldier.armor = { ...armor, level: tier };
 
-    for (let i = 1; lvl > i; i++) {
-      const definition = ATTRIBUTES_INCREASES_BY_LEVEL[i];
-      soldier.attributes = {
-        hit_points: soldier.attributes.hit_points + definition.hit_points,
-        level: definition.level,
-        dexterity: soldier.attributes.dexterity + definition.dexterity,
-        morale: soldier.attributes.morale + definition.morale,
-        toughness: soldier.attributes.toughness + definition.toughness,
-        awareness: soldier.attributes.awareness + definition.awareness,
-      };
-    }
-
-    soldier.attributes.toughness += armor.toughness ?? 0;
-
-    applyEquipmentBonuses(soldier, armor, weapon);
-
     soldier.name = generateName();
-    soldier.avatar = getSoldierAvatar(designation);
+    soldier.avatar = getSoldierAvatar(designation, usedAvatars);
     soldier.inventory = buildInitialInventory(designation, inventory, lvl);
     soldier.level = lvl;
     soldier.id = uuidv4();
@@ -92,7 +77,7 @@ function SoldierManager() {
     soldier.trait_profile = traitOverride ?? getSoldierTraitProfile();
     soldier.experience = getSoldierXpRequiredForLevel(lvl);
 
-    applyTraitProfileStats(soldier);
+    recomputeSoldierAttributes(soldier);
     initializeCombatProfile(soldier);
     applyArmorPercentToCombatProfile(soldier, armor);
     applyWeaponPercentToCombatProfile(soldier, weapon);
@@ -109,9 +94,9 @@ function SoldierManager() {
 
   /** Recompute combat profile from current attributes, armor, weapon, trait. Call after level-up. */
   function refreshCombatProfile(soldier: Soldier) {
+    recomputeSoldierAttributes(soldier);
     const base = JSON.parse(JSON.stringify(SOLDIER_BASE.combatProfile)) as Soldier["combatProfile"];
     soldier.combatProfile = base;
-    applyTraitProfileStats(soldier);
     initializeCombatProfile(soldier);
     if (soldier.armor) applyArmorPercentToCombatProfile(soldier, soldier.armor);
     if (soldier.weapon) {
@@ -132,9 +117,22 @@ function SoldierManager() {
     };
   }
 
-  function getNewSoldier(level = 1, designation: Designation, traitOverride?: TraitDict) {
+  function getNewSoldier(
+    level = 1,
+    designation: Designation,
+    traitOverride?: TraitDict,
+    usedAvatars?: Set<string>,
+  ) {
     const { weapon, armor, inventory } = getEquipmentLoadoutForLevel(level, designation);
-    return gs(level, designation, armor, weapon, inventory, traitOverride);
+    return gs(
+      level,
+      designation,
+      armor,
+      weapon,
+      inventory,
+      traitOverride,
+      usedAvatars,
+    );
   }
 
   const BONUS_STAT_TO_ATTR: Record<string, keyof Attributes> = {
@@ -146,13 +144,12 @@ function SoldierManager() {
   };
 
   function applyEquipmentBonuses(
-    soldier: Soldier,
+    attributes: Attributes,
     armor: Armor,
     weapon: BallisticWeapon,
   ) {
-    const atts = soldier.attributes;
     const flatBonus = (b: ArmorBonus | WeaponBonus, attr: keyof Attributes) => {
-      atts[attr] = (atts[attr] ?? 0) + b.value;
+      attributes[attr] = (attributes[attr] ?? 0) + b.value;
     };
     const armorBonuses = (armor as Armor & { bonuses?: ArmorBonus[] }).bonuses ?? [];
     const weaponBonuses = (weapon as BallisticWeapon & { bonuses?: WeaponBonus[] }).bonuses ?? [];
@@ -208,24 +205,93 @@ function SoldierManager() {
     if (m.mitigateDamage != null) cp.mitigateDamage = toFNum(Math.min(MAX_MITIGATION, cp.mitigateDamage + m.mitigateDamage), PRECISION);
   }
 
-  function applyTraitProfileStats(soldier: Soldier) {
-    const traitKeys = Object.keys(soldier.trait_profile.stats);
-    const soldierAtts = soldier.attributes;
+  function createLevelBaseAttributes(level: number): Attributes {
+    const safeLevel = Math.max(1, Math.floor(level || 1));
+    const attrs: Attributes = JSON.parse(
+      JSON.stringify(ATTRIBUTES_INCREASES_BY_LEVEL[0]),
+    ) as Attributes;
+    attrs.level = safeLevel;
+    for (let i = 2; i <= safeLevel; i++) {
+      const def = getStatsForLevel(i) as Attributes | undefined;
+      if (!def) continue;
+      attrs.hit_points += def.hit_points ?? 0;
+      attrs.dexterity += def.dexterity ?? 0;
+      attrs.morale += def.morale ?? 0;
+      attrs.toughness += def.toughness ?? 0;
+      attrs.awareness += def.awareness ?? 0;
+    }
+    return attrs;
+  }
 
-    for (const key of traitKeys) {
-      soldierAtts[key as keyof Attributes] =
-        soldierAtts[key as keyof Attributes] + soldier.trait_profile.stats[key];
+  function applyFlatStats(
+    attributes: Attributes,
+    stats: Partial<Record<keyof Attributes, number>> | undefined,
+  ) {
+    if (!stats) return;
+    for (const [k, v] of Object.entries(stats)) {
+      if (k === "level") continue;
+      const key = k as keyof Attributes;
+      const delta = Number(v ?? 0);
+      if (!Number.isFinite(delta) || delta === 0) continue;
+      attributes[key] = ((attributes[key] as number | undefined) ?? 0) + delta;
     }
   }
 
-  function getSoldierAvatar(designation?: Designation) {
-    const des = String(designation ?? "").toLowerCase();
-    if (des === SOLDIER_DESIGNATION.medic) {
-      const key = getRandomPortraitImage(Images.medic_portrait);
-      return Images.medic_portrait[key];
+  function recomputeSoldierAttributes(soldier: Soldier) {
+    const attrs = createLevelBaseAttributes(soldier.level ?? 1);
+    applyFlatStats(
+      attrs,
+      (soldier.trait_profile?.stats ?? {}) as Partial<Record<keyof Attributes, number>>,
+    );
+    for (const traitId of soldier.earnedTraitIds ?? []) {
+      const trait = getEarnedTraitById(traitId);
+      applyFlatStats(
+        attrs,
+        (trait?.stats ?? {}) as Partial<Record<keyof Attributes, number>>,
+      );
     }
-    const key = getRandomPortraitImage(Images.portrait);
-    return Images.portrait[key];
+    const armor = (soldier.armor ?? {}) as Armor;
+    const weapon = (soldier.weapon ?? {}) as BallisticWeapon;
+    attrs.toughness += armor.toughness ?? 0;
+    applyEquipmentBonuses(attrs, armor, weapon);
+    soldier.attributes = attrs;
+  }
+
+  function getSoldierAvatar(designation?: Designation, usedAvatars?: Set<string>) {
+    const des = String(designation ?? "").toLowerCase();
+    const pool = des === SOLDIER_DESIGNATION.medic
+      ? Object.values(Images.medic_portrait)
+      : Object.values(Images.portrait);
+    if (pool.length === 0) return "default.png";
+    const available = usedAvatars
+      ? pool.filter((img) => !usedAvatars.has(img))
+      : pool;
+    const candidatePool = available.length > 0 ? available : pool;
+    const selected = getRandomValueFromStringArray(candidatePool);
+    if (usedAvatars) usedAvatars.add(selected);
+    return selected;
+  }
+
+  function ensureUniquePlayerAvatars(soldiers: Soldier[]): Soldier[] {
+    const used = new Set<string>();
+    return soldiers.map((soldier) => {
+      const des = String(soldier.designation ?? "").toLowerCase();
+      const pool = des === SOLDIER_DESIGNATION.medic
+        ? Object.values(Images.medic_portrait)
+        : Object.values(Images.portrait);
+      const current = soldier.avatar ?? "";
+      if (current && !used.has(current)) {
+        used.add(current);
+        return soldier;
+      }
+      const available = pool.filter((img) => !used.has(img));
+      const candidatePool = available.length > 0 ? available : pool;
+      const avatar = candidatePool.length > 0
+        ? getRandomValueFromStringArray(candidatePool)
+        : current || "default.png";
+      used.add(avatar);
+      return { ...soldier, avatar };
+    });
   }
 
   const MAX_MITIGATION = 0.6;
@@ -314,17 +380,18 @@ function SoldierManager() {
   }
 
   function generateTroopList(lvl = 1): Soldier[] {
+    const usedAvatars = new Set<string>();
     const troops = [
-      getNewSoldier(lvl, SOLDIER_DESIGNATION.rifleman),
-      getNewSoldier(lvl, SOLDIER_DESIGNATION.rifleman),
-      getNewSoldier(lvl, SOLDIER_DESIGNATION.rifleman),
-      getNewSoldier(lvl, SOLDIER_DESIGNATION.rifleman),
-      getNewSoldier(lvl, SOLDIER_DESIGNATION.rifleman),
-      getNewSoldier(lvl, SOLDIER_DESIGNATION.rifleman),
-      getNewSoldier(lvl, SOLDIER_DESIGNATION.support),
-      getNewSoldier(lvl, SOLDIER_DESIGNATION.support),
-      getNewSoldier(lvl, SOLDIER_DESIGNATION.medic),
-      getNewSoldier(lvl, SOLDIER_DESIGNATION.medic),
+      getNewSoldier(lvl, SOLDIER_DESIGNATION.rifleman, undefined, usedAvatars),
+      getNewSoldier(lvl, SOLDIER_DESIGNATION.rifleman, undefined, usedAvatars),
+      getNewSoldier(lvl, SOLDIER_DESIGNATION.rifleman, undefined, usedAvatars),
+      getNewSoldier(lvl, SOLDIER_DESIGNATION.rifleman, undefined, usedAvatars),
+      getNewSoldier(lvl, SOLDIER_DESIGNATION.rifleman, undefined, usedAvatars),
+      getNewSoldier(lvl, SOLDIER_DESIGNATION.rifleman, undefined, usedAvatars),
+      getNewSoldier(lvl, SOLDIER_DESIGNATION.support, undefined, usedAvatars),
+      getNewSoldier(lvl, SOLDIER_DESIGNATION.support, undefined, usedAvatars),
+      getNewSoldier(lvl, SOLDIER_DESIGNATION.medic, undefined, usedAvatars),
+      getNewSoldier(lvl, SOLDIER_DESIGNATION.medic, undefined, usedAvatars),
     ];
     for (let i = troops.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
@@ -338,14 +405,24 @@ function SoldierManager() {
   return {
     generateSoldierAtLevel: gs,
     getExperienceBaseAtLevel,
-    getNewRifleman: (lvl = 1, traitOverride?: TraitDict) =>
-      getNewSoldier(lvl, SOLDIER_DESIGNATION.rifleman, traitOverride),
-    getNewSupportMan: (lvl = 1, traitOverride?: TraitDict) =>
-      getNewSoldier(lvl, SOLDIER_DESIGNATION.support, traitOverride),
-    getNewMedic: (lvl = 1, traitOverride?: TraitDict) =>
-      getNewSoldier(lvl, SOLDIER_DESIGNATION.medic, traitOverride),
+    getNewRifleman: (
+      lvl = 1,
+      traitOverride?: TraitDict,
+      usedAvatars?: Set<string>,
+    ) => getNewSoldier(lvl, SOLDIER_DESIGNATION.rifleman, traitOverride, usedAvatars),
+    getNewSupportMan: (
+      lvl = 1,
+      traitOverride?: TraitDict,
+      usedAvatars?: Set<string>,
+    ) => getNewSoldier(lvl, SOLDIER_DESIGNATION.support, traitOverride, usedAvatars),
+    getNewMedic: (
+      lvl = 1,
+      traitOverride?: TraitDict,
+      usedAvatars?: Set<string>,
+    ) => getNewSoldier(lvl, SOLDIER_DESIGNATION.medic, traitOverride, usedAvatars),
     getNewSoldier,
     generateTroopList,
+    ensureUniquePlayerAvatars,
     getSoldierTraitProfile,
     getSoldierTraitProfileByName,
     levelUpSoldier,

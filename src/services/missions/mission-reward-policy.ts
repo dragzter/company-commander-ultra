@@ -12,7 +12,7 @@ const KIND_REWARD_MODIFIERS: Record<MissionKind, number> = {
   defend_objective: 1.0,
   ambush: 1.05,
   attack_objective: 1.1,
-  seek_and_destroy: 1.1,
+  skirmish: 1.1,
   manhunt: 1.15,
 };
 
