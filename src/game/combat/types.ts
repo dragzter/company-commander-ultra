@@ -25,6 +25,8 @@ export interface Combatant {
   killedBy?: string;
   soldierRef?: import("../entities/types.ts").Soldier;
   designation?: string;
+  /** Enemy portrait folder (e.g. red-portrait, blue-portrait). */
+  enemyPortraitDir?: string;
   weaponIconUrl?: string;
   /** Timestamp (ms) when Take Cover ends */
   takeCoverUntil?: number;

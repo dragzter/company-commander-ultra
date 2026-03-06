@@ -2,7 +2,7 @@ import type { Combatant } from "../combat/types.ts";
 import type { Mission } from "../../constants/missions.ts";
 import type { Item } from "../../constants/items/types.ts";
 import type { Soldier } from "../entities/types.ts";
-import { getItemIconUrl } from "../../utils/item-utils.ts";
+import { getItemIconUrl, renderItemLevelBadge } from "../../utils/item-utils.ts";
 import { getWeaponRestrictRole } from "../../utils/equip-utils.ts";
 import { formatDisplayName, getSoldierPortraitUrl } from "../../utils/name-utils.ts";
 import type { EarnedTraitAward } from "../../constants/veterancy-traits.ts";
@@ -60,8 +60,6 @@ function escapeAttr(s: string): string {
 function itemCard(item: Item): string {
   const iconUrl = getItemIconUrl(item);
   const name = item.name ?? item.id ?? "Unknown";
-  const level = item.level ?? 1;
-  const noLevel = (item as { noLevel?: boolean }).noLevel;
   const rarity = (item.rarity ?? "common") as string;
   const rarityClass = rarity !== "common" ? ` rarity-${rarity}` : "";
   const isWeapon =
@@ -81,9 +79,7 @@ function itemCard(item: Item): string {
   const uses = item.uses ?? item.quantity;
   const usesBadge =
     uses != null ? `<span class="market-item-uses-badge">×${uses}</span>` : "";
-  const levelBadgeHtml = !noLevel
-    ? `<span class="item-level-badge rarity-${rarity}">Lv${level}</span>`
-    : "";
+  const levelBadgeHtml = renderItemLevelBadge(item);
   const iconHtml = iconUrl
     ? `<div class="market-item-icon-wrap"><img class="market-item-icon" src="${escapeAttr(iconUrl)}" alt="${escapeAttr(name)}" width="42" height="42">${levelBadgeHtml}${usesBadge}${roleBadgeHtml}</div>`
     : "";

@@ -6,7 +6,7 @@ import {
   getArmorArmorySlots,
   getEquipmentArmorySlots,
 } from "../../constants/economy.ts";
-import { getItemIconUrl } from "../../utils/item-utils.ts";
+import { getItemIconUrl, renderItemLevelBadge } from "../../utils/item-utils.ts";
 import type { Item, ArmorBonus } from "../../constants/items/types.ts";
 import { ITEM_TYPES } from "../../constants/items/types.ts";
 import { computeAttackIntervalMs } from "../../constants/combat.ts";
@@ -111,13 +111,11 @@ function splitBonusesForDisplay(item: Item, bonuses: ArmorBonus[] | undefined): 
 export function getItemPopupBodyHtml(item: Item): string {
   const rarity = (item.rarity ?? "common") as string;
   const iconUrl = getItemIconUrl(item);
-  const level = item.level ?? 1;
 
   let html = '<div class="item-popup-body" data-rarity="' + rarity + '">';
   html += '<div class="item-popup-hero">';
-  const noLevel = (item as { noLevel?: boolean }).noLevel;
   if (iconUrl) {
-    const levelBadge = !noLevel ? `<span class="item-level-badge rarity-${rarity}">Lv${level}</span>` : "";
+    const levelBadge = renderItemLevelBadge(item);
     html += `<div class="item-popup-icon-wrap item-icon-wrap"><img class="item-popup-icon" src="${iconUrl}" alt="" width="64" height="64">${levelBadge}</div>`;
   }
   html += '<div class="item-popup-name-wrap"><h4 class="item-popup-name">' + escapeHtml(item.name) + '</h4></div>';
@@ -233,13 +231,11 @@ export function getItemPopupBodyHtml(item: Item): string {
 export function getItemPopupBodyHtmlCompact(item: Item): string {
   const rarity = (item.rarity ?? "common") as string;
   const iconUrl = getItemIconUrl(item);
-  const level = item.level ?? 1;
-  const noLevel = (item as { noLevel?: boolean }).noLevel;
 
   let html = '<div class="item-popup-body item-popup-compact" data-rarity="' + rarity + '">';
   html += '<div class="item-popup-hero item-popup-hero-compact">';
   if (iconUrl) {
-    const levelBadge = !noLevel ? `<span class="item-level-badge rarity-${rarity}">Lv${level}</span>` : "";
+    const levelBadge = renderItemLevelBadge(item);
     html += `<div class="item-popup-icon-wrap item-popup-icon-wrap-compact"><img class="item-popup-icon" src="${iconUrl}" alt="" width="38" height="38">${levelBadge}</div>`;
   }
   html += '<div class="item-popup-name-wrap"><h4 class="item-popup-name item-popup-name-compact">' + escapeHtml(item.name) + '</h4></div>';
@@ -319,8 +315,6 @@ const WEAPON_ROLE_LABELS: Record<string, string> = {
 function inventoryItemCard(item: Item, index: number): string {
   const iconUrl = getItemIconUrl(item);
   const uses = item.uses;
-  const level = item.level ?? 1;
-  const noLevel = (item as { noLevel?: boolean }).noLevel;
   const rarity = item.rarity ?? "common";
   const qty = item.quantity ?? 1;
   const badgeN = uses ?? (item.quantity != null ? item.quantity : (qty > 1 ? qty : null));
@@ -329,7 +323,7 @@ function inventoryItemCard(item: Item, index: number): string {
   const weaponRole = isWeapon ? (getWeaponRestrictRole(item) ?? (item as { restrictRole?: string }).restrictRole ?? "any") : null;
   const roleBadgeHtml = weaponRole ? `<span class="market-weapon-role-badge role-${weaponRole}">${WEAPON_ROLE_LABELS[weaponRole] ?? weaponRole}</span>` : "";
   const usesBadgeHtml = isSupplies && badgeN != null && badgeN >= 1 ? `<span class="market-item-uses-badge">×${badgeN}</span>` : "";
-  const levelBadgeHtml = !noLevel ? `<span class="item-level-badge rarity-${rarity}">Lv${level}</span>` : "";
+  const levelBadgeHtml = renderItemLevelBadge(item);
   const iconHtml = iconUrl
     ? `<div class="market-item-icon-wrap"><img class="market-item-icon" src="${iconUrl}" alt="${item.name}" width="42" height="42">${levelBadgeHtml}${usesBadgeHtml}${roleBadgeHtml}</div>`
     : "";
@@ -356,8 +350,6 @@ function holdingItemCard(item: Item): string {
   const iconUrl = getItemIconUrl(item);
   const qty = item.quantity ?? 1;
   const uses = item.uses;
-  const level = item.level ?? 1;
-  const noLevel = (item as { noLevel?: boolean }).noLevel;
   const rarity = item.rarity ?? "common";
   const badgeN = uses ?? (item.quantity != null ? item.quantity : (qty > 1 ? qty : null));
   const isWeapon = item.type === "ballistic_weapon" || item.type === "melee_weapon";
@@ -365,7 +357,7 @@ function holdingItemCard(item: Item): string {
   const weaponRole = isWeapon ? (getWeaponRestrictRole(item) ?? (item as { restrictRole?: string }).restrictRole ?? "any") : null;
   const roleBadgeHtml = weaponRole ? `<span class="market-weapon-role-badge role-${weaponRole}">${WEAPON_ROLE_LABELS[weaponRole] ?? weaponRole}</span>` : "";
   const usesBadgeHtml = isSupplies && badgeN != null && badgeN >= 1 ? `<span class="market-item-uses-badge">×${badgeN}</span>` : "";
-  const levelBadgeHtml = !noLevel ? `<span class="item-level-badge rarity-${rarity}">Lv${level}</span>` : "";
+  const levelBadgeHtml = renderItemLevelBadge(item);
   const iconHtml = iconUrl
     ? `<div class="market-item-icon-wrap"><img class="market-item-icon" src="${iconUrl}" alt="${item.name}" width="42" height="42">${levelBadgeHtml}${usesBadgeHtml}${roleBadgeHtml}</div>`
     : "";

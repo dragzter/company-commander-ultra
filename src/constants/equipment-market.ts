@@ -22,10 +22,15 @@ const SUPPLIES_BASE_PRICES = {
   medkit: 130 * 5,
 } as const;
 
-const TIER_PRICE_FACTOR = 0.06;
+function getSupplyLevelPriceMultiplier(level: number): number {
+  const lvl = Math.max(1, Math.min(999, Math.floor(level)));
+  const pre20 = Math.min(lvl, 20) - 1;
+  const post20 = Math.max(0, lvl - 20);
+  return 1 + (pre20 * 0.03) + (post20 * 0.004);
+}
 
 function supplyPrice(base: number, tier: number): number {
-  return Math.round(base * (1 + (tier - 1) * TIER_PRICE_FACTOR));
+  return Math.round(base * getSupplyLevelPriceMultiplier(tier));
 }
 
 /** Create leveled supply item. Psychic Shredder has no level (stays tier 1). Incendiary: only effect_value (burn dmg) scales. */

@@ -38,6 +38,7 @@ import {
   getItemArmoryCategory,
   countArmoryByCategory,
   canItemStackInArmory,
+  isItemLevelProgressive,
 } from "../utils/item-utils.ts";
 import { getFormationSlots, getActiveSlots, getReserveSlots } from "../constants/company-slots.ts";
 import type { Item } from "../constants/items/types.ts";
@@ -163,10 +164,10 @@ function getEnemyBaseLevelFromCompany(company: Company | null | undefined): numb
       majorityLevel = lvl;
     }
   }
-  if (majorityCount > activeSoldiers.length / 2) return Math.max(1, Math.min(20, majorityLevel));
+  if (majorityCount > activeSoldiers.length / 2) return Math.max(1, Math.min(999, majorityLevel));
 
   const sum = activeSoldiers.reduce((a, s) => a + (s.level ?? 1), 0);
-  return Math.max(1, Math.min(20, Math.ceil(sum / activeSoldiers.length)));
+  return Math.max(1, Math.min(999, Math.ceil(sum / activeSoldiers.length)));
 }
 
 function getProgressionLevelFromCompany(company: Company | null | undefined, fallbackLevel: number): number {
@@ -178,7 +179,7 @@ function getProgressionLevelFromCompany(company: Company | null | undefined, fal
 
 function getRecruitLevelFromCompany(company: Company | null | undefined): number {
   const enemyBaseLevel = getEnemyBaseLevelFromCompany(company);
-  return Math.max(1, Math.min(20, enemyBaseLevel - 1));
+  return Math.max(1, Math.min(999, enemyBaseLevel - 1));
 }
 
 function resolveRecruitLevel(company: Company | null | undefined, highestAchieved = 1): number {
@@ -219,17 +220,10 @@ function applyEarnedTraitToSoldier(soldier: Soldier, trait: EarnedTraitDefinitio
   const next = {
     ...soldier,
     earnedTraitIds: [...(soldier.earnedTraitIds ?? [])],
-    attributes: { ...soldier.attributes },
     veterancy: { ...getSoldierVeterancyDefaults(), ...(soldier.veterancy ?? {}) },
   };
   if (next.earnedTraitIds!.includes(trait.id)) return next;
   next.earnedTraitIds!.push(trait.id);
-  const stats = trait.stats ?? {};
-  for (const [key, value] of Object.entries(stats)) {
-    const k = key as keyof Soldier["attributes"];
-    const base = (next.attributes[k] as number | undefined) ?? 0;
-    next.attributes[k] = base + value;
-  }
   if ((trait.grenadeHitBonusPct ?? 0) > 0) {
     next.grenadeHitBonusPct = Math.min(0.25, (next.grenadeHitBonusPct ?? 0) + (trait.grenadeHitBonusPct ?? 0));
   }
@@ -451,6 +445,10 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
   setOnboardingReadyRoomIntroPending: (pending: boolean) => set({ onboardingReadyRoomIntroPending: !!pending }),
   setOnboardingRecruitStep: (step: RecruitOnboardingStep) => set({ onboardingRecruitStep: step }),
   setOnboardingRecruitSoldier: (soldier: Soldier | null) => set({ onboardingRecruitSoldier: soldier }),
+  bootstrapNewCompanyIfEmpty: () => {
+    get().addInitialTroopsIfEmpty();
+    get().addInitialArmoryIfEmpty();
+  },
   ensureMissionBoard: () => {
     const state = get();
     const existing = state.missionBoard ?? [];
@@ -1272,7 +1270,7 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
 
     const rewardIds = mission.rewardItems ?? [];
     const level = lvl; // Company level for armory caps
-    const itemLevel = missionLevel != null ? Math.max(1, Math.min(20, missionLevel)) : level; // Mission level (same derivation as enemy soldiers) for item tiers
+    const itemLevel = missionLevel != null ? Math.max(1, Math.min(999, missionLevel)) : level; // Mission level (same derivation as enemy soldiers) for item tiers
     const caps = {
       weapon: getWeaponArmorySlots(level),
       armor: getArmorArmorySlots(level),
@@ -1305,15 +1303,27 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
       }
     };
 
+    const withMissionItemLevel = (item: Item): Item => {
+      const next = { ...item };
+      if (isItemLevelProgressive(next)) {
+        next.level = itemLevel as import("../constants/items/types.ts").GearLevel;
+        next.noLevel = undefined;
+      } else {
+        next.level = 1;
+        next.noLevel = true;
+      }
+      return next;
+    };
+
     for (const id of rewardIds) {
       const item = getRewardItemById(id);
       if (!item) continue;
-      const copy = { ...item, level: itemLevel as import("../constants/items/types.ts").GearLevel };
+      const copy = withMissionItemLevel(item);
       addItemToInventory(copy, false);
     }
 
     /* Loot rolls: each rolled independently on any successful mission */
-    const tier = Math.max(1, Math.min(20, itemLevel)) as import("../constants/items/types.ts").GearLevel;
+    const tier = Math.max(1, Math.min(999, itemLevel)) as import("../constants/items/types.ts").GearLevel;
     if (Math.random() < LOOT_EPIC_CHANCE) {
       const isWeapon = Math.random() < 0.5;
       const epicArmorIds = getEpicArmorBaseIdsForLevel(itemLevel);
@@ -1342,7 +1352,7 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
     }
     if (Math.random() < LOOT_COMMON_SUPPLY_CHANCE) {
       const supply = pickRandomCommonSupply();
-      if (supply) addItemToInventory({ ...supply, level: itemLevel as import("../constants/items/types.ts").GearLevel }, true);
+      if (supply) addItemToInventory(withMissionItemLevel(supply), true);
     }
 
     set((s: CompanyStore) => ({
@@ -1644,21 +1654,15 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
     return { success: true, totalCost, totalRecovered, recoveredById: recoverById };
   },
 
-  /** Sync combatant HP back to store soldiers after combat. Never overwrite with a lower value—soldiers may have gained HP from leveling up during grantSoldierCombatXP. */
+  /** Reconcile post-combat soldier profiles without mutating canonical base attributes from transient battle HP. */
   syncCombatHpToSoldiers: (playerCombatants: { id: string; hp: number }[]) => {
+    void playerCombatants;
     set((state: CompanyStore) => {
       const soldiers = state.company?.soldiers ?? [];
-      const byId = new Map(playerCombatants.map((c) => [c.id, c.hp]));
       const newSoldiers = soldiers.map((s) => {
-        const hp = byId.get(s.id);
-        if (hp == null) return s;
-        const currentMax = s.attributes?.hit_points ?? 0;
-        const synced = Math.max(0, Math.floor(hp));
-        const hitPoints = Math.max(currentMax, synced);
-        return {
-          ...s,
-          attributes: { ...s.attributes, hit_points: hitPoints },
-        };
+        const next = { ...s };
+        SoldierManager.refreshCombatProfile(next);
+        return next;
       });
       return { company: { ...state.company, soldiers: newSoldiers } };
     });

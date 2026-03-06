@@ -16,6 +16,8 @@ import {
 import {
   getItemArmoryCategory,
   countArmoryByCategory,
+  getItemIconUrl,
+  renderItemLevelBadge,
 } from "../../utils/item-utils.ts";
 import {
   getActiveSlots,
@@ -65,7 +67,6 @@ import {
   getNextAttackAt,
 } from "../combat/combat-loop.ts";
 import type { TargetMap } from "../combat/types.ts";
-import { getItemIconUrl } from "../../utils/item-utils.ts";
 import {
   weaponWieldOk,
   itemFitsSlot,
@@ -523,8 +524,7 @@ export function eventConfigs() {
       eventType: "click",
       selector: DOM.confirmScreen.launch,
       callback: () => {
-        usePlayerCompanyStore.getState().addInitialTroopsIfEmpty();
-        usePlayerCompanyStore.getState().addInitialArmoryIfEmpty();
+        usePlayerCompanyStore.getState().bootstrapNewCompanyIfEmpty();
         UiManager.renderCompanyHomePage();
       },
     },
@@ -1167,6 +1167,7 @@ export function eventConfigs() {
       hpValue: HTMLElement | null;
       avatarWrap: HTMLElement | null;
       spdBadge: HTMLElement | null;
+      statusNodeCache: Map<string, HTMLElement>;
     };
     type CombatantUiSnapshot = {
       hp: number;
@@ -1190,6 +1191,7 @@ export function eventConfigs() {
     const dirtyStatusCombatantIds = new Set<string>();
     const dirtySpeedCombatantIds = new Set<string>();
     let nextTimedUiUpdateAt = 0;
+    let lastAttackLineSignature = "";
 
     function createCombatantDomRefs(card: HTMLElement): CombatantDomRefs {
       return {
@@ -1204,6 +1206,7 @@ export function eventConfigs() {
         spdBadge: card.querySelector(
           ".combat-card-spd-badge",
         ) as HTMLElement | null,
+        statusNodeCache: new Map<string, HTMLElement>(),
       };
     }
 
@@ -1309,13 +1312,14 @@ export function eventConfigs() {
       const spdText =
         spdMs != null && spdMs > 0 ? `SPD: ${(spdMs / 1000).toFixed(1)}s` : "";
       const lvl = c.level ?? 1;
-      const imgSrc = `/images/red-portrait/${c.avatar}`;
+      const enemyPortraitDir = c.enemyPortraitDir ?? "red-portrait";
+      const imgSrcResolved = `/images/${enemyPortraitDir}/${c.avatar}`;
       return `
 <div class="combat-card designation-${des}${downClass}${epicEliteClass}${manhuntTargetClass}" data-combatant-id="${c.id}" data-side="enemy"${slotAttr}>
   <div class="combat-card-inner">
     <div class="combat-card-avatar-wrap">
       <span class="combat-card-level-badge">${lvl}</span>
-      <img class="combat-card-avatar" src="${imgSrc}" alt="">
+      <img class="combat-card-avatar" src="${imgSrcResolved}" alt="">
       ${weaponHtml}
       ${rb ? `<span class="combat-card-role-badge">${rb}</span>` : ""}
     </div>
@@ -1531,6 +1535,7 @@ export function eventConfigs() {
       if (!popup || !contentEl || !hintEl || !listEl || !titleEl) return;
       const popupEl = popup;
       const listElNode = listEl;
+      let lastAbilitiesMarkup = "";
 
       const canUse = combatStarted && !combatWinner;
       const soldier = getSoldierFromStore(combatant.id);
@@ -1603,7 +1608,6 @@ export function eventConfigs() {
               const g = slot.data;
               const isKnife = g.item.id === "tk21_throwing_knife";
               const qty = g.item.uses ?? g.item.quantity ?? 1;
-              const level = g.item.level ?? 1;
               const rarity = g.item.rarity ?? "common";
               const iconUrl = getItemIconUrl(g.item);
               const hasUses = g.item.uses != null || g.item.quantity != null;
@@ -1619,7 +1623,7 @@ export function eventConfigs() {
               return `<button type="button" class="combat-grenade-item${btnRarity}${cooldownClass}" data-inventory-index="${g.inventoryIndex}" data-soldier-id="${c.id}" title="${g.item.name}" aria-label="${g.item.name}" ${grenadeDisabled ? "disabled" : ""}>
             <div class="combat-grenade-icon-wrap item-icon-wrap">
               <img class="combat-grenade-icon" src="${iconUrl}" alt="" width="48" height="48">
-              <span class="item-level-badge rarity-${rarity}">Lv${level}</span>
+              ${renderItemLevelBadge(g.item)}
               ${hasUses ? `<span class="inventory-item-qty inventory-uses-badge">×${qty}</span>` : ""}
             </div>
             ${timerHtml}
@@ -1634,6 +1638,7 @@ export function eventConfigs() {
               return `<button type="button" class="combat-med-item${btnRarity}" data-inventory-index="${m.inventoryIndex}" data-soldier-id="${c.id}" title="${m.item.name}" aria-label="${m.item.name}" ${!canUse ? "disabled" : ""}>
             <div class="combat-grenade-icon-wrap item-icon-wrap">
               <img class="combat-grenade-icon" src="${iconUrl}" alt="" width="48" height="48">
+              ${renderItemLevelBadge(m.item)}
               ${hasUses ? `<span class="inventory-item-qty inventory-uses-badge">×${qty}</span>` : ""}
             </div>
           </button>`;
@@ -1642,7 +1647,9 @@ export function eventConfigs() {
           .join("");
       }
 
-      listElNode.innerHTML = abilityButtons + buildEquipmentHtml(combatant);
+      const initialMarkup = abilityButtons + buildEquipmentHtml(combatant);
+      listElNode.innerHTML = initialMarkup;
+      lastAbilitiesMarkup = initialMarkup;
 
       function refreshAbilitiesList() {
         const c = players.find((p) => p.id === combatant.id);
@@ -1694,7 +1701,11 @@ export function eventConfigs() {
           </button>`;
           })
           .join("");
-        listElNode.innerHTML = btns + buildEquipmentHtml(c);
+        const nextMarkup = btns + buildEquipmentHtml(c);
+        if (nextMarkup !== lastAbilitiesMarkup) {
+          listElNode.innerHTML = nextMarkup;
+          lastAbilitiesMarkup = nextMarkup;
+        }
       }
 
       titleEl.textContent = "Abilities";
@@ -2085,11 +2096,7 @@ export function eventConfigs() {
         if (target.downState === "incapacitated") delete target.downState;
         const card = getCombatantCard(target.id);
         if (card) {
-          const popup = document.createElement("span");
-          popup.className = "combat-heal-popup";
-          popup.textContent = `+${healAmount}`;
-          card.appendChild(popup);
-          setTimeout(() => popup.remove(), 1500);
+          spawnCombatPopup(card, "combat-heal-popup", `+${healAmount}`, 1500);
         }
         markCombatantDirty(target.id, { hp: true, status: true, speed: false });
       }
@@ -2116,11 +2123,7 @@ export function eventConfigs() {
 
       const card = getCombatantCard(target.id);
       if (card) {
-        const popup = document.createElement("span");
-        popup.className = "combat-heal-popup";
-        popup.textContent = `+${healAmount}`;
-        card.appendChild(popup);
-        setTimeout(() => popup.remove(), 1500);
+        spawnCombatPopup(card, "combat-heal-popup", `+${healAmount}`, 1500);
       }
       markCombatantDirty(target.id, { hp: true, status: true, speed: false });
       return true;
@@ -2139,6 +2142,19 @@ export function eventConfigs() {
           : "combat-card-hit-flash-enemy";
       targetCard.classList.add(sideClass);
       setTimeout(() => targetCard.classList.remove(sideClass), 220);
+    }
+
+    function spawnCombatPopup(
+      card: HTMLElement,
+      className: string,
+      text: string,
+      durationMs = 1500,
+    ): void {
+      const popup = document.createElement("span");
+      popup.className = className;
+      popup.textContent = text;
+      card.appendChild(popup);
+      window.setTimeout(() => popup.remove(), durationMs);
     }
 
     const SUPPRESS_DURATION_MS = 8000;
@@ -2568,11 +2584,10 @@ export function eventConfigs() {
 
     const LINE_OFFSET_PX = 3; /* 2 × 3 = 6px between parallel lines for mutual fire */
 
-    function drawAttackLines() {
+    function drawAttackLines(force = false) {
       const battleArea = document.querySelector("#combat-battle-area");
       const linesG = document.querySelector("#combat-attack-lines-g");
       if (!battleArea || !linesG) return;
-      linesG.innerHTML = "";
       const areaRect = battleArea.getBoundingClientRect();
       const toArea = (r: DOMRect) => ({
         left: r.left - areaRect.left,
@@ -2582,16 +2597,25 @@ export function eventConfigs() {
         width: r.width,
         height: r.height,
       });
-      const getTopCenter = (id: string) => {
-        const card = document.querySelector(`[data-combatant-id="${id}"]`);
+      const combatantRectCache = new Map<string, ReturnType<typeof toArea>>();
+      const getRectById = (id: string) => {
+        const cached = combatantRectCache.get(id);
+        if (cached) return cached;
+        const refs = getCombatantDomRefs(id);
+        const card = refs?.card ?? null;
         if (!card) return null;
         const r = toArea(card.getBoundingClientRect());
+        combatantRectCache.set(id, r);
+        return r;
+      };
+      const getTopCenter = (id: string) => {
+        const r = getRectById(id);
+        if (!r) return null;
         return { x: (r.left + r.right) / 2, y: r.top };
       };
       const getBottomCenter = (id: string) => {
-        const card = document.querySelector(`[data-combatant-id="${id}"]`);
-        if (!card) return null;
-        const r = toArea(card.getBoundingClientRect());
+        const r = getRectById(id);
+        if (!r) return null;
         return { x: (r.left + r.right) / 2, y: r.bottom };
       };
       const getCombatant = (id: string) =>
@@ -2616,6 +2640,14 @@ export function eventConfigs() {
           attackerSide: attacker.side,
         });
       }
+      const signature = segments
+        .map((s) => `${s.attackerId}>${s.targetId}`)
+        .sort()
+        .join("|");
+      if (!force && signature === lastAttackLineSignature) return;
+      lastAttackLineSignature = signature;
+      linesG.textContent = "";
+      const frag = document.createDocumentFragment();
 
       const pairKey = (a: string, b: string) =>
         a < b ? `${a}|${b}` : `${b}|${a}`;
@@ -2680,8 +2712,9 @@ export function eventConfigs() {
           isPlayer ? "url(#combat-arrow-player)" : "url(#combat-arrow-enemy)",
         );
         line.setAttribute("stroke-linecap", "round");
-        linesG.appendChild(line);
+        frag.appendChild(line);
       }
+      linesG.appendChild(frag);
     }
 
     function updateHpBarsAll(force = false) {
@@ -2799,21 +2832,27 @@ export function eventConfigs() {
             card.classList.toggle("combat-card-setting-up", settingUp);
             const ensureTimer = (
               selector: string,
+              cacheKey: string,
               className: string,
               parent: HTMLElement,
             ): HTMLElement => {
-              const existing = parent.querySelector(
-                selector,
-              ) as HTMLElement | null;
-              if (existing) return existing;
+              const cached = refs.statusNodeCache.get(cacheKey);
+              if (cached && cached.isConnected) return cached;
+              const existing = parent.querySelector(selector) as HTMLElement | null;
+              if (existing) {
+                refs.statusNodeCache.set(cacheKey, existing);
+                return existing;
+              }
               const timerEl = document.createElement("span");
               timerEl.className = className;
               parent.appendChild(timerEl);
+              refs.statusNodeCache.set(cacheKey, timerEl);
               return timerEl;
             };
             if (smoked) {
               const timerEl = ensureTimer(
                 ".combat-card-smoke-timer",
+                "smoke-timer",
                 "combat-card-smoke-timer",
                 card,
               );
@@ -2824,10 +2863,12 @@ export function eventConfigs() {
                 ).toFixed(1);
             } else {
               card.querySelector(".combat-card-smoke-timer")?.remove();
+              refs.statusNodeCache.delete("smoke-timer");
             }
             if (stunned) {
               const timerEl = ensureTimer(
                 ".combat-card-stun-timer",
+                "stun-timer",
                 "combat-card-stun-timer",
                 card,
               );
@@ -2838,10 +2879,12 @@ export function eventConfigs() {
                 ).toFixed(1);
             } else {
               card.querySelector(".combat-card-stun-timer")?.remove();
+              refs.statusNodeCache.delete("stun-timer");
             }
             if (burning) {
               const timerEl = ensureTimer(
                 ".combat-card-burn-timer",
+                "burn-timer",
                 "combat-card-burn-timer",
                 card,
               );
@@ -2852,6 +2895,7 @@ export function eventConfigs() {
                 ).toFixed(1);
             } else {
               card.querySelector(".combat-card-burn-timer")?.remove();
+              refs.statusNodeCache.delete("burn-timer");
             }
             const dotActive = burning || bleeding;
             if (dotActive) {
@@ -2874,6 +2918,7 @@ export function eventConfigs() {
               if (refs.avatarWrap) {
                 const timerEl = ensureTimer(
                   ".combat-card-stim-timer",
+                  "stim-timer",
                   "combat-card-stim-timer",
                   refs.avatarWrap,
                 );
@@ -2885,10 +2930,12 @@ export function eventConfigs() {
               }
             } else {
               card.querySelector(".combat-card-stim-timer")?.remove();
+              refs.statusNodeCache.delete("stim-timer");
             }
             if (blinded) {
               const timerEl = ensureTimer(
                 ".combat-card-blind-timer",
+                "blind-timer",
                 "combat-card-blind-timer",
                 card,
               );
@@ -2899,6 +2946,7 @@ export function eventConfigs() {
                 ).toFixed(1);
             } else {
               card.querySelector(".combat-card-blind-timer")?.remove();
+              refs.statusNodeCache.delete("blind-timer");
             }
             if (suppressed) {
               let arrowWrap = card.querySelector(
@@ -2915,6 +2963,7 @@ export function eventConfigs() {
               }
               const timerEl = ensureTimer(
                 ".combat-card-suppress-timer",
+                "suppress-timer",
                 "combat-card-suppress-timer",
                 card,
               );
@@ -2926,10 +2975,12 @@ export function eventConfigs() {
             } else {
               card.querySelector(".combat-card-suppress-arrow-wrap")?.remove();
               card.querySelector(".combat-card-suppress-timer")?.remove();
+              refs.statusNodeCache.delete("suppress-timer");
             }
             if (settingUp) {
               const timerEl = ensureTimer(
                 ".combat-card-setup-timer",
+                "setup-timer",
                 "combat-card-setup-timer",
                 card,
               );
@@ -2937,6 +2988,7 @@ export function eventConfigs() {
                 timerEl.textContent = `SETUP ${(((c.setupUntil ?? 0) - now) / 1000).toFixed(1)}s`;
             } else {
               card.querySelector(".combat-card-setup-timer")?.remove();
+              refs.statusNodeCache.delete("setup-timer");
             }
             let shieldWrap = card.querySelector(
               ".combat-card-cover-shield",
@@ -2953,6 +3005,7 @@ export function eventConfigs() {
               }
               const timerEl = ensureTimer(
                 ".combat-card-cover-timer",
+                "cover-timer",
                 "combat-card-cover-timer",
                 card,
               );
@@ -2972,6 +3025,7 @@ export function eventConfigs() {
                 timerEl.style.animation =
                   "combat-timer-fade 0.45s ease-out forwards";
                 setTimeout(() => timerEl.remove(), 450);
+                refs.statusNodeCache.delete("cover-timer");
               }
             }
           });
@@ -2991,7 +3045,7 @@ export function eventConfigs() {
         dirtySpeedCombatantIds.delete(c.id);
       }
       for (const write of domWrites) write();
-      drawAttackLines();
+      drawAttackLines(force || timedUpdate);
     }
 
     let combatTickId: number | null = null;
@@ -3086,7 +3140,7 @@ export function eventConfigs() {
         const enemyBaseLevel = Math.max(
           1,
           Math.min(
-            20,
+            999,
             Math.round(
               enemies.reduce((sum, e) => sum + (e.level ?? 1), 0) /
                 Math.max(1, enemies.length),
@@ -3105,7 +3159,10 @@ export function eventConfigs() {
           missionForCombat?.kind,
           undefined,
           undefined,
-          { designation: role },
+          {
+            designation: role,
+            factionId: missionForCombat?.factionId,
+          },
         );
         newcomer.enemyMedkitUses =
           role === "medic" ? (missionEncounter?.medicHealsPerMedic ?? 0) : 0;
@@ -3202,11 +3259,12 @@ export function eventConfigs() {
           if (!shouldShowCombatFeedback(ev.targetId)) continue;
           const card = getCombatantCard(ev.targetId);
           if (card) {
-            const popup = document.createElement("span");
-            popup.className = "combat-damage-popup combat-burn-popup";
-            popup.textContent = String(ev.damage);
-            card.appendChild(popup);
-            setTimeout(() => popup.remove(), 1500);
+            spawnCombatPopup(
+              card,
+              "combat-damage-popup combat-burn-popup",
+              String(ev.damage),
+              1500,
+            );
           }
           markCombatantDirty(ev.targetId, {
             hp: true,
@@ -3218,11 +3276,12 @@ export function eventConfigs() {
           if (!shouldShowCombatFeedback(ev.targetId)) continue;
           const card = getCombatantCard(ev.targetId);
           if (card) {
-            const popup = document.createElement("span");
-            popup.className = "combat-damage-popup combat-bleed-popup";
-            popup.textContent = String(ev.damage);
-            card.appendChild(popup);
-            setTimeout(() => popup.remove(), 1500);
+            spawnCombatPopup(
+              card,
+              "combat-damage-popup combat-bleed-popup",
+              String(ev.damage),
+              1500,
+            );
           }
           markCombatantDirty(ev.targetId, {
             hp: true,
@@ -3393,7 +3452,7 @@ export function eventConfigs() {
             /* Same derivation as enemy soldiers: getAverageCompanyLevel(company) - compute before XP to match combat setup */
             const missionLevel = Math.max(
               1,
-              Math.min(20, getAverageCompanyLevel(store.company)),
+              Math.min(999, getAverageCompanyLevel(store.company)),
             );
             if (!isDevTest) {
               store.deductMissionEnergy(
@@ -3800,23 +3859,21 @@ export function eventConfigs() {
                 if (!targetCard) return;
                 if (!shouldShowCombatFeedback(result.targetId)) return;
                 if (!result.hit) {
-                  const popup = document.createElement("span");
-                  popup.className = "combat-miss-popup";
-                  popup.textContent = "MISS";
-                  targetCard.appendChild(popup);
-                  setTimeout(() => popup.remove(), 2200);
+                  spawnCombatPopup(targetCard, "combat-miss-popup", "MISS", 2200);
                 } else if (result.evaded) {
-                  const popup = document.createElement("span");
-                  popup.className = "combat-evade-popup";
-                  popup.textContent = "Evade";
-                  targetCard.appendChild(popup);
-                  setTimeout(() => popup.remove(), 2200);
+                  spawnCombatPopup(
+                    targetCard,
+                    "combat-evade-popup",
+                    "Evade",
+                    2200,
+                  );
                 } else if (result.damage > 0) {
-                  const popup = document.createElement("span");
-                  popup.className = "combat-damage-popup";
-                  popup.textContent = String(result.damage);
-                  targetCard.appendChild(popup);
-                  setTimeout(() => popup.remove(), 1500);
+                  spawnCombatPopup(
+                    targetCard,
+                    "combat-damage-popup",
+                    String(result.damage),
+                    1500,
+                  );
                   targetCard.classList.add("combat-card-shake");
                   setTimeout(
                     () => targetCard.classList.remove("combat-card-shake"),
@@ -4514,7 +4571,6 @@ export function eventConfigs() {
             .map(({ item, armoryIndex, canEquip }) => {
               const iconUrl = getItemIconUrl(item);
               const uses = item.uses ?? item.quantity;
-              const level = item.level ?? 1;
               const rarity = item.rarity ?? "common";
               const json = JSON.stringify(item).replace(/"/g, "&quot;");
               const unusableClass = canEquip
@@ -4537,7 +4593,7 @@ export function eventConfigs() {
 <button type="button" class="equip-supplies-item equip-slot equip-slot-filled${rarity !== "common" ? ` rarity-${rarity}` : ""}${unusableClass}" data-armory-index="${armoryIndex}" data-item-json="${json}" data-can-equip="${canEquip}" title="${esc(item.name ?? "")}">
   <div class="equip-slot-inner">
     <img src="${iconUrl}" alt="${item.name}" width="48" height="48">
-    <span class="equip-slot-level rarity-${rarity}">Lv${level}</span>
+    ${renderItemLevelBadge(item, "equip-slot-level")}
     ${uses != null ? `<span class="equip-slot-uses-badge">×${uses}</span>` : ""}
     ${roleLabelHtml}
   </div>

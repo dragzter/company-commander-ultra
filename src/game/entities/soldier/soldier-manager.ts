@@ -87,9 +87,8 @@ function SoldierManager() {
   }
 
   function levelUpSoldier(soldier: Soldier, lvl: number) {
-    const atts = getStatsForLevel(lvl) as Attributes;
-    addUpAttributes(soldier, atts);
     soldier.level = lvl;
+    recomputeSoldierAttributes(soldier);
   }
 
   /** Recompute combat profile from current attributes, armor, weapon, trait. Call after level-up. */
@@ -103,18 +102,6 @@ function SoldierManager() {
       applyWeaponPercentToCombatProfile(soldier, soldier.weapon);
       applyWeaponEffectToCombatProfile(soldier, soldier.weapon);
     }
-  }
-
-  function addUpAttributes(soldier: Soldier, attributes: Attributes) {
-    const atts = attributes;
-    soldier.attributes = {
-      hit_points: soldier.attributes.hit_points + atts.hit_points,
-      level: atts.level,
-      dexterity: soldier.attributes.dexterity + atts.dexterity,
-      morale: soldier.attributes.morale + atts.morale,
-      toughness: soldier.attributes.toughness + atts.toughness,
-      awareness: soldier.attributes.awareness + atts.awareness,
-    };
   }
 
   function getNewSoldier(

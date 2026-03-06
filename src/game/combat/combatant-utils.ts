@@ -6,13 +6,16 @@ import { EPIC_ARMOR_BASES } from "../../constants/items/epic-armor-bases.ts";
 import type { ArmorImmunity } from "../../constants/items/epic-armor-bases.ts";
 import { getItemSpecialEffect } from "../../constants/item-special-effects.ts";
 import { Images } from "../../constants/images.ts";
-import type { MissionKind } from "../../constants/missions.ts";
+import type { MissionFactionId, MissionKind } from "../../constants/missions.ts";
 import { getItemIconUrl } from "../../utils/item-utils.ts";
 import type { Soldier } from "../entities/types.ts";
 import { SoldierManager } from "../entities/soldier/soldier-manager.ts";
 import type { Combatant } from "./types.ts";
 
 const RED_PORTRAIT_KEYS = Object.keys(Images.red_portrait);
+const BLUE_PORTRAIT_KEYS = Object.keys(Images.blue_portrait);
+const BLACK_PORTRAIT_KEYS = Object.keys(Images.black_portrait);
+const SAND_PORTRAIT_KEYS = Object.keys(Images.sand_portrait);
 const round1 = (n: number) => Math.round(n * 10) / 10;
 
 function getArmorImmunitiesFromBase(baseId: string | undefined): ArmorImmunity[] {
@@ -111,10 +114,14 @@ export function createEnemyCombatant(
   missionKind?: MissionKind,
   manhuntTargetIndex?: number,
   roleSlots?: { supportIndex?: number; medicIndex?: number },
-  options?: { designation?: "rifleman" | "support" | "medic"; isManhuntTarget?: boolean },
+  options?: {
+    designation?: "rifleman" | "support" | "medic";
+    isManhuntTarget?: boolean;
+    factionId?: MissionFactionId;
+  },
 ): Combatant {
   const eliteBonus = isEpicMission ? (Math.random() < 0.5 ? 1 : 2) : 0;
-  const level = Math.max(1, Math.min(20, companyLevel + eliteBonus));
+  const level = Math.max(1, Math.min(999, companyLevel + eliteBonus));
   const supportIndex = roleSlots?.supportIndex ?? 0;
   const medicIndex = roleSlots?.medicIndex ?? (enemyCount >= 2 ? (supportIndex === 1 ? 0 : 1) : -1);
   const forcedDesignation = options?.designation;
@@ -169,7 +176,26 @@ export function createEnemyCombatant(
     c.damageMin = Math.max(1, round1((c.damageMin ?? 4) * ENEMY_DAMAGE_MULTIPLIER));
     c.damageMax = Math.max(1, round1((c.damageMax ?? 6) * ENEMY_DAMAGE_MULTIPLIER));
   }
-  c.avatar = Images.red_portrait[RED_PORTRAIT_KEYS[index % RED_PORTRAIT_KEYS.length] as keyof typeof Images.red_portrait];
+  const factionId = options?.factionId;
+  let portraitDir = "red-portrait";
+  let portraitPool = RED_PORTRAIT_KEYS;
+  let portraitMap = Images.red_portrait;
+  if (factionId === "liberties_vanguard") {
+    portraitDir = "blue-portrait";
+    portraitPool = BLUE_PORTRAIT_KEYS;
+    portraitMap = Images.blue_portrait;
+  } else if (factionId === "iron_corps") {
+    portraitDir = "black-portrait";
+    portraitPool = BLACK_PORTRAIT_KEYS;
+    portraitMap = Images.black_portrait;
+  } else if (factionId === "desert_wolves") {
+    portraitDir = "sand-portraits";
+    portraitPool = SAND_PORTRAIT_KEYS;
+    portraitMap = Images.sand_portrait;
+  }
+  const portraitKey = portraitPool[index % Math.max(1, portraitPool.length)] as keyof typeof portraitMap;
+  c.avatar = portraitMap[portraitKey];
+  c.enemyPortraitDir = portraitDir;
   if ((c.designation ?? "").toLowerCase() === "support") {
     c.enemySuppressUses = 1;
   } else {

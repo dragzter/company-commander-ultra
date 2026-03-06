@@ -17,9 +17,10 @@ function roleBadge(designation: string | undefined): string {
 }
 
 function combatCard(c: Combatant, portraitDir: "player" | "enemy"): string {
+  const enemyPortraitDir = c.enemyPortraitDir ?? "red-portrait";
   const imgSrc = portraitDir === "player"
     ? getSoldierPortraitUrl(c.avatar ?? "default.png", c.designation)
-    : `/images/red-portrait/${c.avatar}`;
+    : `/images/${enemyPortraitDir}/${c.avatar}`;
   const weaponIcon = c.weaponIconUrl ?? "";
   const pct = Math.max(0, Math.min(100, (c.hp / c.maxHp) * 100));
   const isDown = c.hp <= 0 || c.downState;

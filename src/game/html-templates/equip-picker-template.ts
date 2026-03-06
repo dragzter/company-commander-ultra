@@ -1,6 +1,6 @@
 import type { Soldier } from "../entities/types.ts";
 import type { Item } from "../../constants/items/types.ts";
-import { getItemIconUrl } from "../../utils/item-utils.ts";
+import { getItemIconUrl, renderItemLevelBadge } from "../../utils/item-utils.ts";
 import { formatDesignation, formatDisplayName, getSoldierPortraitUrl } from "../../utils/name-utils.ts";
 import { usePlayerCompanyStore } from "../../store/ui-store.ts";
 import { MAX_EQUIPMENT_SLOTS } from "../../constants/inventory-slots.ts";
@@ -21,7 +21,6 @@ function slotHtml(
 ): string {
   const iconUrl = item ? getItemIconUrl(item) : "";
   const name = item?.name ?? "Empty";
-  const level = item?.level;
   const dataSlot = slotType === "equipment" ? `data-eq-index="${eqIndex}"` : "";
   const slotClass = item ? "equip-slot-filled" : "equip-slot-empty";
   const rarityClass = item && item.rarity && item.rarity !== "common" ? ` rarity-${item.rarity}` : "";
@@ -34,10 +33,8 @@ function slotHtml(
       ? `<span class="equip-slot-letter">${slotLetter}</span>`
       : "<span class='equip-slot-placeholder'>—</span>";
   const uses = item?.uses;
-  const rarity = item?.rarity ?? "common";
-  const noLevel = (item as { noLevel?: boolean })?.noLevel;
   const usesBadge = uses != null ? `<span class="equip-slot-uses-badge">×${uses}</span>` : "";
-  const levelBadge = item && !noLevel ? `<span class="equip-slot-level rarity-${rarity}">Lv${level ?? 1}</span>` : "";
+  const levelBadge = renderItemLevelBadge(item, "equip-slot-level");
   return `
 <div class="equip-slot ${slotClass}${rarityClass} ${slotTypeClass} ${designationClass}" data-soldier-id="${soldierId}" data-slot-type="${slotType}" ${dataSlot} data-slot-item="${item ? escapeAttr(JSON.stringify(item)) : ""}" role="button" tabindex="0">
   <div class="equip-slot-inner">

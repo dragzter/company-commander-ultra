@@ -6,6 +6,7 @@ export interface MissionRewardInput {
   difficulty: number;
   kind: MissionKind;
   rarity: MissionRarity;
+  missionLevel?: number;
 }
 
 const KIND_REWARD_MODIFIERS: Record<MissionKind, number> = {
@@ -42,6 +43,13 @@ function clampDifficulty(difficulty: number): 1 | 2 | 3 | 4 {
   return Math.round(difficulty) as 1 | 2 | 3 | 4;
 }
 
+function computeLevelCreditMultiplier(level?: number): number {
+  const lvl = Math.max(1, Math.min(999, Math.floor(level ?? 1)));
+  const pre20 = Math.min(lvl, 20) - 1;
+  const post20 = Math.max(0, lvl - 20);
+  return 1 + (pre20 * 0.04) + (post20 * 0.007);
+}
+
 export function computeMissionRewards(input: MissionRewardInput): {
   creditReward: number;
   xpReward: number;
@@ -51,9 +59,10 @@ export function computeMissionRewards(input: MissionRewardInput): {
   const baseXp = BASE_XP_BY_DIFFICULTY[difficulty];
   const kindMod = KIND_REWARD_MODIFIERS[input.kind] ?? 1;
   const rarityMod = RARITY_REWARD_MODIFIERS[input.rarity] ?? 1;
+  const levelCreditMod = computeLevelCreditMultiplier(input.missionLevel);
   const totalMod = kindMod * rarityMod;
   return {
-    creditReward: Math.round(baseCredits * totalMod),
+    creditReward: Math.round(baseCredits * totalMod * levelCreditMod),
     xpReward: Math.round(baseXp * totalMod),
   };
 }

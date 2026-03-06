@@ -65,7 +65,7 @@ export function getEquipmentLoadoutForLevel(level: number, designation: Designat
     designation === "medic"
       ? [{ ...MedicalItems.common.standard_medkit, level: tier as import("../../constants/items/types.ts").GearLevel }]
       : designation === "support"
-        ? [{ ...ThrowableItems.common.mk18_smoke, level: tier as import("../../constants/items/types.ts").GearLevel }]
+        ? [{ ...ThrowableItems.common.mk18_smoke, level: 1 as import("../../constants/items/types.ts").GearLevel, noLevel: true }]
         : [{ ...ThrowableItems.common.m3_frag_grenade, level: tier as import("../../constants/items/types.ts").GearLevel }];
   return { weapon, armor, inventory };
 }

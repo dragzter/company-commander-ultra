@@ -19,7 +19,7 @@ import {
   getWeaponsMarketItemsAll,
   getArmorMarketItemsAll,
 } from "../../constants/gear-market.ts";
-import { getItemIconUrl } from "../../utils/item-utils.ts";
+import { getItemIconUrl, renderItemLevelBadge } from "../../utils/item-utils.ts";
 import { getWeaponRestrictRole } from "../../utils/equip-utils.ts";
 import { getMaxSoldierLevel } from "../../utils/company-utils.ts";
 import { MAX_GEAR_LEVEL } from "../../constants/items/types.ts";
@@ -97,8 +97,6 @@ function marketItemCard(
 ): string {
   const iconUrl = getItemIconUrl(entry.item);
   const name = nameOverride ?? entry.item.name;
-  const level = entry.item.level ?? 1;
-  const noLevel = (entry.item as { noLevel?: boolean }).noLevel;
   const uses = entry.item.uses;
   const rarity = entry.item.rarity ?? "common";
   const rarityClass = rarity !== "common" ? ` market-item-rarity-${rarity} rarity-${rarity}` : "";
@@ -111,7 +109,7 @@ function marketItemCard(
   const roleBadgeHtml = weaponRole
     ? `<span class="market-weapon-role-badge role-${weaponRole}">${WEAPON_ROLE_LABELS[weaponRole] ?? weaponRole}</span>`
     : "";
-  const levelBadgeHtml = !noLevel ? `<span class="item-level-badge rarity-${rarity}">Lv${level}</span>` : "";
+  const levelBadgeHtml = renderItemLevelBadge(entry.item);
   const iconHtml = iconUrl
     ? `<div class="market-item-icon-wrap"><img class="market-item-icon" src="${iconUrl}" alt="${name}" width="42" height="42">${levelBadgeHtml}${isSupplies && uses != null ? usesBadgeHtml : ""}${roleBadgeHtml}</div>`
     : "";
@@ -132,11 +130,9 @@ function marketItemCard(
 function marketSellItemCard(item: import("../../constants/items/types.ts").Item, index: number, companyLevel: number): string {
   const iconUrl = getItemIconUrl(item);
   const rarity = item.rarity ?? "common";
-  const level = item.level ?? 1;
-  const noLevel = (item as { noLevel?: boolean }).noLevel;
   const uses = item.uses ?? item.quantity;
   const sellValue = getItemSellPrice(item, companyLevel);
-  const levelBadgeHtml = !noLevel ? `<span class="item-level-badge rarity-${rarity}">Lv${level}</span>` : "";
+  const levelBadgeHtml = renderItemLevelBadge(item);
   const usesBadgeHtml = uses != null ? `<span class="market-item-uses-badge">×${uses}</span>` : "";
   return `
 <button type="button" class="market-sell-item${rarity !== "common" ? ` rarity-${rarity}` : ""}" data-item-index="${index}" data-item-rarity="${rarity}" data-sell-value="${sellValue}">
@@ -355,8 +351,6 @@ export const devCatalogMarketTemplate = () => {
   ) => {
     const iconUrl = getItemIconUrl(entry.item);
     const name = entry.item.name;
-    const level = entry.item.level ?? 1;
-    const noLevel = (entry.item as { noLevel?: boolean }).noLevel;
     const rarity = entry.item.rarity ?? "common";
     const rarityClass = rarity !== "common" ? ` market-item-rarity-${rarity} rarity-${rarity}` : "";
     const isWeapon = entry.item.type === "ballistic_weapon" || entry.item.type === "melee_weapon";
@@ -366,7 +360,7 @@ export const devCatalogMarketTemplate = () => {
     const roleBadgeHtml = weaponRole
       ? `<span class="market-weapon-role-badge role-${weaponRole}">${WEAPON_ROLE_LABELS[weaponRole] ?? weaponRole}</span>`
       : "";
-    const levelBadgeHtml = !noLevel ? `<span class="item-level-badge rarity-${rarity}">Lv${level}</span>` : "";
+    const levelBadgeHtml = renderItemLevelBadge(entry.item);
     const iconHtml = iconUrl
       ? `<div class="market-item-icon-wrap"><img class="market-item-icon" src="${iconUrl}" alt="${name}" width="42" height="42">${levelBadgeHtml}${roleBadgeHtml}</div>`
       : "";

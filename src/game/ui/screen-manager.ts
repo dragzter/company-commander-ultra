@@ -53,7 +53,10 @@ import { SoldierManager } from "../entities/soldier/soldier-manager.ts";
 import type { Designation, Soldier } from "../entities/types.ts";
 import type { Mission } from "../../constants/missions.ts";
 import { generateDevTestMissions } from "../../services/missions/mission-generator.ts";
-import { normalizeEncounterForMission } from "../../services/missions/mission-scenarios.ts";
+import {
+  getStandardMissionEncounter,
+  normalizeEncounterForMission,
+} from "../../services/missions/mission-scenarios.ts";
 import {
   RARE_WEAPON_BASES,
   createRareWeapon,
@@ -122,7 +125,7 @@ function ScreenManager() {
     const source =
       activeSoldiers.length > 0 ? activeSoldiers : (company?.soldiers ?? []);
     const enemyBase = getEnemyLevelFromActiveSquad(source);
-    return Math.max(1, Math.min(20, enemyBase - 1));
+    return Math.max(1, Math.min(999, enemyBase - 1));
   }
 
   function hasValidRecruitMarketComposition(soldiers: Soldier[]): boolean {
@@ -215,8 +218,6 @@ function ScreenManager() {
 
   function createMissionsPage(mode?: "menu" | "normal" | "epic" | "dev") {
     UiManager.clear.center();
-    const st = usePlayerCompanyStore.getState();
-    st.addInitialTroopsIfEmpty();
     const store = usePlayerCompanyStore.getState();
     const onboardingFirstMission = !!store.onboardingFirstMissionPending;
     store.setMissionsViewMode(
@@ -328,6 +329,9 @@ function ScreenManager() {
       players = dev.players;
       enemies = dev.enemies;
     } else {
+      const normalizedMission = mission
+        ? normalizeEncounterForMission(mission)
+        : null;
       const store = usePlayerCompanyStore.getState();
       const company = store.company;
       const activeCount = getActiveSlots(company);
@@ -337,11 +341,17 @@ function ScreenManager() {
         .map((id) => (id ? getSoldierById(company, id) : null))
         .filter((s): s is NonNullable<typeof s> => s != null);
       players = activeSoldiers.map((s) => soldierToCombatant(s));
-      const encounter = mission?.encounter;
+      const encounter = normalizedMission?.encounter ??
+        (normalizedMission
+          ? getStandardMissionEncounter(
+              normalizedMission.kind,
+              normalizedMission.difficulty,
+            )
+          : undefined);
       const enemyCount =
-        encounter?.initialEnemyCount ?? mission?.enemyCount ?? 4;
+        encounter?.initialEnemyCount ?? normalizedMission?.enemyCount ?? 4;
       const enemyBaseLevel = getEnemyLevelFromActiveSquad(activeSoldiers);
-      const isEpicMission = !!(mission?.isEpic ?? mission?.rarity === "epic");
+      const isEpicMission = !!(normalizedMission?.isEpic ?? normalizedMission?.rarity === "epic");
       const roles: Designation[] = [];
       if (encounter) {
         for (let i = 0; i < encounter.rolesInitial.rifleman; i++)
@@ -359,13 +369,7 @@ function ScreenManager() {
         roles[i] = roles[j];
         roles[j] = t;
       }
-      const missionDifficulty = Math.max(
-        1,
-        Math.floor(mission?.difficulty ?? 1),
-      );
-      const eliteCount = mission?.kind === "manhunt"
-        ? (missionDifficulty >= 3 ? 2 : 1)
-        : (encounter?.eliteCount ?? 0);
+      const eliteCount = Math.max(0, encounter?.eliteCount ?? 0);
       const eliteIndices = new Set<number>();
       if (eliteCount > 0) {
         const idxPool = Array.from({ length: enemyCount }, (_, i) => i);
@@ -379,16 +383,20 @@ function ScreenManager() {
       enemies = Array.from({ length: enemyCount }, (_, i) => {
         const role = roles[i] ?? "rifleman";
         const isManhuntElite =
-          mission?.kind === "manhunt" && eliteIndices.has(i);
+          normalizedMission?.kind === "manhunt" && eliteIndices.has(i);
         const c = createEnemyCombatant(
           i,
           enemyCount,
           enemyBaseLevel,
           isEpicMission,
-          mission?.kind,
+          normalizedMission?.kind,
           isManhuntElite ? i : undefined,
           undefined,
-          { designation: role, isManhuntTarget: isManhuntElite },
+          {
+            designation: role,
+            isManhuntTarget: isManhuntElite,
+            factionId: normalizedMission?.factionId,
+          },
         );
         const isMedic = role === "medic";
         const isSupport = role === "support";
@@ -404,7 +412,7 @@ function ScreenManager() {
       });
       if (encounter && encounter.grenadeThrowers > 0 && enemyCount > 0) {
         const grenadeCandidates =
-          mission?.kind === "manhunt"
+          normalizedMission?.kind === "manhunt"
             ? enemies.filter((e) => e.isManhuntTarget)
             : enemies.filter((e) => e.hp > 0 && !e.downState);
         const pool = grenadeCandidates.length > 0 ? grenadeCandidates : enemies;
@@ -519,7 +527,12 @@ function ScreenManager() {
         if (overlay) overlay.classList.add("combat-summary-visible");
       }
     }
-    Styler.setCenterBG("bg_81.jpg", true);
+    const missionBattleBg = mission?.battleBackground;
+    if (missionBattleBg) {
+      Styler.setCenterBG(`battle_bg/${missionBattleBg}`, true);
+    } else {
+      Styler.setCenterBG("bg_81.jpg", true);
+    }
     show.center();
   }
 

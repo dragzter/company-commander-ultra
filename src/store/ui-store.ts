@@ -10,6 +10,7 @@ import { STARTING_CREDITS } from "../constants/economy.ts";
 import type { Mission, MissionKind } from "../constants/missions.ts";
 import { getSoldierVeterancyDefaults } from "../constants/veterancy-traits.ts";
 import type { EarnedTraitAward } from "../constants/veterancy-traits.ts";
+import { SoldierManager } from "../game/entities/soldier/soldier-manager.ts";
 
 const { nocache } = URLReader(document.location.search);
 const skipPersistence = nocache === "true";
@@ -95,6 +96,7 @@ export type CompanyStore = {
   setOnboardingReadyRoomIntroPending: (pending: boolean) => void;
   setOnboardingRecruitStep: (step: RecruitOnboardingStep) => void;
   setOnboardingRecruitSoldier: (soldier: Soldier | null) => void;
+  bootstrapNewCompanyIfEmpty: () => void;
   ensureMissionBoard: () => void;
   refreshMissionBoard: () => void;
   addSoldierToCompany: (soldier: Soldier) => void;
@@ -292,28 +294,33 @@ export const usePlayerCompanyStore = createStore<CompanyStore>()(
           if (Array.isArray(merged.company?.soldiers)) {
             merged.company = {
               ...merged.company,
-              soldiers: merged.company!.soldiers!.map((s: Soldier) => ({
-                ...s,
-                energy: typeof s.energy === "number" ? s.energy : 100,
-                missionsCompleted:
-                  typeof s.missionsCompleted === "number"
-                    ? s.missionsCompleted
-                    : 0,
-                totalKills: typeof s.totalKills === "number" ? s.totalKills : 0,
-                earnedTraitIds: Array.isArray((s as Soldier).earnedTraitIds)
-                  ? (s as Soldier).earnedTraitIds
-                  : [],
-                grenadeHitBonusPct:
-                  typeof s.grenadeHitBonusPct === "number"
-                    ? s.grenadeHitBonusPct
-                    : 0,
-                veterancy: {
-                  ...getSoldierVeterancyDefaults(),
-                  ...(typeof s.veterancy === "object" && s.veterancy
-                    ? s.veterancy
-                    : {}),
-                },
-              })),
+              soldiers: merged.company!.soldiers!.map((s: Soldier) => {
+                const hydrated = {
+                  ...s,
+                  energy: typeof s.energy === "number" ? s.energy : 100,
+                  missionsCompleted:
+                    typeof s.missionsCompleted === "number"
+                      ? s.missionsCompleted
+                      : 0,
+                  totalKills:
+                    typeof s.totalKills === "number" ? s.totalKills : 0,
+                  earnedTraitIds: Array.isArray((s as Soldier).earnedTraitIds)
+                    ? (s as Soldier).earnedTraitIds
+                    : [],
+                  grenadeHitBonusPct:
+                    typeof s.grenadeHitBonusPct === "number"
+                      ? s.grenadeHitBonusPct
+                      : 0,
+                  veterancy: {
+                    ...getSoldierVeterancyDefaults(),
+                    ...(typeof s.veterancy === "object" && s.veterancy
+                      ? s.veterancy
+                      : {}),
+                  },
+                } as Soldier;
+                SoldierManager.refreshCombatProfile(hydrated);
+                return hydrated;
+              }),
             };
           }
           const mtl = merged.marketTierLevel as number | undefined;

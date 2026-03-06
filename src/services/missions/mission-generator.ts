@@ -307,6 +307,7 @@ export function generateMissions(
       difficulty,
       kind,
       rarity,
+      missionLevel: progressionLevel,
     });
     const id = `${isEpic ? "epic" : "mission"}-${kind}-${serial}-${Date.now()}`;
     const envBackgrounds =

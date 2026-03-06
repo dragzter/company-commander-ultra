@@ -13,7 +13,7 @@ import {
 } from "../../constants/company-slots.ts";
 import { usePlayerCompanyStore } from "../../store/ui-store.ts";
 import { formatDesignation, formatDisplayName, getSoldierPortraitUrl } from "../../utils/name-utils.ts";
-import { getItemIconUrl } from "../../utils/item-utils.ts";
+import { getItemIconUrl, renderItemLevelBadge } from "../../utils/item-utils.ts";
 import { Partial } from "./partials/partial.ts";
 import { getBaseAndGearStats } from "../../utils/soldier-stats-utils.ts";
 
@@ -46,8 +46,6 @@ function readyRoomEquipSlot(
   const dataAttrs = `data-soldier-id="${soldierId}" data-slot-type="${slotType}" data-eq-index="${eqIndex}" data-slot-item="${item ? escapeAttr(JSON.stringify(item)) : ""}" role="button" tabindex="0"`;
   if (!item) return `<div class="ready-room-equip-slot ready-room-equip-empty ready-room-equip-droppable" title="Empty" ${dataAttrs}><span class="ready-room-equip-placeholder">—</span></div>`;
   const iconUrl = getItemIconUrl(item);
-  const level = item.level ?? 1;
-  const rarity = (item.rarity ?? "common") as string;
   const name = item.name ?? "?";
   const uses = item.uses ?? item.quantity;
   const usesBadge = uses != null ? `<span class="equip-slot-uses-badge">×${uses}</span>` : "";
@@ -55,7 +53,7 @@ function readyRoomEquipSlot(
   return `
 <div class="ready-room-equip-slot item-icon-wrap ready-room-equip-droppable" title="${name}" ${dataAttrs}>
   <img class="ready-room-equip-icon" src="${iconUrl}" alt="" width="38" height="38">
-  <span class="item-level-badge ready-room-equip-level rarity-${rarity}">Lv${level}</span>
+  ${renderItemLevelBadge(item, "ready-room-equip-level")}
   ${usesBadge}
 </div>`;
 }

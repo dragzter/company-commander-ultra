@@ -131,6 +131,7 @@ function UiManager() {
 
   function renderCompanyHomePage() {
     _setStep(GAME_STEPS.at_company_homepage_4);
+    usePlayerCompanyStore.getState().bootstrapNewCompanyIfEmpty();
     _ScreenManager.generate.companyHomePage();
   }
 
