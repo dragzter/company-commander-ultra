@@ -103,6 +103,10 @@ import {
   type EarnedTraitAward,
 } from "../../constants/veterancy-traits.ts";
 import type { Soldier } from "../entities/types.ts";
+import {
+  createCareerMission,
+  isCareerUnlocked,
+} from "../../services/missions/career-mode.ts";
 
 /**
  * Contains definitions for the events of all html templates.
@@ -253,6 +257,14 @@ export function eventConfigs() {
     }
 
     return true;
+  }
+
+  function isInMissionUiContext(): boolean {
+    return Boolean(
+      document.getElementById("missions-screen") ||
+        document.getElementById("career-screen") ||
+        document.getElementById("ready-room-screen"),
+    );
   }
 
   const initHelperDialogTypewriter = () => {
@@ -610,6 +622,10 @@ export function eventConfigs() {
       eventType: "click",
       callback: () => {
         UiManager.selectCompanyHomeButton(DOM.company.missions);
+        if (isInMissionUiContext()) {
+          UiManager.renderMissionsScreen("menu");
+          return;
+        }
         UiManager.renderMissionsScreen();
       },
     },
@@ -1003,7 +1019,9 @@ export function eventConfigs() {
       selector: DOM.missions.modeCareerBtn,
       eventType: "click",
       callback: () => {
-        UiManager.renderCompanyHomePage();
+        const st = usePlayerCompanyStore.getState();
+        st.setMissionsResumeState("career", null);
+        UiManager.renderMissionsScreen("career");
       },
     },
     {
@@ -1071,6 +1089,33 @@ export function eventConfigs() {
       callback: () => {
         const popup = s_(DOM.missions.flavorPopup);
         if (popup) popup.setAttribute("hidden", "");
+      },
+    },
+  ];
+
+  const careerScreenEventConfig: HandlerInitConfig[] = [
+    {
+      selector: "#career-back-to-missions",
+      eventType: "click",
+      callback: () => {
+        UiManager.renderMissionsScreen("menu");
+      },
+    },
+    {
+      selector: "#career-launch-next",
+      eventType: "click",
+      callback: () => {
+        const store = usePlayerCompanyStore.getState();
+        if (
+          !isCareerUnlocked(store.company, !!store.onboardingFirstMissionPending)
+        )
+          return;
+        const mission = createCareerMission(
+          store.company,
+          store.careerCurrentLevel ?? 1,
+        );
+        store.setMissionsResumeState("ready_room", mission);
+        UiManager.renderReadyRoomScreen(mission);
       },
     },
   ];
@@ -3460,10 +3505,12 @@ export function eventConfigs() {
             );
             const store = usePlayerCompanyStore.getState();
             /* Same derivation as enemy soldiers: getAverageCompanyLevel(company) - compute before XP to match combat setup */
-            const missionLevel = Math.max(
-              1,
-              Math.min(999, getAverageCompanyLevel(store.company)),
-            );
+            const missionLevel = missionForCombat?.isCareer
+              ? Math.max(
+                  1,
+                  Math.min(999, missionForCombat.careerLevel ?? 1),
+                )
+              : Math.max(1, Math.min(999, getAverageCompanyLevel(store.company)));
             if (!isDevTest) {
               store.deductMissionEnergy(
                 survivorIds,
@@ -3539,6 +3586,9 @@ export function eventConfigs() {
                     lootItems:
                       [] as import("../../constants/items/types.ts").Item[],
                   };
+            if (!isDevTest && victory && missionForCombat?.isCareer) {
+              store.advanceCareerLevel();
+            }
             const newLevels = isDevTest
               ? new Map<string, number>()
               : new Map(
@@ -6437,8 +6487,7 @@ export function eventConfigs() {
       callback: () => {
         const st = usePlayerCompanyStore.getState();
         st.setMissionsResumeState("none", null);
-        const mode = st.missionsViewMode;
-        UiManager.renderMissionsScreen(mode === "menu" ? "normal" : mode);
+        UiManager.renderMissionsScreen("menu");
       },
     },
     {
@@ -7338,6 +7387,7 @@ export function eventConfigs() {
     market: () => marketEventConfig,
     troopsScreen: () => troopsScreenEventConfig,
     missionsScreen: () => missionsScreenEventConfig,
+    careerScreen: () => careerScreenEventConfig,
     rosterScreen: () => rosterScreenEventConfig,
     inventoryScreen: () => inventoryScreenEventConfig,
     equipPicker: () => equipPickerEventConfig,

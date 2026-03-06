@@ -257,6 +257,10 @@ export type Mission = {
   forcedEnemyLevel?: number;
   forcedGearLevel?: number;
   forcedSquadSize?: number;
+  /** Career ladder mission (separate progression/state from mission board). */
+  isCareer?: boolean;
+  /** Career ladder level (enemy level and reward level source). */
+  careerLevel?: number;
   rarity?: MissionRarity;
   encounter?: MissionEncounterConfig;
   rewardItems?: string[];

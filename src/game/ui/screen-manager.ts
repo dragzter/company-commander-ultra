@@ -23,6 +23,7 @@ import {
   devCatalogMarketTemplate,
 } from "../html-templates/market-templates.ts";
 import { missionsTemplate } from "../html-templates/missions-template.ts";
+import { careerTemplate } from "../html-templates/career-template.ts";
 import {
   readyRoomTemplate,
   clearLastEquipMoveSoldierIds,
@@ -48,6 +49,7 @@ import {
   getSoldierById,
 } from "../../constants/company-slots.ts";
 import { getMaxSoldierLevel } from "../../utils/company-utils.ts";
+import { getAverageCompanyLevel } from "../../utils/company-utils.ts";
 import { Styler } from "../../utils/styler-manager.ts";
 import { SoldierManager } from "../entities/soldier/soldier-manager.ts";
 import type { Designation, Soldier } from "../entities/types.ts";
@@ -57,6 +59,11 @@ import {
   getStandardMissionEncounter,
   normalizeEncounterForMission,
 } from "../../services/missions/mission-scenarios.ts";
+import {
+  createCareerMission,
+  getCareerActiveSoldiers,
+  isCareerUnlocked,
+} from "../../services/missions/career-mode.ts";
 import {
   RARE_WEAPON_BASES,
   createRareWeapon,
@@ -83,6 +90,30 @@ function ScreenManager() {
 
   const { gameBoard, parseHTML } = _UiServiceManager;
   const { show, hide, center, g_menu } = gameBoard();
+
+  function alignCareerCompanyArrowToMission(): void {
+    const ladder = center.querySelector(".career-ladder") as HTMLElement | null;
+    const missionCard = ladder?.querySelector(
+      ".career-mission-card-current",
+    ) as HTMLElement | null;
+    const companyCard = ladder?.querySelector(
+      ".career-company-card",
+    ) as HTMLElement | null;
+    if (!ladder || !missionCard || !companyCard) return;
+
+    const missionRect = missionCard.getBoundingClientRect();
+    const companyRect = companyCard.getBoundingClientRect();
+    if (missionRect.height <= 0 || companyRect.height <= 0) return;
+
+    // Mission connector is centered vertically on the mission card.
+    const missionConnectorY = missionRect.top + missionRect.height / 2;
+    const relativeY = missionConnectorY - companyRect.top;
+    const clampedY = Math.max(10, Math.min(companyRect.height - 10, relativeY));
+    companyCard.style.setProperty(
+      "--career-company-arrow-y",
+      `${Math.round(clampedY)}px`,
+    );
+  }
 
   function getEnemyLevelFromActiveSquad(activeSoldiers: Soldier[]): number {
     if (activeSoldiers.length === 0) return 1;
@@ -216,10 +247,17 @@ function ScreenManager() {
     Styler.setCenterBG("bg_store_88.jpg", true);
   }
 
-  function createMissionsPage(mode?: "menu" | "normal" | "epic" | "dev") {
+  function createMissionsPage(mode?: "menu" | "normal" | "epic" | "career" | "dev") {
     UiManager.clear.center();
     const store = usePlayerCompanyStore.getState();
     const onboardingFirstMission = !!store.onboardingFirstMissionPending;
+    if (
+      mode &&
+      mode !== "career" &&
+      store.missionsResumeStep === "career"
+    ) {
+      store.setMissionsResumeState("all", null);
+    }
     store.setMissionsViewMode(
       onboardingFirstMission ? "normal" : (mode ?? "menu"),
     );
@@ -287,15 +325,74 @@ function ScreenManager() {
     show.center();
   }
 
+  function createCareerPage() {
+    UiManager.clear.center();
+    const store = usePlayerCompanyStore.getState();
+    store.setMissionsViewMode("career");
+    store.setMissionsResumeState("career", null);
+    const company = store.company;
+    const unlocked = isCareerUnlocked(
+      company,
+      !!store.onboardingFirstMissionPending,
+    );
+    const level = Math.max(1, Math.floor(store.careerCurrentLevel ?? 1));
+    const mission = createCareerMission(company, level);
+    const nextMission = createCareerMission(company, level + 1);
+    const activeSoldiers = getCareerActiveSoldiers(company);
+    const companyName = (store.companyName || company?.name || "Unnamed Company").trim();
+    const companyLvl = company?.level ?? store.companyLevel ?? 1;
+    const avgSoldierLevel = getAverageCompanyLevel(company);
+    const content = parseHTML(
+      careerTemplate({
+        mission,
+        nextMission,
+        unlocked,
+        activeSoldierCount: activeSoldiers.length,
+        companyName,
+        companyLevel: companyLvl,
+        averageSoldierLevel: avgSoldierLevel,
+        careerLevel: level,
+        bestLevel: Math.max(store.careerBestLevel ?? 1, level),
+        totalCareerWins: store.totalCareerMissionsCompleted ?? 0,
+        animateAdvance: !!store.careerAdvanceAnimationPending,
+        companyPatchUrl: store.companyUnitPatchURL,
+      }),
+    );
+    center.appendChild(content as Element);
+    DomEventManager.initEventArray(
+      ec().companyHome().concat(ec().careerScreen()),
+    );
+    window.requestAnimationFrame(() => {
+      alignCareerCompanyArrowToMission();
+      window.setTimeout(alignCareerCompanyArrowToMission, 120);
+    });
+    UiManager.selectCompanyHomeButton(DOM.company.missions);
+    Styler.setCenterBG("bg_81.jpg", true);
+    show.center();
+    if (store.careerAdvanceAnimationPending) {
+      window.setTimeout(
+        () => usePlayerCompanyStore.getState().setCareerAdvanceAnimationPending(false),
+        760,
+      );
+    }
+  }
+
   function createReadyRoomPage(mission?: Mission | null) {
-    if (mission?.isDevTest) {
-      createCombatPage(mission);
+    const resolvedMission =
+      mission?.isCareer
+        ? createCareerMission(
+            usePlayerCompanyStore.getState().company,
+            mission.careerLevel ?? usePlayerCompanyStore.getState().careerCurrentLevel ?? 1,
+          )
+        : mission;
+    if (resolvedMission?.isDevTest) {
+      createCombatPage(resolvedMission);
       return;
     }
-    if (mission) {
+    if (resolvedMission) {
       usePlayerCompanyStore
         .getState()
-        .setMissionsResumeState("ready_room", mission);
+        .setMissionsResumeState("ready_room", resolvedMission);
     }
     const isRefresh = document.getElementById("ready-room-screen") != null;
     UiManager.clear.center();
@@ -304,14 +401,14 @@ function ScreenManager() {
     if (!isRefresh) {
       usePlayerCompanyStore.getState().moveZeroEnergySoldiersToReserve();
     }
-    const content = parseHTML(readyRoomTemplate(mission ?? null));
+    const content = parseHTML(readyRoomTemplate(resolvedMission ?? null));
     center.appendChild(content as Element);
     setTimeout(clearLastEquipMoveSoldierIds, 450);
     DomEventManager.initEventArray(
       ec().companyHome().concat(ec().readyRoomScreen()),
     );
     UiManager.selectCompanyHomeButton(DOM.company.missions);
-    const missionBattleBg = mission?.battleBackground;
+    const missionBattleBg = resolvedMission?.battleBackground;
     if (missionBattleBg) {
       Styler.setCenterBG(`battle_bg/${missionBattleBg}`, true);
     } else {
@@ -341,6 +438,7 @@ function ScreenManager() {
         .map((id) => (id ? getSoldierById(company, id) : null))
         .filter((s): s is NonNullable<typeof s> => s != null);
       players = activeSoldiers.map((s) => soldierToCombatant(s));
+      const isCareerMission = !!normalizedMission?.isCareer;
       const encounter = normalizedMission?.encounter ??
         (normalizedMission
           ? getStandardMissionEncounter(
@@ -348,17 +446,26 @@ function ScreenManager() {
               normalizedMission.difficulty,
             )
           : undefined);
+      const careerEncounter =
+        isCareerMission && normalizedMission
+          ? createCareerMission(company, normalizedMission.careerLevel ?? 1)
+              .encounter
+          : undefined;
+      const finalEncounter = careerEncounter ?? encounter;
       const enemyCount =
-        encounter?.initialEnemyCount ?? normalizedMission?.enemyCount ?? 4;
-      const enemyBaseLevel = getEnemyLevelFromActiveSquad(activeSoldiers);
+        finalEncounter?.initialEnemyCount ?? normalizedMission?.enemyCount ?? 4;
+      const enemyBaseLevel =
+        isCareerMission && normalizedMission
+          ? Math.max(1, Math.min(999, normalizedMission.careerLevel ?? 1))
+          : getEnemyLevelFromActiveSquad(activeSoldiers);
       const isEpicMission = !!(normalizedMission?.isEpic ?? normalizedMission?.rarity === "epic");
       const roles: Designation[] = [];
-      if (encounter) {
-        for (let i = 0; i < encounter.rolesInitial.rifleman; i++)
+      if (finalEncounter) {
+        for (let i = 0; i < finalEncounter.rolesInitial.rifleman; i++)
           roles.push("rifleman");
-        for (let i = 0; i < encounter.rolesInitial.support; i++)
+        for (let i = 0; i < finalEncounter.rolesInitial.support; i++)
           roles.push("support");
-        for (let i = 0; i < encounter.rolesInitial.medic; i++)
+        for (let i = 0; i < finalEncounter.rolesInitial.medic; i++)
           roles.push("medic");
       }
       while (roles.length < enemyCount) roles.push("rifleman");
@@ -369,7 +476,7 @@ function ScreenManager() {
         roles[i] = roles[j];
         roles[j] = t;
       }
-      const eliteCount = Math.max(0, encounter?.eliteCount ?? 0);
+      const eliteCount = Math.max(0, finalEncounter?.eliteCount ?? 0);
       const eliteIndices = new Set<number>();
       if (eliteCount > 0) {
         const idxPool = Array.from({ length: enemyCount }, (_, i) => i);
@@ -401,16 +508,16 @@ function ScreenManager() {
         const isMedic = role === "medic";
         const isSupport = role === "support";
         c.enemyMedkitUses = isMedic
-          ? (encounter?.medicHealsPerMedic ?? c.enemyMedkitUses ?? 0)
+          ? (finalEncounter?.medicHealsPerMedic ?? c.enemyMedkitUses ?? 0)
           : 0;
         c.enemySuppressUses = isSupport
-          ? (encounter?.supportSuppressUses ?? 0)
+          ? (finalEncounter?.supportSuppressUses ?? 0)
           : 0;
         c.enemyGrenadeThrowsRemaining = 0;
         c.enemySlotIndex = ENEMY_SLOT_ORDER[i] ?? i % 8;
         return c;
       });
-      if (encounter && encounter.grenadeThrowers > 0 && enemyCount > 0) {
+      if (finalEncounter && finalEncounter.grenadeThrowers > 0 && enemyCount > 0) {
         const grenadeCandidates =
           normalizedMission?.kind === "manhunt"
             ? enemies.filter((e) => e.isManhuntTarget)
@@ -418,7 +525,7 @@ function ScreenManager() {
         const pool = grenadeCandidates.length > 0 ? grenadeCandidates : enemies;
         for (
           let i = 0;
-          i < Math.min(encounter.grenadeThrowers, pool.length);
+            i < Math.min(finalEncounter.grenadeThrowers, pool.length);
           i++
         ) {
           const idx = Math.floor(Math.random() * pool.length);
@@ -799,6 +906,7 @@ function ScreenManager() {
       createDevCatalogPage,
       createSuppliesMarketPage,
       createMissionsPage,
+      createCareerPage,
       createReadyRoomPage,
       createCombatPage,
       createRosterPage,

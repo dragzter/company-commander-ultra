@@ -199,10 +199,19 @@ function UiManager() {
     _ScreenManager.generate.createTrainingPage();
   }
 
-  function renderMissionsScreen(mode?: "menu" | "normal" | "epic" | "dev") {
+  function renderMissionsScreen(mode?: "menu" | "normal" | "epic" | "career" | "dev") {
     const store = usePlayerCompanyStore.getState();
 
     if (mode == null) {
+      if (
+        store.missionsViewMode === "normal" ||
+        store.missionsViewMode === "epic" ||
+        store.missionsViewMode === "dev"
+      ) {
+        _ScreenManager.generate.createMissionsPage(store.missionsViewMode);
+        return;
+      }
+
       if (
         store.missionsResumeStep === "ready_room" &&
         store.missionsResumeMission
@@ -221,8 +230,22 @@ function UiManager() {
         _ScreenManager.generate.createMissionsPage("normal");
         return;
       }
+      if (
+        store.missionsResumeStep === "career" ||
+        store.missionsViewMode === "career"
+      ) {
+        _ScreenManager.generate.createCareerPage();
+        return;
+      }
+
+      _ScreenManager.generate.createMissionsPage("menu");
+      return;
     }
 
+    if (mode === "career") {
+      _ScreenManager.generate.createCareerPage();
+      return;
+    }
     _ScreenManager.generate.createMissionsPage(mode);
   }
 

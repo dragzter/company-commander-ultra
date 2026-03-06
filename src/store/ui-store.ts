@@ -30,10 +30,12 @@ export type RecruitOnboardingStep =
   | "market"
   | "troops_recruit"
   | "troops_confirm";
+export type MissionsViewMode = "menu" | "normal" | "epic" | "career" | "dev";
 export type MissionsResumeStep =
   | "none"
   | "all"
   | MissionKind
+  | "career"
   | "ready_room";
 
 export type CompanyStore = {
@@ -65,9 +67,13 @@ export type CompanyStore = {
   devCatalogTierLevel: number;
   missionBoard: Mission[];
   missionBoardSchemaVersion: number;
-  missionsViewMode: "menu" | "normal" | "epic" | "dev";
+  missionsViewMode: MissionsViewMode;
   missionsResumeStep: MissionsResumeStep;
   missionsResumeMission: Mission | null;
+  careerCurrentLevel: number;
+  careerBestLevel: number;
+  totalCareerMissionsCompleted: number;
+  careerAdvanceAnimationPending: boolean;
   onboardingHomeIntroPending: boolean;
   onboardingFirstMissionPending: boolean;
   onboardingReadyRoomIntroPending: boolean;
@@ -86,11 +92,13 @@ export type CompanyStore = {
   setGameStep: (step: GameStep) => void;
   setMarketTierLevel: (n: number) => void;
   setDevCatalogTierLevel: (n: number) => void;
-  setMissionsViewMode: (mode: "menu" | "normal" | "epic" | "dev") => void;
+  setMissionsViewMode: (mode: MissionsViewMode) => void;
   setMissionsResumeState: (
     step: MissionsResumeStep,
     mission: Mission | null,
   ) => void;
+  setCareerAdvanceAnimationPending: (pending: boolean) => void;
+  advanceCareerLevel: () => void;
   setOnboardingHomeIntroPending: (pending: boolean) => void;
   setOnboardingFirstMissionPending: (pending: boolean) => void;
   setOnboardingReadyRoomIntroPending: (pending: boolean) => void;
@@ -335,6 +343,7 @@ export const usePlayerCompanyStore = createStore<CompanyStore>()(
             merged.missionsViewMode !== "menu" &&
             merged.missionsViewMode !== "normal" &&
             merged.missionsViewMode !== "epic" &&
+            merged.missionsViewMode !== "career" &&
             merged.missionsViewMode !== "dev"
           ) {
             merged.missionsViewMode = "menu";
@@ -345,9 +354,31 @@ export const usePlayerCompanyStore = createStore<CompanyStore>()(
             merged.missionsResumeStep !== "defend_objective" &&
             merged.missionsResumeStep !== "manhunt" &&
             merged.missionsResumeStep !== "skirmish" &&
+            merged.missionsResumeStep !== "career" &&
             merged.missionsResumeStep !== "ready_room"
           ) {
             merged.missionsResumeStep = "none";
+          }
+          if (
+            typeof merged.careerCurrentLevel !== "number" ||
+            merged.careerCurrentLevel < 1
+          ) {
+            merged.careerCurrentLevel = 1;
+          }
+          if (
+            typeof merged.careerBestLevel !== "number" ||
+            merged.careerBestLevel < 1
+          ) {
+            merged.careerBestLevel = Math.max(1, merged.careerCurrentLevel ?? 1);
+          }
+          if (
+            typeof merged.totalCareerMissionsCompleted !== "number" ||
+            merged.totalCareerMissionsCompleted < 0
+          ) {
+            merged.totalCareerMissionsCompleted = 0;
+          }
+          if (typeof merged.careerAdvanceAnimationPending !== "boolean") {
+            merged.careerAdvanceAnimationPending = false;
           }
           if (
             typeof merged.missionsResumeMission !== "object" &&

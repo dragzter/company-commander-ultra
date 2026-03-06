@@ -3,7 +3,7 @@ import { animateHTMLRemove, animateHTMLReplace } from "../utils/html-utils.ts";
 import { Partial } from "../game/html-templates/partials/partial.ts";
 import { DomEventManager } from "../game/ui/event-handlers/dom-event-manager.ts";
 import { eventConfigs } from "../game/ui/event-configs.ts";
-import { type CompanyStore, GAME_STEPS, type GameStep, type MissionsResumeStep, type RecruitOnboardingStep } from "./ui-store.ts";
+import { type CompanyStore, GAME_STEPS, type GameStep, type MissionsResumeStep, type MissionsViewMode, type RecruitOnboardingStep } from "./ui-store.ts";
 import {
   type Company,
   getMaxCompanySize,
@@ -280,6 +280,10 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
   missionsViewMode: "menu" as CompanyStore["missionsViewMode"],
   missionsResumeStep: "none" as MissionsResumeStep,
   missionsResumeMission: null,
+  careerCurrentLevel: 1,
+  careerBestLevel: 1,
+  totalCareerMissionsCompleted: 0,
+  careerAdvanceAnimationPending: false,
   onboardingHomeIntroPending: false,
   onboardingFirstMissionPending: false,
   onboardingReadyRoomIntroPending: true,
@@ -390,6 +394,10 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
         missionsViewMode: "menu",
         missionsResumeStep: "none",
         missionsResumeMission: null,
+        careerCurrentLevel: 1,
+        careerBestLevel: 1,
+        totalCareerMissionsCompleted: 0,
+        careerAdvanceAnimationPending: false,
         onboardingHomeIntroPending: false,
         onboardingFirstMissionPending: false,
         onboardingReadyRoomIntroPending: true,
@@ -437,9 +445,23 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
   setGameStep: (step: GameStep) => set({ gameStep: step }),
   setMarketTierLevel: (n: number) => set({ marketTierLevel: n }),
   setDevCatalogTierLevel: (n: number) => set({ devCatalogTierLevel: n }),
-  setMissionsViewMode: (mode: "menu" | "normal" | "epic" | "dev") => set({ missionsViewMode: mode }),
+  setMissionsViewMode: (mode: MissionsViewMode) => set({ missionsViewMode: mode }),
   setMissionsResumeState: (step: MissionsResumeStep, mission: Mission | null) =>
     set({ missionsResumeStep: step, missionsResumeMission: mission }),
+  setCareerAdvanceAnimationPending: (pending: boolean) =>
+    set({ careerAdvanceAnimationPending: !!pending }),
+  advanceCareerLevel: () =>
+    set((state: CompanyStore) => {
+      const prev = Math.max(1, Math.floor(state.careerCurrentLevel ?? 1));
+      const next = Math.min(999, prev + 1);
+      return {
+        careerCurrentLevel: next,
+        careerBestLevel: Math.max(state.careerBestLevel ?? 1, next),
+        totalCareerMissionsCompleted:
+          (state.totalCareerMissionsCompleted ?? 0) + 1,
+        careerAdvanceAnimationPending: true,
+      };
+    }),
   setOnboardingHomeIntroPending: (pending: boolean) => set({ onboardingHomeIntroPending: !!pending }),
   setOnboardingFirstMissionPending: (pending: boolean) => set({ onboardingFirstMissionPending: !!pending }),
   setOnboardingReadyRoomIntroPending: (pending: boolean) => set({ onboardingReadyRoomIntroPending: !!pending }),
@@ -629,6 +651,10 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
         highestRecruitLevelAchieved: 1,
         missionsResumeStep: "none",
         missionsResumeMission: null,
+        careerCurrentLevel: 1,
+        careerBestLevel: 1,
+        totalCareerMissionsCompleted: 0,
+        careerAdvanceAnimationPending: false,
         onboardingHomeIntroPending: true,
         onboardingFirstMissionPending: true,
         onboardingReadyRoomIntroPending: true,
@@ -1364,6 +1390,10 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
     }));
 
     // Replace only the completed mission with a fresh one; keep all others unchanged.
+    // Career missions are handled by the separate ladder progression state.
+    if (mission?.isCareer) {
+      return { rewardItems, lootItems };
+    }
     set((s: CompanyStore) => {
       if (!mission) return {};
       const board = s.missionBoard ?? [];

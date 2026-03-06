@@ -12,6 +12,10 @@ import {
 import { getRewardItemById } from "../../utils/reward-utils.ts";
 import { getItemIconUrl } from "../../utils/item-utils.ts";
 import { getDisplayEnemyCount } from "../../services/missions/mission-scenarios.ts";
+import {
+  isCareerUnlocked,
+} from "../../services/missions/career-mode.ts";
+import { usePlayerCompanyStore } from "../../store/ui-store.ts";
 
 const ENEMY_COUNT_ICON = `<img src="/images/soldier_count.png" alt="" class="mission-enemies-icon" aria-hidden="true" width="20" height="24">`;
 const MISSION_CARD_INSTRUCTION: Partial<Record<MissionKind, string>> = {
@@ -188,10 +192,15 @@ function buildMissionFilters(
 export function missionsTemplate(
   missions: Mission[],
   companyLevel = 1,
-  activeMode: "menu" | "normal" | "epic" | "dev" = "menu",
+  activeMode: "menu" | "normal" | "epic" | "career" | "dev" = "menu",
   devMissions: Mission[] = [],
   initialKindFilter: MissionKind | "all" = "all",
 ): string {
+  const store = usePlayerCompanyStore.getState();
+  const careerUnlocked = isCareerUnlocked(
+    store.company,
+    !!store.onboardingFirstMissionPending,
+  );
   const regular = missions.filter(
     (m) => (m.rarity ?? (m.isEpic ? "epic" : "normal")) !== "epic",
   );
@@ -260,13 +269,14 @@ export function missionsTemplate(
           <span class="missions-mode-divider" aria-hidden="true"></span>
           <span class="missions-mode-label">Elite Missions</span>
         </button>
-        <button id="missions-mode-career" class="game-btn game-btn-lg game-btn-blue missions-mode-menu-btn missions-mode-menu-btn-career" type="button">
+        <button id="missions-mode-career" class="game-btn game-btn-lg game-btn-blue missions-mode-menu-btn missions-mode-menu-btn-career" type="button" ${careerUnlocked ? "" : "disabled"}>
           <span class="missions-mode-icon-block">
             <img src="/images/career_m.png" alt="" width="56" height="56" aria-hidden="true">
           </span>
           <span class="missions-mode-divider" aria-hidden="true"></span>
           <span class="missions-mode-label">Career</span>
         </button>
+        <p class="missions-mode-helper missions-mode-helper-career-desc">Climb an endless ladder of mirrored squad battles, one level at a time.</p>
         <button id="missions-mode-dev" class="game-btn game-btn-md game-btn-black missions-mode-menu-btn missions-mode-menu-btn-dev" type="button">
           <span class="missions-mode-icon-block missions-mode-icon-block-dev">
             <img src="/images/career_m.png" alt="" width="40" height="40" aria-hidden="true">
@@ -278,6 +288,11 @@ export function missionsTemplate(
           showEpic
             ? '<p class="missions-mode-helper">Elite missions available.</p>'
             : `<p class="missions-mode-helper">Elite missions unlock at Company Level 2. Current Level: ${companyLevel}.</p>`
+        }
+        ${
+          careerUnlocked
+            ? '<p class="missions-mode-helper">Career ladder unlocked.</p>'
+            : '<p class="missions-mode-helper">Career unlocks after intro mission completion.</p>'
         }
       </div>`;
   return `

@@ -440,6 +440,8 @@ export const companyHomePageTemplate = () => {
     totalItemsInInventory: storeItems,
     totalMenLostAllTime,
     totalEnemiesKilledAllTime,
+    careerCurrentLevel,
+    totalCareerMissionsCompleted,
     companyLevel,
     companyExperience,
     creditBalance,
@@ -512,6 +514,8 @@ export const companyHomePageTemplate = () => {
         ${statRow("Armory", `${totalItemsInInventory} / ${totalInventoryCapacity}`, "neutral")}
         ${statRow("Missions Done", totalMissionsCompleted, "positive")}
         ${statRow("Missions Failed", totalMissionsFailed, "neutral")}
+        ${statRow("Career Lv", careerCurrentLevel ?? 1, "accent")}
+        ${statRow("Career Wins", totalCareerMissionsCompleted ?? 0, "positive")}
         ${statRow("Men Lost", totalMenLostAllTime, "neutral")}
         ${statRow("K/L Ratio", killLossRatio, "positive")}
       </div>
