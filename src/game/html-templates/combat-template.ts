@@ -132,6 +132,7 @@ export function combatTemplate(
       <span class="combat-begin-label">GO!</span>
     </button>
   </div>
+  <div id="combat-company-abilities-bar" class="combat-company-abilities-bar" hidden></div>
   <div class="combat-footer troops-market-footer combat-footer-layout">
     <div class="combat-footer-top">
       <div id="combat-objective-timer" class="combat-objective-timer" hidden>Hold: 2:00</div>

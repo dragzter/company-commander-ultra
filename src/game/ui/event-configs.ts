@@ -66,6 +66,7 @@ import {
   resolveAttack,
   getNextAttackAt,
 } from "../combat/combat-loop.ts";
+import { computeFinalDamage } from "../combat/combat-damage.ts";
 import type { TargetMap } from "../combat/types.ts";
 import {
   weaponWieldOk,
@@ -107,6 +108,12 @@ import {
   createCareerMission,
   isCareerUnlocked,
 } from "../../services/missions/career-mode.ts";
+import {
+  COMPANY_ABILITY_DEFS,
+  getCompanyActiveAbilities,
+  getCompanyPassiveEffects,
+  type CompanyAbilityId,
+} from "../../constants/company-abilities.ts";
 
 /**
  * Contains definitions for the events of all html templates.
@@ -221,6 +228,52 @@ export function eventConfigs() {
         desc: def.flavor,
         stats: def.stats,
         grenadeHitBonusPct: def.grenadeHitBonusPct ?? 0,
+      });
+    }
+    const companyOwned = new Set(
+      usePlayerCompanyStore.getState().companyAbilityUnlockedIds ?? [],
+    );
+    if (companyOwned.has("advanced_tactical_training")) {
+      entries.push({
+        title: "Advanced Tactical Training",
+        type: "Company",
+        desc: "Company doctrine: +3 DEX, MOR, AWR, TGH.",
+        stats: { dexterity: 3, morale: 3, awareness: 3, toughness: 3 },
+      });
+    }
+    if (companyOwned.has("targeting_optics")) {
+      entries.push({
+        title: "Targeting Optics",
+        type: "Company",
+        desc: "Company doctrine: +1% chance to hit.",
+      });
+    }
+    if (companyOwned.has("gunnery")) {
+      entries.push({
+        title: "Gunnery",
+        type: "Company",
+        desc: "Support suppress cooldown reduced by 10s.",
+      });
+    }
+    if (companyOwned.has("fire_and_maneuver")) {
+      entries.push({
+        title: "Fire and Maneuver",
+        type: "Company",
+        desc: "Take Cover cooldown reduced by 10s.",
+      });
+    }
+    if (companyOwned.has("entrenchment_techniques")) {
+      entries.push({
+        title: "Entrenchment Techniques",
+        type: "Company",
+        desc: "After Take Cover: +10% toughness for 6s.",
+      });
+    }
+    if (companyOwned.has("grenadier_training")) {
+      entries.push({
+        title: "Grenadier Training",
+        type: "Company",
+        desc: "Frag/incendiary grenade damage +15%.",
       });
     }
     return entries;
@@ -799,6 +852,31 @@ export function eventConfigs() {
       },
     },
     {
+      selector: DOM.company.companyAbilityContinue,
+      eventType: "click",
+      callback: () => {
+        const st = usePlayerCompanyStore.getState();
+        st.dismissCompanyAbilityNotification();
+        const popup = s_(DOM.company.companyAbilityPopup) as HTMLElement | null;
+        if (popup) {
+          popup.classList.add("home-onboarding-popup-hide");
+          window.setTimeout(() => popup.remove(), 260);
+        }
+        const tacticsBtn = s_(DOM.company.abilities) as HTMLElement | null;
+        if (tacticsBtn) tacticsBtn.classList.add("onboarding-market-focus");
+      },
+    },
+    {
+      selector: DOM.company.companyAbilityPopup,
+      eventType: "click",
+      callback: (e: Event) => {
+        if ((e.target as HTMLElement).id !== "home-company-ability-popup")
+          return;
+        usePlayerCompanyStore.getState().dismissCompanyAbilityNotification();
+        (e.currentTarget as HTMLElement).remove();
+      },
+    },
+    {
       selector: DOM.company.statsMemorial,
       eventType: "click",
       callback: () => {
@@ -1196,7 +1274,18 @@ export function eventConfigs() {
     const HAS_MISSION_REINFORCEMENTS =
       MISSION_TOTAL_ENEMY_BUDGET > enemies.length;
     const DEFEND_DEATH_NOTICE_MS = 1_000;
-    const TAKE_COVER_COOLDOWN_MS = 60_000;
+    const companyAbilityOwned = new Set(
+      usePlayerCompanyStore.getState().companyAbilityUnlockedIds ?? [],
+    );
+    const companyPassives = getCompanyPassiveEffects(companyAbilityOwned);
+    const TAKE_COVER_COOLDOWN_MS = Math.max(
+      5_000,
+      60_000 - companyPassives.takeCoverCooldownReductionMs,
+    );
+    const SUPPRESS_COOLDOWN_MS = Math.max(
+      10_000,
+      60_000 - companyPassives.supportSuppressCooldownReductionMs,
+    );
     const DEFEND_WAVE_STAGGER_MIN_MS = 450;
     const DEFEND_WAVE_STAGGER_MAX_MS = 750;
     const defendTimerEl = document.getElementById("combat-objective-timer");
@@ -1204,6 +1293,19 @@ export function eventConfigs() {
     const ENEMY_SLOT_ORDER = [0, 1, 2, 3, 5, 6, 4, 7];
     let reinforcementSerial = enemies.length;
     const allCombatants = [...players, ...enemies];
+    const combatRoot = document.getElementById("combat-screen");
+    combatRoot?.classList.add("combat-prestart");
+    let focusedFireTargetId: string | null = null;
+    let focusedFireUntil = 0;
+    let companyAbilityTargetingMode: {
+      abilityId: CompanyAbilityId;
+    } | null = null;
+    const companyAbilityCooldownUntil = new Map<CompanyAbilityId, number>();
+    const companyAbilityUsesLeft = new Map<CompanyAbilityId, number>();
+    const companyAbilityBarEl = document.getElementById(
+      "combat-company-abilities-bar",
+    ) as HTMLElement | null;
+    let lastCompanyAbilityActivateAt = 0;
     let nextLowHpSampleAt = Date.now() + 1000;
 
     type CombatantDomRefs = {
@@ -1228,6 +1330,8 @@ export function eventConfigs() {
       blinded: boolean;
       suppressed: boolean;
       settingUp: boolean;
+      postCoverBuff: boolean;
+      focusedFire: boolean;
       effectiveIntervalMs: number;
     };
     const combatantDomCache = new Map<string, CombatantDomRefs>();
@@ -1324,6 +1428,109 @@ export function eventConfigs() {
       markCombatantsDirty(
         allCombatants.map((c) => c.id),
         flags,
+      );
+    }
+
+    const companyCombatAbilities = getCompanyActiveAbilities(companyAbilityOwned)
+      .map((def) => def.id);
+    for (const abilityId of companyCombatAbilities) {
+      companyAbilityCooldownUntil.set(abilityId, 0);
+      if (abilityId === "artillery_barrage" || abilityId === "napalm_barrage") {
+        companyAbilityUsesLeft.set(abilityId, 1);
+      }
+    }
+
+    function clearCompanyAbilityTargeting(): void {
+      companyAbilityTargetingMode = null;
+      document
+        .querySelectorAll(".combat-company-ability-selected")
+        .forEach((el) => el.classList.remove("combat-company-ability-selected"));
+      document
+        .querySelectorAll("#combat-enemies-grid .combat-card-grenade-target")
+        .forEach((el) => el.classList.remove("combat-card-grenade-target"));
+      const hintEl = document.getElementById("combat-targeting-hint");
+      if (hintEl && !grenadeTargetingMode && !medTargetingMode && !suppressTargetingMode) {
+        hintEl.textContent = "";
+        hintEl.setAttribute("aria-hidden", "true");
+      }
+    }
+
+    function renderCompanyAbilityBar(force = false): void {
+      if (!companyAbilityBarEl) return;
+      if (companyCombatAbilities.length <= 0) {
+        companyAbilityBarEl.setAttribute("hidden", "");
+        return;
+      }
+      companyAbilityBarEl.removeAttribute("hidden");
+      const now = Date.now();
+      const html = companyCombatAbilities
+        .map((id) => {
+          const def = COMPANY_ABILITY_DEFS[id];
+          if (!def) return "";
+          const onCooldownUntil = companyAbilityCooldownUntil.get(id) ?? 0;
+          const onCooldown = onCooldownUntil > now;
+          const remaining = onCooldown
+            ? Math.ceil((onCooldownUntil - now) / 1000)
+            : 0;
+          const usesLeft = companyAbilityUsesLeft.get(id);
+          const noUsesLeft = typeof usesLeft === "number" && usesLeft <= 0;
+          const disabled = !!combatWinner || onCooldown || noUsesLeft;
+          const selected =
+            companyAbilityTargetingMode?.abilityId === id
+              ? " combat-company-ability-selected"
+              : "";
+          return `<button type=\"button\" class=\"combat-company-ability-btn${selected}\" data-company-ability-id=\"${id}\" title=\"${def.name}\" ${disabled ? "disabled" : ""}>
+            <img src=\"${def.icon}\" alt=\"\" width=\"60\" height=\"60\">
+            <span class=\"combat-company-ability-name\">${def.name}</span>
+            ${onCooldown ? `<span class=\"combat-company-ability-cd\">${remaining}</span>` : ""}
+            ${typeof usesLeft === "number" ? `<span class=\"combat-company-ability-uses\">${usesLeft}</span>` : ""}
+          </button>`;
+        })
+        .join("");
+      if (force || companyAbilityBarEl.innerHTML !== html) {
+        companyAbilityBarEl.innerHTML = html;
+      }
+    }
+
+    function applyFocusedFireTargeting(now: number): void {
+      if (!focusedFireTargetId || now >= focusedFireUntil) {
+        const hadFocusedTarget = !!focusedFireTargetId;
+        focusedFireTargetId = null;
+        if (hadFocusedTarget) {
+          for (const p of players) targets.delete(p.id);
+          assignTargets(players, enemies, targets, now);
+        }
+        return;
+      }
+      const focusTarget = enemies.find(
+        (e) =>
+          e.id === focusedFireTargetId &&
+          e.hp > 0 &&
+          !e.downState &&
+          (e.setupUntil ?? 0) <= now,
+      );
+      if (!focusTarget) {
+        focusedFireTargetId = null;
+        for (const p of players) targets.delete(p.id);
+        assignTargets(players, enemies, targets, now);
+        return;
+      }
+      for (const p of players) {
+        if (p.hp <= 0 || p.downState || isInCover(p, now) || isStunned(p, now))
+          continue;
+        targets.set(p.id, focusTarget.id);
+      }
+    }
+
+    function isFocusedFireTargetLocked(
+      target: Combatant | undefined,
+      now: number,
+    ): boolean {
+      return (
+        !!target &&
+        !!focusedFireTargetId &&
+        target.id === focusedFireTargetId &&
+        now < focusedFireUntil
       );
     }
 
@@ -1702,7 +1909,12 @@ export function eventConfigs() {
       function refreshAbilitiesList() {
         const c = players.find((p) => p.id === combatant.id);
         if (!c || popupEl.getAttribute("aria-hidden") === "true") return;
-        if (grenadeTargetingMode || medTargetingMode || suppressTargetingMode)
+        if (
+          grenadeTargetingMode ||
+          medTargetingMode ||
+          suppressTargetingMode ||
+          companyAbilityTargetingMode
+        )
           return;
         const now = Date.now();
         const takeCoverOnCooldown = (c.takeCoverCooldownUntil ?? 0) > now;
@@ -1868,6 +2080,7 @@ export function eventConfigs() {
         .forEach((el) => el.classList.remove("combat-card-heal-target"));
       clearSelectedHighlight();
       clearPopupCardSelection();
+      clearCompanyAbilityTargeting();
       const popup = document.getElementById("combat-abilities-popup");
       if (popup) {
         popup.classList.remove("combat-abilities-popup-hint-only");
@@ -2212,8 +2425,6 @@ export function eventConfigs() {
     const SUPPRESS_BURST_INTERVAL_MS = 500;
     const ATTACK_PROJECTILE_MS = 220;
 
-    const SUPPRESS_COOLDOWN_MS = 60_000;
-
     function executeSuppress(
       user: Combatant,
       target: Combatant,
@@ -2227,7 +2438,9 @@ export function eventConfigs() {
           (playerAbilitiesUsed.get(user.id) ?? 0) + 1,
         );
       }
-      user.suppressCooldownUntil = now + SUPPRESS_COOLDOWN_MS;
+      const suppressCdMs =
+        user.side === "player" ? SUPPRESS_COOLDOWN_MS : 60_000;
+      user.suppressCooldownUntil = now + suppressCdMs;
       if (!opts?.fromEnemyAi) {
         suppressTargetingMode = null;
         document
@@ -2465,7 +2678,21 @@ export function eventConfigs() {
         const result = resolveGrenadeThrow(
           thrower,
           impactPrimaryTarget,
-          grenade.item,
+          (() => {
+            const baseItem = grenade.item;
+            if (thrower.side !== "player") return baseItem;
+            const tags = (baseItem.tags as string[] | undefined) ?? [];
+            const isFrag = tags.includes("explosive");
+            const isIncendiary = baseItem.id === "incendiary_grenade";
+            if (!isFrag && !isIncendiary) return baseItem;
+            const boosted = { ...baseItem };
+            if (typeof boosted.damage === "number") {
+              boosted.damage = Math.ceil(
+                boosted.damage * companyPassives.playerGrenadeDamageMultiplier,
+              );
+            }
+            return boosted;
+          })(),
           aliveTargetPool,
         );
         const impactTargetCard = getCombatantCard(result.primary.targetId);
@@ -2832,6 +3059,12 @@ export function eventConfigs() {
         const suppressed = c.suppressedUntil != null && now < c.suppressedUntil;
         const settingUp =
           c.side === "enemy" && c.setupUntil != null && now < c.setupUntil;
+        const postCoverBuff =
+          c.postCoverToughnessUntil != null && now < c.postCoverToughnessUntil;
+        const focusedFire =
+          c.side === "enemy" &&
+          focusedFireTargetId === c.id &&
+          now < focusedFireUntil;
         const baseInterval = c.attackIntervalMs ?? 1500;
         let speedMult = 1;
         if (stimmed && c.attackSpeedBuffMultiplier != null)
@@ -2852,6 +3085,8 @@ export function eventConfigs() {
           blinded,
           suppressed,
           settingUp,
+          postCoverBuff,
+          focusedFire,
           effectiveIntervalMs: effectiveInterval,
         };
         const statusChanged =
@@ -2865,7 +3100,9 @@ export function eventConfigs() {
           prevSnapshot.stimmed !== nextSnapshot.stimmed ||
           prevSnapshot.blinded !== nextSnapshot.blinded ||
           prevSnapshot.suppressed !== nextSnapshot.suppressed ||
-          prevSnapshot.settingUp !== nextSnapshot.settingUp;
+          prevSnapshot.settingUp !== nextSnapshot.settingUp ||
+          prevSnapshot.postCoverBuff !== nextSnapshot.postCoverBuff ||
+          prevSnapshot.focusedFire !== nextSnapshot.focusedFire;
         const speedChanged =
           !prevSnapshot ||
           prevSnapshot.effectiveIntervalMs !==
@@ -2885,6 +3122,8 @@ export function eventConfigs() {
             card.classList.toggle("combat-card-blinded", blinded);
             card.classList.toggle("combat-card-suppressed", suppressed);
             card.classList.toggle("combat-card-setting-up", settingUp);
+            card.classList.toggle("combat-card-post-cover-buff", postCoverBuff);
+            card.classList.toggle("combat-card-focused-fire", focusedFire);
             const ensureTimer = (
               selector: string,
               cacheKey: string,
@@ -2904,12 +3143,30 @@ export function eventConfigs() {
               refs.statusNodeCache.set(cacheKey, timerEl);
               return timerEl;
             };
+            const ensureTimerRail = (): HTMLElement => {
+              const cacheKey = "status-timer-rail";
+              const cached = refs.statusNodeCache.get(cacheKey);
+              if (cached && cached.isConnected) return cached;
+              const existing = card.querySelector(
+                ".combat-card-status-timer-rail",
+              ) as HTMLElement | null;
+              if (existing) {
+                refs.statusNodeCache.set(cacheKey, existing);
+                return existing;
+              }
+              const rail = document.createElement("div");
+              rail.className = "combat-card-status-timer-rail";
+              card.appendChild(rail);
+              refs.statusNodeCache.set(cacheKey, rail);
+              return rail;
+            };
+            const timerRail = ensureTimerRail();
             if (smoked) {
               const timerEl = ensureTimer(
                 ".combat-card-smoke-timer",
                 "smoke-timer",
                 "combat-card-smoke-timer",
-                card,
+                timerRail,
               );
               if (refreshTimerText)
                 timerEl.textContent = (
@@ -2925,7 +3182,7 @@ export function eventConfigs() {
                 ".combat-card-stun-timer",
                 "stun-timer",
                 "combat-card-stun-timer",
-                card,
+                timerRail,
               );
               if (refreshTimerText)
                 timerEl.textContent = (
@@ -2941,7 +3198,7 @@ export function eventConfigs() {
                 ".combat-card-burn-timer",
                 "burn-timer",
                 "combat-card-burn-timer",
-                card,
+                timerRail,
               );
               if (refreshTimerText)
                 timerEl.textContent = (
@@ -2970,19 +3227,17 @@ export function eventConfigs() {
               card.querySelector(".combat-card-dot-flame")?.remove();
             }
             if (stimmed) {
-              if (refs.avatarWrap) {
-                const timerEl = ensureTimer(
-                  ".combat-card-stim-timer",
-                  "stim-timer",
-                  "combat-card-stim-timer",
-                  refs.avatarWrap,
-                );
-                if (refreshTimerText)
-                  timerEl.textContent = (
-                    ((c.attackSpeedBuffUntil ?? 0) - now) /
-                    1000
-                  ).toFixed(1);
-              }
+              const timerEl = ensureTimer(
+                ".combat-card-stim-timer",
+                "stim-timer",
+                "combat-card-stim-timer",
+                timerRail,
+              );
+              if (refreshTimerText)
+                timerEl.textContent = (
+                  ((c.attackSpeedBuffUntil ?? 0) - now) /
+                  1000
+                ).toFixed(1);
             } else {
               card.querySelector(".combat-card-stim-timer")?.remove();
               refs.statusNodeCache.delete("stim-timer");
@@ -2992,7 +3247,7 @@ export function eventConfigs() {
                 ".combat-card-blind-timer",
                 "blind-timer",
                 "combat-card-blind-timer",
-                card,
+                timerRail,
               );
               if (refreshTimerText)
                 timerEl.textContent = (
@@ -3020,7 +3275,7 @@ export function eventConfigs() {
                 ".combat-card-suppress-timer",
                 "suppress-timer",
                 "combat-card-suppress-timer",
-                card,
+                timerRail,
               );
               if (refreshTimerText)
                 timerEl.textContent = (
@@ -3037,13 +3292,61 @@ export function eventConfigs() {
                 ".combat-card-setup-timer",
                 "setup-timer",
                 "combat-card-setup-timer",
-                card,
+                timerRail,
               );
               if (refreshTimerText)
-                timerEl.textContent = `SETUP ${(((c.setupUntil ?? 0) - now) / 1000).toFixed(1)}s`;
+                timerEl.textContent = (
+                  ((c.setupUntil ?? 0) - now) /
+                  1000
+                ).toFixed(1);
             } else {
               card.querySelector(".combat-card-setup-timer")?.remove();
               refs.statusNodeCache.delete("setup-timer");
+            }
+            if (focusedFire) {
+              const timerEl = ensureTimer(
+                ".combat-card-focused-fire-timer",
+                "focused-fire-timer",
+                "combat-card-focused-fire-timer",
+                timerRail,
+              );
+              if (refreshTimerText)
+                timerEl.textContent = (
+                  ((focusedFireUntil ?? 0) - now) /
+                  1000
+                ).toFixed(1);
+            } else {
+              card.querySelector(".combat-card-focused-fire-timer")?.remove();
+              refs.statusNodeCache.delete("focused-fire-timer");
+            }
+            if (postCoverBuff) {
+              const timerEl = ensureTimer(
+                ".combat-card-post-cover-timer",
+                "post-cover-timer",
+                "combat-card-post-cover-timer",
+                timerRail,
+              );
+              if (refreshTimerText)
+                timerEl.textContent = (
+                  ((c.postCoverToughnessUntil ?? 0) - now) /
+                  1000
+                ).toFixed(1);
+              let buffShield = card.querySelector(
+                ".combat-card-post-cover-shield",
+              ) as HTMLElement | null;
+              if (!buffShield && refs.avatarWrap) {
+                buffShield = document.createElement("div");
+                buffShield.className = "combat-card-post-cover-shield";
+                const img = document.createElement("img");
+                img.src = SHIELD_ICON;
+                img.alt = "";
+                buffShield.appendChild(img);
+                refs.avatarWrap.appendChild(buffShield);
+              }
+            } else {
+              card.querySelector(".combat-card-post-cover-timer")?.remove();
+              card.querySelector(".combat-card-post-cover-shield")?.remove();
+              refs.statusNodeCache.delete("post-cover-timer");
             }
             let shieldWrap = card.querySelector(
               ".combat-card-cover-shield",
@@ -3062,7 +3365,7 @@ export function eventConfigs() {
                 ".combat-card-cover-timer",
                 "cover-timer",
                 "combat-card-cover-timer",
-                card,
+                timerRail,
               );
               if (refreshTimerText)
                 timerEl.textContent = (
@@ -3101,6 +3404,7 @@ export function eventConfigs() {
       }
       for (const write of domWrites) write();
       drawAttackLines(force || timedUpdate);
+      if (timedUpdate || force) renderCompanyAbilityBar();
     }
 
     let combatTickId: number | null = null;
@@ -3384,6 +3688,7 @@ export function eventConfigs() {
           }
         }
         assignTargets(players, enemies, targets, now);
+        applyFocusedFireTargeting(now);
         const defeatedEnemies = getEnemyDefeatedCount();
         if (isDefendObjectiveMission) {
           combatWinner = players.every((p) => p.hp <= 0 || p.downState)
@@ -3879,7 +4184,7 @@ export function eventConfigs() {
               target &&
               target.hp > 0 &&
               !target.downState &&
-              !isInCover(target, now)
+              (!isInCover(target, now) || isFocusedFireTargetLocked(target, now))
             ) {
               const result = resolveAttack(c, target, now);
               if (c.side === "player") {
@@ -4023,9 +4328,32 @@ export function eventConfigs() {
         combatant.takeCoverToughnessBonus = 50;
       }
       combatant.takeCoverUntil = now + TAKE_COVER_DURATION_MS;
-      combatant.takeCoverCooldownUntil = now + TAKE_COVER_COOLDOWN_MS;
+      const coverCdMs =
+        combatant.side === "player" ? TAKE_COVER_COOLDOWN_MS : 60_000;
+      combatant.takeCoverCooldownUntil = now + coverCdMs;
+      if (combatant.side === "player" && companyPassives.postCoverToughnessPct > 0) {
+        const postCoverBonus = Math.max(
+          1,
+          Math.round((combatant.toughness ?? 0) * companyPassives.postCoverToughnessPct),
+        );
+        combatant.toughness = Math.max(
+          0,
+          (combatant.toughness ?? 0) + postCoverBonus,
+        );
+        combatant.postCoverToughnessBonus = postCoverBonus;
+        combatant.postCoverToughnessUntil =
+          now + companyPassives.postCoverDurationMs;
+      }
       removeTargetsForCombatantInCover(targets, combatant.id);
       assignTargets(players, enemies, targets, now);
+      if (isFocusedFireTargetLocked(combatant, now)) {
+        for (const p of players) {
+          if (p.hp <= 0 || p.downState || isInCover(p, now) || isStunned(p, now))
+            continue;
+          targets.set(p.id, combatant.id);
+        }
+      }
+      applyFocusedFireTargeting(now);
       markCombatantDirty(combatant.id, {
         hp: false,
         status: true,
@@ -4064,6 +4392,130 @@ export function eventConfigs() {
         });
     }
 
+    function showCompanyTargetingHint(abilityId: CompanyAbilityId): void {
+      const hintEl = document.getElementById("combat-targeting-hint");
+      if (!hintEl) return;
+      const abilityName = COMPANY_ABILITY_DEFS[abilityId]?.name ?? "Ability";
+      hintEl.textContent = `Select enemy target for ${abilityName}`;
+      hintEl.setAttribute("aria-hidden", "false");
+    }
+
+    function startCompanyAbilityTargeting(abilityId: CompanyAbilityId): void {
+      if (!combatStarted) return;
+      if (combatWinner) return;
+      const usesLeft = companyAbilityUsesLeft.get(abilityId);
+      if (typeof usesLeft === "number" && usesLeft <= 0) return;
+      if ((companyAbilityCooldownUntil.get(abilityId) ?? 0) > Date.now()) return;
+      companyAbilityTargetingMode = { abilityId };
+      showCompanyTargetingHint(abilityId);
+      document
+        .querySelectorAll(
+          "#combat-enemies-grid .combat-card:not(.combat-card-down)",
+        )
+        .forEach((card) => card.classList.add("combat-card-grenade-target"));
+      renderCompanyAbilityBar(true);
+    }
+
+    function handleCompanyAbilityBarActivate(e: Event): void {
+      if (!combatStarted) return;
+      const btn = (e.target as HTMLElement).closest(
+        ".combat-company-ability-btn",
+      ) as HTMLButtonElement | null;
+      if (!btn || btn.disabled) return;
+      const now = Date.now();
+      if (now - lastCompanyAbilityActivateAt < 220) return;
+      const abilityId = (btn.dataset.companyAbilityId ?? "") as CompanyAbilityId;
+      if (!abilityId) return;
+      lastCompanyAbilityActivateAt = now;
+      e.preventDefault();
+      e.stopPropagation();
+      startCompanyAbilityTargeting(abilityId);
+    }
+
+    function applyCompanyAbilityOnTarget(
+      abilityId: CompanyAbilityId,
+      target: Combatant,
+    ): void {
+      const now = Date.now();
+      if (target.hp <= 0 || target.downState) return;
+
+      if (abilityId === "focused_fire") {
+        focusedFireTargetId = target.id;
+        focusedFireUntil = now + 8_000;
+        companyAbilityCooldownUntil.set("focused_fire", now + 75_000);
+        for (const p of players) {
+          if (p.hp <= 0 || p.downState || isInCover(p, now) || isStunned(p, now))
+            continue;
+          targets.set(p.id, target.id);
+          // Immediate retarget cadence for a "simultaneous break + engage" feel.
+          nextAttackAt.set(p.id, now);
+        }
+        const card = getCombatantCard(target.id);
+        if (card) {
+          spawnCombatPopup(card, "combat-suppress-popup", "Focused!", 1300);
+        }
+        applyFocusedFireTargeting(now);
+      } else if (abilityId === "artillery_barrage") {
+        const hit = Math.random() < 0.9;
+        if (hit) {
+          const pct = 0.3 + Math.random() * 0.2;
+          const raw = Math.max(1, Math.ceil(target.maxHp * pct));
+          const damage = computeFinalDamage(raw, target);
+          target.hp = Math.max(0, Math.floor(target.hp - damage));
+          const card = getCombatantCard(target.id);
+          if (card) {
+            spawnCombatPopup(
+              card,
+              "combat-damage-popup combat-grenade-damage-popup",
+              String(damage),
+              1500,
+            );
+            card.classList.add("combat-card-shake");
+            setTimeout(() => card.classList.remove("combat-card-shake"), 350);
+          }
+          if (target.hp <= 0) {
+            target.downState =
+              target.side === "player" &&
+              Math.random() < getIncapacitationChance(target)
+                ? "incapacitated"
+                : "kia";
+            if (target.downState === "kia") target.killedBy = "Artillery";
+            clearCombatantEffectsOnDeath(target);
+          }
+        } else {
+          const card = getCombatantCard(target.id);
+          if (card) spawnCombatPopup(card, "combat-miss-popup", "MISS", 1800);
+        }
+        companyAbilityUsesLeft.set(
+          "artillery_barrage",
+          Math.max(0, (companyAbilityUsesLeft.get("artillery_barrage") ?? 1) - 1),
+        );
+      } else if (abilityId === "napalm_barrage") {
+        const hit = Math.random() < 0.9;
+        if (hit) {
+          const burnPct = 0.08 + Math.random() * 0.05;
+          target.burnTickDamage = Math.max(1, Math.ceil(target.maxHp * burnPct));
+          target.burnTicksRemaining = 3;
+          target.burningUntil = now + 3_000;
+          target.burnIgnoresMitigation = true;
+          const card = getCombatantCard(target.id);
+          if (card) spawnCombatPopup(card, "combat-smoke-popup", "Napalm", 1500);
+        } else {
+          const card = getCombatantCard(target.id);
+          if (card) spawnCombatPopup(card, "combat-miss-popup", "MISS", 1800);
+        }
+        companyAbilityUsesLeft.set(
+          "napalm_barrage",
+          Math.max(0, (companyAbilityUsesLeft.get("napalm_barrage") ?? 1) - 1),
+        );
+      }
+
+      markCombatantDirty(target.id);
+      clearCompanyAbilityTargeting();
+      renderCompanyAbilityBar(true);
+      updateCombatUI(true);
+    }
+
     function executeAbilityAction(abilityId: string, soldierId: string): void {
       const ability = getSoldierAbilityById(abilityId);
       if (!ability) return;
@@ -4079,6 +4531,22 @@ export function eventConfigs() {
 
     function handleCombatCardClick(e: Event, card: HTMLElement | null): void {
       e.stopPropagation();
+      if (companyAbilityTargetingMode) {
+        if (
+          !card ||
+          card.dataset.side !== "enemy" ||
+          card.classList.contains("combat-card-down")
+        ) {
+          clearCompanyAbilityTargeting();
+          return;
+        }
+        const targetId = card.dataset.combatantId;
+        if (!targetId) return;
+        const target = enemies.find((c) => c.id === targetId);
+        if (!target || target.hp <= 0 || target.downState) return;
+        applyCompanyAbilityOnTarget(companyAbilityTargetingMode.abilityId, target);
+        return;
+      }
       if (medTargetingMode) {
         if (
           medTargetingMode.user.hp <= 0 ||
@@ -4194,6 +4662,7 @@ export function eventConfigs() {
       backBtn.setAttribute("aria-disabled", enabled ? "false" : "true");
     };
     setBackButtonEnabled(true);
+    renderCompanyAbilityBar(true);
     const startCombatSession = () => {
       if (combatStarted) return;
       const store = usePlayerCompanyStore.getState();
@@ -4219,8 +4688,10 @@ export function eventConfigs() {
         "combat-begin-overlay",
       ) as HTMLElement | null;
       if (beginOverlay) beginOverlay.setAttribute("hidden", "");
+      combatRoot?.classList.remove("combat-prestart");
       primeCombatantDomCache();
       markAllCombatantsDirty();
+      renderCompanyAbilityBar(true);
       startCombatLoop();
     };
     if (isDevTestCombat) {
@@ -4318,17 +4789,39 @@ export function eventConfigs() {
         },
       },
       {
+        selector: "#combat-company-abilities-bar",
+        eventType: "pointerdown",
+        callback: (e: Event) => {
+          const ev = e as PointerEvent;
+          if (ev.pointerType === "mouse" && ev.button !== 0) return;
+          handleCompanyAbilityBarActivate(e);
+        },
+      },
+      {
+        selector: "#combat-company-abilities-bar",
+        eventType: "click",
+        callback: (e: Event) => {
+          handleCompanyAbilityBarActivate(e);
+        },
+      },
+      {
         selector: DOM.combat.battleArea,
         eventType: "click",
         callback: (e: Event) => {
           const target = e.target as HTMLElement;
+          if (target.closest("#combat-company-abilities-bar")) return;
           const popup = document.getElementById("combat-abilities-popup");
           if (popup?.contains(target)) return;
           if (target.closest(".combat-card")) return;
+          if (companyAbilityTargetingMode) {
+            clearCompanyAbilityTargeting();
+            return;
+          }
           if (
             grenadeTargetingMode ||
             medTargetingMode ||
-            suppressTargetingMode
+            suppressTargetingMode ||
+            companyAbilityTargetingMode
           ) {
             closeAbilitiesPopup();
             return;
@@ -4341,14 +4834,20 @@ export function eventConfigs() {
         eventType: "click",
         callback: (e: Event) => {
           const target = e.target as HTMLElement;
+          if (target.closest("#combat-company-abilities-bar")) return;
           const popup = document.getElementById("combat-abilities-popup");
           if (popup?.getAttribute("aria-hidden") === "true") return;
           if (popup?.contains(target)) return;
           if (target.closest(".combat-card")) return;
+          if (companyAbilityTargetingMode) {
+            clearCompanyAbilityTargeting();
+            return;
+          }
           if (
             grenadeTargetingMode ||
             medTargetingMode ||
-            suppressTargetingMode
+            suppressTargetingMode ||
+            companyAbilityTargetingMode
           ) {
             closeAbilitiesPopup();
             return;
@@ -7379,6 +7878,224 @@ export function eventConfigs() {
     ),
   ];
 
+  const abilitiesScreenEventConfig: HandlerInitConfig[] = [
+    {
+      selector: ".company-talent-node[data-ability-id]",
+      eventType: "click",
+      callback: (e: Event) => {
+        const node = e.currentTarget as HTMLElement;
+        const abilityId = (node.dataset.abilityId ??
+          "") as import("../../constants/company-abilities.ts").CompanyAbilityId;
+        if (!abilityId) return;
+        const popup = document.getElementById("company-ability-detail-popup");
+        const titleEl = document.getElementById("company-ability-detail-title");
+        const descEl = document.getElementById(
+          "company-ability-detail-description",
+        );
+        const learnBtn = document.getElementById(
+          "company-ability-detail-learn",
+        ) as HTMLButtonElement | null;
+        if (
+          !popup ||
+          !titleEl ||
+          !descEl ||
+          !learnBtn
+        )
+          return;
+
+        const lvl = Math.max(1, Math.floor(Number(node.dataset.level ?? 0)));
+        const owned = node.dataset.owned === "1";
+        const selected = node.dataset.selected === "1";
+        const selectable = node.dataset.selectable === "1";
+        const name = node.dataset.name ?? abilityId;
+        const description = node.dataset.description ?? "";
+
+        titleEl.textContent = name;
+        descEl.textContent = description;
+        learnBtn.dataset.level = String(lvl);
+        learnBtn.dataset.abilityId = abilityId;
+        if (selectable) {
+          learnBtn.hidden = false;
+          learnBtn.disabled = false;
+          learnBtn.textContent = "Learn Ability";
+        } else if (selected) {
+          learnBtn.hidden = false;
+          learnBtn.disabled = true;
+          learnBtn.textContent = "Learned";
+        } else if (owned) {
+          learnBtn.hidden = false;
+          learnBtn.disabled = true;
+          learnBtn.textContent = "Learned";
+        } else {
+          learnBtn.hidden = false;
+          learnBtn.disabled = true;
+          learnBtn.textContent = "Locked";
+        }
+        popup.removeAttribute("hidden");
+      },
+    },
+    {
+      selector: "#company-ability-detail-learn",
+      eventType: "click",
+      callback: (e: Event) => {
+        const btn = e.currentTarget as HTMLButtonElement;
+        if (btn.disabled) return;
+        const lvl = Math.max(1, Math.floor(Number(btn.dataset.level ?? 0)));
+        const abilityId = (btn.dataset.abilityId ??
+          "") as import("../../constants/company-abilities.ts").CompanyAbilityId;
+        if (!abilityId) return;
+        const result = usePlayerCompanyStore
+          .getState()
+          .chooseCompanyAbilityAtLevel(lvl, abilityId);
+        if (!result.success) return;
+        const popup = document.getElementById("company-ability-detail-popup");
+        if (popup) popup.setAttribute("hidden", "");
+        UiManager.renderAbilitiesScreen();
+      },
+    },
+    {
+      selector: "#company-ability-detail-close",
+      eventType: "click",
+      callback: () => {
+        const popup = document.getElementById("company-ability-detail-popup");
+        if (popup) popup.setAttribute("hidden", "");
+      },
+    },
+    {
+      selector: "#company-ability-detail-popup",
+      eventType: "click",
+      callback: (e: Event) => {
+        if ((e.target as HTMLElement).id !== "company-ability-detail-popup")
+          return;
+        (e.currentTarget as HTMLElement).setAttribute("hidden", "");
+      },
+    },
+    {
+      selector: "#abilities-screen",
+      eventType: "click",
+      callback: (e: Event) => {
+        const popup = document.getElementById("company-ability-detail-popup");
+        if (!popup || popup.hasAttribute("hidden")) return;
+        const target = e.target as HTMLElement;
+        if (target.closest(".company-talent-popup-inner")) return;
+        if (target.closest(".company-talent-node[data-ability-id]")) return;
+        popup.setAttribute("hidden", "");
+      },
+    },
+    {
+      selector: "#company-abilities-notify-continue",
+      eventType: "click",
+      callback: () => {
+        const st = usePlayerCompanyStore.getState();
+        st.dismissCompanyAbilityNotification();
+        const popup = document.getElementById("company-abilities-notify-popup");
+        if (popup) {
+          popup.classList.add("home-onboarding-popup-hide");
+          window.setTimeout(() => popup.remove(), 220);
+        }
+      },
+    },
+    {
+      selector: "#company-abilities-notify-popup",
+      eventType: "click",
+      callback: (e: Event) => {
+        if ((e.target as HTMLElement).id !== "company-abilities-notify-popup")
+          return;
+        const st = usePlayerCompanyStore.getState();
+        st.dismissCompanyAbilityNotification();
+        (e.currentTarget as HTMLElement).remove();
+      },
+    },
+  ];
+
+  function alignTalentTreeConnectors(): void {
+    const tree = document.getElementById("company-talent-tree");
+    if (!tree) return;
+    const rows = Array.from(
+      tree.querySelectorAll(":scope > .company-talent-row"),
+    ) as HTMLElement[];
+    const connectors = Array.from(
+      tree.querySelectorAll(":scope > .company-talent-connector"),
+    ) as HTMLElement[];
+    connectors.forEach((connector, idx) => {
+      const fromRow = rows[idx];
+      const toRow = rows[idx + 1];
+      if (!fromRow || !toRow) return;
+      const svg = connector.querySelector("svg");
+      if (!svg) return;
+      const lines = Array.from(svg.querySelectorAll("line"));
+      if (!lines.length) return;
+
+      const fromNodes = Array.from(
+        fromRow.querySelectorAll(".company-talent-node"),
+      ) as HTMLElement[];
+      const toNodes = Array.from(
+        toRow.querySelectorAll(".company-talent-node"),
+      ) as HTMLElement[];
+      if (!fromNodes.length || !toNodes.length) return;
+
+      const connectorRect = connector.getBoundingClientRect();
+      const toPoint = (el: HTMLElement, edge: "top" | "bottom") => {
+        const r = el.getBoundingClientRect();
+        return {
+          x: r.left + r.width / 2 - connectorRect.left,
+          y: (edge === "top" ? r.top : r.bottom) - connectorRect.top,
+        };
+      };
+
+      if (lines.length >= 2 && fromNodes.length === 1 && toNodes.length >= 2) {
+        const from = toPoint(fromNodes[0], "bottom");
+        const leftTo = toPoint(toNodes[0], "top");
+        const rightTo = toPoint(toNodes[toNodes.length - 1], "top");
+        lines[0].setAttribute("x1", String(from.x));
+        lines[0].setAttribute("y1", String(from.y));
+        lines[0].setAttribute("x2", String(leftTo.x));
+        lines[0].setAttribute("y2", String(leftTo.y));
+        lines[1].setAttribute("x1", String(from.x));
+        lines[1].setAttribute("y1", String(from.y));
+        lines[1].setAttribute("x2", String(rightTo.x));
+        lines[1].setAttribute("y2", String(rightTo.y));
+      } else if (
+        lines.length >= 2 &&
+        fromNodes.length >= 2 &&
+        toNodes.length === 1
+      ) {
+        const leftFrom = toPoint(fromNodes[0], "bottom");
+        const rightFrom = toPoint(fromNodes[fromNodes.length - 1], "bottom");
+        const to = toPoint(toNodes[0], "top");
+        lines[0].setAttribute("x1", String(leftFrom.x));
+        lines[0].setAttribute("y1", String(leftFrom.y));
+        lines[0].setAttribute("x2", String(to.x));
+        lines[0].setAttribute("y2", String(to.y));
+        lines[1].setAttribute("x1", String(rightFrom.x));
+        lines[1].setAttribute("y1", String(rightFrom.y));
+        lines[1].setAttribute("x2", String(to.x));
+        lines[1].setAttribute("y2", String(to.y));
+      } else {
+        const from = toPoint(fromNodes[0], "bottom");
+        const to = toPoint(toNodes[0], "top");
+        lines[0].setAttribute("x1", String(from.x));
+        lines[0].setAttribute("y1", String(from.y));
+        lines[0].setAttribute("x2", String(to.x));
+        lines[0].setAttribute("y2", String(to.y));
+      }
+    });
+  }
+
+  if (document.getElementById("abilities-screen")) {
+    const w = window as Window & {
+      __talentTreeConnectorResizeHandler?: () => void;
+    };
+    if (w.__talentTreeConnectorResizeHandler) {
+      window.removeEventListener("resize", w.__talentTreeConnectorResizeHandler);
+    }
+    const handler = () => alignTalentTreeConnectors();
+    w.__talentTreeConnectorResizeHandler = handler;
+    window.requestAnimationFrame(() => alignTalentTreeConnectors());
+    window.setTimeout(() => alignTalentTreeConnectors(), 0);
+    window.addEventListener("resize", handler);
+  }
+
   return {
     gameSetup: () => gameSetupEventConfig,
     confirmationScreen: () => gameConfirmationEventConfig,
@@ -7397,7 +8114,7 @@ export function eventConfigs() {
     devCatalogScreen: () => devCatalogScreenEventConfig,
     memorialScreen: () => [],
     trainingScreen: () => [],
-    abilitiesScreen: () => [],
+    abilitiesScreen: () => abilitiesScreenEventConfig,
     readyRoomScreen: () => readyRoomScreenEventConfig,
     formationScreen: () => formationScreenEventConfig,
     combatScreen: combatScreenEventConfig,

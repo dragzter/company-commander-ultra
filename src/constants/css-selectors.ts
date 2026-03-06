@@ -31,6 +31,8 @@ export const DOM = {
     onboardingIntroContinue: "#home-onboarding-continue",
     onboardingRecruitPopup: "#home-recruit-onboarding-popup",
     onboardingRecruitContinue: "#home-recruit-onboarding-continue",
+    companyAbilityPopup: "#home-company-ability-popup",
+    companyAbilityContinue: "#home-company-ability-continue",
     memorialPopup: "#memorial-popup",
     memorialPopupClose: "#memorial-popup-close",
     codexPopup: "#codex-popup",

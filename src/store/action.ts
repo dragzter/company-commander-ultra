@@ -27,6 +27,7 @@ import {
   SOLDIER_XP_PER_KILL,
   SOLDIER_XP_PER_ABILITY_USE,
   MAX_SOLDIER_LEVEL,
+  MAX_COMPANY_LEVEL,
   ENERGY_MAX,
   ENERGY_COST_BASE,
   ENERGY_COST_CASUALTY,
@@ -76,6 +77,15 @@ import {
   getSoldierVeterancyDefaults,
   toEarnedTraitAward,
 } from "../constants/veterancy-traits.ts";
+import {
+  COMPANY_ABILITY_DEFS,
+  COMPANY_ABILITY_PROGRESSION,
+  defaultCompanyAbilityChoices,
+  getCompanyPassiveEffects,
+  resolveCompanyAbilityState,
+  type CompanyAbilityChoiceMap,
+  type CompanyAbilityId,
+} from "../constants/company-abilities.ts";
 
 function pickReplacementMission(
   completed: Mission,
@@ -250,6 +260,37 @@ function normalizeRecruitMarketPool(pool: Soldier[], recruitLevel: number): Sold
   return shuffleSoldiers(SoldierManager.ensureUniquePlayerAvatars(normalized));
 }
 
+function applyCompanyPassivesToSoldier(
+  soldier: Soldier,
+  unlockedAbilityIds: readonly CompanyAbilityId[],
+): Soldier {
+  const effects = getCompanyPassiveEffects(new Set(unlockedAbilityIds));
+  const next = {
+    ...soldier,
+    companyFlatBonuses: { ...effects.flatStats },
+    companyChanceToHitBonusPct: effects.chanceToHitBonusPct,
+  } as Soldier;
+  SoldierManager.refreshCombatProfile(next);
+  return next;
+}
+
+function applyCompanyPassivesToSoldiers(
+  soldiers: Soldier[],
+  unlockedAbilityIds: readonly CompanyAbilityId[],
+): Soldier[] {
+  return soldiers.map((s) => applyCompanyPassivesToSoldier(s, unlockedAbilityIds));
+}
+
+function syncCompanyAbilityProgress(
+  companyLevel: number,
+  choices: CompanyAbilityChoiceMap | undefined,
+): {
+  unlocked: CompanyAbilityId[];
+  pendingChoiceLevels: number[];
+} {
+  return resolveCompanyAbilityState(companyLevel, choices ?? defaultCompanyAbilityChoices());
+}
+
 export const StoreActions = (set: any, get: () => CompanyStore) => ({
   companyName: "",
   commanderName: "",
@@ -289,6 +330,10 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
   onboardingReadyRoomIntroPending: true,
   onboardingRecruitStep: "none" as RecruitOnboardingStep,
   onboardingRecruitSoldier: null,
+  companyAbilityChoices: defaultCompanyAbilityChoices(),
+  companyAbilityUnlockedIds: ["focused_fire"] as CompanyAbilityId[],
+  companyAbilityPendingChoiceLevels: [],
+  companyAbilityNotificationText: "",
 
   // Actions
   rerollSoldier: async (id: string) => {
@@ -403,6 +448,10 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
         onboardingReadyRoomIntroPending: true,
         onboardingRecruitStep: "none",
         onboardingRecruitSoldier: null,
+        companyAbilityChoices: defaultCompanyAbilityChoices(),
+        companyAbilityUnlockedIds: ["focused_fire"] as CompanyAbilityId[],
+        companyAbilityPendingChoiceLevels: [],
+        companyAbilityNotificationText: "",
         company: {
           level: 1,
           experience: 0,
@@ -467,6 +516,42 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
   setOnboardingReadyRoomIntroPending: (pending: boolean) => set({ onboardingReadyRoomIntroPending: !!pending }),
   setOnboardingRecruitStep: (step: RecruitOnboardingStep) => set({ onboardingRecruitStep: step }),
   setOnboardingRecruitSoldier: (soldier: Soldier | null) => set({ onboardingRecruitSoldier: soldier }),
+  dismissCompanyAbilityNotification: () => set({ companyAbilityNotificationText: "" }),
+  chooseCompanyAbilityAtLevel: (level: number, abilityId: CompanyAbilityId) => {
+    const state = get();
+    const node = COMPANY_ABILITY_PROGRESSION.find((n) => n.level === level);
+    if (!node?.choice?.includes(abilityId)) {
+      return { success: false, reason: "invalid_choice" };
+    }
+    const choices: CompanyAbilityChoiceMap = {
+      ...(state.companyAbilityChoices ?? {}),
+      [level]: abilityId,
+    };
+    const resolved = syncCompanyAbilityProgress(
+      state.company?.level ?? state.companyLevel ?? 1,
+      choices,
+    );
+    const previousUnlocked = new Set(state.companyAbilityUnlockedIds ?? []);
+    const newlyUnlocked = resolved.unlocked.filter((id) => !previousUnlocked.has(id));
+    const updatedSoldiers = applyCompanyPassivesToSoldiers(
+      state.company?.soldiers ?? [],
+      resolved.unlocked,
+    );
+    set({
+      companyAbilityChoices: choices,
+      companyAbilityUnlockedIds: resolved.unlocked,
+      companyAbilityPendingChoiceLevels: resolved.pendingChoiceLevels,
+      companyAbilityNotificationText:
+        newlyUnlocked.length > 0
+          ? `New company capability online: ${COMPANY_ABILITY_DEFS[newlyUnlocked[0]]?.name ?? "Unlocked"}.`
+          : state.companyAbilityNotificationText ?? "",
+      company: {
+        ...state.company,
+        soldiers: updatedSoldiers,
+      },
+    });
+    return { success: true };
+  },
   bootstrapNewCompanyIfEmpty: () => {
     get().addInitialTroopsIfEmpty();
     get().addInitialArmoryIfEmpty();
@@ -521,7 +606,13 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
     set((state: CompanyStore) => ({
       company: {
         ...state.company,
-        soldiers: [...state.company.soldiers, soldier],
+        soldiers: [
+          ...state.company.soldiers,
+          applyCompanyPassivesToSoldier(
+            soldier,
+            state.companyAbilityUnlockedIds ?? [],
+          ),
+        ],
       },
     })),
   addToRecruitStaging: (soldier: Soldier) =>
@@ -579,7 +670,13 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
       const added = staging.slice(0, toAdd);
       const totalCost = added.reduce((s, x) => s + getRecruitCost(x.trait_profile?.stats), 0);
       if (state.creditBalance < totalCost) return {};
-      const newSoldiers = [...state.company.soldiers, ...added];
+      const buffedAdded = added.map((s) =>
+        applyCompanyPassivesToSoldier(
+          s,
+          state.companyAbilityUnlockedIds ?? [],
+        ),
+      );
+      const newSoldiers = [...state.company.soldiers, ...buffedAdded];
       const newMarketIds = new Set(added.map((s) => s.id));
       const returned = staging.filter((s) => !newMarketIds.has(s.id));
       const currentSlots = getFormationSlots(state.company);
@@ -609,10 +706,39 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
     const state = get();
     const recruitLevel = resolveRecruitLevel(state.company, state.highestRecruitLevelAchieved);
     const nextMarket = normalizeRecruitMarketPool(state.marketAvailableTroops ?? [], recruitLevel);
+    const level = state.company?.level ?? state.companyLevel ?? 1;
+    const resolvedAbilities = syncCompanyAbilityProgress(
+      level,
+      state.companyAbilityChoices,
+    );
+    const prevUnlocked = new Set(state.companyAbilityUnlockedIds ?? []);
+    const newUnlocks = resolvedAbilities.unlocked.filter((id) => !prevUnlocked.has(id));
+    const levelNode = COMPANY_ABILITY_PROGRESSION.find((n) => n.level === level);
+    const unlockedName =
+      newUnlocks.length > 0
+        ? COMPANY_ABILITY_DEFS[newUnlocks[0]]?.name
+        : undefined;
+    const notificationText = unlockedName
+      ? `New company capability online: ${unlockedName}. Open Tactics to review.`
+      : levelNode?.choice?.length
+        ? `Command decision available at Company Lv${level}. Open Tactics to choose your doctrine.`
+        : "";
+    const updatedSoldiers = applyCompanyPassivesToSoldiers(
+      state.company?.soldiers ?? [],
+      resolvedAbilities.unlocked,
+    );
     set((s: CompanyStore) => ({
       rerollCounter: (s.rerollCounter ?? 0) + 6,
       marketAvailableTroops: nextMarket,
       highestRecruitLevelAchieved: recruitLevel,
+      companyAbilityUnlockedIds: resolvedAbilities.unlocked,
+      companyAbilityPendingChoiceLevels: resolvedAbilities.pendingChoiceLevels,
+      companyAbilityNotificationText:
+        notificationText || s.companyAbilityNotificationText || "",
+      company: {
+        ...s.company,
+        soldiers: updatedSoldiers,
+      },
     }));
   },
   addInitialTroopsIfEmpty: () =>
@@ -628,6 +754,14 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
         SoldierManager.getNewRifleman(1, veteranTrait),
       ];
       const uniqueInitial = SoldierManager.ensureUniquePlayerAvatars(initial);
+      const resolvedAbilities = syncCompanyAbilityProgress(
+        state.company?.level ?? 1,
+        state.companyAbilityChoices ?? defaultCompanyAbilityChoices(),
+      );
+      const withCompanyPassives = applyCompanyPassivesToSoldiers(
+        uniqueInitial,
+        resolvedAbilities.unlocked,
+      );
       /* Ensure company has required fields (level, resourceProfile) for new-game flow */
       const companyBase = {
         ...state.company,
@@ -637,15 +771,15 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
         holding_inventory: state.company?.holding_inventory ?? [],
         resourceProfile: state.company?.resourceProfile ?? COMPANY_RESOURCES_BY_LEVEL[0],
       };
-      const companyWithSoldiers = { ...companyBase, soldiers: uniqueInitial };
+      const companyWithSoldiers = { ...companyBase, soldiers: withCompanyPassives };
       const formationSlots = getFormationSlots(companyWithSoldiers);
       return {
         company: {
           ...companyBase,
-          soldiers: uniqueInitial,
+          soldiers: withCompanyPassives,
           formationSlots,
         },
-        totalMenInCompany: uniqueInitial.length,
+        totalMenInCompany: withCompanyPassives.length,
         companyLevel: companyBase.level,
         companyExperience: companyBase.experience ?? 0,
         highestRecruitLevelAchieved: 1,
@@ -660,6 +794,10 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
         onboardingReadyRoomIntroPending: true,
         onboardingRecruitStep: "none",
         onboardingRecruitSoldier: null,
+        companyAbilityUnlockedIds: resolvedAbilities.unlocked,
+        companyAbilityPendingChoiceLevels: resolvedAbilities.pendingChoiceLevels,
+        companyAbilityChoices: state.companyAbilityChoices ?? defaultCompanyAbilityChoices(),
+        companyAbilityNotificationText: "",
       };
     }),
   /** Add starter armory items when inventory is empty (new game). */
@@ -1273,11 +1411,14 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
     const oldLevel = stateAfterCredits.company?.level ?? stateAfterCredits.companyLevel ?? 1;
     let exp = (stateAfterCredits.company?.experience ?? stateAfterCredits.companyExperience ?? 0) + xpGain;
     let lvl = oldLevel;
-    const maxLevel = 20;
+    const maxLevel = MAX_COMPANY_LEVEL;
     while (lvl < maxLevel && exp >= getXpRequiredForLevel(lvl + 1)) {
       lvl += 1;
     }
-    const profile = COMPANY_RESOURCES_BY_LEVEL[Math.min(lvl, 20) - 1] ?? COMPANY_RESOURCES_BY_LEVEL[0];
+    const profile =
+      COMPANY_RESOURCES_BY_LEVEL[
+        Math.min(lvl, COMPANY_RESOURCES_BY_LEVEL.length) - 1
+      ] ?? COMPANY_RESOURCES_BY_LEVEL[0];
     set((s: CompanyStore) => ({
       company: {
         ...s.company,

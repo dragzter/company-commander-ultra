@@ -32,6 +32,10 @@ export interface Combatant {
   takeCoverUntil?: number;
   /** Flat toughness bonus granted while Take Cover is active. */
   takeCoverToughnessBonus?: number;
+  /** Timestamp (ms) when post-cover toughness buff ends (company doctrine). */
+  postCoverToughnessUntil?: number;
+  /** Flat toughness bonus granted by post-cover doctrine. */
+  postCoverToughnessBonus?: number;
   /** Timestamp (ms) when Take Cover can next be used */
   takeCoverCooldownUntil?: number;
   /** Timestamp (ms) when Suppress cooldown ends */

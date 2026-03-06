@@ -452,15 +452,25 @@ function ScreenManager() {
               .encounter
           : undefined;
       const finalEncounter = careerEncounter ?? encounter;
-      const enemyCount =
-        finalEncounter?.initialEnemyCount ?? normalizedMission?.enemyCount ?? 4;
+      const mirroredCareerRoles: Designation[] = isCareerMission
+        ? players.map((p) =>
+            p.designation === "medic" || p.designation === "support"
+              ? p.designation
+              : "rifleman",
+          )
+        : [];
+      const enemyCount = isCareerMission
+        ? Math.max(1, mirroredCareerRoles.length)
+        : (finalEncounter?.initialEnemyCount ?? normalizedMission?.enemyCount ?? 4);
       const enemyBaseLevel =
         isCareerMission && normalizedMission
           ? Math.max(1, Math.min(999, normalizedMission.careerLevel ?? 1))
           : getEnemyLevelFromActiveSquad(activeSoldiers);
       const isEpicMission = !!(normalizedMission?.isEpic ?? normalizedMission?.rarity === "epic");
       const roles: Designation[] = [];
-      if (finalEncounter) {
+      if (isCareerMission) {
+        roles.push(...mirroredCareerRoles);
+      } else if (finalEncounter) {
         for (let i = 0; i < finalEncounter.rolesInitial.rifleman; i++)
           roles.push("rifleman");
         for (let i = 0; i < finalEncounter.rolesInitial.support; i++)

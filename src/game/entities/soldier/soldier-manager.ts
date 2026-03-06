@@ -97,6 +97,15 @@ function SoldierManager() {
     const base = JSON.parse(JSON.stringify(SOLDIER_BASE.combatProfile)) as Soldier["combatProfile"];
     soldier.combatProfile = base;
     initializeCombatProfile(soldier);
+    if ((soldier.companyChanceToHitBonusPct ?? 0) > 0) {
+      soldier.combatProfile.chanceToHit = toFNum(
+        Math.min(
+          MAX_HIT_CHANCE,
+          soldier.combatProfile.chanceToHit + (soldier.companyChanceToHitBonusPct ?? 0),
+        ),
+        PRECISION,
+      );
+    }
     if (soldier.armor) applyArmorPercentToCombatProfile(soldier, soldier.armor);
     if (soldier.weapon) {
       applyWeaponPercentToCombatProfile(soldier, soldier.weapon);
@@ -237,6 +246,10 @@ function SoldierManager() {
         (trait?.stats ?? {}) as Partial<Record<keyof Attributes, number>>,
       );
     }
+    applyFlatStats(
+      attrs,
+      (soldier.companyFlatBonuses ?? {}) as Partial<Record<keyof Attributes, number>>,
+    );
     const armor = (soldier.armor ?? {}) as Armor;
     const weapon = (soldier.weapon ?? {}) as BallisticWeapon;
     attrs.toughness += armor.toughness ?? 0;

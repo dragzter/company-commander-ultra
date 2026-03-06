@@ -175,6 +175,16 @@ export function clearExpiredEffects(combatants: Combatant[], now: number): void 
       }
       delete c.takeCoverUntil;
     }
+    if (c.postCoverToughnessUntil != null && now >= c.postCoverToughnessUntil) {
+      if ((c.postCoverToughnessBonus ?? 0) > 0) {
+        c.toughness = Math.max(
+          0,
+          (c.toughness ?? 0) - (c.postCoverToughnessBonus ?? 0),
+        );
+      }
+      delete c.postCoverToughnessBonus;
+      delete c.postCoverToughnessUntil;
+    }
     if (c.smokedUntil != null && now >= c.smokedUntil) delete c.smokedUntil;
     if (c.stunUntil != null && now >= c.stunUntil) delete c.stunUntil;
     if (c.panicUntil != null && now >= c.panicUntil) delete c.panicUntil;
@@ -211,8 +221,16 @@ export function clearCombatantEffectsOnDeath(c: Combatant): void {
   if ((c.takeCoverToughnessBonus ?? 0) > 0) {
     c.toughness = Math.max(0, (c.toughness ?? 0) - (c.takeCoverToughnessBonus ?? 0));
   }
+  if ((c.postCoverToughnessBonus ?? 0) > 0) {
+    c.toughness = Math.max(
+      0,
+      (c.toughness ?? 0) - (c.postCoverToughnessBonus ?? 0),
+    );
+  }
   delete c.takeCoverToughnessBonus;
   delete c.takeCoverUntil;
+  delete c.postCoverToughnessBonus;
+  delete c.postCoverToughnessUntil;
   delete c.takeCoverCooldownUntil;
   delete c.suppressCooldownUntil;
   delete c.suppressedUntil;

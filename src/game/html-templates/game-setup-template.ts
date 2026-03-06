@@ -1,5 +1,9 @@
 import { DOM } from "../../constants/css-selectors.ts";
-import { getTotalArmorySlots, getXpRequiredForLevel } from "../../constants/economy.ts";
+import {
+  getTotalArmorySlots,
+  getXpRequiredForLevel,
+  MAX_COMPANY_LEVEL,
+} from "../../constants/economy.ts";
 import type { MemorialEntry } from "../entities/memorial-types.ts";
 import { clrHash } from "../../utils/html-utils.ts";
 import { Images } from "../../constants/images.ts";
@@ -456,8 +460,11 @@ export const companyHomePageTemplate = () => {
   const xpCeiling = getXpRequiredForLevel(companyLvl + 1);
   const xpInLevel = Math.max(1, xpCeiling - xpFloor);
   const progressInLevel = Math.max(0, companyExperience - xpFloor);
-  const xpFillPct = companyLvl >= 20 ? 100 : Math.max(0, Math.min(100, (progressInLevel / xpInLevel) * 100));
-  const nextLevel = Math.min(20, companyLvl + 1);
+  const xpFillPct =
+    companyLvl >= MAX_COMPANY_LEVEL
+      ? 100
+      : Math.max(0, Math.min(100, (progressInLevel / xpInLevel) * 100));
+  const nextLevel = Math.min(MAX_COMPANY_LEVEL, companyLvl + 1);
   const playerName = (store.commanderName ?? company?.commander ?? "").trim() || "Commander";
 
   const memorialCodexRow = `
@@ -569,6 +576,22 @@ export const companyHomePageTemplate = () => {
     </div>
   `
     : "";
+  const companyAbilityPopup = (store.companyAbilityNotificationText ?? "").trim()
+    ? `
+    <div id="home-company-ability-popup" class="home-onboarding-popup helper-onboarding-popup" role="dialog" aria-modal="true">
+      <div class="home-onboarding-dialog helper-onboarding-dialog">
+        <div class="home-onboarding-copy helper-onboarding-copy">
+          <h4 class="home-onboarding-title helper-onboarding-title">New Company Capability</h4>
+          <p class="home-onboarding-text helper-onboarding-text helper-onboarding-typed-text" id="home-company-ability-typed-text" data-full-text="${(store.companyAbilityNotificationText ?? "").replace(/\"/g, "&quot;")}"></p>
+          <button id="home-company-ability-continue" type="button" class="game-btn game-btn-md game-btn-green home-onboarding-continue helper-onboarding-continue">Continue</button>
+        </div>
+        <div class="home-onboarding-image-wrap helper-onboarding-image-wrap">
+          <img src="${onboardingPortrait}" alt="Squad soldier" class="home-onboarding-image helper-onboarding-image">
+        </div>
+      </div>
+    </div>
+  `
+    : "";
 
   return `
   <div id="campaign-home-screen" class="flex h-100 column">
@@ -585,16 +608,16 @@ export const companyHomePageTemplate = () => {
 	    <div class="company-level-bar-wrapper">
 	      <div class="company-xp-header">
 	        <span class="company-level-badge${companyLvl === 2 ? " company-level-badge-lv2" : ""}">Lv ${companyLvl}</span>
-	        ${companyLvl < 20
+	        ${companyLvl < MAX_COMPANY_LEVEL
 	          ? `<span class="company-xp-text"><span class="company-xp-current">${Math.round(progressInLevel)}</span> / <span class="company-xp-required">${xpInLevel}</span> XP</span>`
 	          : '<span class="company-xp-max">MAX LEVEL</span>'}
-          ${companyLvl < 20
+          ${companyLvl < MAX_COMPANY_LEVEL
             ? `<span class="company-level-badge company-level-badge-target${nextLevel === 2 ? " company-level-badge-lv2" : ""}">Lv ${nextLevel}</span>`
             : '<span class="company-xp-header-spacer" aria-hidden="true"></span>'}
 	      </div>
       <div class="company-level-progress">
         <div class="company-xp-fill" style="width: ${xpFillPct}%"></div>
-        ${companyLvl < 20 ? '<div class="company-xp-shine"></div>' : ""}
+        ${companyLvl < MAX_COMPANY_LEVEL ? '<div class="company-xp-shine"></div>' : ""}
       </div>
     </div>
 
@@ -606,6 +629,7 @@ export const companyHomePageTemplate = () => {
     ${settingsResetConfirmPopupTemplate()}
     ${onboardingPopup}
     ${recruitOnboardingPopup}
+    ${companyAbilityPopup}
   </div>
 `;
 };

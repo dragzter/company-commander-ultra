@@ -10,6 +10,7 @@ import {
   getLevelFromExperience,
   getSoldierXpRequiredForLevel,
   MAX_SOLDIER_LEVEL,
+  MAX_COMPANY_LEVEL,
   getXpRequiredForLevel,
 } from "../../constants/economy.ts";
 
@@ -205,14 +206,16 @@ function companyXpBarHtml(
   const xpInLevel = Math.max(1, xpCeiling - xpFloor);
   const progressInLevel = Math.max(0, expTotal - xpFloor);
   const pct =
-    companyLvl >= 20
+    companyLvl >= MAX_COMPANY_LEVEL
       ? 100
       : Math.max(
           0,
           Math.min(100, (progressInLevel / xpInLevel) * 100),
         );
   const progressLabel =
-    companyLvl >= 20 ? "MAX" : `${Math.round(progressInLevel)} / ${xpInLevel}`;
+    companyLvl >= MAX_COMPANY_LEVEL
+      ? "MAX"
+      : `${Math.round(progressInLevel)} / ${xpInLevel}`;
   return `
     <div class="combat-summary-section combat-summary-company-xp-section">
       <h4>Company XP</h4>

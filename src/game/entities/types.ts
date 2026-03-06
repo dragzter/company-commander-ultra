@@ -79,6 +79,12 @@ export interface Soldier {
   earnedTraitIds?: string[];
   /** Grenade accuracy bonus from earned traits (e.g., Grenadier). */
   grenadeHitBonusPct?: number;
+  /** Company-wide flat stat bonuses applied to this soldier (derived). */
+  companyFlatBonuses?: Partial<
+    Pick<Attributes, "dexterity" | "morale" | "awareness" | "toughness">
+  >;
+  /** Company-wide hit chance bonus as decimal (e.g., 0.01 = +1%). */
+  companyChanceToHitBonusPct?: number;
   /** Hidden veterancy progression and counters used for trait unlocks. */
   veterancy?: SoldierVeterancyStats;
 

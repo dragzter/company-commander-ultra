@@ -49,7 +49,7 @@ export function getMaxMedicSlots(company: Company | null): number {
   if (!company) return 0;
   const fromProfile = company.resourceProfile?.soldier_mission_slots?.medic;
   if (typeof fromProfile === "number") return fromProfile;
-  const lvl = Math.max(1, Math.min(20, company.level ?? 1));
+  const lvl = Math.max(1, Math.min(COMPANY_RESOURCES_BY_LEVEL.length, company.level ?? 1));
   return COMPANY_RESOURCES_BY_LEVEL[lvl - 1]?.soldier_mission_slots?.medic ?? 0;
 }
 
@@ -57,7 +57,7 @@ export function getMaxSupportSlots(company: Company | null): number {
   if (!company) return 0;
   const fromProfile = company.resourceProfile?.soldier_mission_slots?.support;
   if (typeof fromProfile === "number") return fromProfile;
-  const lvl = Math.max(1, Math.min(20, company.level ?? 1));
+  const lvl = Math.max(1, Math.min(COMPANY_RESOURCES_BY_LEVEL.length, company.level ?? 1));
   return COMPANY_RESOURCES_BY_LEVEL[lvl - 1]?.soldier_mission_slots?.support ?? 0;
 }
 

@@ -6,11 +6,18 @@ import { getFormationSlots } from "../constants/company-slots.ts";
 import type { Soldier } from "../game/entities/types.ts";
 import type { MemorialEntry } from "../game/entities/memorial-types.ts";
 import { StoreActions } from "./action.ts";
-import { STARTING_CREDITS } from "../constants/economy.ts";
+import { MAX_COMPANY_LEVEL, STARTING_CREDITS } from "../constants/economy.ts";
 import type { Mission, MissionKind } from "../constants/missions.ts";
 import { getSoldierVeterancyDefaults } from "../constants/veterancy-traits.ts";
 import type { EarnedTraitAward } from "../constants/veterancy-traits.ts";
 import { SoldierManager } from "../game/entities/soldier/soldier-manager.ts";
+import { COMPANY_RESOURCES_BY_LEVEL } from "../game/entities/company/company.ts";
+import type {
+  CompanyAbilityChoiceMap,
+  CompanyAbilityId,
+} from "../constants/company-abilities.ts";
+import { resolveCompanyAbilityState } from "../constants/company-abilities.ts";
+import { getCompanyPassiveEffects } from "../constants/company-abilities.ts";
 
 const { nocache } = URLReader(document.location.search);
 const skipPersistence = nocache === "true";
@@ -79,6 +86,10 @@ export type CompanyStore = {
   onboardingReadyRoomIntroPending: boolean;
   onboardingRecruitStep: RecruitOnboardingStep;
   onboardingRecruitSoldier: Soldier | null;
+  companyAbilityChoices: CompanyAbilityChoiceMap;
+  companyAbilityUnlockedIds: CompanyAbilityId[];
+  companyAbilityPendingChoiceLevels: number[];
+  companyAbilityNotificationText: string;
 
   // Setters
   setMarketAvailableTroops: (soldiers: Soldier[]) => void;
@@ -104,6 +115,11 @@ export type CompanyStore = {
   setOnboardingReadyRoomIntroPending: (pending: boolean) => void;
   setOnboardingRecruitStep: (step: RecruitOnboardingStep) => void;
   setOnboardingRecruitSoldier: (soldier: Soldier | null) => void;
+  chooseCompanyAbilityAtLevel: (
+    level: number,
+    abilityId: CompanyAbilityId,
+  ) => { success: boolean; reason?: string };
+  dismissCompanyAbilityNotification: () => void;
   bootstrapNewCompanyIfEmpty: () => void;
   ensureMissionBoard: () => void;
   refreshMissionBoard: () => void;
@@ -407,6 +423,58 @@ export const usePlayerCompanyStore = createStore<CompanyStore>()(
           ) {
             merged.onboardingRecruitSoldier = null;
           }
+          if (
+            !merged.companyAbilityChoices ||
+            typeof merged.companyAbilityChoices !== "object"
+          ) {
+            merged.companyAbilityChoices = {};
+          }
+          if (!Array.isArray(merged.companyAbilityUnlockedIds)) {
+            merged.companyAbilityUnlockedIds = [];
+          }
+          merged.companyAbilityUnlockedIds = merged.companyAbilityUnlockedIds
+            .filter((id): id is CompanyAbilityId => typeof id === "string")
+            .slice();
+          if (!Array.isArray(merged.companyAbilityPendingChoiceLevels)) {
+            merged.companyAbilityPendingChoiceLevels = [];
+          }
+          merged.companyAbilityPendingChoiceLevels =
+            merged.companyAbilityPendingChoiceLevels
+              .map((n) => Math.max(1, Math.floor(Number(n) || 0)))
+              .filter((n) => Number.isFinite(n));
+          if (typeof merged.companyAbilityNotificationText !== "string") {
+            merged.companyAbilityNotificationText = "";
+          }
+          {
+            const companyLevel = Math.max(
+              1,
+              Math.floor(merged.company?.level ?? merged.companyLevel ?? 1),
+            );
+            const resolved = resolveCompanyAbilityState(
+              companyLevel,
+              merged.companyAbilityChoices ?? {},
+            );
+            merged.companyAbilityUnlockedIds = resolved.unlocked;
+            merged.companyAbilityPendingChoiceLevels =
+              resolved.pendingChoiceLevels;
+          }
+          if (Array.isArray(merged.company?.soldiers)) {
+            const effects = getCompanyPassiveEffects(
+              new Set(merged.companyAbilityUnlockedIds ?? []),
+            );
+            merged.company = {
+              ...merged.company,
+              soldiers: merged.company!.soldiers!.map((s: Soldier) => {
+                const hydrated = {
+                  ...s,
+                  companyFlatBonuses: { ...effects.flatStats },
+                  companyChanceToHitBonusPct: effects.chanceToHitBonusPct,
+                } as Soldier;
+                SoldierManager.refreshCombatProfile(hydrated);
+                return hydrated;
+              }),
+            };
+          }
           /* Sync companyExperience with company.experience (avoid drift from old saves or partial updates) */
           const companyExp =
             merged.company?.experience ?? merged.companyExperience ?? 0;
@@ -419,6 +487,27 @@ export const usePlayerCompanyStore = createStore<CompanyStore>()(
             merged.companyLevel < 1
           ) {
             merged.companyLevel = merged.company?.level ?? 1;
+          }
+          merged.companyLevel = Math.max(
+            1,
+            Math.min(MAX_COMPANY_LEVEL, Math.floor(merged.companyLevel)),
+          );
+          if (typeof merged.company === "object") {
+            const clampedCompanyLevel = Math.max(
+              1,
+              Math.min(
+                MAX_COMPANY_LEVEL,
+                Math.floor(merged.company?.level ?? merged.companyLevel),
+              ),
+            );
+            merged.company = {
+              ...merged.company,
+              level: clampedCompanyLevel,
+              resourceProfile:
+                COMPANY_RESOURCES_BY_LEVEL[clampedCompanyLevel - 1] ??
+                COMPANY_RESOURCES_BY_LEVEL[0],
+            };
+            merged.companyLevel = clampedCompanyLevel;
           }
           if (
             typeof merged.highestRecruitLevelAchieved !== "number" ||
