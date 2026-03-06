@@ -1537,7 +1537,8 @@ export function eventConfigs() {
       const listElNode = listEl;
       let lastAbilitiesMarkup = "";
 
-      const canUse = combatStarted && !combatWinner;
+      const canUseCombatant = (c: Combatant) =>
+        combatStarted && !combatWinner && !isStunned(c, Date.now());
       const soldier = getSoldierFromStore(combatant.id);
       let grenades: SoldierGrenade[] = [];
       let medItems: SoldierMedItem[] = [];
@@ -1568,6 +1569,7 @@ export function eventConfigs() {
         .map((a) => {
           const isTakeCover = a.actionId === "take_cover";
           const isSuppress = a.actionId === "suppress";
+          const canUse = canUseCombatant(combatant);
           const disabled = isTakeCover
             ? !canUse || takeCoverOnCooldown
             : isSuppress
@@ -1597,6 +1599,7 @@ export function eventConfigs() {
         .join("");
 
       function buildEquipmentHtml(c: Combatant) {
+        const canUse = canUseCombatant(c);
         const eqNow = Date.now();
         const grenadeOnCooldown = (c.grenadeCooldownUntil ?? 0) > eqNow;
         const grenadeRemainingSec = grenadeOnCooldown
@@ -1674,6 +1677,7 @@ export function eventConfigs() {
           .map((a) => {
             const isTakeCover = a.actionId === "take_cover";
             const isSuppress = a.actionId === "suppress";
+            const canUse = canUseCombatant(c);
             const disabled = isTakeCover
               ? !canUse || takeCoverOnCooldown
               : isSuppress
@@ -2029,6 +2033,7 @@ export function eventConfigs() {
       target: Combatant,
       medItem: SoldierMedItem,
     ) {
+      if (user.hp <= 0 || user.downState || isStunned(user, Date.now())) return;
       playerAbilitiesUsed.set(
         user.id,
         (playerAbilitiesUsed.get(user.id) ?? 0) + 1,
@@ -2105,6 +2110,7 @@ export function eventConfigs() {
 
     function executeEnemyMedicUse(user: Combatant, target: Combatant): boolean {
       if ((user.designation ?? "").toLowerCase() !== "medic") return false;
+      if (isStunned(user, Date.now())) return false;
       const uses = user.enemyMedkitUses ?? 0;
       if (uses <= 0 || target.hp <= 0 || target.downState) return false;
 
@@ -2168,13 +2174,15 @@ export function eventConfigs() {
       target: Combatant,
       opts?: { fromEnemyAi?: boolean },
     ) {
+      const now = Date.now();
+      if (user.hp <= 0 || user.downState || isStunned(user, now)) return;
       if (user.side === "player") {
         playerAbilitiesUsed.set(
           user.id,
           (playerAbilitiesUsed.get(user.id) ?? 0) + 1,
         );
       }
-      user.suppressCooldownUntil = Date.now() + SUPPRESS_COOLDOWN_MS;
+      user.suppressCooldownUntil = now + SUPPRESS_COOLDOWN_MS;
       if (!opts?.fromEnemyAi) {
         suppressTargetingMode = null;
         document
@@ -2188,8 +2196,6 @@ export function eventConfigs() {
       if (!attackerCard || !targetCard) return;
 
       let anyHit = false;
-      const now = Date.now();
-
       const doBurst = () => {
         if (target.hp <= 0 || target.downState) return;
         const result = resolveAttack(user, target, now);
@@ -2288,6 +2294,10 @@ export function eventConfigs() {
         resetTargetingUi?: boolean;
       },
     ) {
+      if (thrower.hp <= 0 || thrower.downState || isStunned(thrower, Date.now())) {
+        if (options?.resetTargetingUi !== false) closeAbilitiesPopup();
+        return;
+      }
       const consumeThrowable = options?.consumeThrowable ?? true;
       const trackPlayerStats = options?.trackPlayerStats ?? true;
       const resetTargetingUi = options?.resetTargetingUi ?? true;
@@ -3956,6 +3966,7 @@ export function eventConfigs() {
     ): boolean {
       if (combatant.hp <= 0 || combatant.downState) return false;
       const now = Date.now();
+      if (isStunned(combatant, now)) return false;
       if ((combatant.takeCoverCooldownUntil ?? 0) > now) return false;
       if ((combatant.takeCoverToughnessBonus ?? 0) <= 0) {
         combatant.toughness = Math.max(0, (combatant.toughness ?? 0) + 50);
@@ -3989,6 +4000,7 @@ export function eventConfigs() {
     }
 
     function handleSuppressAbility(combatant: Combatant): void {
+      if (isStunned(combatant, Date.now())) return;
       const onCooldown = (combatant.suppressCooldownUntil ?? 0) > Date.now();
       if (combatant.hp <= 0 || combatant.downState || onCooldown) return;
       suppressTargetingMode = { user: combatant };
@@ -4007,6 +4019,7 @@ export function eventConfigs() {
       if (!ability) return;
       const combatant = players.find((p) => p.id === soldierId);
       if (!combatant) return;
+      if (isStunned(combatant, Date.now())) return;
       if (ability.actionId === "take_cover") {
         handleTakeCoverAbility(combatant);
       } else if (ability.actionId === "suppress") {
@@ -4017,6 +4030,14 @@ export function eventConfigs() {
     function handleCombatCardClick(e: Event, card: HTMLElement | null): void {
       e.stopPropagation();
       if (medTargetingMode) {
+        if (
+          medTargetingMode.user.hp <= 0 ||
+          medTargetingMode.user.downState ||
+          isStunned(medTargetingMode.user, Date.now())
+        ) {
+          closeAbilitiesPopup();
+          return;
+        }
         if (
           !card ||
           card.dataset.side !== "player" ||
@@ -4038,6 +4059,14 @@ export function eventConfigs() {
       }
       if (suppressTargetingMode) {
         if (
+          suppressTargetingMode.user.hp <= 0 ||
+          suppressTargetingMode.user.downState ||
+          isStunned(suppressTargetingMode.user, Date.now())
+        ) {
+          closeAbilitiesPopup();
+          return;
+        }
+        if (
           !card ||
           card.dataset.side !== "enemy" ||
           card.classList.contains("combat-card-down")
@@ -4053,6 +4082,14 @@ export function eventConfigs() {
         return;
       }
       if (grenadeTargetingMode) {
+        if (
+          grenadeTargetingMode.thrower.hp <= 0 ||
+          grenadeTargetingMode.thrower.downState ||
+          isStunned(grenadeTargetingMode.thrower, Date.now())
+        ) {
+          closeAbilitiesPopup();
+          return;
+        }
         if (
           !card ||
           card.dataset.side !== "enemy" ||
@@ -4160,6 +4197,7 @@ export function eventConfigs() {
             const inventoryIndex = parseInt(idxStr, 10);
             const user = players.find((p) => p.id === soldierId);
             if (!user || user.hp <= 0 || user.downState) return;
+            if (isStunned(user, Date.now())) return;
             const soldier = getSoldierFromStore(soldierId);
             const medItemsList = soldier
               ? getSoldierMedItems(soldier.inventory)
@@ -4194,6 +4232,7 @@ export function eventConfigs() {
             const inventoryIndex = parseInt(idxStr, 10);
             const thrower = players.find((p) => p.id === soldierId);
             if (!thrower || thrower.hp <= 0 || thrower.downState) return;
+            if (isStunned(thrower, Date.now())) return;
             const soldier = getSoldierFromStore(soldierId);
             const grenades = soldier
               ? getSoldierGrenades(soldier.inventory)
