@@ -204,21 +204,27 @@ function UiManager() {
 
     if (mode == null) {
       if (
+        store.missionsResumeStep === "ready_room" &&
+        store.missionsResumeMission &&
+        store.missionsViewMode !== "menu"
+      ) {
+        _ScreenManager.generate.createReadyRoomPage(
+          store.missionsResumeMission,
+        );
+        return;
+      }
+
+      if (store.missionsViewMode === "career") {
+        _ScreenManager.generate.createCareerPage();
+        return;
+      }
+
+      if (
         store.missionsViewMode === "normal" ||
         store.missionsViewMode === "epic" ||
         store.missionsViewMode === "dev"
       ) {
         _ScreenManager.generate.createMissionsPage(store.missionsViewMode);
-        return;
-      }
-
-      if (
-        store.missionsResumeStep === "ready_room" &&
-        store.missionsResumeMission
-      ) {
-        _ScreenManager.generate.createReadyRoomPage(
-          store.missionsResumeMission,
-        );
         return;
       }
 
@@ -230,14 +236,6 @@ function UiManager() {
         _ScreenManager.generate.createMissionsPage("normal");
         return;
       }
-      if (
-        store.missionsResumeStep === "career" ||
-        store.missionsViewMode === "career"
-      ) {
-        _ScreenManager.generate.createCareerPage();
-        return;
-      }
-
       _ScreenManager.generate.createMissionsPage("menu");
       return;
     }

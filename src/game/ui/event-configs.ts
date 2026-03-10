@@ -12,6 +12,8 @@ import {
   SOLDIER_XP_PER_DAMAGE_TAKEN,
   SOLDIER_XP_PER_KILL,
   SOLDIER_XP_PER_ABILITY_USE,
+  SOLDIER_XP_PER_HEAL,
+  COMPANY_XP_FROM_COMBAT_MULTIPLIER,
 } from "../../constants/economy.ts";
 import {
   getItemArmoryCategory,
@@ -58,6 +60,7 @@ import {
   isStunned,
   assignTargets,
   applyBurnTicks,
+  addBurnStack,
   applyBleedTicks,
   clearExpiredEffects,
   clearCombatantEffectsOnDeath,
@@ -87,7 +90,10 @@ import {
   buildCombatSummaryData,
 } from "../html-templates/combat-summary-template.ts";
 import { ThrowableItems } from "../../constants/items/throwable.ts";
-import { getMedKitHealValues } from "../../constants/items/medkit-scaling.ts";
+import {
+  getMedKitHealValues,
+  getMedicAwarenessHealBonusPct,
+} from "../../constants/items/medkit-scaling.ts";
 import { createEnemyCombatant } from "../combat/combatant-utils.ts";
 import { formatDisplayName } from "../../utils/name-utils.ts";
 import { MAX_GEAR_LEVEL } from "../../constants/items/types.ts";
@@ -1218,6 +1224,7 @@ export function eventConfigs() {
     const playerDamage = new Map<string, number>();
     const playerDamageTaken = new Map<string, number>();
     const playerAbilitiesUsed = new Map<string, number>();
+    const playerHealing = new Map<string, number>();
     const missionStatsBySoldier = new Map<
       string,
       {
@@ -1231,6 +1238,7 @@ export function eventConfigs() {
       playerDamage.set(p.id, 0);
       playerDamageTaken.set(p.id, 0);
       playerAbilitiesUsed.set(p.id, 0);
+      playerHealing.set(p.id, 0);
       missionStatsBySoldier.set(p.id, {
         grenadeThrows: 0,
         grenadeHits: 0,
@@ -2338,6 +2346,16 @@ export function eventConfigs() {
           const itemLevel = (medItem.item as { level?: number }).level ?? 1;
           const medkitHeals = getMedKitHealValues(itemLevel);
           healAmount = isMedic ? medkitHeals.medic : medkitHeals.nonMedic;
+          if (isMedic) {
+            const medicAwareness =
+              user.soldierRef?.attributes?.awareness ?? 0;
+            const awrBonusPct = getMedicAwarenessHealBonusPct(
+              medicAwareness,
+            );
+            if (awrBonusPct > 0) {
+              healAmount = Math.round(healAmount * (1 + awrBonusPct));
+            }
+          }
         } else {
           healAmount = baseHeal;
         }
@@ -2355,8 +2373,15 @@ export function eventConfigs() {
           target.maxHp,
           Math.floor(target.hp) + healAmount,
         );
+        const healedAmount = Math.max(0, newHp - Math.floor(target.hp));
         target.hp = newHp;
         if (target.downState === "incapacitated") delete target.downState;
+        if (isMedic && healedAmount > 0) {
+          playerHealing.set(
+            user.id,
+            (playerHealing.get(user.id) ?? 0) + healedAmount,
+          );
+        }
         const card = getCombatantCard(target.id);
         if (card) {
           spawnCombatPopup(card, "combat-heal-popup", `+${healAmount}`, 1500);
@@ -2408,6 +2433,14 @@ export function eventConfigs() {
       setTimeout(() => targetCard.classList.remove(sideClass), 220);
     }
 
+    function applyCriticalHitImpact(targetCard: HTMLElement): void {
+      targetCard.classList.add("combat-card-crit-shake");
+      setTimeout(
+        () => targetCard.classList.remove("combat-card-crit-shake"),
+        260,
+      );
+    }
+
     function spawnCombatPopup(
       card: HTMLElement,
       className: string,
@@ -2417,6 +2450,18 @@ export function eventConfigs() {
       const popup = document.createElement("span");
       popup.className = className;
       popup.textContent = text;
+      card.appendChild(popup);
+      window.setTimeout(() => popup.remove(), durationMs);
+    }
+
+    function spawnCriticalPopup(
+      card: HTMLElement,
+      damage: number,
+      durationMs = 1300,
+    ): void {
+      const popup = document.createElement("span");
+      popup.className = "combat-damage-popup combat-critical-popup";
+      popup.innerHTML = `<span class="combat-critical-label">CRIT</span><span class="combat-critical-value">${damage}</span>`;
       card.appendChild(popup);
       window.setTimeout(() => popup.remove(), durationMs);
     }
@@ -2456,7 +2501,8 @@ export function eventConfigs() {
       let anyHit = false;
       const doBurst = () => {
         if (target.hp <= 0 || target.downState) return;
-        const result = resolveAttack(user, target, now);
+        const burstNow = Date.now();
+        const result = resolveAttack(user, target, burstNow);
         if (result.hit && !result.evaded) anyHit = true;
         animateProjectile(
           attackerCard,
@@ -2466,16 +2512,24 @@ export function eventConfigs() {
           10,
         );
         if (result.damage > 0 && shouldShowCombatFeedback(target.id)) {
-          const popup = document.createElement("span");
-          popup.className = "combat-damage-popup combat-suppress-damage-popup";
-          popup.textContent = String(result.damage);
-          targetCard.appendChild(popup);
-          setTimeout(() => popup.remove(), 1500);
-          targetCard.classList.add("combat-card-shake");
-          setTimeout(
-            () => targetCard.classList.remove("combat-card-shake"),
-            350,
-          );
+          if (result.critical) {
+            spawnCriticalPopup(targetCard, result.damage, 1300);
+          } else {
+            const popup = document.createElement("span");
+            popup.className = "combat-damage-popup combat-suppress-damage-popup";
+            popup.textContent = String(result.damage);
+            targetCard.appendChild(popup);
+            setTimeout(() => popup.remove(), 1500);
+          }
+          if (result.critical) {
+            applyCriticalHitImpact(targetCard);
+          } else {
+            targetCard.classList.add("combat-card-shake");
+            setTimeout(
+              () => targetCard.classList.remove("combat-card-shake"),
+              350,
+            );
+          }
         } else if (
           result.hit &&
           result.evaded &&
@@ -3839,6 +3893,7 @@ export function eventConfigs() {
                 playerDamageTaken,
                 playerKills,
                 playerAbilitiesUsed,
+                playerHealing,
                 victory,
               );
               store.syncCombatHpToSoldiers(
@@ -3855,12 +3910,14 @@ export function eventConfigs() {
               const dmgTaken = playerDamageTaken.get(id) ?? 0;
               const kills = playerKills.get(id) ?? 0;
               const abilitiesUsed = playerAbilitiesUsed.get(id) ?? 0;
+              const healing = playerHealing.get(id) ?? 0;
               const xp =
                 baseXp +
                 dmg * SOLDIER_XP_PER_DAMAGE +
                 dmgTaken * SOLDIER_XP_PER_DAMAGE_TAKEN +
                 kills * SOLDIER_XP_PER_KILL +
-                abilitiesUsed * SOLDIER_XP_PER_ABILITY_USE;
+                abilitiesUsed * SOLDIER_XP_PER_ABILITY_USE +
+                healing * SOLDIER_XP_PER_HEAL;
               xpEarnedBySoldier.set(id, Math.round(xp * 10) / 10);
             }
             let companyXpEarned = 0;
@@ -3871,9 +3928,10 @@ export function eventConfigs() {
               });
               const companyDivisor =
                 mission.kind === "defend_objective" ? 6 : 5;
+              const baseCompanyXp = totalSoldierXp / companyDivisor;
               companyXpEarned = Math.max(
                 1,
-                Math.floor(totalSoldierXp / companyDivisor),
+                Math.floor(baseCompanyXp * COMPANY_XP_FROM_COMBAT_MULTIPLIER),
               );
             }
             const { rewardItems, lootItems } =
@@ -4210,13 +4268,13 @@ export function eventConfigs() {
               nextAttackAt.set(c.id, getNextAttackAt(c, now));
               const attackerCard = getCombatantCard(c.id);
               const targetCard = getCombatantCard(result.targetId);
-              const ATTACK_PROJECTILE_MS = 220;
+              const attackProjectileMs = result.critical ? 150 : 220;
               if (attackerCard && targetCard) {
                 animateProjectile(
                   attackerCard,
                   targetCard,
                   BULLET_ICON,
-                  ATTACK_PROJECTILE_MS,
+                  attackProjectileMs,
                   10,
                 );
               }
@@ -4233,21 +4291,29 @@ export function eventConfigs() {
                     2200,
                   );
                 } else if (result.damage > 0) {
-                  spawnCombatPopup(
-                    targetCard,
-                    "combat-damage-popup",
-                    String(result.damage),
-                    1500,
-                  );
-                  targetCard.classList.add("combat-card-shake");
-                  setTimeout(
-                    () => targetCard.classList.remove("combat-card-shake"),
-                    350,
-                  );
+                  if (result.critical) {
+                    spawnCriticalPopup(targetCard, result.damage, 1300);
+                  } else {
+                    spawnCombatPopup(
+                      targetCard,
+                      "combat-damage-popup",
+                      String(result.damage),
+                      1500,
+                    );
+                  }
+                  if (result.critical) {
+                    applyCriticalHitImpact(targetCard);
+                  } else {
+                    targetCard.classList.add("combat-card-shake");
+                    setTimeout(
+                      () => targetCard.classList.remove("combat-card-shake"),
+                      350,
+                    );
+                  }
                   applyAutoAttackHitFlash(targetCard, target);
                 }
               };
-              setTimeout(showAttackResult, ATTACK_PROJECTILE_MS - 20);
+              setTimeout(showAttackResult, attackProjectileMs - 20);
               markCombatantsDirty([c.id, result.targetId]);
               didAttack = true;
             }
@@ -4301,6 +4367,7 @@ export function eventConfigs() {
           playerDamageTaken,
           playerKills,
           playerAbilitiesUsed,
+          playerHealing,
           false,
         );
         // Survivors return to roster at full HP after mission end/quit.
@@ -4494,10 +4561,11 @@ export function eventConfigs() {
         const hit = Math.random() < 0.9;
         if (hit) {
           const burnPct = 0.08 + Math.random() * 0.05;
-          target.burnTickDamage = Math.max(1, Math.ceil(target.maxHp * burnPct));
-          target.burnTicksRemaining = 3;
-          target.burningUntil = now + 3_000;
-          target.burnIgnoresMitigation = true;
+          addBurnStack(target, now, {
+            damagePerTick: Math.max(1, Math.ceil(target.maxHp * burnPct)),
+            ticks: 3,
+            ignoresMitigation: true,
+          });
           const card = getCombatantCard(target.id);
           if (card) spawnCombatPopup(card, "combat-smoke-popup", "Napalm", 1500);
         } else {
@@ -6075,39 +6143,46 @@ export function eventConfigs() {
         popup
           .querySelectorAll(".rest-soldier-pill.selected")
           .forEach((el) => el.classList.remove("selected"));
+        popup
+          .querySelectorAll(".rest-soldier-pill.rest-soldier-resting")
+          .forEach((el) => el.classList.remove("rest-soldier-resting"));
         if (feedback) feedback.textContent = "";
         if (progressWrap) progressWrap.hidden = true;
         if (progressFill) {
           progressFill.style.transition = "none";
           progressFill.style.width = "0%";
         }
-        const updateSummary = () => {
-          const selected = Array.from(
-            popup.querySelectorAll(".rest-soldier-pill.selected"),
-          ) as HTMLElement[];
-          let totalRecover = 0;
-          let totalCost = 0;
-          selected.forEach((card) => {
-            totalRecover += Number(card.dataset.restRecover ?? 0);
-            totalCost += Number(card.dataset.restCost ?? 0);
-          });
-          const selectedEl = popup.querySelector(
-            "#rest-popup-selected-count",
-          ) as HTMLElement | null;
-          const previewEl = popup.querySelector(
-            "#rest-popup-preview",
-          ) as HTMLElement | null;
-          const sendBtn = popup.querySelector(
-            "#rest-popup-send-btn",
-          ) as HTMLButtonElement | null;
-          if (selectedEl)
-            selectedEl.textContent = `${selected.length} selected`;
-          if (previewEl)
-            previewEl.textContent = `Recovery +${totalRecover} | Cost $${totalCost}`;
-          if (sendBtn)
-            sendBtn.disabled = selected.length === 0 || totalRecover <= 0;
-        };
-        updateSummary();
+        const themeEl = popup.querySelector("#rest-popup-theme") as HTMLElement | null;
+        if (themeEl) {
+          const picked = REST_THEME_LINES[Math.floor(Math.random() * REST_THEME_LINES.length)];
+          themeEl.textContent = picked;
+        }
+        popup
+          .querySelectorAll(".rest-filter-chip")
+          .forEach((chip) =>
+            chip.classList.toggle(
+              "is-active",
+              (chip as HTMLElement).dataset.restFilter === "all",
+            ),
+          );
+        applyRestFilter(popup, "all");
+        updateRestPopupSummary(popup);
+      },
+    },
+    {
+      selector: "#roster-rest-popup .rest-filter-chip",
+      eventType: "click",
+      callback: (e: Event) => {
+        const chip = e.currentTarget as HTMLElement | null;
+        const popup = document.getElementById("roster-rest-popup");
+        if (!chip || !popup || popup.classList.contains("rest-popup-running"))
+          return;
+        const filter = chip.dataset.restFilter ?? "all";
+        popup
+          .querySelectorAll(".rest-filter-chip")
+          .forEach((el) => el.classList.toggle("is-active", el === chip));
+        applyRestFilter(popup, filter);
+        updateRestPopupSummary(popup);
       },
     },
     {
@@ -6137,29 +6212,14 @@ export function eventConfigs() {
         if (!popup || popup.classList.contains("rest-popup-running")) return;
         if (card.disabled || card.classList.contains("disabled")) return;
         card.classList.toggle("selected");
-        const selected = Array.from(
-          popup.querySelectorAll(".rest-soldier-pill.selected"),
-        ) as HTMLElement[];
-        let totalRecover = 0;
-        let totalCost = 0;
-        selected.forEach((el) => {
-          totalRecover += Number(el.dataset.restRecover ?? 0);
-          totalCost += Number(el.dataset.restCost ?? 0);
-        });
-        const selectedEl = popup.querySelector(
-          "#rest-popup-selected-count",
-        ) as HTMLElement | null;
-        const previewEl = popup.querySelector(
-          "#rest-popup-preview",
-        ) as HTMLElement | null;
-        const sendBtn = popup.querySelector(
-          "#rest-popup-send-btn",
-        ) as HTMLButtonElement | null;
-        if (selectedEl) selectedEl.textContent = `${selected.length} selected`;
-        if (previewEl)
-          previewEl.textContent = `Recovery +${totalRecover} | Cost $${totalCost}`;
-        if (sendBtn)
-          sendBtn.disabled = selected.length === 0 || totalRecover <= 0;
+        card.classList.remove("rest-soldier-select-pop");
+        void card.offsetWidth;
+        card.classList.add("rest-soldier-select-pop");
+        window.setTimeout(
+          () => card.classList.remove("rest-soldier-select-pop"),
+          260,
+        );
+        updateRestPopupSummary(popup);
       },
     },
     {
@@ -6194,18 +6254,13 @@ export function eventConfigs() {
         const feedback = popup.querySelector(
           "#rest-popup-feedback",
         ) as HTMLElement | null;
-        const selectedEl = popup.querySelector(
-          "#rest-popup-selected-count",
-        ) as HTMLElement | null;
-        const previewEl = popup.querySelector(
-          "#rest-popup-preview",
-        ) as HTMLElement | null;
 
         popup.classList.add("rest-popup-running");
         popup.setAttribute("aria-busy", "true");
         if (sendBtn) sendBtn.disabled = true;
         if (closeBtn) closeBtn.disabled = true;
-        if (feedback) feedback.textContent = "R&R in progress...";
+        if (feedback) feedback.textContent = "Transporting troops...";
+        selectedCards.forEach((card) => card.classList.add("rest-soldier-resting"));
         if (progressWrap) progressWrap.hidden = false;
         if (progressFill) {
           progressFill.style.transition = "none";
@@ -6216,6 +6271,20 @@ export function eventConfigs() {
             progressFill.style.width = "100%";
           });
         }
+        window.setTimeout(() => {
+          if (
+            feedback &&
+            popup.classList.contains("rest-popup-running")
+          )
+            feedback.textContent = "Recovering morale and stamina...";
+        }, 650);
+        window.setTimeout(() => {
+          if (
+            feedback &&
+            popup.classList.contains("rest-popup-running")
+          )
+            feedback.textContent = "Returning to duty...";
+        }, 1350);
 
         window.setTimeout(() => {
           const result = usePlayerCompanyStore
@@ -6273,31 +6342,19 @@ export function eventConfigs() {
               }
             });
 
-            const remainingSelected = Array.from(
-              popup.querySelectorAll(".rest-soldier-pill.selected"),
-            ) as HTMLElement[];
-            let totalRecover = 0;
-            let totalCost = 0;
-            remainingSelected.forEach((card) => {
-              totalRecover += Number(card.dataset.restRecover ?? 0);
-              totalCost += Number(card.dataset.restCost ?? 0);
-            });
-            if (selectedEl)
-              selectedEl.textContent = `${remainingSelected.length} selected`;
-            if (previewEl)
-              previewEl.textContent = `Recovery +${totalRecover} | Cost $${totalCost}`;
-            if (sendBtn)
-              sendBtn.disabled =
-                remainingSelected.length === 0 || totalRecover <= 0;
+            updateRestPopupSummary(popup);
 
             if (feedback) {
               const creditLeft =
                 usePlayerCompanyStore.getState().creditBalance ?? 0;
               const maxMsg = hitMaxCount > 0 ? ` ${hitMaxCount} maxed.` : "";
-              feedback.textContent = `Recovered +${result.totalRecovered} energy for $${result.totalCost}.${maxMsg} Credits: $${creditLeft}`;
+              feedback.textContent = `Recovered +${result.totalRecovered} energy for ${CREDIT_SYMBOL}${result.totalCost}.${maxMsg} Credits: ${CREDIT_SYMBOL}${creditLeft}`;
             }
           }
 
+          selectedCards.forEach((card) =>
+            card.classList.remove("rest-soldier-resting"),
+          );
           popup.classList.remove("rest-popup-running");
           popup.setAttribute("aria-busy", "false");
           if (closeBtn) closeBtn.disabled = false;
@@ -6622,6 +6679,86 @@ export function eventConfigs() {
       },
     },
   ];
+
+  const REST_THEME_LINES = [
+    "Mess Hall rotation scheduled.",
+    "Field maintenance break underway.",
+    "Barracks quiet hours approved.",
+    "Shore leave shuttle standing by.",
+  ];
+
+  function computeRestSelectionTotals(popup: HTMLElement): {
+    selectedCount: number;
+    totalRecover: number;
+    totalCost: number;
+  } {
+    const selected = Array.from(
+      popup.querySelectorAll(".rest-soldier-pill.selected"),
+    ) as HTMLElement[];
+    let totalRecover = 0;
+    let totalCost = 0;
+    selected.forEach((card) => {
+      totalRecover += Number(card.dataset.restRecover ?? 0);
+      totalCost += Number(card.dataset.restCost ?? 0);
+    });
+    return { selectedCount: selected.length, totalRecover, totalCost };
+  }
+
+  function applyRestFilter(popup: HTMLElement, filter: string): void {
+    const cards = Array.from(
+      popup.querySelectorAll(".rest-soldier-pill"),
+    ) as HTMLElement[];
+    cards.forEach((card) => {
+      const status = card.dataset.restStatus ?? "reserve";
+      const energy = Number(card.dataset.restEnergy ?? 100);
+      const matches =
+        filter === "all" ||
+        (filter === "active" && status === "active") ||
+        (filter === "reserve" && status === "reserve") ||
+        (filter === "needs_rest" && energy < 70);
+      card.hidden = !matches;
+    });
+  }
+
+  function updateRestPopupSummary(popup: HTMLElement): void {
+    const { selectedCount, totalRecover, totalCost } =
+      computeRestSelectionTotals(popup);
+    const selectedEl = popup.querySelector(
+      "#rest-popup-selected-count",
+    ) as HTMLElement | null;
+    const previewEl = popup.querySelector(
+      "#rest-popup-preview",
+    ) as HTMLElement | null;
+    const manifestCountEl = popup.querySelector(
+      "#rest-popup-manifest-count",
+    ) as HTMLElement | null;
+    const manifestRecoveryEl = popup.querySelector(
+      "#rest-popup-manifest-recovery",
+    ) as HTMLElement | null;
+    const manifestCostEl = popup.querySelector(
+      "#rest-popup-manifest-cost",
+    ) as HTMLElement | null;
+    const sendBtn = popup.querySelector(
+      "#rest-popup-send-btn",
+    ) as HTMLButtonElement | null;
+
+    if (selectedEl) selectedEl.textContent = `${selectedCount} selected`;
+    if (previewEl)
+      previewEl.textContent = `Recovery +${totalRecover} | Cost ${CREDIT_SYMBOL}${totalCost}`;
+    if (manifestCountEl)
+      manifestCountEl.textContent = `${selectedCount} ${selectedCount === 1 ? "troop" : "troops"}`;
+    if (manifestRecoveryEl)
+      manifestRecoveryEl.textContent = `+${totalRecover} EN`;
+    if (manifestCostEl)
+      manifestCostEl.textContent = `${CREDIT_SYMBOL}${totalCost}`;
+    if (sendBtn) {
+      sendBtn.disabled = selectedCount === 0 || totalRecover <= 0;
+      sendBtn.textContent =
+        selectedCount > 0
+          ? `Send on Leave (${selectedCount})`
+          : "Send on Leave";
+    }
+  }
 
   function clearFormationSelection() {
     const screen = document.getElementById("formation-screen");

@@ -251,16 +251,25 @@ function ScreenManager() {
     UiManager.clear.center();
     const store = usePlayerCompanyStore.getState();
     const onboardingFirstMission = !!store.onboardingFirstMissionPending;
-    if (
-      mode &&
-      mode !== "career" &&
-      store.missionsResumeStep === "career"
-    ) {
-      store.setMissionsResumeState("all", null);
+    const nextMode = onboardingFirstMission ? "normal" : (mode ?? "menu");
+    store.setMissionsViewMode(nextMode);
+
+    if (nextMode === "menu") {
+      store.setMissionsResumeState("none", null);
+    } else if (nextMode === "normal") {
+      const curStep = store.missionsResumeStep;
+      const normalizedStep =
+        curStep === "all" ||
+        curStep === "defend_objective" ||
+        curStep === "skirmish" ||
+        curStep === "manhunt"
+          ? curStep
+          : "all";
+      store.setMissionsResumeState(normalizedStep, null);
+    } else if (nextMode === "epic" || nextMode === "dev") {
+      store.setMissionsResumeState("none", null);
     }
-    store.setMissionsViewMode(
-      onboardingFirstMission ? "normal" : (mode ?? "menu"),
-    );
+
     store.ensureMissionBoard();
     const createOnboardingSkirmish = (): Mission => ({
       id: "onboarding_skirmish_1",
@@ -295,8 +304,7 @@ function ScreenManager() {
       ? [normalizeEncounterForMission(createOnboardingSkirmish())]
       : (usePlayerCompanyStore.getState().missionBoard ?? []);
     const companyLevel = usePlayerCompanyStore.getState().companyLevel ?? 1;
-    const activeMode =
-      usePlayerCompanyStore.getState().missionsViewMode ?? "menu";
+    const activeMode = usePlayerCompanyStore.getState().missionsViewMode ?? "menu";
     const resumeStep = usePlayerCompanyStore.getState().missionsResumeStep;
     const initialKindFilter =
       activeMode === "normal" &&
@@ -453,9 +461,9 @@ function ScreenManager() {
           : undefined;
       const finalEncounter = careerEncounter ?? encounter;
       const mirroredCareerRoles: Designation[] = isCareerMission
-        ? players.map((p) =>
-            p.designation === "medic" || p.designation === "support"
-              ? p.designation
+        ? activeSoldiers.map((s) =>
+            s.designation === "medic" || s.designation === "support"
+              ? s.designation
               : "rifleman",
           )
         : [];

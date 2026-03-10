@@ -7268,6 +7268,48 @@ button.missions-filter-chip {
 	gap: 10px;
 }
 
+.rest-popup-theme {
+	margin: 0;
+	font-size: 0.68rem;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	font-weight: 700;
+	color: #ffd8a4;
+	text-shadow: 0 0 8px rgba(255, 166, 84, 0.35);
+}
+
+.rest-popup-filters {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+}
+
+.rest-filter-chip {
+	border: 1px solid rgba(122, 155, 130, 0.5);
+	background: linear-gradient(180deg, rgba(32, 42, 34, 0.92) 0%, rgba(18, 25, 20, 0.95) 100%);
+	color: #d6e5d3;
+	font-size: 0.62rem;
+	font-weight: 700;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	padding: 4px 8px;
+	border-radius: 5px;
+	cursor: pointer;
+	transition: transform 0.14s ease, filter 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.rest-filter-chip:hover {
+	filter: brightness(1.08);
+	border-color: rgba(176, 220, 186, 0.7);
+}
+
+.rest-filter-chip.is-active {
+	color: #fff5de;
+	background: linear-gradient(180deg, rgba(100, 122, 62, 0.95) 0%, rgba(56, 74, 34, 0.95) 100%);
+	border-color: rgba(210, 239, 154, 0.95);
+	box-shadow: 0 0 0 1px rgba(220, 241, 166, 0.45), 0 0 14px rgba(192, 226, 127, 0.3);
+}
+
 .rest-popup-summary {
 	display: flex;
 	align-items: center;
@@ -7311,6 +7353,25 @@ button.missions-filter-chip {
 	will-change: transform, box-shadow;
 }
 
+.rest-soldier-select-badge {
+	position: absolute;
+	left: 6px;
+	top: 5px;
+	font-size: 0.5rem;
+	font-weight: 900;
+	letter-spacing: 0.09em;
+	text-transform: uppercase;
+	padding: 1px 5px;
+	border-radius: 4px;
+	color: #fff8e8;
+	background: linear-gradient(180deg, rgba(243, 154, 67, 0.95) 0%, rgba(208, 94, 43, 0.98) 100%);
+	border: 1px solid rgba(255, 212, 162, 0.9);
+	opacity: 0;
+	transform: translateY(-2px) scale(0.96);
+	transition: opacity 0.16s ease, transform 0.16s ease;
+	pointer-events: none;
+}
+
 .rest-soldier-pill:hover:not(.disabled) {
 	transform: translateY(-1px);
 	border-color: rgba(170, 210, 170, 0.65);
@@ -7324,14 +7385,35 @@ button.missions-filter-chip {
 }
 
 .rest-soldier-pill.selected {
-	border-color: rgba(255, 181, 110, 0.98);
-	box-shadow: 0 0 0 1px rgba(255, 212, 160, 0.55), 0 6px 18px rgba(231, 141, 71, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+	border-color: rgba(255, 201, 126, 1);
+	background: linear-gradient(165deg, rgba(57, 41, 26, 0.95) 0%, rgba(26, 19, 12, 0.98) 100%);
+	box-shadow: 0 0 0 2px rgba(255, 222, 172, 0.58), 0 7px 22px rgba(242, 152, 81, 0.36), inset 0 1px 0 rgba(255, 248, 224, 0.2);
+}
+
+.rest-soldier-pill.selected .rest-soldier-select-badge {
+	opacity: 1;
+	transform: translateY(0) scale(1);
 }
 
 .rest-soldier-pill.disabled {
-	opacity: 0.48;
-	filter: grayscale(0.35);
+	opacity: 0.52;
+	filter: grayscale(0.45);
 	cursor: not-allowed;
+}
+
+.rest-soldier-full-badge {
+	position: absolute;
+	left: 6px;
+	bottom: 7px;
+	font-size: 0.52rem;
+	font-weight: 800;
+	letter-spacing: 0.07em;
+	text-transform: uppercase;
+	color: #c9d0d2;
+	background: rgba(16, 18, 19, 0.75);
+	border: 1px solid rgba(158, 166, 171, 0.6);
+	padding: 1px 5px;
+	border-radius: 4px;
 }
 
 .rest-soldier-status {
@@ -7423,6 +7505,37 @@ button.missions-filter-chip {
 	text-overflow: clip;
 }
 
+.rest-soldier-projection {
+	grid-row: 1;
+	grid-column: 2;
+	justify-self: end;
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	margin-right: 2px;
+}
+
+.rest-soldier-proj-gain,
+.rest-soldier-proj-cost {
+	font-size: 0.5rem;
+	font-weight: 800;
+	letter-spacing: 0.05em;
+	padding: 1px 4px;
+	border-radius: 4px;
+}
+
+.rest-soldier-proj-gain {
+	color: #c5f4bf;
+	background: rgba(38, 88, 44, 0.55);
+	border: 1px solid rgba(126, 216, 126, 0.45);
+}
+
+.rest-soldier-proj-cost {
+	color: #ffe9bd;
+	background: rgba(104, 70, 34, 0.52);
+	border: 1px solid rgba(232, 187, 109, 0.45);
+}
+
 .rest-soldier-energybar {
 	grid-row: 2;
 	grid-column: 1 / span 2;
@@ -7467,6 +7580,35 @@ button.missions-filter-chip {
 	display: flex;
 	flex-direction: column;
 	gap: 8px;
+}
+
+.rest-popup-manifest {
+	display: grid;
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+	gap: 6px;
+	align-items: center;
+	padding: 7px 8px;
+	border: 1px solid rgba(164, 196, 124, 0.34);
+	background: linear-gradient(180deg, rgba(26, 37, 23, 0.95) 0%, rgba(13, 20, 13, 0.98) 100%);
+	border-radius: 7px;
+}
+
+.rest-manifest-label {
+	grid-column: 1 / -1;
+	font-size: 0.56rem;
+	font-weight: 800;
+	letter-spacing: 0.09em;
+	text-transform: uppercase;
+	color: #afd89f;
+}
+
+.rest-manifest-count,
+.rest-manifest-recovery,
+.rest-manifest-cost {
+	font-size: 0.66rem;
+	font-weight: 800;
+	letter-spacing: 0.04em;
+	color: #f2f7df;
 }
 
 .rest-send-btn {
@@ -7566,7 +7708,22 @@ button.missions-filter-chip {
 }
 
 .rest-popup-running .rest-popup-grid,
-.rest-popup-running #rest-popup-close {
+.rest-popup-running #rest-popup-close,
+.rest-popup-running .rest-popup-filters {
+	pointer-events: none;
+}
+
+.rest-soldier-pill.rest-soldier-select-pop {
+	animation: rest-soldier-select-pop 0.26s ease-out;
+}
+
+.rest-soldier-pill.rest-soldier-resting::after {
+	content: "";
+	position: absolute;
+	inset: 0;
+	border-radius: inherit;
+	background: linear-gradient(108deg, rgba(255, 255, 255, 0) 0%, rgba(255, 245, 206, 0.18) 44%, rgba(255, 255, 255, 0) 100%);
+	animation: rest-soldier-resting-sheen 0.95s linear infinite;
 	pointer-events: none;
 }
 
@@ -7614,6 +7771,32 @@ button.missions-filter-chip {
 	100% {
 		box-shadow: 0 0 0 rgba(255, 213, 113, 0);
 		filter: brightness(1);
+	}
+}
+
+@keyframes rest-soldier-select-pop {
+	0% {
+		transform: scale(0.96);
+	}
+	60% {
+		transform: scale(1.02);
+	}
+	100% {
+		transform: scale(1);
+	}
+}
+
+@keyframes rest-soldier-resting-sheen {
+	0% {
+		transform: translateX(-90%);
+		opacity: 0;
+	}
+	20% {
+		opacity: 0.8;
+	}
+	100% {
+		transform: translateX(130%);
+		opacity: 0;
 	}
 }
 
@@ -11895,6 +12078,33 @@ button.missions-filter-chip {
 	0 0 24px rgba(255, 40, 40, 0.95);
 }
 
+.combat-critical-popup {
+	display: inline-flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 1px;
+	line-height: 1;
+	font-weight: 900;
+	color: #ffd54f;
+	text-shadow: 0 0 6px #000,
+	0 0 12px #000,
+	0 2px 6px rgba(0, 0, 0, 1),
+	0 0 24px rgba(255, 200, 60, 0.95),
+	0 0 42px rgba(255, 115, 0, 0.8);
+	animation: combat-crit-popup-anim 1.1s ease-out forwards;
+}
+
+.combat-critical-label {
+	font-size: 0.82rem;
+	letter-spacing: 0.08em;
+}
+
+.combat-critical-value {
+	font-size: 1.95rem;
+	letter-spacing: 0.03em;
+}
+
 @keyframes combat-damage-popup-anim {
 	0% {
 		opacity: 1;
@@ -11910,8 +12120,27 @@ button.missions-filter-chip {
 	}
 }
 
+@keyframes combat-crit-popup-anim {
+	0% {
+		opacity: 1;
+		transform: translate(-50%, -50%) scale(1.45);
+	}
+	18% {
+		opacity: 1;
+		transform: translate(-50%, -50%) scale(1.18);
+	}
+	100% {
+		opacity: 0;
+		transform: translate(-50%, -80px) scale(1.02);
+	}
+}
+
 .combat-card-shake {
 	animation: combat-card-shake-anim 0.4s ease-in-out;
+}
+
+.combat-card-crit-shake {
+	animation: combat-card-crit-shake-anim 0.26s ease-out;
 }
 
 @keyframes combat-card-shake-anim {
@@ -11938,6 +12167,28 @@ button.missions-filter-chip {
 	}
 	87% {
 		transform: translateX(-1px);
+	}
+}
+
+@keyframes combat-card-crit-shake-anim {
+	0%,
+	100% {
+		transform: translateX(0) translateY(0) scale(1);
+	}
+	15% {
+		transform: translateX(-7px) translateY(1px) scale(1.015);
+	}
+	30% {
+		transform: translateX(7px) translateY(-1px) scale(1.015);
+	}
+	45% {
+		transform: translateX(-5px) translateY(1px) scale(1.01);
+	}
+	60% {
+		transform: translateX(5px) translateY(-1px) scale(1.01);
+	}
+	75% {
+		transform: translateX(-2px) translateY(0) scale(1.005);
 	}
 }
 
@@ -12115,11 +12366,11 @@ button.missions-filter-chip {
 		width: 100%;
 	}
 	
-	/* Roster/8-item layout: col1 = MIT, AVD, CTH, Spd; col2 = TGH, MOR, AWR, DEX (all base stats in second column) */
+	/* Roster/10-item layout: col1 = MIT, AVD, CTH, Spd, TGH; col2 = MOR, AWR, DEX, CRIT. */
 	
 	.card-stats-grid-base-second,
 	.entity-card.roster-card .card-stats-grid {
-		grid-template-rows: repeat(4, auto);
+		grid-template-rows: repeat(5, auto);
 	}
 	
 	.card-stats-grid .detail-item {

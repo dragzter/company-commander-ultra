@@ -26,6 +26,7 @@ import {
   SOLDIER_XP_PER_DAMAGE_TAKEN,
   SOLDIER_XP_PER_KILL,
   SOLDIER_XP_PER_ABILITY_USE,
+  SOLDIER_XP_PER_HEAL,
   MAX_SOLDIER_LEVEL,
   MAX_COMPANY_LEVEL,
   ENERGY_MAX,
@@ -1585,6 +1586,7 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
     damageTakenBySoldier: Map<string, number>,
     killsBySoldier: Map<string, number>,
     abilitiesUsedBySoldier: Map<string, number>,
+    healingBySoldier: Map<string, number>,
     victory: boolean,
   ) => {
     const baseXp = victory ? SOLDIER_XP_BASE_SURVIVE_VICTORY : SOLDIER_XP_BASE_SURVIVE_DEFEAT;
@@ -1600,7 +1602,14 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
         const dmgTaken = damageTakenBySoldier.get(s.id) ?? 0;
         const kills = killsBySoldier.get(s.id) ?? 0;
         const abilitiesUsed = abilitiesUsedBySoldier.get(s.id) ?? 0;
-        const xpGain = baseXp + dmg * SOLDIER_XP_PER_DAMAGE + dmgTaken * SOLDIER_XP_PER_DAMAGE_TAKEN + kills * SOLDIER_XP_PER_KILL + abilitiesUsed * SOLDIER_XP_PER_ABILITY_USE;
+        const healing = healingBySoldier.get(s.id) ?? 0;
+        const xpGain =
+          baseXp +
+          dmg * SOLDIER_XP_PER_DAMAGE +
+          dmgTaken * SOLDIER_XP_PER_DAMAGE_TAKEN +
+          kills * SOLDIER_XP_PER_KILL +
+          abilitiesUsed * SOLDIER_XP_PER_ABILITY_USE +
+          healing * SOLDIER_XP_PER_HEAL;
         let exp = Math.round(((s.experience ?? 0) + xpGain) * 10) / 10;
         let lvl = s.level ?? 1;
         const maxLevel = MAX_SOLDIER_LEVEL;

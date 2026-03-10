@@ -1,5 +1,5 @@
 import { computeFinalDamage } from "../../game/combat/combat-damage.ts";
-import { clearCombatantEffectsOnDeath, getIncapacitationChance } from "../../game/combat/combat-loop.ts";
+import { addBurnStack, clearCombatantEffectsOnDeath, getIncapacitationChance } from "../../game/combat/combat-loop.ts";
 import type { Combatant } from "../../game/combat/types.ts";
 import type { Item } from "../../constants/items/types.ts";
 import { getScaledThrowableDamage } from "../../constants/items/throwable-scaling.ts";
@@ -206,10 +206,11 @@ export function resolveGrenadeThrow(
   if (isIncendiaryGrenade(grenade)) {
     const tickDmg = getScaledIncendiaryTickDamage(8, grenade.level ?? 1);
     if (!primaryTarget.immuneToBurning) {
-      primaryTarget.burnTickDamage = tickDmg;
-      primaryTarget.burnTicksRemaining = 4;
-      primaryTarget.burnIgnoresMitigation = true;
-      primaryTarget.burningUntil = now + 4 * TURN_MS;
+      addBurnStack(primaryTarget, now, {
+        damagePerTick: tickDmg,
+        ticks: 4,
+        ignoresMitigation: true,
+      });
     }
 
     const primary: GrenadeHitResult = {
@@ -237,10 +238,11 @@ export function resolveGrenadeThrow(
         continue;
       }
       if (!enemy.immuneToBurning) {
-        enemy.burnTickDamage = Math.max(1, Math.floor(tickDmg / 2));
-        enemy.burnTicksRemaining = 2;
-        enemy.burnIgnoresMitigation = true;
-        enemy.burningUntil = now + 2 * TURN_MS;
+        addBurnStack(enemy, now, {
+          damagePerTick: Math.max(1, Math.floor(tickDmg / 2)),
+          ticks: 2,
+          ignoresMitigation: true,
+        });
       }
       splash.push({ targetId: enemy.id, hit: true, evaded: false, damageDealt: 0, targetNewHp: enemy.hp, targetDown: false, targetIncapacitated: null });
     }
@@ -273,7 +275,18 @@ export function resolveGrenadeThrow(
     if (effPrimary.result === "stun" && !primaryTarget.immuneToStun) primaryTarget.stunUntil = now + durMs;
     else if (effPrimary.result === "panic" && !primaryTarget.immuneToPanic) primaryTarget.panicUntil = now + durMs;
     else if (effPrimary.result === "suppression" && !primaryTarget.immuneToSuppression) primaryTarget.suppressedUntil = now + durMs;
-    else if (effPrimary.result === "burn" && !primaryTarget.immuneToBurning) primaryTarget.burningUntil = now + durMs;
+    else if (
+      effPrimary.result === "burn" &&
+      !primaryTarget.immuneToBurning
+    ) {
+      const burnDamage = Math.max(1, Math.floor(effPrimary.effect_value ?? 1));
+      const burnTicks = Math.max(1, Math.floor(durMs / TURN_MS));
+      addBurnStack(primaryTarget, now, {
+        damagePerTick: burnDamage,
+        ticks: burnTicks,
+        ignoresMitigation: false,
+      });
+    }
   }
 
   const primary: GrenadeHitResult = {
@@ -348,7 +361,18 @@ export function resolveGrenadeThrow(
       if (eff.result === "stun" && !enemy.immuneToStun) enemy.stunUntil = now + adjDurMs;
       else if (eff.result === "panic" && !enemy.immuneToPanic) enemy.panicUntil = now + adjDurMs;
       else if (eff.result === "suppression" && !enemy.immuneToSuppression) enemy.suppressedUntil = now + adjDurMs;
-      else if (eff.result === "burn" && !enemy.immuneToBurning) enemy.burningUntil = now + adjDurMs;
+      else if (eff.result === "burn" && !enemy.immuneToBurning) {
+        const burnDamage = Math.max(
+          1,
+          Math.floor((eff.effect_value ?? 1) * SPLASH_EFFECT_PCT),
+        );
+        const burnTicks = Math.max(1, Math.floor(adjDurMs / TURN_MS));
+        addBurnStack(enemy, now, {
+          damagePerTick: burnDamage,
+          ticks: burnTicks,
+          ignoresMitigation: false,
+        });
+      }
     }
     splash.push({
       targetId: enemy.id,

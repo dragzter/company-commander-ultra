@@ -3,8 +3,12 @@
  */
 import { WEAPON_EFFECTS } from "../../constants/items/weapon-effects.ts";
 import { computeFinalDamage } from "./combat-damage.ts";
-import type { Combatant, TargetMap } from "./types.ts";
+import type { BurnStack, Combatant, TargetMap } from "./types.ts";
 import { applyWeaponProcEffect } from "../../services/combat/weapon-proc-registry.ts";
+import {
+  AUTO_CRIT_DAMAGE_MULTIPLIER,
+  BASE_AUTO_CRIT_CHANCE,
+} from "../../constants/combat.ts";
 
 export const TAKE_COVER_DURATION_MS = 3000;
 
@@ -87,6 +91,62 @@ export function assignTargets(
 
 const BURN_TICK_INTERVAL_MS = 1000;
 
+function upsertBurningUntilFromStacks(c: Combatant): void {
+  const stacks = c.burnStacks ?? [];
+  if (stacks.length <= 0) {
+    delete c.burningUntil;
+    return;
+  }
+  c.burningUntil = Math.max(...stacks.map((s) => s.expiresAt));
+}
+
+function migrateLegacyBurnFields(c: Combatant, now: number): void {
+  if ((c.burnTicksRemaining ?? 0) <= 0 || (c.burnTickDamage ?? 0) <= 0) return;
+  const ticksRemaining = Math.max(1, c.burnTicksRemaining ?? 1);
+  const damagePerTick = Math.max(1, c.burnTickDamage ?? 1);
+  const nextTickAt = now + BURN_TICK_INTERVAL_MS;
+  const expiresAt = nextTickAt + (ticksRemaining - 1) * BURN_TICK_INTERVAL_MS;
+  const stack: BurnStack = {
+    id: `legacy-${c.id}-${now}`,
+    damagePerTick,
+    ticksRemaining,
+    nextTickAt,
+    expiresAt,
+    ignoresMitigation: !!c.burnIgnoresMitigation,
+  };
+  c.burnStacks = [...(c.burnStacks ?? []), stack];
+  delete c.burnTicksRemaining;
+  delete c.burnTickDamage;
+  delete c.burnIgnoresMitigation;
+  upsertBurningUntilFromStacks(c);
+}
+
+export function addBurnStack(
+  target: Combatant,
+  now: number,
+  options: {
+    damagePerTick: number;
+    ticks: number;
+    ignoresMitigation: boolean;
+  },
+): void {
+  if (target.immuneToBurning) return;
+  const ticks = Math.max(1, Math.floor(options.ticks));
+  const damagePerTick = Math.max(1, Math.floor(options.damagePerTick));
+  const nextTickAt = now + BURN_TICK_INTERVAL_MS;
+  const expiresAt = nextTickAt + (ticks - 1) * BURN_TICK_INTERVAL_MS;
+  const stack: BurnStack = {
+    id: `burn-${target.id}-${now}-${Math.random().toString(36).slice(2, 7)}`,
+    damagePerTick,
+    ticksRemaining: ticks,
+    nextTickAt,
+    expiresAt,
+    ignoresMitigation: options.ignoresMitigation,
+  };
+  target.burnStacks = [...(target.burnStacks ?? []), stack];
+  upsertBurningUntilFromStacks(target);
+}
+
 /** Base 20% + 1% per level (doc in codex). Relentless multiplies by 1.6. */
 export function getIncapacitationChance(c: { level?: number; incapChanceMultiplier?: number }): number {
   const level = c.level ?? 1;
@@ -107,28 +167,50 @@ export function applyBurnTicks(
   lastBurnTickTimeRef: { current: number },
 ): BurnDamageEvent[] {
   const events: BurnDamageEvent[] = [];
-  if (now - lastBurnTickTimeRef.current < BURN_TICK_INTERVAL_MS) return events;
   lastBurnTickTimeRef.current = now;
   for (const c of combatants) {
-    if ((c.burnTicksRemaining ?? 0) <= 0) continue;
-    if (c.immuneToBurning) continue;
-    const dmg = c.burnTickDamage ?? 0;
-    if (dmg <= 0) continue;
-    const damage = c.burnIgnoresMitigation ? dmg : computeFinalDamage(dmg, c);
-    const newHp = Math.max(0, Math.floor(c.hp - damage));
-    c.hp = newHp;
-    events.push({ targetId: c.id, damage });
-    if (newHp <= 0) {
-      c.downState = c.side === "player" && Math.random() < getIncapacitationChance(c) ? "incapacitated" : "kia";
-      if (c.downState === "kia") c.killedBy = "Burning";
-      clearCombatantEffectsOnDeath(c);
+    migrateLegacyBurnFields(c, now);
+    if ((c.burnStacks?.length ?? 0) <= 0) continue;
+    if (c.immuneToBurning) {
+      delete c.burnStacks;
+      delete c.burningUntil;
+      continue;
     }
-    c.burnTicksRemaining! -= 1;
-    if (c.burnTicksRemaining! <= 0) {
-      delete c.burnTicksRemaining;
-      delete c.burnTickDamage;
-      delete c.burnIgnoresMitigation;
-      /* Keep burningUntil so the burning visual lasts the full duration; clearExpiredEffects will clear it. */
+
+    for (const stack of c.burnStacks ?? []) {
+      while (stack.ticksRemaining > 0 && now >= stack.nextTickAt) {
+        const rawDamage = Math.max(1, stack.damagePerTick);
+        const damage = stack.ignoresMitigation
+          ? rawDamage
+          : computeFinalDamage(rawDamage, c);
+        const newHp = Math.max(0, Math.floor(c.hp - damage));
+        c.hp = newHp;
+        events.push({ targetId: c.id, damage });
+        stack.ticksRemaining -= 1;
+        stack.nextTickAt += BURN_TICK_INTERVAL_MS;
+        stack.expiresAt =
+          stack.nextTickAt +
+          Math.max(0, stack.ticksRemaining - 1) * BURN_TICK_INTERVAL_MS;
+
+        if (newHp <= 0) {
+          c.downState =
+            c.side === "player" && Math.random() < getIncapacitationChance(c)
+              ? "incapacitated"
+              : "kia";
+          if (c.downState === "kia") c.killedBy = "Burning";
+          clearCombatantEffectsOnDeath(c);
+          break;
+        }
+      }
+      if (c.hp <= 0 || c.downState) break;
+    }
+
+    c.burnStacks = (c.burnStacks ?? []).filter((s) => s.ticksRemaining > 0);
+    if ((c.burnStacks?.length ?? 0) <= 0) {
+      delete c.burnStacks;
+      delete c.burningUntil;
+    } else {
+      upsertBurningUntilFromStacks(c);
     }
   }
   return events;
@@ -188,8 +270,18 @@ export function clearExpiredEffects(combatants: Combatant[], now: number): void 
     if (c.smokedUntil != null && now >= c.smokedUntil) delete c.smokedUntil;
     if (c.stunUntil != null && now >= c.stunUntil) delete c.stunUntil;
     if (c.panicUntil != null && now >= c.panicUntil) delete c.panicUntil;
+    if ((c.burnStacks?.length ?? 0) > 0) {
+      c.burnStacks = (c.burnStacks ?? []).filter((s) => s.ticksRemaining > 0);
+      if ((c.burnStacks?.length ?? 0) > 0) {
+        upsertBurningUntilFromStacks(c);
+      } else {
+        delete c.burnStacks;
+        delete c.burningUntil;
+      }
+    }
     if (c.burningUntil != null && now >= c.burningUntil) {
       delete c.burningUntil;
+      delete c.burnStacks;
       delete c.burnTickDamage;
       delete c.burnTicksRemaining;
       delete c.burnIgnoresMitigation;
@@ -239,6 +331,7 @@ export function clearCombatantEffectsOnDeath(c: Combatant): void {
   delete c.stunUntil;
   delete c.panicUntil;
   delete c.burningUntil;
+  delete c.burnStacks;
   delete c.burnTickDamage;
   delete c.burnTicksRemaining;
   delete c.burnIgnoresMitigation;
@@ -274,6 +367,7 @@ export interface AttackResult {
   hit: boolean;
   evaded: boolean;
   damage: number;
+  critical?: boolean;
   /** Extra fire damage from proc (unmitigated) */
   procFireDamage?: number;
   /** Proc applied: blind or stun */
@@ -313,7 +407,11 @@ export function resolveAttack(
   const minDmg = attacker.damageMin ?? 4;
   const maxDmg = attacker.damageMax ?? 6;
   const rawDmg = Math.ceil(minDmg + Math.random() * Math.max(0, maxDmg - minDmg));
-  const mitigated = computeFinalDamage(rawDmg, target);
+  const critRoll = Math.random() < BASE_AUTO_CRIT_CHANCE;
+  const critRaw = critRoll
+    ? Math.ceil(rawDmg * AUTO_CRIT_DAMAGE_MULTIPLIER)
+    : rawDmg;
+  const mitigated = computeFinalDamage(critRaw, target);
   let totalDamage = mitigated;
   target.hp = Math.max(0, Math.floor(target.hp - mitigated));
 
@@ -348,6 +446,7 @@ export function resolveAttack(
     hit: true,
     evaded: false,
     damage: totalDamage,
+    critical: critRoll || undefined,
     procFireDamage: procFireDamage > 0 ? procFireDamage : undefined,
     procBlind: procBlind || undefined,
     procStun: procStun || undefined,

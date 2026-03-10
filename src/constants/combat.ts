@@ -23,6 +23,11 @@ export const ATTACK_INTERVAL_DEX_FOR_MAX_BONUS = 500;
 /** Dexterity max bonus: up to 20% faster attacks (interval * 0.8). */
 export const ATTACK_INTERVAL_DEX_MAX_BONUS = 0.2;
 
+/** Base auto-attack critical hit chance (applies to player + enemy auto attacks). */
+export const BASE_AUTO_CRIT_CHANCE = 0.05;
+/** Auto-attack crit damage multiplier before mitigation. */
+export const AUTO_CRIT_DAMAGE_MULTIPLIER = 1.5;
+
 /** Compute attack interval ms from weapon speed_base (1–10) and dexterity. */
 export function computeAttackIntervalMs(
   weapon: { speed_base?: number } | undefined,

@@ -108,12 +108,12 @@ export function soldierToCombatant(soldier: Soldier): Combatant {
 /** Create enemy combatant. */
 export function createEnemyCombatant(
   index: number,
-  enemyCount: number,
+  _enemyCount: number,
   companyLevel: number,
   isEpicMission = false,
   missionKind?: MissionKind,
   manhuntTargetIndex?: number,
-  roleSlots?: { supportIndex?: number; medicIndex?: number },
+  _roleSlots?: { supportIndex?: number; medicIndex?: number },
   options?: {
     designation?: "rifleman" | "support" | "medic";
     isManhuntTarget?: boolean;
@@ -122,18 +122,12 @@ export function createEnemyCombatant(
 ): Combatant {
   const eliteBonus = isEpicMission ? (Math.random() < 0.5 ? 1 : 2) : 0;
   const level = Math.max(1, Math.min(999, companyLevel + eliteBonus));
-  const supportIndex = roleSlots?.supportIndex ?? 0;
-  const medicIndex = roleSlots?.medicIndex ?? (enemyCount >= 2 ? (supportIndex === 1 ? 0 : 1) : -1);
-  const forcedDesignation = options?.designation;
-  const soldier = forcedDesignation === "support"
+  const designation = options?.designation ?? "rifleman";
+  const soldier = designation === "support"
     ? SoldierManager.getNewSupportMan(level)
-    : forcedDesignation === "medic"
+    : designation === "medic"
       ? SoldierManager.getNewMedic(level)
-      : index === supportIndex && enemyCount >= 1
-        ? SoldierManager.getNewSupportMan(level)
-        : index === medicIndex && enemyCount >= 2
-          ? SoldierManager.getNewMedic(level)
-          : SoldierManager.getNewRifleman(level);
+      : SoldierManager.getNewRifleman(level);
   const c = soldierToCombatant(soldier);
   c.id = `enemy-${index}-${Date.now()}`;
   c.side = "enemy";

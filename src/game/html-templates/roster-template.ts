@@ -12,6 +12,7 @@ import {
   getActiveRoleCounts,
 } from "../../constants/company-slots.ts";
 import { formatDisplayName, getSoldierPortraitUrl } from "../../utils/name-utils.ts";
+import { CREDIT_SYMBOL } from "../../constants/currency.ts";
 
 function rosterSoldierCard(s: Soldier, index: number, isActive: boolean): string {
   return Partial.create.rosterCard(s, index, isActive);
@@ -54,14 +55,22 @@ function restTroopsPopupHtml(soldiers: Soldier[], activeIds: Set<string>): strin
         data-rest-energy="${energy}"
         data-rest-recover="${recover}"
         data-rest-cost="${cost}"
+        data-rest-role="${roleRaw.toLowerCase()}"
+        data-rest-status="${isActive ? "active" : "reserve"}"
         ${canRecover ? "" : "disabled"}
       >
         <span class="rest-soldier-status">${status}</span>
+        <span class="rest-soldier-select-badge" aria-hidden="true">SELECTED</span>
+        ${canRecover ? "" : '<span class="rest-soldier-full-badge" aria-hidden="true">LOCK FULL</span>'}
         <span class="rest-soldier-avatar-wrap">
           <img class="rest-soldier-avatar" src="${img}" alt="${escapeHtml(s.name ?? "Soldier")}" width="34" height="34">
           <span class="rest-soldier-role-badge ${escapeHtml(roleClass)}" aria-label="${escapeHtml(roleLabel)}" title="${escapeHtml(roleLabel)}">${escapeHtml(roleShort)}</span>
         </span>
         <span class="rest-soldier-name">${escapeHtml(shortName || "Soldier")}</span>
+        <span class="rest-soldier-projection">
+          <span class="rest-soldier-proj-gain">+${recover} EN</span>
+          <span class="rest-soldier-proj-cost">${CREDIT_SYMBOL}${cost}</span>
+        </span>
         <span class="rest-soldier-energybar">
           <span class="rest-soldier-energyfill" style="width:${energyPct}"></span>
           <span class="rest-soldier-energy">EN ${energy}</span>
@@ -78,12 +87,25 @@ function restTroopsPopupHtml(soldiers: Soldier[], activeIds: Set<string>): strin
       <button type="button" id="rest-popup-close" class="game-btn game-btn-md game-btn-red popup-close-btn">Close</button>
     </div>
     <div class="equip-picker-body rest-popup-body">
+      <p id="rest-popup-theme" class="rest-popup-theme">Field rotation ready.</p>
+      <div class="rest-popup-filters" role="tablist" aria-label="Rest filters">
+        <button type="button" class="rest-filter-chip is-active" data-rest-filter="all">All</button>
+        <button type="button" class="rest-filter-chip" data-rest-filter="active">Active</button>
+        <button type="button" class="rest-filter-chip" data-rest-filter="reserve">Reserve</button>
+        <button type="button" class="rest-filter-chip" data-rest-filter="needs_rest">Needs Rest</button>
+      </div>
       <div class="rest-popup-summary">
         <span id="rest-popup-selected-count">0 selected</span>
-        <span id="rest-popup-preview">Recovery +0 | Cost $0</span>
+        <span id="rest-popup-preview">Recovery +0 | Cost ${CREDIT_SYMBOL}0</span>
       </div>
       <div id="rest-popup-grid" class="rest-popup-grid">
         ${cards}
+      </div>
+      <div class="rest-popup-manifest" id="rest-popup-manifest" aria-live="polite">
+        <span class="rest-manifest-label">Leave Manifest</span>
+        <span id="rest-popup-manifest-count" class="rest-manifest-count">0 troops</span>
+        <span id="rest-popup-manifest-recovery" class="rest-manifest-recovery">+0 EN</span>
+        <span id="rest-popup-manifest-cost" class="rest-manifest-cost">${CREDIT_SYMBOL}0</span>
       </div>
       <div class="rest-popup-actions">
         <button type="button" id="rest-popup-send-btn" class="equip-troops-btn rest-send-btn" disabled>Send on Leave</button>

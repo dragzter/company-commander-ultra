@@ -27,6 +27,11 @@ export const BASE_SOLDIER_HP_AT_999 = getBaseSoldierHpForLevel(999);
 export const MEDKIT_TARGET_MEDIC_HEAL_AT_999 = Math.round(BASE_SOLDIER_HP_AT_999 * 0.25);
 export const MEDKIT_TARGET_NON_MEDIC_HEAL_AT_999 = Math.round(MEDKIT_TARGET_MEDIC_HEAL_AT_999 * NON_MEDIC_TARGET_RATIO);
 
+/** Awareness-based bonus for medic medkit healing. */
+export const MEDKIT_MEDIC_AWARENESS_BONUS_RATE = 0.0036;
+export const MEDKIT_MEDIC_AWARENESS_BASELINE = 30;
+export const MEDKIT_MEDIC_AWARENESS_BONUS_CAP = 0.4;
+
 const MEDKIT_POST20_MEDIC_PER_LEVEL =
   (MEDKIT_TARGET_MEDIC_HEAL_AT_999 - MEDKIT_LV20_MEDIC_HEAL) / POST20_LEVEL_SPAN;
 const MEDKIT_POST20_NON_MEDIC_PER_LEVEL =
@@ -48,4 +53,12 @@ export function getMedKitHealValues(level: number): { nonMedic: number; medic: n
     nonMedic: MEDKIT_LV20_NON_MEDIC_HEAL + Math.ceil(post20Levels * MEDKIT_POST20_NON_MEDIC_PER_LEVEL),
     medic: MEDKIT_LV20_MEDIC_HEAL + Math.ceil(post20Levels * MEDKIT_POST20_MEDIC_PER_LEVEL),
   };
+}
+
+/** Bonus heal % from medic awareness (e.g. 0.12 => +12%). */
+export function getMedicAwarenessHealBonusPct(awareness: number): number {
+  const awr = Math.max(0, Math.floor(awareness || 0));
+  const bonus =
+    (awr - MEDKIT_MEDIC_AWARENESS_BASELINE) * MEDKIT_MEDIC_AWARENESS_BONUS_RATE;
+  return Math.max(0, Math.min(MEDKIT_MEDIC_AWARENESS_BONUS_CAP, bonus));
 }

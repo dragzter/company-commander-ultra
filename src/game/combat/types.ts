@@ -3,6 +3,15 @@
  */
 
 /** A participant in combat (player soldier or enemy). */
+export interface BurnStack {
+  id: string;
+  damagePerTick: number;
+  ticksRemaining: number;
+  nextTickAt: number;
+  expiresAt: number;
+  ignoresMitigation: boolean;
+}
+
 export interface Combatant {
   id: string;
   name: string;
@@ -64,6 +73,8 @@ export interface Combatant {
   burnTicksRemaining?: number;
   /** True if burn bypasses armor (incendiary) */
   burnIgnoresMitigation?: boolean;
+  /** Independent burn channels (stacking DoT sources). */
+  burnStacks?: BurnStack[];
   /** Timestamp (ms) when bleeding ends (DoT) */
   bleedingUntil?: number;
   /** Damage per bleed tick */

@@ -188,6 +188,7 @@ export type CompanyStore = {
     damageTakenBySoldier: Map<string, number>,
     killsBySoldier: Map<string, number>,
     abilitiesUsedBySoldier: Map<string, number>,
+    healingBySoldier: Map<string, number>,
     victory: boolean,
   ) => void;
   recordSoldierCombatStats: (

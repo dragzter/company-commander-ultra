@@ -7,6 +7,7 @@ import {
   getBaseAndGearStats,
   formatStatBaseAndGear,
 } from "../../../utils/soldier-stats-utils.ts";
+import { BASE_AUTO_CRIT_CHANCE } from "../../../constants/combat.ts";
 import { UiServiceManager } from "../../../services/ui/ui-service.ts";
 import {
   formatDesignation,
@@ -19,6 +20,23 @@ import {
  */
 function Partial() {
   const { parseHTML } = UiServiceManager;
+
+  function resolveCritChance(
+    profile: Soldier["combatProfile"] | undefined,
+  ): number {
+    const withCrit = profile as
+      | (Soldier["combatProfile"] & {
+          critChance?: number;
+          criticalChance?: number;
+        })
+      | undefined;
+    return Math.max(
+      0,
+      withCrit?.critChance ??
+        withCrit?.criticalChance ??
+        BASE_AUTO_CRIT_CHANCE,
+    );
+  }
 
   function escapeAttr(s: string): string {
     return String(s)
@@ -48,6 +66,7 @@ function Partial() {
     const mit = formatPctOneDecimal(trooper.combatProfile.mitigateDamage);
     const avd = formatPctOneDecimal(trooper.combatProfile.chanceToEvade);
     const cth = formatPctOneDecimal(trooper.combatProfile.chanceToHit);
+    const crit = formatPctOneDecimal(resolveCritChance(trooper.combatProfile));
     const mor = formatStatBaseAndGear(bg.mor.base, bg.mor.gear);
     const tgh = formatStatBaseAndGear(bg.tgh.base, bg.tgh.gear);
     const awr = formatStatBaseAndGear(bg.awr.base, bg.awr.gear);
@@ -73,11 +92,12 @@ function Partial() {
 							<div class="detail-item"><span class="stat-label">MIT</span><span class="stat-value">${mit}%</span></div>
 							<div class="detail-item"><span class="stat-label">AVD</span><span class="stat-value">${avd}%</span></div>
 							<div class="detail-item"><span class="stat-label">CTH</span><span class="stat-value">${cth}%</span></div>
-							${spdRow}
+							<div class="detail-item"><span class="stat-label">CRIT</span><span class="stat-value">${crit}%</span></div>
 							<div class="detail-item"><span class="stat-label">TGH</span><span class="stat-value">${tgh}</span></div>
 							<div class="detail-item"><span class="stat-label">MOR</span><span class="stat-value">${mor}</span></div>
 							<div class="detail-item"><span class="stat-label">AWR</span><span class="stat-value">${awr}</span></div>
 							<div class="detail-item"><span class="stat-label">DEX</span><span class="stat-value">${dex}</span></div>
+							${spdRow}
 						</div>
 					</div>
 					<div class="card-row card-row-3">
@@ -122,6 +142,7 @@ function Partial() {
     const mit = formatPctOneDecimal(combat.mitigateDamage ?? 0);
     const avd = formatPctOneDecimal(combat.chanceToEvade ?? 0);
     const cth = formatPctOneDecimal(combat.chanceToHit ?? 0);
+    const crit = formatPctOneDecimal(resolveCritChance(combat));
     const mor = formatStatBaseAndGear(bg.mor.base, bg.mor.gear);
     const tgh = formatStatBaseAndGear(bg.tgh.base, bg.tgh.gear);
     const awr = formatStatBaseAndGear(bg.awr.base, bg.awr.gear);
@@ -156,6 +177,7 @@ function Partial() {
         <div class="detail-item"><span class="stat-label">MIT</span><span class="stat-value">${mit}%</span></div>
         <div class="detail-item"><span class="stat-label">AVD</span><span class="stat-value">${avd}%</span></div>
         <div class="detail-item"><span class="stat-label">CTH</span><span class="stat-value">${cth}%</span></div>
+        <div class="detail-item"><span class="stat-label">CRIT</span><span class="stat-value">${crit}%</span></div>
         ${spdRow}
         <div class="detail-item"><span class="stat-label">TGH</span><span class="stat-value">${tgh}</span></div>
         <div class="detail-item"><span class="stat-label">MOR</span><span class="stat-value">${mor}</span></div>
@@ -165,8 +187,8 @@ function Partial() {
     </div>
     <div class="card-row card-row-3">
       <div class="card-actions card-actions-50">
-        <button type="button" data-soldier-id="${soldier.id}" class="game-btn game-btn-md game-btn-green roster-inventory-btn" title="Equipment">Inventory</button>
-        <button type="button" data-soldier-id="${soldier.id}" class="game-btn game-btn-md game-btn-red roster-release-btn" title="Release">Release</button>
+        <button type="button" data-soldier-id="${soldier.id}" class="game-btn game-btn-sm game-btn-green roster-inventory-btn" title="Equipment">Inventory</button>
+        <button type="button" data-soldier-id="${soldier.id}" class="game-btn game-btn-sm game-btn-red roster-release-btn" title="Release">Release</button>
       </div>
     </div>
   </div>

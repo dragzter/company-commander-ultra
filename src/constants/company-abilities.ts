@@ -2,6 +2,7 @@ import type { Attributes } from "../game/entities/types.ts";
 
 export type CompanyAbilityId =
   | "focused_fire"
+  | "advanced_field_medicine"
   | "advanced_tactical_training"
   | "targeting_optics"
   | "gunnery"
@@ -9,6 +10,7 @@ export type CompanyAbilityId =
   | "fire_and_maneuver"
   | "grenadier_training"
   | "artillery_barrage"
+  | "dig_in"
   | "napalm_barrage";
 
 export type CompanyAbilityKind = "active" | "passive";
@@ -28,89 +30,109 @@ export interface CompanyAbilityNode {
   choice?: readonly CompanyAbilityId[];
 }
 
-export const COMPANY_ABILITY_DEFS: Record<CompanyAbilityId, CompanyAbilityDef> = {
-  focused_fire: {
-    id: "focused_fire",
-    kind: "active",
-    name: "Focused Fire",
-    short: "All allies focus one enemy for 8s.",
-    description:
-      "Select one enemy. All player soldiers retarget that unit for 8s (even if it enters cover). Cooldown: 75s.",
-    icon: "/images/scan.png",
-  },
-  advanced_tactical_training: {
-    id: "advanced_tactical_training",
-    kind: "passive",
-    name: "Advanced Tactical Training",
-    short: "+3 DEX/MOR/AWR/TGH for all current and future soldiers.",
-    description:
-      "Passive (company-wide): +3 DEX, +3 MOR, +3 AWR, +3 TGH for all current and future soldiers.",
-    icon: "/images/scan.png",
-  },
-  targeting_optics: {
-    id: "targeting_optics",
-    kind: "passive",
-    name: "Targeting Optics",
-    short: "+1% hit chance for all current and future soldiers.",
-    description:
-      "Passive (company-wide): +1% chance to hit for all current and future soldiers.",
-    icon: "/images/scan.png",
-  },
-  gunnery: {
-    id: "gunnery",
-    kind: "passive",
-    name: "Gunnery",
-    short: "Support suppression cooldown reduced by 10s.",
-    description:
-      "Passive (support only): suppression cooldown reduced by 10s (60s -> 50s) for current and future support soldiers.",
-    icon: "/images/scan.png",
-  },
-  entrenchment_techniques: {
-    id: "entrenchment_techniques",
-    kind: "passive",
-    name: "Entrenchment Techniques",
-    short: "After Take Cover, gain +10% toughness for 6s.",
-    description:
-      "Passive: after using Take Cover, gain +10% of current toughness for 6s.",
-    icon: "/images/scan.png",
-  },
-  fire_and_maneuver: {
-    id: "fire_and_maneuver",
-    kind: "passive",
-    name: "Fire and Maneuver",
-    short: "Take Cover cooldown reduced by 10s.",
-    description:
-      "Passive: Take Cover cooldown reduced by 10s (60s -> 50s).",
-    icon: "/images/scan.png",
-  },
-  grenadier_training: {
-    id: "grenadier_training",
-    kind: "passive",
-    name: "Grenadier Training",
-    short: "+15% frag/incendiary damage from player throws.",
-    description:
-      "Passive (player throws only): frag and incendiary grenade damage +15%.",
-    icon: "/images/scan.png",
-  },
-  artillery_barrage: {
-    id: "artillery_barrage",
-    kind: "active",
-    name: "Artillery Barrage",
-    short: "Once per battle: 90% hit, deals 30-50% max HP.",
-    description:
-      "Active, once per battle: 90% hit chance. On hit, deals 30-50% of target max HP as raw damage (then mitigation applies).",
-    icon: "/images/scan.png",
-  },
-  napalm_barrage: {
-    id: "napalm_barrage",
-    kind: "active",
-    name: "Napalm Barrage",
-    short: "Once per battle: 3 ticks, 8-13% max HP each, ignores mitigation.",
-    description:
-      "Active, once per battle: 90% hit chance. On hit, applies 3 burn ticks (1s each), each tick for 8-13% of target max HP, ignoring mitigation.",
-    icon: "/images/scan.png",
-  },
-};
+export const COMPANY_ABILITY_DEFS: Record<CompanyAbilityId, CompanyAbilityDef> =
+  {
+    focused_fire: {
+      id: "focused_fire",
+      kind: "active",
+      name: "Focused Fire",
+      short: "All allies focus one enemy for 8s.",
+      description:
+        "Select one enemy. All player soldiers retarget that unit for 8s (even if it enters cover). Cooldown: 75s.",
+      icon: "/images/scan.png",
+    },
+    advanced_tactical_training: {
+      id: "advanced_tactical_training",
+      kind: "passive",
+      name: "Advanced Tactical Training",
+      short: "+3 DEX/MOR/AWR/TGH for all current and future soldiers.",
+      description:
+        "Passive (company-wide): +3 DEX, +3 MOR, +3 AWR, +3 TGH for all current and future soldiers.",
+      icon: "/images/scan.png",
+    },
+    targeting_optics: {
+      id: "targeting_optics",
+      kind: "passive",
+      name: "Targeting Optics",
+      short: "+1% hit chance for all current and future soldiers.",
+      description:
+        "Passive (company-wide): +1% chance to hit for all current and future soldiers.",
+      icon: "/images/scan.png",
+    },
+    gunnery: {
+      id: "gunnery",
+      kind: "passive",
+      name: "Gunnery",
+      short: "Support suppression cooldown reduced by 10s.",
+      description:
+        "Passive (support only): suppression cooldown reduced by 10s (60s -> 50s) for current and future support soldiers.",
+      icon: "/images/scan.png",
+    },
+    entrenchment_techniques: {
+      id: "entrenchment_techniques",
+      kind: "passive",
+      name: "Entrenchment Techniques",
+      short: "After Take Cover, gain +10% toughness for 6s.",
+      description:
+        "Passive: after using Take Cover, gain +10% of current toughness for 6s.",
+      icon: "/images/dig_in.png",
+    },
+    fire_and_maneuver: {
+      id: "fire_and_maneuver",
+      kind: "passive",
+      name: "Fire and Maneuver",
+      short: "Take Cover cooldown reduced by 10s.",
+      description: "Passive: Take Cover cooldown reduced by 10s (60s -> 50s).",
+      icon: "/images/scan.png",
+    },
+    grenadier_training: {
+      id: "grenadier_training",
+      kind: "passive",
+      name: "Grenadier Training",
+      short: "+15% frag/incendiary damage from player throws.",
+      description:
+        "Passive (player throws only): frag and incendiary grenade damage +15%.",
+      icon: "/images/grenadiers.png",
+    },
+    artillery_barrage: {
+      id: "artillery_barrage",
+      kind: "active",
+      name: "Artillery Barrage",
+      short: "Once per battle: 90% chance to hit, deals 30-50% max HP.",
+      description:
+        "Activate once per battle: 90% hit chance. On hit, deals 30-50% of target max HP as raw" +
+        " damage (then mitigation applies).",
+      icon: "/images/arty.png",
+    },
+    napalm_barrage: {
+      id: "napalm_barrage",
+      kind: "active",
+      name: "Napalm Barrage",
+      short: "Once per battle: 3 ticks, 8-13% max HP each, ignores mitigation.",
+      description:
+        "Active, once per battle: 90% hit chance. On hit, applies 3 burn ticks (1s each), each tick for 8-13% of target max HP, ignoring mitigation.",
+      icon: "/images/scan.png",
+    },
+    advanced_field_medicine: {
+      id: "advanced_field_medicine",
+      kind: "passive",
+      name: "Advanced Field Medicine",
+      short: "Effectiveness of Med kits increased by 15%",
+      description:
+        "Effectiveness of all Med kits increased b 15%, this applies to non-Medic use.",
+      icon: "/images/advanced_medical.png",
+    },
+    dig_in: {
+      id: "dig_in",
+      kind: "active",
+      name: "Dig In",
+      short: "Order your men to dig in and hang on!",
+      description:
+        "Your entire squad is ordered to dig in for a period of 10 seconds receiving a 10% flat" +
+        " mitigation benefit.",
+      icon: "/images/dig_in.png",
+    },
+  };
 
 export const COMPANY_ABILITY_PROGRESSION: readonly CompanyAbilityNode[] = [
   { level: 1, autoGrant: "focused_fire" },
@@ -131,10 +153,15 @@ export const COMPANY_ABILITY_PROGRESSION: readonly CompanyAbilityNode[] = [
   { level: 10 },
 ];
 
-export type CompanyAbilityChoiceMap = Record<number, CompanyAbilityId | undefined>;
+export type CompanyAbilityChoiceMap = Record<
+  number,
+  CompanyAbilityId | undefined
+>;
 
 export type CompanyPassiveEffects = {
-  flatStats: Partial<Pick<Attributes, "dexterity" | "morale" | "awareness" | "toughness">>;
+  flatStats: Partial<
+    Pick<Attributes, "dexterity" | "morale" | "awareness" | "toughness">
+  >;
   chanceToHitBonusPct: number;
   supportSuppressCooldownReductionMs: number;
   takeCoverCooldownReductionMs: number;
