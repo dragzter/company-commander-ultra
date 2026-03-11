@@ -11,12 +11,14 @@ import { getItemIconUrl } from "../../utils/item-utils.ts";
 import type { Soldier } from "../entities/types.ts";
 import { SoldierManager } from "../entities/soldier/soldier-manager.ts";
 import type { Combatant } from "./types.ts";
+import { toughnessToMitigation } from "./combat-damage.ts";
 
 const RED_PORTRAIT_KEYS = Object.keys(Images.red_portrait);
 const BLUE_PORTRAIT_KEYS = Object.keys(Images.blue_portrait);
 const BLACK_PORTRAIT_KEYS = Object.keys(Images.black_portrait);
 const SAND_PORTRAIT_KEYS = Object.keys(Images.sand_portrait);
 const round1 = (n: number) => Math.round(n * 10) / 10;
+const roundMitigationUp = (n: number) => Math.ceil(n * 1000) / 1000;
 
 function getArmorImmunitiesFromBase(baseId: string | undefined): ArmorImmunity[] {
   if (!baseId) return [];
@@ -71,6 +73,16 @@ export function soldierToCombatant(soldier: Soldier): Combatant {
   attackIntervalMs = intervalMult < 1 ? Math.floor(attackIntervalMs * intervalMult) : Math.round(attackIntervalMs * intervalMult);
   const cp = soldier.combatProfile ?? { chanceToHit: 0.6, chanceToEvade: 0.05, mitigateDamage: 0, suppression: 0 };
   const weaponEffect = (weapon as { weaponEffect?: string })?.weaponEffect;
+  const baseMitFromToughness = toughnessToMitigation(
+    soldier.attributes?.toughness ?? 0,
+  );
+  const mitigationBonusPct = Math.max(
+    0,
+    (cp.mitigateDamage ?? 0) - baseMitFromToughness,
+  );
+  const mitigateDamage = roundMitigationUp(
+    Math.min(0.6, baseMitFromToughness + mitigationBonusPct),
+  );
 
   const armor = soldier.armor as { baseId?: string } | undefined;
   const armorImmunities = getArmorImmunitiesFromBase(armor?.baseId);
@@ -86,7 +98,8 @@ export function soldierToCombatant(soldier: Soldier): Combatant {
     chanceToHit: cp.chanceToHit ?? 0.6,
     grenadeHitBonusPct: soldier.grenadeHitBonusPct ?? 0,
     chanceToEvade: cp.chanceToEvade ?? 0.05,
-    mitigateDamage: cp.mitigateDamage ?? 0,
+    mitigationBonusPct,
+    mitigateDamage,
     damageMin: Math.max(1, round1(dmgMin)),
     damageMax: Math.max(1, round1(dmgMax)),
     attackIntervalMs,

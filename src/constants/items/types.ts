@@ -76,11 +76,10 @@ export type WeaponEffectModifiers = {
 };
 
 export type WeaponEffectId =
-  | "calibrated"
   | "balanced"
   | "lethal"
   | "heavy_caliber"
-  | "steady_grip"
+  | "padded"
   | "quick_cycle"
   | "trauma_surgeon"
   | "firebreaker"

@@ -18,6 +18,8 @@ export type ItemSpecialEffectId =
   | "infantry_grunt"
   | "unshakeable"
   | "relentless"
+  | "padded"
+  | "ceramic_plates"
   | "sturdy"
   | "fearless"
   | "dragonskin"
@@ -63,6 +65,18 @@ export const ITEM_SPECIAL_EFFECTS: Record<ItemSpecialEffectId, ItemSpecialEffect
     name: "Relentless",
     description: "60% higher chance to be incapacitated instead of KIA when reaching 0 HP.",
     incapChanceMultiplier: 1.6,
+  },
+  padded: {
+    id: "padded",
+    name: "Padded",
+    description: "Adds 2% mitigation.",
+    bonuses: [{ type: "percent", stat: "mitigation", value: 2 }],
+  },
+  ceramic_plates: {
+    id: "ceramic_plates",
+    name: "Ceramic Plates",
+    description: "Adds 3% mitigation.",
+    bonuses: [{ type: "percent", stat: "mitigation", value: 3 }],
   },
   sturdy: {
     id: "sturdy",

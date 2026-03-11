@@ -24,12 +24,6 @@ export interface WeaponEffect {
 }
 
 export const WEAPON_EFFECTS: Record<WeaponEffectId, WeaponEffect> = {
-  calibrated: {
-    id: "calibrated",
-    name: "Calibrated",
-    description: "Increases chance to hit by 2%",
-    modifiers: { chanceToHit: 0.02 },
-  },
   balanced: {
     id: "balanced",
     name: "Balanced",
@@ -48,9 +42,9 @@ export const WEAPON_EFFECTS: Record<WeaponEffectId, WeaponEffect> = {
     description: "Increases damage dealt by 3%",
     modifiers: { damagePercent: 0.03 },
   },
-  steady_grip: {
-    id: "steady_grip",
-    name: "Steady Grip",
+  padded: {
+    id: "padded",
+    name: "Padded",
     description: "Increases damage mitigation by 2%",
     modifiers: { mitigateDamage: 0.02 },
   },

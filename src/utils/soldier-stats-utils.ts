@@ -1,11 +1,11 @@
 import { computeAttackIntervalMs } from "../constants/combat";
 import type { Soldier } from "../game/entities/types.ts";
-/** Stat abbreviations for display (HP, MIT, AVD, CTH, MOR, TGH, AWR, DEX) */
+/** Stat abbreviations for display (HP, MIT, AVD, HIT, MOR, TGH, AWR, DEX) */
 export const STAT_LABELS: Record<string, string> = {
   hit_points: "HP",
   mitigateDamage: "MIT",
   chanceToEvade: "AVD",
-  chanceToHit: "CTH",
+  chanceToHit: "HIT",
   morale: "MOR",
   toughness: "TGH",
   awareness: "AWR",

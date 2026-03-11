@@ -22,6 +22,8 @@ export interface Combatant {
   /** Bonus applied only to grenade throws (from veterancy traits). */
   grenadeHitBonusPct?: number;
   chanceToEvade: number;
+  /** Additive mitigation bonus (e.g. +0.02 = +2%) applied after toughness->mit conversion. */
+  mitigationBonusPct?: number;
   mitigateDamage: number;
   damageMin: number;
   damageMax: number;

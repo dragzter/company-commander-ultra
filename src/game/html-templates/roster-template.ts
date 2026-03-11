@@ -60,20 +60,18 @@ function restTroopsPopupHtml(soldiers: Soldier[], activeIds: Set<string>): strin
         ${canRecover ? "" : "disabled"}
       >
         <span class="rest-soldier-status">${status}</span>
-        <span class="rest-soldier-select-badge" aria-hidden="true">SELECTED</span>
         ${canRecover ? "" : '<span class="rest-soldier-full-badge" aria-hidden="true">LOCK FULL</span>'}
         <span class="rest-soldier-avatar-wrap">
           <img class="rest-soldier-avatar" src="${img}" alt="${escapeHtml(s.name ?? "Soldier")}" width="34" height="34">
           <span class="rest-soldier-role-badge ${escapeHtml(roleClass)}" aria-label="${escapeHtml(roleLabel)}" title="${escapeHtml(roleLabel)}">${escapeHtml(roleShort)}</span>
         </span>
         <span class="rest-soldier-name">${escapeHtml(shortName || "Soldier")}</span>
-        <span class="rest-soldier-projection">
-          <span class="rest-soldier-proj-gain">+${recover} EN</span>
-          <span class="rest-soldier-proj-cost">${CREDIT_SYMBOL}${cost}</span>
-        </span>
         <span class="rest-soldier-energybar">
           <span class="rest-soldier-energyfill" style="width:${energyPct}"></span>
-          <span class="rest-soldier-energy">EN ${energy}</span>
+          <span class="rest-soldier-energy">
+            <span class="rest-soldier-energy-current">EN ${energy}</span>
+            ${recover > 0 ? `<span class="rest-soldier-energy-gain"> +${recover}</span>` : ""}
+          </span>
         </span>
       </button>
     `;

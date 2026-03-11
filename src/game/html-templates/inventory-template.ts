@@ -49,7 +49,7 @@ const STAT_LABELS: Record<string, string> = {
   morale: "MOR",
   mitigation: "MIT",
   avoidance: "AVD",
-  chanceToHit: "CTH",
+  chanceToHit: "HIT",
 };
 
 function formatDamageDisplayNumber(n: number): string {
@@ -108,6 +108,25 @@ function splitBonusesForDisplay(item: Item, bonuses: ArmorBonus[] | undefined): 
   };
 }
 
+function stripSpecialEffectBonusesForDisplay(item: Item, bonuses: ArmorBonus[] | undefined): ArmorBonus[] | undefined {
+  if (!bonuses?.length) return bonuses;
+  const specialEffectId = (item as Item & { specialEffect?: string }).specialEffect;
+  if (!specialEffectId) return bonuses;
+  const effectBonuses = getItemSpecialEffect(
+    specialEffectId as import("../../constants/item-special-effects.ts").ItemSpecialEffectId,
+  )?.bonuses ?? [];
+  if (!effectBonuses.length) return bonuses;
+
+  const remaining = [...bonuses];
+  for (const eb of effectBonuses) {
+    const idx = remaining.findIndex(
+      (b) => b.type === eb.type && b.stat === eb.stat && b.value === eb.value,
+    );
+    if (idx >= 0) remaining.splice(idx, 1);
+  }
+  return remaining;
+}
+
 export function getItemPopupBodyHtml(item: Item): string {
   const rarity = (item.rarity ?? "common") as string;
   const iconUrl = getItemIconUrl(item);
@@ -161,14 +180,17 @@ export function getItemPopupBodyHtml(item: Item): string {
   }
   html += '</div>';
 
-  const bonuses = (item as Item & { bonuses?: ArmorBonus[] }).bonuses;
+  const bonuses = stripSpecialEffectBonusesForDisplay(
+    item,
+    (item as Item & { bonuses?: ArmorBonus[] }).bonuses,
+  );
   const split = splitBonusesForDisplay(item, bonuses);
   if (split.base.length) {
     const badges = split.base.map((b) => {
       const label = STAT_LABELS[b.stat] ?? b.stat.replace(/([A-Z])/g, " $1").trim().toUpperCase().replace(/ /g, "");
-      // chanceToHit bonus: show as "+1 CTH" (1% = 1 CTH). Focused effect (2% CTH) is a separate effect box.
+      // chanceToHit bonus: show as "+1 HIT" (1% = 1 HIT). Focused effect (2% HIT) is a separate effect box.
       const text = b.type === "percent" && b.stat === "chanceToHit"
-        ? `+${b.value} CTH`
+        ? `+${b.value} HIT`
         : b.type === "percent"
           ? `+${b.value}% ${label}`
           : `+${b.value} ${label}`;
@@ -258,13 +280,16 @@ export function getItemPopupBodyHtmlCompact(item: Item): string {
     html += '<div class="item-popup-stats-compact">' + escapeHtml(parts.join(" · ")) + '</div>';
   }
 
-  const bonuses = (item as Item & { bonuses?: ArmorBonus[] }).bonuses;
+  const bonuses = stripSpecialEffectBonusesForDisplay(
+    item,
+    (item as Item & { bonuses?: ArmorBonus[] }).bonuses,
+  );
   const split = splitBonusesForDisplay(item, bonuses);
   if (split.base.length) {
     const badges = split.base.slice(0, 3).map((b) => {
       const label = STAT_LABELS[b.stat] ?? b.stat.replace(/([A-Z])/g, " $1").trim().slice(0, 4).toUpperCase().replace(/ /g, "");
       const text = b.type === "percent" && b.stat === "chanceToHit"
-        ? `+${b.value} CTH`
+        ? `+${b.value} HIT`
         : b.type === "percent"
           ? `+${b.value}% ${label}`
           : `+${b.value} ${label}`;

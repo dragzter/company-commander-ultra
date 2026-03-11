@@ -6170,22 +6170,6 @@ export function eventConfigs() {
       },
     },
     {
-      selector: "#roster-rest-popup .rest-filter-chip",
-      eventType: "click",
-      callback: (e: Event) => {
-        const chip = e.currentTarget as HTMLElement | null;
-        const popup = document.getElementById("roster-rest-popup");
-        if (!chip || !popup || popup.classList.contains("rest-popup-running"))
-          return;
-        const filter = chip.dataset.restFilter ?? "all";
-        popup
-          .querySelectorAll(".rest-filter-chip")
-          .forEach((el) => el.classList.toggle("is-active", el === chip));
-        applyRestFilter(popup, filter);
-        updateRestPopupSummary(popup);
-      },
-    },
-    {
       selector: "#rest-popup-close",
       eventType: "click",
       callback: () => {
@@ -6200,26 +6184,34 @@ export function eventConfigs() {
       callback: (e: Event) => {
         const popup = e.currentTarget as HTMLElement;
         if (!popup || popup.classList.contains("rest-popup-running")) return;
-        if (e.target === popup) UiManager.renderRosterScreen();
-      },
-    },
-    {
-      selector: "#roster-rest-popup .rest-soldier-pill",
-      eventType: "click",
-      callback: (e: Event) => {
-        const card = e.currentTarget as HTMLButtonElement;
-        const popup = document.getElementById("roster-rest-popup");
-        if (!popup || popup.classList.contains("rest-popup-running")) return;
-        if (card.disabled || card.classList.contains("disabled")) return;
-        card.classList.toggle("selected");
-        card.classList.remove("rest-soldier-select-pop");
-        void card.offsetWidth;
-        card.classList.add("rest-soldier-select-pop");
-        window.setTimeout(
-          () => card.classList.remove("rest-soldier-select-pop"),
-          260,
-        );
-        updateRestPopupSummary(popup);
+        const target = e.target as HTMLElement;
+        const chip = target.closest(".rest-filter-chip") as HTMLElement | null;
+        if (chip) {
+          const filter = chip.dataset.restFilter ?? "all";
+          popup
+            .querySelectorAll(".rest-filter-chip")
+            .forEach((el) => el.classList.toggle("is-active", el === chip));
+          applyRestFilter(popup, filter);
+          updateRestPopupSummary(popup);
+          return;
+        }
+
+        const card = target.closest(".rest-soldier-pill") as HTMLButtonElement | null;
+        if (card) {
+          if (card.disabled || card.classList.contains("disabled")) return;
+          card.classList.toggle("selected");
+          card.classList.remove("rest-soldier-select-pop");
+          void card.offsetWidth;
+          card.classList.add("rest-soldier-select-pop");
+          window.setTimeout(
+            () => card.classList.remove("rest-soldier-select-pop"),
+            260,
+          );
+          updateRestPopupSummary(popup);
+          return;
+        }
+
+        if (target === popup) UiManager.renderRosterScreen();
       },
     },
     {
@@ -6319,7 +6311,13 @@ export function eventConfigs() {
               const energyFill = card.querySelector(
                 ".rest-soldier-energyfill",
               ) as HTMLElement | null;
-              if (energyText) energyText.textContent = `EN ${nextEnergy}`;
+              if (energyText) {
+                energyText.innerHTML =
+                  `<span class="rest-soldier-energy-current">EN ${nextEnergy}</span>` +
+                  (recover > 0
+                    ? `<span class="rest-soldier-energy-gain"> +${recover}</span>`
+                    : "");
+              }
               if (energyFill) energyFill.style.width = `${nextEnergy}%`;
 
               if (gained > 0) {

@@ -7327,7 +7327,7 @@ button.missions-filter-chip {
 
 .rest-popup-grid {
 	display: grid;
-	grid-template-columns: repeat(3, minmax(0, 1fr));
+	grid-template-columns: repeat(2, minmax(0, 1fr));
 	gap: 8px;
 }
 
@@ -7353,25 +7353,6 @@ button.missions-filter-chip {
 	will-change: transform, box-shadow;
 }
 
-.rest-soldier-select-badge {
-	position: absolute;
-	left: 6px;
-	top: 5px;
-	font-size: 0.5rem;
-	font-weight: 900;
-	letter-spacing: 0.09em;
-	text-transform: uppercase;
-	padding: 1px 5px;
-	border-radius: 4px;
-	color: #fff8e8;
-	background: linear-gradient(180deg, rgba(243, 154, 67, 0.95) 0%, rgba(208, 94, 43, 0.98) 100%);
-	border: 1px solid rgba(255, 212, 162, 0.9);
-	opacity: 0;
-	transform: translateY(-2px) scale(0.96);
-	transition: opacity 0.16s ease, transform 0.16s ease;
-	pointer-events: none;
-}
-
 .rest-soldier-pill:hover:not(.disabled) {
 	transform: translateY(-1px);
 	border-color: rgba(170, 210, 170, 0.65);
@@ -7386,13 +7367,9 @@ button.missions-filter-chip {
 
 .rest-soldier-pill.selected {
 	border-color: rgba(255, 201, 126, 1);
-	background: linear-gradient(165deg, rgba(57, 41, 26, 0.95) 0%, rgba(26, 19, 12, 0.98) 100%);
-	box-shadow: 0 0 0 2px rgba(255, 222, 172, 0.58), 0 7px 22px rgba(242, 152, 81, 0.36), inset 0 1px 0 rgba(255, 248, 224, 0.2);
-}
-
-.rest-soldier-pill.selected .rest-soldier-select-badge {
-	opacity: 1;
-	transform: translateY(0) scale(1);
+	background: linear-gradient(165deg, rgba(70, 49, 26, 0.96) 0%, rgba(34, 23, 12, 0.99) 100%);
+	box-shadow: 0 0 0 2px rgba(255, 222, 172, 0.62), 0 10px 24px rgba(242, 152, 81, 0.42), inset 0 1px 0 rgba(255, 248, 224, 0.26);
+	filter: saturate(1.08) brightness(1.04);
 }
 
 .rest-soldier-pill.disabled {
@@ -7505,37 +7482,6 @@ button.missions-filter-chip {
 	text-overflow: clip;
 }
 
-.rest-soldier-projection {
-	grid-row: 1;
-	grid-column: 2;
-	justify-self: end;
-	display: inline-flex;
-	align-items: center;
-	gap: 4px;
-	margin-right: 2px;
-}
-
-.rest-soldier-proj-gain,
-.rest-soldier-proj-cost {
-	font-size: 0.5rem;
-	font-weight: 800;
-	letter-spacing: 0.05em;
-	padding: 1px 4px;
-	border-radius: 4px;
-}
-
-.rest-soldier-proj-gain {
-	color: #c5f4bf;
-	background: rgba(38, 88, 44, 0.55);
-	border: 1px solid rgba(126, 216, 126, 0.45);
-}
-
-.rest-soldier-proj-cost {
-	color: #ffe9bd;
-	background: rgba(104, 70, 34, 0.52);
-	border: 1px solid rgba(232, 187, 109, 0.45);
-}
-
 .rest-soldier-energybar {
 	grid-row: 2;
 	grid-column: 1 / span 2;
@@ -7574,6 +7520,16 @@ button.missions-filter-chip {
 	border-radius: 2px;
 	z-index: 2;
 	pointer-events: none;
+}
+
+.rest-soldier-energy-gain {
+	color: #bdf6b1;
+	font-weight: 900;
+	display: none;
+}
+
+.rest-soldier-pill.selected .rest-soldier-energy-gain {
+	display: inline;
 }
 
 .rest-popup-actions {
@@ -7802,7 +7758,7 @@ button.missions-filter-chip {
 
 @media (max-width: 420px) {
 	.rest-popup-grid {
-		grid-template-columns: repeat(2, minmax(0, 1fr));
+		grid-template-columns: repeat(1, minmax(0, 1fr));
 	}
 }
 
@@ -12844,6 +12800,27 @@ button.missions-filter-chip {
 	gap: 6px;
 	height: auto;
 	min-height: 3rem;
+}
+
+#roster-screen .entity-card.roster-card .card-actions.card-actions-50 {
+	flex-direction: row;
+	align-items: center;
+	justify-content: stretch;
+	gap: 6px;
+	min-height: 2rem;
+}
+
+#roster-screen .entity-card.roster-card .card-actions.card-actions-50 .game-btn {
+	flex: 1 1 50%;
+	width: auto;
+	min-width: 0;
+	min-height: 30px;
+	height: 30px;
+	aspect-ratio: auto;
+	padding: 0 8px;
+	font-size: 0.72rem;
+	line-height: 1;
+	letter-spacing: 0.04em;
 }
 
 .entity-card.roster-card.roster-reserve {

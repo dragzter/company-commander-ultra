@@ -233,8 +233,8 @@ export function getLevelBenefitsForCodex(): { level: number; gains: string; gain
       gainsBadges.push(`+${def.awareness} AWR`);
     }
     let special: string | undefined;
-    if (lvl === 4 || lvl === 8 || lvl === 12 || lvl === 16) special = "+1% CTH";
-    else if (lvl === 20) special = "+2% CTH";
+    if (lvl === 4 || lvl === 8 || lvl === 12 || lvl === 16) special = "+1% HIT";
+    else if (lvl === 20) special = "+2% HIT";
     rows.push({
       level: lvl,
       gains: parts.length > 0 ? parts.join(", ") : "—",

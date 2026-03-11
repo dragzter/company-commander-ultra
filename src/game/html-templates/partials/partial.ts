@@ -49,7 +49,7 @@ function Partial() {
   /**
    * Create HTML for a trooper entity-card for the troops market page.
    * Layout: avatar | name (row 1), stats (row 2), buttons (row 3)
-   * Stat labels: HP, MIT, AVD, CTH, MOR, TGH, AWR, DEX
+   * Stat labels: HP, MIT, AVD, HIT, MOR, TGH, AWR, DEX
    * @param trooper: Soldier
    * @param canRecruit: whether the player can add one more to staging (afford + cap)
    * @param canReroll: whether reroll is available (counter > 0)
@@ -91,7 +91,7 @@ function Partial() {
 							<div class="detail-item stat-hp"><span class="stat-label">HP</span><span class="stat-value">${hp}</span></div>
 							<div class="detail-item"><span class="stat-label">MIT</span><span class="stat-value">${mit}%</span></div>
 							<div class="detail-item"><span class="stat-label">AVD</span><span class="stat-value">${avd}%</span></div>
-							<div class="detail-item"><span class="stat-label">CTH</span><span class="stat-value">${cth}%</span></div>
+							<div class="detail-item"><span class="stat-label">HIT</span><span class="stat-value">${cth}%</span></div>
 							<div class="detail-item"><span class="stat-label">CRIT</span><span class="stat-value">${crit}%</span></div>
 							<div class="detail-item"><span class="stat-label">TGH</span><span class="stat-value">${tgh}</span></div>
 							<div class="detail-item"><span class="stat-label">MOR</span><span class="stat-value">${mor}</span></div>
@@ -176,7 +176,7 @@ function Partial() {
       <div class="card-stats-grid card-stats-grid-base-second">
         <div class="detail-item"><span class="stat-label">MIT</span><span class="stat-value">${mit}%</span></div>
         <div class="detail-item"><span class="stat-label">AVD</span><span class="stat-value">${avd}%</span></div>
-        <div class="detail-item"><span class="stat-label">CTH</span><span class="stat-value">${cth}%</span></div>
+        <div class="detail-item"><span class="stat-label">HIT</span><span class="stat-value">${cth}%</span></div>
         <div class="detail-item"><span class="stat-label">CRIT</span><span class="stat-value">${crit}%</span></div>
         ${spdRow}
         <div class="detail-item"><span class="stat-label">TGH</span><span class="stat-value">${tgh}</span></div>

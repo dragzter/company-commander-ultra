@@ -19,7 +19,7 @@ export const ATTACK_INTERVAL_MULTIPLIER = 0.9;
 export const ATTACK_INTERVAL_MIN_MS = 500;
 
 /** Dexterity: at this value, soldier gets max speed bonus (interval reduced by DEX_MAX_SPEED_BONUS). */
-export const ATTACK_INTERVAL_DEX_FOR_MAX_BONUS = 500;
+export const ATTACK_INTERVAL_DEX_FOR_MAX_BONUS = 300;
 /** Dexterity max bonus: up to 20% faster attacks (interval * 0.8). */
 export const ATTACK_INTERVAL_DEX_MAX_BONUS = 0.2;
 

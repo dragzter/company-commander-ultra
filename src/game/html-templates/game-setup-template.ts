@@ -23,12 +23,12 @@ const TRAIT_STAT_ABBR: Record<string, string> = {
   awareness: "AWR",
 };
 
-/** Stat explanations for the codex Stats tab. Abbreviations match display (HP, MIT, AVD, CTH, etc.). */
+/** Stat explanations for the codex Stats tab. Abbreviations match display (HP, MIT, AVD, HIT, etc.). */
 const STAT_HELP_ITEMS: { stat: string; abbr: string; desc: string; isBaseStat?: boolean }[] = [
   { stat: "Hit Points", abbr: "HP", desc: "Health. Damage capacity before incapacitation. Styled distinctly as a resource stat." },
   { stat: "Mitigation", abbr: "MIT", desc: "Damage reduction. Lowers incoming damage. Capped at 60%. From TGH and armor." },
   { stat: "Avoidance", abbr: "AVD", desc: "Chance to evade or dodge incoming attacks. Capped at 30%. 16 AWR or 20 DEX per 1%.", isBaseStat: false },
-  { stat: "Chance to Hit", abbr: "CTH", desc: "Accuracy. Likelihood your attacks land. Capped at 98%. 12 DEX or 18 AWR per 1%.", isBaseStat: false },
+  { stat: "Chance to Hit", abbr: "HIT", desc: "Accuracy. Likelihood your attacks land. Capped at 98%. 12 DEX or 18 AWR per 1%.", isBaseStat: false },
   { stat: "Morale", abbr: "MOR", desc: "Resistance to suppression, psychic effects, and panic. Affects duration of mental debuffs.", isBaseStat: true },
   { stat: "Toughness", abbr: "TGH", desc: "Contributes to mitigation. Reduces damage taken. From level, traits, and armor.", isBaseStat: true },
   { stat: "Awareness", abbr: "AWR", desc: "Spotting and reflexes. Boosts hit chance and avoidance.", isBaseStat: true },
@@ -92,10 +92,10 @@ export function codexPopupTemplate(): string {
     return `<div class="codex-stat-item"><div class="codex-stat-header">${s.abbr} (${s.stat})${baseBadge}</div><div class="codex-stat-desc">${s.desc}</div></div>`;
   }).join("");
   const combatStats = [
-    { abbr: "CTH", desc: "12 DEX or 18 AWR per 1%", badges: [{ cls: "codex-badge-cap", text: "cap 98%" }] },
+    { abbr: "HIT", desc: "12 DEX or 18 AWR per 1%", badges: [{ cls: "codex-badge-cap", text: "cap 98%" }] },
     { abbr: "AVD", desc: "16 AWR or 20 DEX per 1%", badges: [{ cls: "codex-badge-cap", text: "cap 30%" }] },
     { abbr: "MIT", desc: "TGH ÷ 9 ÷ 100", badges: [{ cls: "codex-badge-cap", text: "cap 60%" }, { cls: "codex-badge-neutral", text: "stun halves" }] },
-    { abbr: "SPD", desc: "Spd 1 ≈ 5.5s", badges: [{ cls: "codex-badge-neutral", text: "Spd 10 ≈ 1s" }], extra: "DEX up to 20% faster at 500" },
+    { abbr: "SPD", desc: "Spd 1 ≈ 5.5s", badges: [{ cls: "codex-badge-neutral", text: "Spd 10 ≈ 1s" }], extra: "DEX up to 20% faster at 300" },
     {
       abbr: "MOR",
       desc: "Panic/Suppression: 1% per 10 MOR",
@@ -112,8 +112,8 @@ export function codexPopupTemplate(): string {
     { name: "Panic", desc: "50% slower.", badges: [], remediedBy: "MOR" },
     { name: "Suppressed", desc: "Cannot attack.", badges: [{ cls: "codex-badge-neutral", text: "+10% AVD" }], remediedBy: "MOR" },
     { name: "Burning", desc: "Damage over time.", badges: [{ cls: "codex-badge-negative", text: "DoT" }] },
-    { name: "Smoked", desc: "Direct hit -40% CTH, adjacent -10%. +5% AVD.", badges: [{ cls: "codex-badge-negative", text: "–40% CTH" }, { cls: "codex-badge-positive", text: "+5% AVD" }] },
-    { name: "Blinded", desc: "50% CTH reduction.", badges: [{ cls: "codex-badge-negative", text: "–50% CTH" }] },
+    { name: "Smoked", desc: "Direct hit -40% HIT, adjacent -10%. +5% AVD.", badges: [{ cls: "codex-badge-negative", text: "–40% HIT" }, { cls: "codex-badge-positive", text: "+5% AVD" }] },
+    { name: "Blinded", desc: "50% HIT reduction.", badges: [{ cls: "codex-badge-negative", text: "–50% HIT" }] },
   ];
   const combatStatCards = combatStats
     .map(

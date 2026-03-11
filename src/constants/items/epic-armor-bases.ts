@@ -25,12 +25,12 @@ export interface EpicArmorBase {
 }
 
 export const EPIC_ARMOR_BASES: EpicArmorBase[] = [
-  { baseId: "titan_plate", name: "Titan Plate", description: "Legendary heavy armor.", icon: "armor_15.png", toughnessBase: 50, toughnessPerLevel: 6, bonuses: [{ type: "flat", stat: "toughness", value: 10 }, { type: "percent", stat: "mitigation", value: 5 }], specialEffect: "sturdy", storeAvailable: false },
-  { baseId: "shadow_form", name: "Shadow Form", description: "Elite infiltration suit.", icon: "armor_7.png", toughnessBase: 24, toughnessPerLevel: 2, bonuses: [{ type: "percent", stat: "avoidance", value: 10 }, { type: "flat", stat: "dex", value: 5 }], specialEffect: "fearless", storeAvailable: false },
-  { baseId: "phoenix_guard", name: "Phoenix Guard", description: "Fire-resistant plating.", icon: "armor_13.png", toughnessBase: 40, toughnessPerLevel: 5, bonuses: [{ type: "flat", stat: "hp", value: 20 }], specialEffect: "dragonskin", storeAvailable: false },
-  { baseId: "mind_shield", name: "Mind Shield", description: "Psychic resistance helmet.", icon: "armor_10.png", toughnessBase: 30, toughnessPerLevel: 4, bonuses: [{ type: "flat", stat: "morale", value: 25 }, { type: "percent", stat: "mitigation", value: 3 }], specialEffect: "commissar", storeAvailable: false },
-  { baseId: "warden_plate", name: "Warden Plate", description: "All-around elite protection.", icon: "armor_6.png", toughnessBase: 43, toughnessPerLevel: 5, bonuses: [{ type: "percent", stat: "avoidance", value: 5 }, { type: "percent", stat: "mitigation", value: 3 }], specialEffect: "visionary", storeAvailable: false },
-  { baseId: "sacred_cloak", name: "Sacred Cloak", description: "Blessed mantle.", icon: "armor_5.png", toughnessBase: 18, toughnessPerLevel: 2, bonuses: [{ type: "percent", stat: "avoidance", value: 2 }, { type: "flat", stat: "dex", value: 10 }], specialEffect: "flame_ward", storeAvailable: false },
+  { baseId: "titan_plate", name: "Titan Plate", description: "Legendary heavy armor.", icon: "armor_15.png", toughnessBase: 56, toughnessPerLevel: 6, bonuses: [{ type: "flat", stat: "toughness", value: 8 }], specialEffect: "ceramic_plates", storeAvailable: false },
+  { baseId: "shadow_form", name: "Shadow Form", description: "Elite infiltration suit.", icon: "armor_7.png", toughnessBase: 28, toughnessPerLevel: 2, bonuses: [{ type: "percent", stat: "avoidance", value: 3 }, { type: "flat", stat: "dex", value: 5 }], specialEffect: "fearless", storeAvailable: false },
+  { baseId: "phoenix_guard", name: "Phoenix Guard", description: "Fire-resistant plating.", icon: "armor_13.png", toughnessBase: 46, toughnessPerLevel: 5, bonuses: [{ type: "flat", stat: "hp", value: 18 }], specialEffect: "dragonskin", storeAvailable: false },
+  { baseId: "mind_shield", name: "Mind Shield", description: "Psychic resistance helmet.", icon: "armor_10.png", toughnessBase: 35, toughnessPerLevel: 4, bonuses: [{ type: "flat", stat: "morale", value: 22 }], specialEffect: "padded", storeAvailable: false },
+  { baseId: "warden_plate", name: "Warden Plate", description: "All-around elite protection.", icon: "armor_6.png", toughnessBase: 48, toughnessPerLevel: 5, bonuses: [{ type: "percent", stat: "avoidance", value: 3 }], specialEffect: "padded", storeAvailable: false },
+  { baseId: "sacred_cloak", name: "Sacred Cloak", description: "Blessed mantle.", icon: "armor_5.png", toughnessBase: 22, toughnessPerLevel: 2, bonuses: [{ type: "percent", stat: "avoidance", value: 2 }, { type: "flat", stat: "dex", value: 8 }], specialEffect: "flame_ward", storeAvailable: false },
 ];
 
 export function createEpicArmor(base: EpicArmorBase, level: GearLevel) {
