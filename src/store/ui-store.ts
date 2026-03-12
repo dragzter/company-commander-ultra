@@ -45,6 +45,14 @@ export type MissionsResumeStep =
   | "career"
   | "ready_room";
 
+export type CompanyLevelUpSummary = {
+  fromLevel: number;
+  toLevel: number;
+  rerollsGained: number;
+  bullets: string[];
+  createdAt: number;
+};
+
 export type CompanyStore = {
   // State
   companyName: string;
@@ -90,6 +98,7 @@ export type CompanyStore = {
   companyAbilityUnlockedIds: CompanyAbilityId[];
   companyAbilityPendingChoiceLevels: number[];
   companyAbilityNotificationText: string;
+  companyLevelUpSummary: CompanyLevelUpSummary | null;
 
   // Setters
   setMarketAvailableTroops: (soldiers: Soldier[]) => void;
@@ -120,6 +129,7 @@ export type CompanyStore = {
     abilityId: CompanyAbilityId,
   ) => { success: boolean; reason?: string };
   dismissCompanyAbilityNotification: () => void;
+  clearCompanyLevelUpSummary: () => void;
   bootstrapNewCompanyIfEmpty: () => void;
   ensureMissionBoard: () => void;
   refreshMissionBoard: () => void;
@@ -446,6 +456,26 @@ export const usePlayerCompanyStore = createStore<CompanyStore>()(
           if (typeof merged.companyAbilityNotificationText !== "string") {
             merged.companyAbilityNotificationText = "";
           }
+          if (
+            !merged.companyLevelUpSummary ||
+            typeof merged.companyLevelUpSummary !== "object"
+          ) {
+            merged.companyLevelUpSummary = null;
+          } else {
+            const summary = merged.companyLevelUpSummary as CompanyLevelUpSummary;
+            merged.companyLevelUpSummary = {
+              fromLevel: Math.max(1, Math.floor(summary.fromLevel || 1)),
+              toLevel: Math.max(1, Math.floor(summary.toLevel || 1)),
+              rerollsGained: Math.max(
+                0,
+                Math.floor(summary.rerollsGained || 0),
+              ),
+              bullets: Array.isArray(summary.bullets)
+                ? summary.bullets.filter((x) => typeof x === "string")
+                : [],
+              createdAt: Math.max(0, Math.floor(summary.createdAt || 0)),
+            };
+          }
           {
             const companyLevel = Math.max(
               1,
@@ -516,6 +546,8 @@ export const usePlayerCompanyStore = createStore<CompanyStore>()(
           ) {
             merged.highestRecruitLevelAchieved = 1;
           }
+          // Level-up summaries are transient UI events; never restore stale payloads.
+          merged.companyLevelUpSummary = null;
           return merged;
         },
       })

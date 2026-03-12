@@ -4,6 +4,7 @@ import {
   getXpRequiredForLevel,
   MAX_COMPANY_LEVEL,
 } from "../../constants/economy.ts";
+import { getCompanyLevelSnapshot } from "../../constants/company-progression.ts";
 import type { MemorialEntry } from "../entities/memorial-types.ts";
 import { clrHash } from "../../utils/html-utils.ts";
 import { Images } from "../../constants/images.ts";
@@ -455,6 +456,8 @@ export const companyHomePageTemplate = () => {
   const companyLvl = company?.level ?? companyLevel ?? 1;
   const totalInventoryCapacity = getTotalArmorySlots(companyLvl);
   const totalItemsInInventory = company?.inventory?.length ?? storeItems ?? 0;
+  const levelSnap = getCompanyLevelSnapshot(companyLvl);
+  const nextSnap = levelSnap.next;
 
   const xpFloor = companyLvl <= 1 ? 0 : getXpRequiredForLevel(companyLvl - 1);
   const xpCeiling = getXpRequiredForLevel(companyLvl + 1);
@@ -527,6 +530,19 @@ export const companyHomePageTemplate = () => {
         ${statRow("K/L Ratio", killLossRatio, "positive")}
       </div>
     </section>
+    <section class="company-home-card">
+      <h3 class="company-home-card-title">Progression</h3>
+      <div class="company-stats-grid">
+        ${statRow("Roster Capacity", `${levelSnap.current.roster.total}`, "neutral")}
+        ${statRow("Active Slots", `${levelSnap.current.roster.active}`, "neutral")}
+        ${statRow("Armory W/A/S", `${levelSnap.current.armory.weapon}/${levelSnap.current.armory.armor}/${levelSnap.current.armory.equipment}`, "neutral")}
+        ${statRow("Medic/Gunner Caps", `${levelSnap.current.roleCaps.active.medic}/${levelSnap.current.roleCaps.active.support}`, "neutral")}
+        ${statRow("Rerolls On Level", `+${levelSnap.current.rerollsOnLevelUp}`, "accent")}
+        ${nextSnap ? statRow("Next Roster Capacity", `${nextSnap.roster.total}`, "accent") : statRow("Next Level", "MAX", "accent")}
+        ${nextSnap ? statRow("Next Active Slots", `${nextSnap.roster.active}`, "accent") : statRow("Next Active", "MAX", "accent")}
+        ${nextSnap ? statRow("Next Armory W/A/S", `${nextSnap.armory.weapon}/${nextSnap.armory.armor}/${nextSnap.armory.equipment}`, "accent") : statRow("Next Armory", "MAX", "accent")}
+      </div>
+    </section>
   `;
 
   const emptyRecruitRow = totalMenInCompany === 0
@@ -592,6 +608,24 @@ export const companyHomePageTemplate = () => {
     </div>
   `
     : "";
+  const levelUpSummary = store.companyLevelUpSummary;
+  const companyLevelUpPopup = levelUpSummary
+    ? `
+    <div id="home-company-levelup-popup" class="home-onboarding-popup helper-onboarding-popup" role="dialog" aria-modal="true">
+      <div class="home-onboarding-dialog helper-onboarding-dialog">
+        <div class="home-onboarding-copy helper-onboarding-copy">
+          <h4 class="home-onboarding-title helper-onboarding-title">Company Level ${levelUpSummary.toLevel}</h4>
+          <p class="home-onboarding-text helper-onboarding-text">Advanced from Lv ${levelUpSummary.fromLevel} to Lv ${levelUpSummary.toLevel}. Rerolls +${levelUpSummary.rerollsGained}.</p>
+          <ul class="company-levelup-list">${(levelUpSummary.bullets ?? []).slice(0, 8).map((line) => `<li>${line}</li>`).join("")}</ul>
+          <button id="home-company-levelup-continue" type="button" class="game-btn game-btn-md game-btn-green home-onboarding-continue helper-onboarding-continue">Continue</button>
+        </div>
+        <div class="home-onboarding-image-wrap helper-onboarding-image-wrap">
+          <img src="${onboardingPortrait}" alt="Squad soldier" class="home-onboarding-image helper-onboarding-image">
+        </div>
+      </div>
+    </div>
+  `
+    : "";
 
   return `
   <div id="campaign-home-screen" class="flex h-100 column">
@@ -630,6 +664,7 @@ export const companyHomePageTemplate = () => {
     ${onboardingPopup}
     ${recruitOnboardingPopup}
     ${companyAbilityPopup}
+    ${companyLevelUpPopup}
   </div>
 `;
 };

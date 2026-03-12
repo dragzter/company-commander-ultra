@@ -305,6 +305,17 @@ export function clearExpiredEffects(combatants: Combatant[], now: number): void 
       delete c.attackSpeedBuffUntil;
       delete c.attackSpeedBuffMultiplier;
     }
+    if (
+      c.companyAttackSpeedBuffUntil != null &&
+      now >= c.companyAttackSpeedBuffUntil
+    ) {
+      delete c.companyAttackSpeedBuffUntil;
+      delete c.companyAttackSpeedBuffMultiplier;
+    }
+    if (c.companyCritChanceBuffUntil != null && now >= c.companyCritChanceBuffUntil) {
+      delete c.companyCritChanceBuffUntil;
+      delete c.companyCritChanceBonusPct;
+    }
   }
 }
 
@@ -345,6 +356,10 @@ export function clearCombatantEffectsOnDeath(c: Combatant): void {
   delete c.toughnessReductionPct;
   delete c.attackSpeedBuffUntil;
   delete c.attackSpeedBuffMultiplier;
+  delete c.companyAttackSpeedBuffUntil;
+  delete c.companyAttackSpeedBuffMultiplier;
+  delete c.companyCritChanceBuffUntil;
+  delete c.companyCritChanceBonusPct;
 }
 
 /** Remove attackers whose target went into cover; they will be reassigned next tick */
@@ -380,6 +395,7 @@ export function resolveAttack(
   attacker: Combatant,
   target: Combatant,
   now: number = Date.now(),
+  opts?: { damageMultiplier?: number },
 ): AttackResult {
   let baseCth = attacker.chanceToHit ?? 0.6;
   const blinded = attacker.blindedUntil != null && now < attacker.blindedUntil;
@@ -406,8 +422,22 @@ export function resolveAttack(
   }
   const minDmg = attacker.damageMin ?? 4;
   const maxDmg = attacker.damageMax ?? 6;
-  const rawDmg = Math.ceil(minDmg + Math.random() * Math.max(0, maxDmg - minDmg));
-  const critRoll = Math.random() < BASE_AUTO_CRIT_CHANCE;
+  const rawBase = Math.ceil(minDmg + Math.random() * Math.max(0, maxDmg - minDmg));
+  const rawDmg = Math.max(
+    1,
+    Math.ceil(rawBase * Math.max(0, opts?.damageMultiplier ?? 1)),
+  );
+  const companyCritBonus =
+    attacker.companyCritChanceBuffUntil != null &&
+    now < attacker.companyCritChanceBuffUntil &&
+    attacker.companyCritChanceBonusPct != null
+      ? attacker.companyCritChanceBonusPct
+      : 0;
+  const critChance = Math.max(
+    0,
+    Math.min(0.98, BASE_AUTO_CRIT_CHANCE + companyCritBonus),
+  );
+  const critRoll = Math.random() < critChance;
   const critRaw = critRoll
     ? Math.ceil(rawDmg * AUTO_CRIT_DAMAGE_MULTIPLIER)
     : rawDmg;
@@ -462,6 +492,13 @@ export function getNextAttackAt(attacker: Combatant, now: number): number {
     attacker.attackSpeedBuffMultiplier != null
       ? attacker.attackSpeedBuffMultiplier
       : 1;
+  if (
+    attacker.companyAttackSpeedBuffUntil != null &&
+    now < attacker.companyAttackSpeedBuffUntil &&
+    attacker.companyAttackSpeedBuffMultiplier != null
+  ) {
+    mult *= attacker.companyAttackSpeedBuffMultiplier;
+  }
   if (attacker.panicUntil != null && now < attacker.panicUntil) mult *= 2; // Panic: 50% slower
   return now + baseInterval * mult;
 }

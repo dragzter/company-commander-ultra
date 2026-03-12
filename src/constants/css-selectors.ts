@@ -33,6 +33,8 @@ export const DOM = {
     onboardingRecruitContinue: "#home-recruit-onboarding-continue",
     companyAbilityPopup: "#home-company-ability-popup",
     companyAbilityContinue: "#home-company-ability-continue",
+    companyLevelUpPopup: "#home-company-levelup-popup",
+    companyLevelUpContinue: "#home-company-levelup-continue",
     memorialPopup: "#memorial-popup",
     memorialPopupClose: "#memorial-popup-close",
     codexPopup: "#codex-popup",

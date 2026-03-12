@@ -1,3 +1,8 @@
+import {
+  MAX_COMPANY_LEVEL,
+  getCompanyProgressionEntry,
+} from "./company-progression.ts";
+
 /**
  * Company capacity by level (1-10).
  * Total: max soldiers in company. Active: deployable on missions.
@@ -10,38 +15,34 @@ export const COMPANY_CAPACITY_BY_LEVEL: {
   active: number;
   reserve: number;
 }[] = [
-  { level: 1, total: 8, active: 4, reserve: 8 },
-  { level: 2, total: 8, active: 5, reserve: 8 },
-  { level: 3, total: 10, active: 5, reserve: 10 },
-  { level: 4, total: 10, active: 6, reserve: 10 },
-  { level: 5, total: 12, active: 7, reserve: 12 },
-  { level: 6, total: 14, active: 8, reserve: 14 },
-  { level: 7, total: 16, active: 8, reserve: 16 },
-  { level: 8, total: 16, active: 8, reserve: 16 },
-  { level: 9, total: 18, active: 8, reserve: 18 },
-  { level: 10, total: 18, active: 8, reserve: 18 },
+  ...Array.from({ length: MAX_COMPANY_LEVEL }, (_, i) => {
+    const p = getCompanyProgressionEntry(i + 1);
+    return {
+      level: p.level,
+      total: p.roster.total,
+      active: p.roster.active,
+      reserve: p.roster.reserve,
+    };
+  }),
 ];
 
-export const MAX_COMPANY_SIZE_LEVEL_1 = 8;
-export const MAX_ACTIVE_SOLDIERS = 8;
-export const MAX_COMPANY_LEVEL = 10;
+export const MAX_COMPANY_SIZE_LEVEL_1 = getCompanyProgressionEntry(1).roster.total;
+export const MAX_ACTIVE_SOLDIERS = getCompanyProgressionEntry(MAX_COMPANY_LEVEL).roster.active;
+export const MAX_COMPANY_SIZE = getCompanyProgressionEntry(MAX_COMPANY_LEVEL).roster.total;
 
 export function getMaxCompanySize(level: number): number {
-  const capped = Math.max(1, Math.min(MAX_COMPANY_LEVEL, level));
-  const entry = COMPANY_CAPACITY_BY_LEVEL.find((e) => e.level === capped);
-  return entry?.total ?? (capped >= MAX_COMPANY_LEVEL ? 18 : MAX_COMPANY_SIZE_LEVEL_1);
+  const p = getCompanyProgressionEntry(level);
+  return p.roster.total;
 }
 
 export function getActiveSlotsByLevel(level: number): number {
-  const capped = Math.max(1, Math.min(MAX_COMPANY_LEVEL, level));
-  const entry = COMPANY_CAPACITY_BY_LEVEL.find((e) => e.level === capped);
-  return Math.min(MAX_ACTIVE_SOLDIERS, entry?.active ?? 4);
+  const p = getCompanyProgressionEntry(level);
+  return Math.min(MAX_ACTIVE_SOLDIERS, p.roster.active);
 }
 
 export function getReserveSlotsByLevel(level: number): number {
-  const capped = Math.max(1, Math.min(MAX_COMPANY_LEVEL, level));
-  const entry = COMPANY_CAPACITY_BY_LEVEL.find((e) => e.level === capped);
-  const total = entry?.total ?? MAX_COMPANY_SIZE_LEVEL_1;
-  const reserve = entry?.reserve ?? MAX_COMPANY_SIZE_LEVEL_1;
+  const p = getCompanyProgressionEntry(level);
+  const total = p.roster.total;
+  const reserve = p.roster.reserve;
   return Math.max(total, reserve);
 }

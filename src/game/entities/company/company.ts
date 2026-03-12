@@ -59,6 +59,7 @@ import {
   getMaxCompanySize as getMaxCompanySizeFromCapacity,
   MAX_COMPANY_SIZE_LEVEL_1 as CAPACITY_LEVEL_1,
 } from "../../../constants/company-capacity.ts";
+import { COMPANY_LEVEL_PROGRESSION } from "../../../constants/company-progression.ts";
 
 /** Max company size at level 1 (4 active, 8 total) */
 export const MAX_COMPANY_SIZE_LEVEL_1 = CAPACITY_LEVEL_1;
@@ -89,14 +90,19 @@ export type CompanyResourcesProfile = {
  * soldier_mission_slots: max medic/support that can be active. Rifleman unlimited (fills remaining slots).
  */
 export const COMPANY_RESOURCES_BY_LEVEL: CompanyResourcesProfile[] = [
-  { level: 1, soldier_slots: { medic: 1, support: 1, rifleman: 6 }, company_abilities: [], commander_abilities: [], soldier_mission_slots: { medic: 1, support: 1, rifleman: 4 } },
-  { level: 2, soldier_slots: { medic: 1, support: 2, rifleman: 5 }, company_abilities: [], commander_abilities: [], soldier_mission_slots: { medic: 1, support: 1, rifleman: 5 } },
-  { level: 3, soldier_slots: { medic: 1, support: 2, rifleman: 7 }, company_abilities: [], commander_abilities: [], soldier_mission_slots: { medic: 1, support: 1, rifleman: 5 } },
-  { level: 4, soldier_slots: { medic: 2, support: 2, rifleman: 6 }, company_abilities: [], commander_abilities: [], soldier_mission_slots: { medic: 1, support: 1, rifleman: 6 } },
-  { level: 5, soldier_slots: { medic: 2, support: 3, rifleman: 7 }, company_abilities: [], commander_abilities: [], soldier_mission_slots: { medic: 1, support: 2, rifleman: 7 } },
-  { level: 6, soldier_slots: { medic: 2, support: 3, rifleman: 9 }, company_abilities: [], commander_abilities: [], soldier_mission_slots: { medic: 2, support: 2, rifleman: 8 } },
-  { level: 7, soldier_slots: { medic: 3, support: 3, rifleman: 10 }, company_abilities: [], commander_abilities: [], soldier_mission_slots: { medic: 2, support: 2, rifleman: 8 } },
-  { level: 8, soldier_slots: { medic: 3, support: 3, rifleman: 10 }, company_abilities: [], commander_abilities: [], soldier_mission_slots: { medic: 2, support: 2, rifleman: 9 } },
-  { level: 9, soldier_slots: { medic: 3, support: 3, rifleman: 12 }, company_abilities: [], commander_abilities: [], soldier_mission_slots: { medic: 2, support: 2, rifleman: 9 } },
-  { level: 10, soldier_slots: { medic: 3, support: 3, rifleman: 14 }, company_abilities: [], commander_abilities: [], soldier_mission_slots: { medic: 2, support: 3, rifleman: 10 } },
+  ...COMPANY_LEVEL_PROGRESSION.map((p) => ({
+    level: p.level,
+    soldier_slots: {
+      medic: p.roleCaps.roster.medic,
+      support: p.roleCaps.roster.support,
+      rifleman: p.roleCaps.roster.rifleman,
+    },
+    company_abilities: [],
+    commander_abilities: [],
+    soldier_mission_slots: {
+      medic: p.roleCaps.active.medic,
+      support: p.roleCaps.active.support,
+      rifleman: p.roleCaps.active.rifleman,
+    },
+  })),
 ];

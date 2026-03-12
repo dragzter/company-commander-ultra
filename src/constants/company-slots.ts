@@ -1,6 +1,6 @@
 import type { Company } from "../game/entities/company/company.ts";
 import { getActiveSlotsByLevel, getMaxCompanySize, getReserveSlotsByLevel } from "./company-capacity.ts";
-import { COMPANY_RESOURCES_BY_LEVEL } from "../game/entities/company/company.ts";
+import { getCompanyProgressionEntry } from "./company-progression.ts";
 
 export function getTotalCompanySlots(company: Company | null): number {
   if (!company) return 0;
@@ -49,16 +49,14 @@ export function getMaxMedicSlots(company: Company | null): number {
   if (!company) return 0;
   const fromProfile = company.resourceProfile?.soldier_mission_slots?.medic;
   if (typeof fromProfile === "number") return fromProfile;
-  const lvl = Math.max(1, Math.min(COMPANY_RESOURCES_BY_LEVEL.length, company.level ?? 1));
-  return COMPANY_RESOURCES_BY_LEVEL[lvl - 1]?.soldier_mission_slots?.medic ?? 0;
+  return getCompanyProgressionEntry(company.level ?? 1).roleCaps.active.medic;
 }
 
 export function getMaxSupportSlots(company: Company | null): number {
   if (!company) return 0;
   const fromProfile = company.resourceProfile?.soldier_mission_slots?.support;
   if (typeof fromProfile === "number") return fromProfile;
-  const lvl = Math.max(1, Math.min(COMPANY_RESOURCES_BY_LEVEL.length, company.level ?? 1));
-  return COMPANY_RESOURCES_BY_LEVEL[lvl - 1]?.soldier_mission_slots?.support ?? 0;
+  return getCompanyProgressionEntry(company.level ?? 1).roleCaps.active.support;
 }
 
 export type FormationRole = "rifleman" | "support" | "medic";

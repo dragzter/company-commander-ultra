@@ -50,6 +50,8 @@ function talentIconNode(
     data-kind="${esc(def.kind)}"
     data-short="${esc(def.short)}"
     data-description="${esc(def.description)}"
+    data-icon="${esc(def.icon)}"
+    data-cooldown-seconds="${def.cooldownSeconds ? String(def.cooldownSeconds) : ""}"
     title="${esc(def.name)}"
   >
     <img src="${def.icon}" alt="${esc(def.name)}" width="56" height="56">
@@ -218,20 +220,31 @@ export function abilitiesTemplate(): string {
     <div class="company-talent-tree" id="company-talent-tree">${rowsAndConnectors.join("")}</div>
   </div>
   <div class="abilities-footer troops-market-footer">
-    ${companyActionsTemplate()}
-  </div>
-
-  <div id="company-ability-detail-popup" class="company-talent-popup" hidden>
-    <div class="company-talent-popup-inner">
-      <button id="company-ability-detail-close" type="button" class="company-talent-popup-close">×</button>
-      <div class="company-talent-popup-body">
-        <h4 id="company-ability-detail-title">Ability</h4>
-        <p id="company-ability-detail-description" class="company-talent-popup-desc"></p>
-      </div>
-      <div class="company-talent-popup-actions">
-        <button id="company-ability-detail-learn" type="button" class="game-btn game-btn-sm game-btn-green" hidden>Learn Ability</button>
+    <div id="company-ability-tooltip" class="company-ability-tooltip" hidden>
+      <div class="company-ability-tooltip-inner">
+        <div class="company-ability-tooltip-kicker-row">
+          <div class="company-ability-tooltip-kicker">Tactical Brief</div>
+          <span id="company-ability-detail-cooldown" class="company-ability-cooldown-pill" hidden>CD 0s</span>
+        </div>
+        <div class="company-ability-tooltip-main">
+          <div class="company-ability-tooltip-copy">
+            <div class="company-ability-tooltip-title-row">
+              <h4 id="company-ability-detail-title" class="company-ability-tooltip-title">Ability Details</h4>
+              <span id="company-ability-detail-kind" class="company-ability-kind-pill company-ability-kind-passive">Passive</span>
+              <span id="company-ability-detail-status" class="company-ability-status-pill company-ability-status-known" hidden>Known</span>
+            </div>
+            <p id="company-ability-detail-description" class="company-talent-popup-desc company-ability-tooltip-desc">Tap an ability node to inspect details.</p>
+          </div>
+          <div class="company-ability-tooltip-icon-col">
+            <img id="company-ability-detail-icon" class="company-ability-tooltip-icon" src="/images/scan.png" alt="Ability icon" width="90" height="90">
+          </div>
+        </div>
+        <div id="company-ability-tooltip-actions" class="company-talent-popup-actions company-ability-tooltip-actions">
+          <button id="company-ability-detail-learn" type="button" class="game-btn game-btn-sm game-btn-green" hidden>Learn</button>
+        </div>
       </div>
     </div>
+    ${companyActionsTemplate()}
   </div>
 
   ${notifyPopup}

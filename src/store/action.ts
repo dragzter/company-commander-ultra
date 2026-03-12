@@ -87,6 +87,10 @@ import {
   type CompanyAbilityChoiceMap,
   type CompanyAbilityId,
 } from "../constants/company-abilities.ts";
+import {
+  getCompanyProgressionEntry,
+  type CompanyProgressionEntry,
+} from "../constants/company-progression.ts";
 
 function pickReplacementMission(
   completed: Mission,
@@ -282,6 +286,60 @@ function applyCompanyPassivesToSoldiers(
   return soldiers.map((s) => applyCompanyPassivesToSoldier(s, unlockedAbilityIds));
 }
 
+function describeLevelDelta(
+  from: CompanyProgressionEntry,
+  to: CompanyProgressionEntry,
+): string[] {
+  const out: string[] = [];
+  if (to.roster.total > from.roster.total) {
+    out.push(`Roster capacity +${to.roster.total - from.roster.total} (now ${to.roster.total}).`);
+  }
+  if (to.roster.active > from.roster.active) {
+    out.push(`Active slots +${to.roster.active - from.roster.active} (now ${to.roster.active}).`);
+  }
+  if (to.roleCaps.active.medic > from.roleCaps.active.medic) {
+    out.push(`Active medic cap +${to.roleCaps.active.medic - from.roleCaps.active.medic} (now ${to.roleCaps.active.medic}).`);
+  }
+  if (to.roleCaps.active.support > from.roleCaps.active.support) {
+    out.push(`Active gunner cap +${to.roleCaps.active.support - from.roleCaps.active.support} (now ${to.roleCaps.active.support}).`);
+  }
+  if (to.armory.weapon > from.armory.weapon) {
+    out.push(`Weapon slots +${to.armory.weapon - from.armory.weapon} (now ${to.armory.weapon}).`);
+  }
+  if (to.armory.armor > from.armory.armor) {
+    out.push(`Armor slots +${to.armory.armor - from.armory.armor} (now ${to.armory.armor}).`);
+  }
+  if (to.armory.equipment > from.armory.equipment) {
+    out.push(`Supply slots +${to.armory.equipment - from.armory.equipment} (now ${to.armory.equipment}).`);
+  }
+  if (to.rerollsOnLevelUp > 0) {
+    out.push(`Rerolls +${to.rerollsOnLevelUp}.`);
+  }
+  return out;
+}
+
+function buildCompanyLevelUpSummary(
+  fromLevel: number,
+  toLevel: number,
+): CompanyStore["companyLevelUpSummary"] {
+  if (toLevel <= fromLevel) return null;
+  const bullets: string[] = [];
+  let rerollsGained = 0;
+  for (let lvl = fromLevel + 1; lvl <= toLevel; lvl++) {
+    const prev = getCompanyProgressionEntry(lvl - 1);
+    const curr = getCompanyProgressionEntry(lvl);
+    rerollsGained += curr.rerollsOnLevelUp;
+    bullets.push(...describeLevelDelta(prev, curr).map((line) => `Lv${lvl}: ${line}`));
+  }
+  return {
+    fromLevel,
+    toLevel,
+    rerollsGained,
+    bullets,
+    createdAt: Date.now(),
+  };
+}
+
 function syncCompanyAbilityProgress(
   companyLevel: number,
   choices: CompanyAbilityChoiceMap | undefined,
@@ -335,6 +393,7 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
   companyAbilityUnlockedIds: ["focused_fire"] as CompanyAbilityId[],
   companyAbilityPendingChoiceLevels: [],
   companyAbilityNotificationText: "",
+  companyLevelUpSummary: null,
 
   // Actions
   rerollSoldier: async (id: string) => {
@@ -518,6 +577,7 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
   setOnboardingRecruitStep: (step: RecruitOnboardingStep) => set({ onboardingRecruitStep: step }),
   setOnboardingRecruitSoldier: (soldier: Soldier | null) => set({ onboardingRecruitSoldier: soldier }),
   dismissCompanyAbilityNotification: () => set({ companyAbilityNotificationText: "" }),
+  clearCompanyLevelUpSummary: () => set({ companyLevelUpSummary: null }),
   chooseCompanyAbilityAtLevel: (level: number, abilityId: CompanyAbilityId) => {
     const state = get();
     const node = COMPANY_ABILITY_PROGRESSION.find((n) => n.level === level);
@@ -728,8 +788,9 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
       state.company?.soldiers ?? [],
       resolvedAbilities.unlocked,
     );
+    const progression = getCompanyProgressionEntry(level);
     set((s: CompanyStore) => ({
-      rerollCounter: (s.rerollCounter ?? 0) + 6,
+      rerollCounter: (s.rerollCounter ?? 0) + progression.rerollsOnLevelUp,
       marketAvailableTroops: nextMarket,
       highestRecruitLevelAchieved: recruitLevel,
       companyAbilityUnlockedIds: resolvedAbilities.unlocked,
@@ -799,6 +860,7 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
         companyAbilityPendingChoiceLevels: resolvedAbilities.pendingChoiceLevels,
         companyAbilityChoices: state.companyAbilityChoices ?? defaultCompanyAbilityChoices(),
         companyAbilityNotificationText: "",
+        companyLevelUpSummary: null,
       };
     }),
   /** Add starter armory items when inventory is empty (new game). */
@@ -1434,6 +1496,9 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
       for (let i = oldLevel + 1; i <= lvl; i++) {
         get().onCompanyLevelUp();
       }
+      set(() => ({
+        companyLevelUpSummary: buildCompanyLevelUpSummary(oldLevel, lvl),
+      }));
     }
 
     const rewardIds = mission.rewardItems ?? [];

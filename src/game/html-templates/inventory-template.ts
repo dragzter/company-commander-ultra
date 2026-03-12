@@ -22,6 +22,7 @@ import { ThrowableItems } from "../../constants/items/throwable.ts";
 import { getScaledThrowableLevel20Damage } from "../../constants/items/throwable-scaling.ts";
 import { getItemSellPrice } from "../../utils/sell-pricing.ts";
 import { CREDIT_SYMBOL } from "../../constants/currency.ts";
+import { getCompanyLevelSnapshot } from "../../constants/company-progression.ts";
 
 /** Shared item stats popup markup – used by inventory and roster (equip picker from roster needs it). */
 export function itemStatsPopupHtml(): string {
@@ -425,6 +426,8 @@ export function inventoryTemplate(): string {
   const weaponSlots = getWeaponArmorySlots(companyLevel);
   const armorSlots = getArmorArmorySlots(companyLevel);
   const equipmentSlots = getEquipmentArmorySlots(companyLevel);
+  const levelSnapshot = getCompanyLevelSnapshot(companyLevel);
+  const nextLevel = levelSnapshot.next;
 
   function armorySectionSlots(
     itemsInCategory: Item[],
@@ -447,7 +450,7 @@ export function inventoryTemplate(): string {
       .join("");
     return `
     <div class="inventory-section market-section">
-      <h4 class="inventory-section-title market-section-title">${sectionTitle} <span class="inventory-section-sort">Value ↑</span> <span class="inventory-section-cap">${itemsInCategory.length} / ${capacity}</span></h4>
+      <h4 class="inventory-section-title market-section-title">${sectionTitle} <span class="inventory-section-cap">${itemsInCategory.length} / ${capacity}</span></h4>
       <div class="inventory-grid market-grid market-grid-2col" id="${sectionId}">
         ${gridItems}
       </div>
@@ -490,7 +493,9 @@ export function inventoryTemplate(): string {
           <img src="/images/soldier_count.png" alt="" class="roster-soldier-count-icon" width="14" height="18" aria-hidden="true">
           <strong>Soldiers</strong> ${company?.soldiers?.length ?? 0}
         </span>
-        <span class="recruit-balance-item inventory-level-label">Armory Level ${store.company?.level ?? store.companyLevel ?? 1}</span>
+        <span class="recruit-balance-item inventory-level-label">Armory W/A/S ${levelSnapshot.current.armory.weapon}/${levelSnapshot.current.armory.armor}/${levelSnapshot.current.armory.equipment}</span>
+        <span class="recruit-balance-item inventory-level-label">Lv ${levelSnapshot.current.level}</span>
+        ${nextLevel ? `<span class="recruit-balance-item inventory-level-label">Next Lv ${nextLevel.level}: ${nextLevel.armory.weapon}/${nextLevel.armory.armor}/${nextLevel.armory.equipment}</span>` : '<span class="recruit-balance-item inventory-level-label">MAX</span>'}
       </div>
     </div>
     ${companyActionsTemplate()}

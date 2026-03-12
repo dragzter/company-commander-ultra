@@ -7,10 +7,10 @@ import { RARITY } from "./items/types.ts";
 
 const ARMOR_PRICE_PER_TGH = 11;
 const ARMOR_PRICE_PER_MIT_PCT = 30; // Per 1% mitigation equivalent
-const ARMOR_RARE_MULTIPLIER = 2.2; // 120% more for rare armor
-const ARMOR_EPIC_MULTIPLIER = 4.5; // 350% more for epic armor
-const ARMOR_RARE_MIN = 550; // Cheapest rare must exceed typical common
-const ARMOR_EPIC_MIN = 1400; // Epic armor very expensive
+const ARMOR_RARE_MULTIPLIER = 2.53; // +15% vs previous rare pricing
+const ARMOR_EPIC_MULTIPLIER = 5.175; // +15% vs previous epic pricing
+const ARMOR_RARE_MIN = 633; // +15% vs previous rare floor
+const ARMOR_EPIC_MIN = 1610; // +15% vs previous epic floor
 
 const WEAPON_PRICE_PER_DMG = 18;
 const WEAPON_PRICE_PER_SPEED = 11;

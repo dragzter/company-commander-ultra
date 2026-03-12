@@ -1,19 +1,24 @@
+import {
+  MAX_COMPANY_LEVEL as MAX_COMPANY_LEVEL_FROM_PROGRESSION,
+  getCompanyProgressionEntry,
+} from "./company-progression.ts";
+
 /** Starting credits when beginning a new game (100k for testing) */
 export const STARTING_CREDITS = 100_000;
-export const MAX_COMPANY_LEVEL = 10;
+export const MAX_COMPANY_LEVEL = MAX_COMPANY_LEVEL_FROM_PROGRESSION;
 
 /** Base cost to recruit one soldier from the market */
 export const RECRUIT_COST_PER_SOLDIER = 500;
 
 /** Default inventory capacity for a new company (level 1) */
-export const DEFAULT_INVENTORY_CAPACITY = 20;
+export const DEFAULT_INVENTORY_CAPACITY =
+  getCompanyProgressionEntry(1).armory.total;
 
 /**
- * Armory slots: 20 base, +4 per company level. L1=24, L10=60.
+ * Armory slots per company level (canonical progression table).
  */
 export function getArmorySlots(level: number): number {
-  if (level < 1) return DEFAULT_INVENTORY_CAPACITY;
-  return 20 + Math.min(level, MAX_COMPANY_LEVEL) * 4;
+  return getCompanyProgressionEntry(level).armory.total;
 }
 
 /**
@@ -24,23 +29,13 @@ export function getArmorySlots(level: number): number {
  * L10: 10/10/40
  */
 export function getWeaponArmorySlots(level: number): number {
-  if (level < 1) return 6;
-  if (level <= 3) return 6;
-  if (level <= 6) return 8;
-  return 10;
+  return getCompanyProgressionEntry(level).armory.weapon;
 }
 export function getArmorArmorySlots(level: number): number {
-  if (level < 1) return 6;
-  if (level <= 3) return 6;
-  if (level <= 6) return 8;
-  return 10;
+  return getCompanyProgressionEntry(level).armory.armor;
 }
 export function getEquipmentArmorySlots(level: number): number {
-  if (level < 1) return 20;
-  if (level <= 3) return 20;
-  if (level <= 6) return 25;
-  if (level <= 9) return 30;
-  return 40;
+  return getCompanyProgressionEntry(level).armory.equipment;
 }
 
 /** Cap for a category (used by external modules that need category string). */
@@ -59,15 +54,12 @@ export function getTotalArmorySlots(level: number): number {
 }
 
 /** Company XP required to reach level L (total). Max company level is 10. */
-const XP_FOR_LEVEL = [
-  0, 0, 1500, 5000, 10500, 18000, 33000, 46000, 63000, 84000, 109000,
-];
-
 export function getXpRequiredForLevel(level: number): number {
-  if (level < 1 || level > MAX_COMPANY_LEVEL) {
-    return level <= 1 ? 0 : XP_FOR_LEVEL[MAX_COMPANY_LEVEL];
+  if (level <= 1) return 0;
+  if (level > MAX_COMPANY_LEVEL) {
+    return getCompanyProgressionEntry(MAX_COMPANY_LEVEL).xpRequiredTotal;
   }
-  return XP_FOR_LEVEL[level] ?? 0;
+  return getCompanyProgressionEntry(level).xpRequiredTotal;
 }
 
 /** Soldier XP required to reach level L (total). */

@@ -13,6 +13,7 @@ import {
 } from "../../constants/company-slots.ts";
 import { formatDisplayName, getSoldierPortraitUrl } from "../../utils/name-utils.ts";
 import { CREDIT_SYMBOL } from "../../constants/currency.ts";
+import { getCompanyLevelSnapshot } from "../../constants/company-progression.ts";
 
 function rosterSoldierCard(s: Soldier, index: number, isActive: boolean): string {
   return Partial.create.rosterCard(s, index, isActive);
@@ -143,10 +144,25 @@ export function rosterTemplate(): string {
   const activeCount = getActiveSlots(company);
   const reserveCount = getReserveSlots(company);
   const roleCounts = getActiveRoleCounts(company);
+  const levelSnapshot = getCompanyLevelSnapshot(company?.level ?? store.companyLevel ?? 1);
+  const next = levelSnapshot.next;
   const roleSummary = `
     <span class="role-pill role-pill-rifleman">${roleCounts.rifleman}/${roleCounts.activeCapacity} Rifleman</span>
     <span class="role-pill role-pill-support">${roleCounts.support}/${roleCounts.maxSupport} Gunner</span>
     <span class="role-pill role-pill-medic">${roleCounts.medic}/${roleCounts.maxMedic} Medic</span>
+  `;
+  const capacitySummary = `
+    <span class="roster-capacity-stat">
+      <span class="roster-capacity-label">Roster Capacity</span>
+      <span class="roster-capacity-value">${levelSnapshot.current.roster.total}</span>
+    </span>
+    <span class="roster-capacity-stat">
+      <span class="roster-capacity-label">Active Slots</span>
+      <span class="roster-capacity-value">${levelSnapshot.current.roster.active}</span>
+    </span>
+    ${next
+      ? `<span class="roster-capacity-next">Next Lv ${next.level}: Roster ${next.roster.total} · Active ${next.roster.active}</span>`
+      : '<span class="roster-capacity-next">Maximum company level reached</span>'}
   `;
   const activeEntries: { soldier: NonNullable<ReturnType<typeof getSoldierById>>; slotIndex: number }[] = [];
   for (let i = 0; i < activeCount; i++) {
@@ -176,8 +192,9 @@ export function rosterTemplate(): string {
   ${restTroopsPopupHtml(soldiers, activeIds)}
   ${rosterTraitsPopupHtml()}
   ${itemStatsPopupHtml()}
-  ${companyHeaderPartial("Company Roster")}
+  ${companyHeaderPartial("Squad Roster")}
   <div class="roster-role-banner">${roleSummary}</div>
+  <div class="roster-role-banner roster-capacity-banner">${capacitySummary}</div>
   <div class="roster-main">
     <div class="roster-section">
       <div class="roster-section-header roster-section-active">

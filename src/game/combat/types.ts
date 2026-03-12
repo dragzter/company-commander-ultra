@@ -99,6 +99,14 @@ export interface Combatant {
   attackSpeedBuffUntil?: number;
   /** Attack interval multiplier (e.g. 2/3 = 50% faster) */
   attackSpeedBuffMultiplier?: number;
+  /** Timestamp (ms) when Battle Fervor speed buff ends. */
+  companyAttackSpeedBuffUntil?: number;
+  /** Attack interval multiplier from company speed buffs. */
+  companyAttackSpeedBuffMultiplier?: number;
+  /** Timestamp (ms) when Battle Fervor crit buff ends. */
+  companyCritChanceBuffUntil?: number;
+  /** Additive crit chance while company buff is active (e.g. 0.2 = +20%). */
+  companyCritChanceBonusPct?: number;
   /** Epic mission elite: no HP handicap, gold frame */
   isEpicElite?: boolean;
   /** Manhunt high-value target: no HP handicap, gold frame */

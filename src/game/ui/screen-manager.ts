@@ -827,7 +827,7 @@ function ScreenManager() {
       console.error("[Roster] rosterTemplate() threw:", err);
       try {
         html = `<div id="roster-screen" class="roster-root troops-market-root">
-          ${companyHeaderPartial("Company Roster")}
+          ${companyHeaderPartial("Squad Roster")}
           <div class="roster-main"><p>Roster failed to load.</p></div>
           ${companyActionsTemplate()}
         </div>`;
