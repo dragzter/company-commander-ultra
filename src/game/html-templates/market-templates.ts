@@ -25,6 +25,10 @@ import { getMaxSoldierLevel } from "../../utils/company-utils.ts";
 import { MAX_GEAR_LEVEL } from "../../constants/items/types.ts";
 import { getItemSellPrice } from "../../utils/sell-pricing.ts";
 import { CREDIT_SYMBOL } from "../../constants/currency.ts";
+import {
+  STRATAGEM_DEFS,
+  getUnlockedStratagemDefs,
+} from "../../constants/stratagem-market.ts";
 
 export const marketTemplate = () => {
   const { market } = DOM;
@@ -32,6 +36,12 @@ export const marketTemplate = () => {
   const store = usePlayerCompanyStore.getState();
   const recruitOnboardingMarketOnly = store.onboardingRecruitStep === "market";
   const troopsBtnClass = recruitOnboardingMarketOnly ? " blue mbtn mb-3 onboarding-focus-btn" : "blue mbtn mb-3";
+  const companyLevel = store.company?.level ?? store.companyLevel ?? 1;
+  const stratagemsUnlocked = companyLevel >= 3;
+  const stratagemsBtnClass = stratagemsUnlocked
+    ? "blue mbtn mb-3"
+    : "gray mbtn mb-3 market-locked-btn";
+  const stratagemsLabel = stratagemsUnlocked ? "Stratagems" : "Stratagems (Lv3)";
 
   return `
 	<div id="cc-market" class="flex h-100 column">
@@ -45,6 +55,7 @@ export const marketTemplate = () => {
 				<button id="${c(market.marketArmorLink)}" class="blue mbtn mb-3">Body Armor</button>
 				<button id="${c(market.marketWeaponsLink)}" class="blue mbtn mb-3">Weapons</button>
 				<button id="${c(market.marketSuppliesLink)}" class="blue mbtn mb-3">Supplies</button>
+				<button id="${c(market.marketStratagemsLink)}" class="${stratagemsBtnClass}" ${stratagemsUnlocked ? "" : "disabled"} title="${stratagemsUnlocked ? "Squad-wide tactical support items" : "Unlocks at company level 3"}">${stratagemsLabel}</button>
 				<button id="${c(market.marketDevCatalogLink)}" class="gray mbtn market-dev-btn" title="Developer: view all weapons and armor">Dev Catalog</button>`}
 			</div>
 			<div class="market-credits-inline">${marketCreditsPartial(usePlayerCompanyStore.getState().creditBalance)}</div>
@@ -246,6 +257,87 @@ export const weaponsMarketTemplate = () => {
 `;
 };
 
+export const stratagemsMarketTemplate = () => {
+  const store = usePlayerCompanyStore.getState();
+  const companyLevel = store.company?.level ?? store.companyLevel ?? 1;
+  const creditBalance = store.creditBalance;
+  const defs = getUnlockedStratagemDefs(companyLevel);
+  const cards =
+    defs.length > 0
+      ? defs
+          .map((def, idx) => {
+            const item = def.item;
+            const price = item.price ?? 0;
+            const dataAttrs =
+              `data-stratagem-index="${idx}" ` +
+              `data-stratagem-price="${price}" ` +
+              `data-stratagem-item="${escapeAttr(JSON.stringify(item))}"`;
+            return marketItemCard(
+              { item, price },
+              dataAttrs,
+              "supplies-market-item stratagems-market-item",
+              abbreviateItemName(item.name),
+            );
+          })
+          .join("")
+      : `<div class="market-item-slot stratagems-empty-slot">
+          <div class="market-item-inner">
+            <div class="market-item-details">
+              <span class="market-item-name">No stratagems unlocked yet.</span>
+              <span class="market-item-price">No stratagems available</span>
+            </div>
+          </div>
+        </div>`;
+
+  return `
+<div id="stratagems-market" class="supplies-market-root troops-market-root">
+  <div id="stratagems-buy-popup" class="supplies-buy-popup" role="dialog" aria-modal="true" hidden>
+    <div class="supplies-buy-popup-inner">
+      <h4 id="stratagems-buy-title" class="supplies-buy-title"></h4>
+      <div id="stratagems-buy-body" class="supplies-buy-body"></div>
+      <div class="item-market-purchase">
+        <div class="supplies-buy-qty-row">
+          <label>Quantity:</label>
+          <div class="supplies-buy-qty-controls">
+            <button type="button" id="stratagems-qty-minus" class="mbtn icon-btn">−</button>
+            <input type="number" id="stratagems-qty-input" min="1" value="1" readonly>
+            <button type="button" id="stratagems-qty-plus" class="mbtn icon-btn">+</button>
+          </div>
+        </div>
+        <p id="stratagems-buy-error" class="supplies-buy-error" role="alert"></p>
+        <button type="button" id="stratagems-buy-btn" class="mbtn green equipment-buy-btn-full">Buy</button>
+      </div>
+      <div class="supplies-buy-actions">
+        <button type="button" id="stratagems-buy-close" class="game-btn game-btn-md game-btn-red popup-close-btn">Close</button>
+      </div>
+    </div>
+  </div>
+  ${companyHeaderPartial("Stratagems Market")}
+  <div class="supplies-market-main market-main-2col">
+    <div class="market-section market-section-common">
+      <h4 class="market-section-title">Squad-Wide Support</h4>
+      <div class="market-grid market-grid-2col">
+        ${cards}
+      </div>
+      <p class="stratagems-market-hint">Equip one stratagem at a time. Stratagems appear in combat beside company abilities and can be used once per battle.</p>
+    </div>
+  </div>
+  <div class="supplies-market-footer troops-market-footer">
+    <div class="market-controls-row">
+      <div class="market-controls-cell market-controls-nav">
+        <span class="market-level-nav-label">Company Level ${companyLevel}</span>
+      </div>
+      <div class="market-controls-cell market-controls-credits">
+        ${marketCreditsPartial(creditBalance)}
+      </div>
+      <div class="market-controls-cell market-controls-sell"></div>
+    </div>
+    ${companyActionsTemplate()}
+  </div>
+</div>
+`;
+};
+
 export const armorMarketTemplate = () => {
   const store = usePlayerCompanyStore.getState();
   const maxLevel = Math.max(1, getMaxSoldierLevel(store.company));
@@ -415,6 +507,17 @@ export const devCatalogMarketTemplate = () => {
     section("Supplies — Common", commonSupplies, 0, "market-section-common", "dev-supplies") +
     section("Supplies — Rare", rareSupplies, commonSupplies.length, "market-section-rare", "dev-supplies") +
     section("Supplies — Epic", epicSupplies, commonSupplies.length + rareSupplies.length, "market-section-epic", "dev-supplies");
+  const stratagemEntries = STRATAGEM_DEFS.map((def) => ({
+    item: def.item,
+    price: def.item.price ?? 0,
+  }));
+  const stratagemSections = section(
+    "Stratagems",
+    stratagemEntries,
+    0,
+    "market-section-rare",
+    "dev-stratagems",
+  );
 
   return `
 <div id="dev-catalog-market" class="dev-catalog-root weapons-market-root troops-market-root">
@@ -428,11 +531,12 @@ export const devCatalogMarketTemplate = () => {
       <p class="dev-catalog-hint">Dev Catalog — add any item for testing</p>
     </div>
   </div>
-  ${companyHeaderPartial("Dev Catalog — All Gear & Supplies")}
+  ${companyHeaderPartial("Dev Catalog — All Gear, Supplies & Stratagems")}
   <div class="dev-catalog-main market-main-2col">
     ${weaponsSections}
     ${armorSections}
     ${suppliesSections}
+    ${stratagemSections}
   </div>
   <div class="dev-catalog-footer weapons-market-footer troops-market-footer">
     ${marketLevelNavigatorPartial(selectedTier, maxLevel, { quickJumps: true })}

@@ -64,10 +64,14 @@ const FIXED_BENEFIT_ITEM_IDS = new Set<string>([
  */
 export function getItemIconUrl(item: Item | undefined): string {
   if (!item) return "";
+  if (item.icon?.startsWith("/")) return item.icon;
   if (item.type === ITEM_TYPES.medical) {
     const filename = item.icon ?? MEDICAL_ICON_BY_ID[item.id ?? ""];
     if (filename) return `${MEDICAL_ICON_BASE}/${filename}`;
     return "";
+  }
+  if ((item.tags ?? []).includes("stratagem")) {
+    return item.icon ? `${MEDICAL_ICON_BASE}/${item.icon}` : "";
   }
   if (!item.icon) return "";
   const subpath = item.type ? (ITEM_TYPE_SUBPATHS[item.type as ItemType] ?? "general") : "general";

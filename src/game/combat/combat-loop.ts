@@ -316,6 +316,16 @@ export function clearExpiredEffects(combatants: Combatant[], now: number): void 
       delete c.companyCritChanceBuffUntil;
       delete c.companyCritChanceBonusPct;
     }
+    if (c.stratagemToughnessUntil != null && now >= c.stratagemToughnessUntil) {
+      if ((c.stratagemToughnessBonus ?? 0) > 0) {
+        c.toughness = Math.max(
+          0,
+          (c.toughness ?? 0) - (c.stratagemToughnessBonus ?? 0),
+        );
+      }
+      delete c.stratagemToughnessUntil;
+      delete c.stratagemToughnessBonus;
+    }
   }
 }
 
@@ -360,6 +370,14 @@ export function clearCombatantEffectsOnDeath(c: Combatant): void {
   delete c.companyAttackSpeedBuffMultiplier;
   delete c.companyCritChanceBuffUntil;
   delete c.companyCritChanceBonusPct;
+  if ((c.stratagemToughnessBonus ?? 0) > 0) {
+    c.toughness = Math.max(
+      0,
+      (c.toughness ?? 0) - (c.stratagemToughnessBonus ?? 0),
+    );
+  }
+  delete c.stratagemToughnessUntil;
+  delete c.stratagemToughnessBonus;
 }
 
 /** Remove attackers whose target went into cover; they will be reassigned next tick */

@@ -48,6 +48,7 @@ export const DOM = {
     marketArmorLink: "#market-armor",
     marketWeaponsLink: "#market-weapons",
     marketSuppliesLink: "#market-supplies",
+    marketStratagemsLink: "#market-stratagems",
     marketDevCatalogLink: "#market-dev-catalog",
     pages: {
       recruitTroops: {

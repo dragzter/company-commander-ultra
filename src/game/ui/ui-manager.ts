@@ -179,6 +179,10 @@ function UiManager() {
     _ScreenManager.generate.createSuppliesMarketPage();
   }
 
+  function renderStratagemsMarketScreen() {
+    _ScreenManager.generate.createStratagemsMarketPage();
+  }
+
   function renderInventoryScreen() {
     _ScreenManager.generate.createInventoryPage();
   }
@@ -272,6 +276,7 @@ function UiManager() {
     renderArmorMarketScreen,
     renderDevCatalogScreen,
     renderSuppliesMarketScreen,
+    renderStratagemsMarketScreen,
     renderInventoryScreen,
     refreshEquipPickerContent,
     renderAbilitiesScreen,

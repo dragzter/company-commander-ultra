@@ -99,6 +99,7 @@ export type CompanyStore = {
   companyAbilityPendingChoiceLevels: number[];
   companyAbilityNotificationText: string;
   companyLevelUpSummary: CompanyLevelUpSummary | null;
+  equippedStratagemItemId: string | null;
 
   // Setters
   setMarketAvailableTroops: (soldiers: Soldier[]) => void;
@@ -130,6 +131,8 @@ export type CompanyStore = {
   ) => { success: boolean; reason?: string };
   dismissCompanyAbilityNotification: () => void;
   clearCompanyLevelUpSummary: () => void;
+  setEquippedStratagemItemId: (itemId: string | null) => void;
+  consumeEquippedStratagemUse: () => { success: boolean; reason?: string };
   bootstrapNewCompanyIfEmpty: () => void;
   ensureMissionBoard: () => void;
   refreshMissionBoard: () => void;
@@ -457,6 +460,12 @@ export const usePlayerCompanyStore = createStore<CompanyStore>()(
             merged.companyAbilityNotificationText = "";
           }
           if (
+            merged.equippedStratagemItemId != null &&
+            typeof merged.equippedStratagemItemId !== "string"
+          ) {
+            merged.equippedStratagemItemId = null;
+          }
+          if (
             !merged.companyLevelUpSummary ||
             typeof merged.companyLevelUpSummary !== "object"
           ) {
@@ -505,6 +514,11 @@ export const usePlayerCompanyStore = createStore<CompanyStore>()(
                 return hydrated;
               }),
             };
+          }
+          if (merged.equippedStratagemItemId) {
+            const inv = merged.company?.inventory ?? [];
+            const exists = inv.some((it) => it.id === merged.equippedStratagemItemId);
+            if (!exists) merged.equippedStratagemItemId = null;
           }
           /* Sync companyExperience with company.experience (avoid drift from old saves or partial updates) */
           const companyExp =

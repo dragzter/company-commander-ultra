@@ -47,6 +47,7 @@ import type { Item } from "../constants/items/types.ts";
 import { TARGET_TYPES } from "../constants/items/types.ts";
 import { MAX_EQUIPMENT_SLOTS } from "../constants/inventory-slots.ts";
 import { weaponWieldOk, canEquipItemLevel } from "../utils/equip-utils.ts";
+import { isStratagemItem } from "../constants/stratagem-market.ts";
 import { getRewardItemById, pickRandomCommonSupply } from "../utils/reward-utils.ts";
 import {
   createWeaponByBaseId,
@@ -394,6 +395,7 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
   companyAbilityPendingChoiceLevels: [],
   companyAbilityNotificationText: "",
   companyLevelUpSummary: null,
+  equippedStratagemItemId: null,
 
   // Actions
   rerollSoldier: async (id: string) => {
@@ -512,6 +514,7 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
         companyAbilityUnlockedIds: ["focused_fire"] as CompanyAbilityId[],
         companyAbilityPendingChoiceLevels: [],
         companyAbilityNotificationText: "",
+        equippedStratagemItemId: null,
         company: {
           level: 1,
           experience: 0,
@@ -578,6 +581,43 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
   setOnboardingRecruitSoldier: (soldier: Soldier | null) => set({ onboardingRecruitSoldier: soldier }),
   dismissCompanyAbilityNotification: () => set({ companyAbilityNotificationText: "" }),
   clearCompanyLevelUpSummary: () => set({ companyLevelUpSummary: null }),
+  setEquippedStratagemItemId: (itemId: string | null) => {
+    const id = itemId?.trim() || null;
+    if (!id) {
+      set({ equippedStratagemItemId: null });
+      return;
+    }
+    const inv = get().company?.inventory ?? [];
+    const exists = inv.some((it) => it.id === id && isStratagemItem(it));
+    set({ equippedStratagemItemId: exists ? id : null });
+  },
+  consumeEquippedStratagemUse: () => {
+    const state = get();
+    const itemId = state.equippedStratagemItemId;
+    if (!itemId) return { success: false, reason: "none_equipped" };
+    const inv = state.company?.inventory ?? [];
+    const idx = inv.findIndex((it) => it.id === itemId && isStratagemItem(it));
+    if (idx < 0) {
+      set({ equippedStratagemItemId: null });
+      return { success: false, reason: "not_found" };
+    }
+    const it = inv[idx];
+    const uses = Math.max(0, it.uses ?? it.quantity ?? 1);
+    const nextInv = inv.slice();
+    if (uses > 1) {
+      nextInv[idx] = { ...it, uses: uses - 1 };
+      set({
+        company: { ...state.company, inventory: nextInv },
+      });
+      return { success: true };
+    }
+    nextInv.splice(idx, 1);
+    set({
+      company: { ...state.company, inventory: nextInv },
+      equippedStratagemItemId: null,
+    });
+    return { success: true };
+  },
   chooseCompanyAbilityAtLevel: (level: number, abilityId: CompanyAbilityId) => {
     const state = get();
     const node = COMPANY_ABILITY_PROGRESSION.find((n) => n.level === level);
@@ -861,6 +901,7 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
         companyAbilityChoices: state.companyAbilityChoices ?? defaultCompanyAbilityChoices(),
         companyAbilityNotificationText: "",
         companyLevelUpSummary: null,
+        equippedStratagemItemId: null,
       };
     }),
   /** Add starter armory items when inventory is empty (new game). */
@@ -892,10 +933,17 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
     set((state: CompanyStore) => {
       const inventory = state.company?.inventory ?? [];
       if (index < 0 || index >= inventory.length) return {};
+      const removed = inventory[index];
       const newInv = inventory.slice();
       newInv.splice(index, 1);
+      const equippedCleared =
+        state.equippedStratagemItemId &&
+        removed?.id === state.equippedStratagemItemId
+          ? null
+          : state.equippedStratagemItemId;
       return {
         company: { ...state.company, inventory: newInv },
+        equippedStratagemItemId: equippedCleared,
       };
     }),
   sellCompanyItem: (index: number) => {
@@ -910,9 +958,15 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
       const newInv = inventory.slice();
       newInv.splice(index, 1);
       sold = { success: true, credits };
+      const equippedCleared =
+        state.equippedStratagemItemId &&
+        item.id === state.equippedStratagemItemId
+          ? null
+          : state.equippedStratagemItemId;
       return {
         creditBalance: state.creditBalance + credits,
         company: { ...state.company, inventory: newInv },
+        equippedStratagemItemId: equippedCleared,
       };
     });
     return sold;
@@ -938,9 +992,13 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
       }
       result = { success: soldCount > 0, soldCount, credits };
       if (soldCount <= 0) return {};
+      const equipped = state.equippedStratagemItemId ?? null;
+      const equippedStillOwned =
+        !equipped || keep.some((it) => it.id === equipped);
       return {
         creditBalance: state.creditBalance + credits,
         company: { ...state.company, inventory: keep },
+        equippedStratagemItemId: equippedStillOwned ? equipped : null,
       };
     });
     return result;

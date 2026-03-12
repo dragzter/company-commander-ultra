@@ -20,6 +20,7 @@ import {
   weaponsMarketTemplate,
   armorMarketTemplate,
   suppliesMarketTemplate,
+  stratagemsMarketTemplate,
   devCatalogMarketTemplate,
 } from "../html-templates/market-templates.ts";
 import { missionsTemplate } from "../html-templates/missions-template.ts";
@@ -800,6 +801,18 @@ function ScreenManager() {
     show.center();
   }
 
+  function createStratagemsMarketPage() {
+    UiManager.clear.center();
+    const content = parseHTML(stratagemsMarketTemplate());
+    center.appendChild(content as Element);
+    DomEventManager.initEventArray(
+      ec().companyHome().concat(ec().market()).concat(ec().stratagemsScreen()),
+    );
+    UiManager.selectCompanyHomeButton(DOM.company.market);
+    Styler.setCenterBG("equipment_market.png", true);
+    show.center();
+  }
+
   function createFormationPage() {
     UiManager.clear.center();
     const content = parseHTML(formationTemplate());
@@ -923,6 +936,7 @@ function ScreenManager() {
       createArmorMarketPage,
       createDevCatalogPage,
       createSuppliesMarketPage,
+      createStratagemsMarketPage,
       createMissionsPage,
       createCareerPage,
       createReadyRoomPage,

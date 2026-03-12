@@ -1027,6 +1027,16 @@ export function eventConfigs() {
       },
     },
     {
+      selector: DOM.market.marketStratagemsLink,
+      eventType: "click",
+      callback: () => {
+        const st = usePlayerCompanyStore.getState();
+        const companyLevel = st.company?.level ?? st.companyLevel ?? 1;
+        if (companyLevel < 3) return;
+        UiManager.renderStratagemsMarketScreen();
+      },
+    },
+    {
       selector: DOM.market.marketDevCatalogLink,
       eventType: "click",
       callback: () => {
@@ -1330,6 +1340,13 @@ export function eventConfigs() {
     const companyAbilityOwned = new Set(
       usePlayerCompanyStore.getState().companyAbilityUnlockedIds ?? [],
     );
+    const equippedStratagemId =
+      usePlayerCompanyStore.getState().equippedStratagemItemId ?? null;
+    const equippedStratagemItem = equippedStratagemId
+      ? (usePlayerCompanyStore.getState().company?.inventory ?? []).find(
+          (it) => it.id === equippedStratagemId,
+        ) ?? null
+      : null;
     const hasImprovedFocusedFire = companyAbilityOwned.has(
       "improved_focused_fire",
     );
@@ -1490,6 +1507,8 @@ export function eventConfigs() {
 
     const companyCombatAbilities = getCompanyActiveAbilities(companyAbilityOwned)
       .map((def) => def.id);
+    let stratagemUsesLeft =
+      equippedStratagemItem != null ? 1 : 0;
     for (const abilityId of companyCombatAbilities) {
       companyAbilityCooldownUntil.set(abilityId, 0);
       if (abilityId === "artillery_barrage" || abilityId === "napalm_barrage") {
@@ -1514,13 +1533,13 @@ export function eventConfigs() {
 
     function renderCompanyAbilityBar(force = false): void {
       if (!companyAbilityBarEl) return;
-      if (companyCombatAbilities.length <= 0) {
+      if (companyCombatAbilities.length <= 0 && !equippedStratagemItem) {
         companyAbilityBarEl.setAttribute("hidden", "");
         return;
       }
       companyAbilityBarEl.removeAttribute("hidden");
       const now = Date.now();
-      const html = companyCombatAbilities
+      const companyHtml = companyCombatAbilities
         .map((id) => {
           const def = COMPANY_ABILITY_DEFS[id];
           if (!def) return "";
@@ -1544,6 +1563,18 @@ export function eventConfigs() {
           </button>`;
         })
         .join("");
+      const stratagemHtml = equippedStratagemItem
+        ? (() => {
+            const disabled = !!combatWinner || stratagemUsesLeft <= 0;
+            const icon = getItemIconUrl(equippedStratagemItem);
+            return `<button type="button" class="combat-company-ability-btn combat-stratagem-btn" data-stratagem-item-id="${equippedStratagemItem.id}" title="${equippedStratagemItem.name}" ${disabled ? "disabled" : ""}>
+              <img src="${icon}" alt="" width="60" height="60">
+              <span class="combat-company-ability-name">${equippedStratagemItem.name}</span>
+              <span class="combat-company-ability-uses">${Math.max(0, stratagemUsesLeft)}</span>
+            </button>`;
+          })()
+        : "";
+      const html = companyHtml + stratagemHtml;
       if (force || companyAbilityBarEl.innerHTML !== html) {
         companyAbilityBarEl.innerHTML = html;
       }
@@ -4578,6 +4609,36 @@ export function eventConfigs() {
       updateCombatUI(true);
     }
 
+    function activateEquippedStratagem(): void {
+      if (!equippedStratagemItem) return;
+      if (stratagemUsesLeft <= 0) return;
+      const now = Date.now();
+      const durationMs = 10_000;
+      stratagemUsesLeft = 0;
+      for (const p of players) {
+        if (p.hp <= 0 || p.downState) continue;
+        if ((p.stratagemToughnessBonus ?? 0) > 0) {
+          p.toughness = Math.max(
+            0,
+            (p.toughness ?? 0) - (p.stratagemToughnessBonus ?? 0),
+          );
+        }
+        const fortifyBonus = Math.max(
+          1,
+          Math.ceil((p.toughness ?? 0) * 0.05),
+        );
+        p.toughness = Math.max(0, (p.toughness ?? 0) + fortifyBonus);
+        p.stratagemToughnessBonus = fortifyBonus;
+        p.stratagemToughnessUntil = now + durationMs;
+        markCombatantDirty(p.id, { hp: false, status: true, speed: true });
+        const card = getCombatantCard(p.id);
+        if (card) spawnCombatPopup(card, "combat-heal-popup", "Fortify", 1000);
+      }
+      usePlayerCompanyStore.getState().consumeEquippedStratagemUse();
+      renderCompanyAbilityBar(true);
+      updateCombatUI(true);
+    }
+
     function startCompanyAbilityTargeting(abilityId: CompanyAbilityId): void {
       if (!combatStarted) return;
       if (combatWinner) return;
@@ -4602,6 +4663,14 @@ export function eventConfigs() {
       if (!btn || btn.disabled) return;
       const now = Date.now();
       if (now - lastCompanyAbilityActivateAt < 220) return;
+      const stratagemId = btn.dataset.stratagemItemId;
+      if (stratagemId) {
+        lastCompanyAbilityActivateAt = now;
+        e.preventDefault();
+        e.stopPropagation();
+        activateEquippedStratagem();
+        return;
+      }
       const abilityId = (btn.dataset.companyAbilityId ?? "") as CompanyAbilityId;
       if (!abilityId) return;
       lastCompanyAbilityActivateAt = now;
@@ -8014,6 +8083,177 @@ export function eventConfigs() {
     ];
   }
 
+  const stratagemsScreenEventConfig: HandlerInitConfig[] = [
+    {
+      selector: ".stratagems-market-item",
+      eventType: "click",
+      callback: (e: Event) => {
+        const el = (e.target as HTMLElement).closest(".stratagems-market-item");
+        if (!el) return;
+        const itemJson = (el as HTMLElement).dataset.stratagemItem;
+        const priceStr = (el as HTMLElement).dataset.stratagemPrice;
+        if (!itemJson || !priceStr) return;
+        let item: Item;
+        try {
+          item = JSON.parse(itemJson.replace(/&quot;/g, '"'));
+        } catch {
+          return;
+        }
+        const popup = document.getElementById("stratagems-buy-popup");
+        const titleEl = document.getElementById("stratagems-buy-title");
+        const bodyEl = document.getElementById("stratagems-buy-body");
+        const qtyInput = document.getElementById(
+          "stratagems-qty-input",
+        ) as HTMLInputElement | null;
+        const errorEl = document.getElementById("stratagems-buy-error");
+        const buyBtn = document.getElementById(
+          "stratagems-buy-btn",
+        ) as HTMLButtonElement | null;
+        if (
+          !popup ||
+          !titleEl ||
+          !bodyEl ||
+          !qtyInput ||
+          !errorEl ||
+          !buyBtn
+        )
+          return;
+
+        const st = usePlayerCompanyStore.getState();
+        const inv = st.company?.inventory ?? [];
+        const ownedCount = inv.reduce((acc, it) => {
+          if (it.id !== item.id) return acc;
+          return acc + Math.max(1, it.uses ?? it.quantity ?? 1);
+        }, 0);
+        const price = parseInt(priceStr, 10);
+
+        (popup as HTMLElement).dataset.stratagemItem = itemJson;
+        (popup as HTMLElement).dataset.stratagemPrice = priceStr;
+        titleEl.textContent = "";
+        bodyEl.innerHTML =
+          getItemPopupBodyHtml(item) +
+          `<p class="item-popup-price" style="margin-top:12px;font-weight:700"><strong>$${price.toLocaleString()}</strong> each</p>` +
+          `<p class="item-popup-price" style="margin-top:6px">Owned: <strong>${ownedCount}</strong></p>`;
+        qtyInput.value = "1";
+        qtyInput.max = "10";
+        errorEl.textContent = "";
+        errorEl.classList.remove("visible");
+        buyBtn.innerHTML = `Buy <span class="buy-btn-price">$${price.toLocaleString()}</span>`;
+        buyBtn.disabled = false;
+        popup.removeAttribute("hidden");
+      },
+    },
+    {
+      selector: "#stratagems-qty-minus",
+      eventType: "click",
+      callback: () => {
+        const input = document.getElementById(
+          "stratagems-qty-input",
+        ) as HTMLInputElement | null;
+        const popup = document.getElementById("stratagems-buy-popup");
+        const buyBtn = document.getElementById("stratagems-buy-btn");
+        if (!input || !popup || !buyBtn) return;
+        const v = Math.max(1, parseInt(input.value || "1", 10) - 1);
+        input.value = String(v);
+        const price = parseInt(
+          (popup as HTMLElement).dataset.stratagemPrice ?? "0",
+          10,
+        );
+        (buyBtn as HTMLElement).innerHTML =
+          `Buy <span class="buy-btn-price">$${(price * v).toLocaleString()}</span>`;
+      },
+    },
+    {
+      selector: "#stratagems-qty-plus",
+      eventType: "click",
+      callback: () => {
+        const input = document.getElementById(
+          "stratagems-qty-input",
+        ) as HTMLInputElement | null;
+        const popup = document.getElementById("stratagems-buy-popup");
+        const buyBtn = document.getElementById("stratagems-buy-btn");
+        if (!input || !popup || !buyBtn) return;
+        const max = Math.max(1, parseInt(input.max || "1", 10));
+        const v = Math.min(max, parseInt(input.value || "1", 10) + 1);
+        input.value = String(v);
+        const price = parseInt(
+          (popup as HTMLElement).dataset.stratagemPrice ?? "0",
+          10,
+        );
+        (buyBtn as HTMLElement).innerHTML =
+          `Buy <span class="buy-btn-price">$${(price * v).toLocaleString()}</span>`;
+      },
+    },
+    {
+      selector: "#stratagems-buy-btn",
+      eventType: "click",
+      callback: () => {
+        const popup = document.getElementById("stratagems-buy-popup");
+        const qtyInput = document.getElementById(
+          "stratagems-qty-input",
+        ) as HTMLInputElement | null;
+        const errorEl = document.getElementById("stratagems-buy-error");
+        if (!popup || !qtyInput || !errorEl) return;
+        const itemJson = (popup as HTMLElement).dataset.stratagemItem;
+        const priceStr = (popup as HTMLElement).dataset.stratagemPrice;
+        if (!itemJson || !priceStr) return;
+        let item: Item;
+        try {
+          item = JSON.parse(itemJson.replace(/&quot;/g, '"'));
+        } catch {
+          return;
+        }
+        const price = parseInt(priceStr, 10);
+        const qty = Math.max(1, parseInt(qtyInput.value || "1", 10));
+        const totalCost = price * qty;
+        const items = Array.from({ length: qty }, () => ({ ...item }));
+        const result = usePlayerCompanyStore
+          .getState()
+          .addItemsToCompanyInventory(items, totalCost);
+        if (!result.success) {
+          errorEl.textContent =
+            result.reason === "capacity" ? "You don't have enough room" : "Not enough credits";
+          errorEl.classList.add("visible");
+          return;
+        }
+        errorEl.textContent = "";
+        errorEl.classList.remove("visible");
+        playMarketBuyToArmoryAnimation("stratagems-buy-body", qty);
+        usePlayerCompanyStore.getState().setEquippedStratagemItemId(item.id);
+        updateMarketCreditsDisplay();
+        const st = usePlayerCompanyStore.getState();
+        const inv = st.company?.inventory ?? [];
+        const ownedCount = inv.reduce((acc, it) => {
+          if (it.id !== item.id) return acc;
+          return acc + Math.max(1, it.uses ?? it.quantity ?? 1);
+        }, 0);
+        const bodyEl = document.getElementById("stratagems-buy-body");
+        if (bodyEl) {
+          bodyEl.innerHTML =
+            getItemPopupBodyHtml(item) +
+            `<p class="item-popup-price" style="margin-top:12px;font-weight:700"><strong>$${price.toLocaleString()}</strong> each</p>` +
+            `<p class="item-popup-price" style="margin-top:6px">Owned: <strong>${ownedCount}</strong></p>`;
+        }
+      },
+    },
+    {
+      selector: "#stratagems-buy-close",
+      eventType: "click",
+      callback: () => {
+        document.getElementById("stratagems-buy-popup")?.setAttribute("hidden", "");
+      },
+    },
+    {
+      selector: "#stratagems-buy-popup",
+      eventType: "click",
+      callback: (e: Event) => {
+        if ((e.target as HTMLElement).id === "stratagems-buy-popup") {
+          (e.target as HTMLElement).setAttribute("hidden", "");
+        }
+      },
+    },
+  ];
+
   const weaponsScreenEventConfig: HandlerInitConfig[] = [
     ...marketLevelNavHandlers("weapons-market", () =>
       UiManager.renderWeaponsMarketScreen(),
@@ -8371,6 +8611,7 @@ export function eventConfigs() {
     inventoryScreen: () => inventoryScreenEventConfig,
     equipPicker: () => equipPickerEventConfig,
     suppliesScreen: () => suppliesScreenEventConfig,
+    stratagemsScreen: () => stratagemsScreenEventConfig,
     weaponsScreen: () => weaponsScreenEventConfig,
     armorScreen: () => armorScreenEventConfig,
     devCatalogScreen: () => devCatalogScreenEventConfig,

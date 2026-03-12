@@ -107,6 +107,10 @@ export interface Combatant {
   companyCritChanceBuffUntil?: number;
   /** Additive crit chance while company buff is active (e.g. 0.2 = +20%). */
   companyCritChanceBonusPct?: number;
+  /** Timestamp (ms) when stratagem toughness buff ends. */
+  stratagemToughnessUntil?: number;
+  /** Flat toughness bonus applied by stratagem buff. */
+  stratagemToughnessBonus?: number;
   /** Epic mission elite: no HP handicap, gold frame */
   isEpicElite?: boolean;
   /** Manhunt high-value target: no HP handicap, gold frame */

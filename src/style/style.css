@@ -13387,6 +13387,61 @@ button.missions-filter-chip {
 	background: linear-gradient(145deg, rgba(70, 70, 75, 0.95) 0%, rgba(50, 50, 55, 1) 100%);
 }
 
+#cc-market .text-center .mbtn.market-locked-btn:disabled {
+	opacity: 0.68;
+	cursor: not-allowed;
+	filter: saturate(0.65);
+	box-shadow: 0 2px 9px rgba(0, 0, 0, 0.26);
+}
+
+.stratagems-empty-slot {
+	min-height: 86px;
+	cursor: default;
+}
+
+.stratagems-item {
+	padding-bottom: 8px;
+}
+
+.stratagems-item .stratagems-item-meta {
+	font-size: 0.72rem;
+	line-height: 1.35;
+	color: rgba(204, 220, 238, 0.88);
+	padding: 2px 8px 0;
+}
+
+.stratagems-item-footer {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	padding: 6px 8px 0;
+}
+
+.stratagems-owned {
+	font-size: 0.72rem;
+	color: rgba(188, 214, 244, 0.92);
+}
+
+.stratagems-actions {
+	display: flex;
+	gap: 6px;
+}
+
+.stratagems-actions .mbtn {
+	width: 92px !important;
+	height: 36px !important;
+	font-size: 0.72rem !important;
+	letter-spacing: 0.07em !important;
+}
+
+.stratagems-market-hint {
+	margin: 10px 4px 0;
+	font-size: 0.8rem;
+	line-height: 1.35;
+	color: rgba(206, 222, 244, 0.88);
+}
+
 .market-credits-inline {
 	display: flex;
 	justify-content: center;
