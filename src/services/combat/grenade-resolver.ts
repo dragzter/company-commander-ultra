@@ -93,11 +93,16 @@ export function resolveGrenadeThrow(
     baseDamage = M3A_REPRESSOR_BASE_DAMAGE + Math.ceil(Math.max(0, lvl - 1) * M3A_REPRESSOR_DAMAGE_PER_LEVEL);
   }
   const splashBase = Math.max(1, Math.floor(baseDamage * SPLASH_DAMAGE_PCT));
+  const now = Date.now();
 
   const isKnife = isThrowingKnife(grenade);
   const grenadeBonus = Math.max(0, thrower.grenadeHitBonusPct ?? 0);
   const hitChance = isKnife ? (thrower.chanceToHit ?? 0.6) : Math.min(0.98, GRENADE_HIT_CHANCE + grenadeBonus);
-  const evadeChance = isKnife ? (primaryTarget.chanceToEvade ?? 0.05) : GRENADE_EVADE_CHANCE;
+  const evadeChance = isKnife
+    ? (primaryTarget.panicUntil != null && now < primaryTarget.panicUntil
+        ? 0
+        : (primaryTarget.chanceToEvade ?? 0.05))
+    : GRENADE_EVADE_CHANCE;
 
   const rollHit = Math.random() < hitChance;
   if (!rollHit) {
@@ -136,8 +141,6 @@ export function resolveGrenadeThrow(
       splash: [],
     };
   }
-
-  const now = Date.now();
 
   if (isSmokeGrenade(grenade)) {
     primaryTarget.smokedUntil = now + SMOKE_DURATION_MS;

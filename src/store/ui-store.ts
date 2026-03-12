@@ -98,6 +98,7 @@ export type CompanyStore = {
   companyAbilityUnlockedIds: CompanyAbilityId[];
   companyAbilityPendingChoiceLevels: number[];
   companyAbilityNotificationText: string;
+  companyAbilityCooldowns: Partial<Record<CompanyAbilityId, number>>;
   companyLevelUpSummary: CompanyLevelUpSummary | null;
   equippedStratagemItemId: string | null;
 
@@ -129,7 +130,12 @@ export type CompanyStore = {
     level: number,
     abilityId: CompanyAbilityId,
   ) => { success: boolean; reason?: string };
+  syncCompanyAbilityState: () => void;
   dismissCompanyAbilityNotification: () => void;
+  setCompanyAbilityCooldownUntil: (
+    abilityId: CompanyAbilityId,
+    untilMs: number,
+  ) => void;
   clearCompanyLevelUpSummary: () => void;
   setEquippedStratagemItemId: (itemId: string | null) => void;
   consumeEquippedStratagemUse: () => { success: boolean; reason?: string };
@@ -203,6 +209,7 @@ export type CompanyStore = {
     abilitiesUsedBySoldier: Map<string, number>,
     healingBySoldier: Map<string, number>,
     victory: boolean,
+    options?: { baseXpOverride?: number },
   ) => void;
   recordSoldierCombatStats: (
     participantIds: string[],
@@ -458,6 +465,26 @@ export const usePlayerCompanyStore = createStore<CompanyStore>()(
               .filter((n) => Number.isFinite(n));
           if (typeof merged.companyAbilityNotificationText !== "string") {
             merged.companyAbilityNotificationText = "";
+          }
+          if (
+            !merged.companyAbilityCooldowns ||
+            typeof merged.companyAbilityCooldowns !== "object"
+          ) {
+            merged.companyAbilityCooldowns = {};
+          } else {
+            const cleaned: Partial<Record<CompanyAbilityId, number>> = {};
+            const raw = merged.companyAbilityCooldowns as Record<
+              string,
+              unknown
+            >;
+            for (const [k, v] of Object.entries(raw)) {
+              if (typeof k !== "string") continue;
+              if (typeof v !== "number" || !Number.isFinite(v)) continue;
+              const n = Math.max(0, Math.floor(v));
+              if (n <= 0) continue;
+              cleaned[k as CompanyAbilityId] = n;
+            }
+            merged.companyAbilityCooldowns = cleaned;
           }
           if (
             merged.equippedStratagemItemId != null &&

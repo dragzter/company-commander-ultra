@@ -23,6 +23,7 @@ const WEAPON_ROLE_LABELS: Record<string, string> = {
 
 export interface CombatSummaryData {
   victory: boolean;
+  extracted?: boolean;
   mission: Mission | null;
   participants: Combatant[];
   playerKills: Map<string, number>;
@@ -235,6 +236,7 @@ function companyXpBarHtml(
 export function combatSummaryTemplate(data: CombatSummaryData): string {
   const {
     victory,
+    extracted,
     participants,
     playerKills,
     leveledUpIds,
@@ -250,10 +252,15 @@ export function combatSummaryTemplate(data: CombatSummaryData): string {
     companyLevel,
     newTraitAwardsBySoldier,
   } = data;
-  const title = victory ? "Victory!" : "Defeat";
-  const titleClass = victory
+  const title = extracted ? "Extracted" : victory ? "Victory!" : "Defeat";
+  const titleClass = extracted
     ? "combat-summary-victory"
-    : "combat-summary-defeat";
+    : victory
+      ? "combat-summary-victory"
+      : "combat-summary-defeat";
+  const extractedNote = extracted
+    ? '<p class="combat-summary-holding-note">Squad extracted safely. Combat XP retained. Mission completion rewards and loot forfeited.</p>'
+    : "";
   const levelUpHtml =
     leveledUpCount > 0
       ? '<div class="combat-summary-levelup-wrap"><div class="combat-summary-levelup-burst"></div><div class="combat-summary-levelup-text">Level up!</div></div>'
@@ -326,6 +333,7 @@ export function combatSummaryTemplate(data: CombatSummaryData): string {
       <div class="combat-summary-participants combat-summary-cards-row">${participantsHtml}</div>
     </div>
     ${companyXpBarHtml(victory, companyXpEarned, companyExperience, companyLevel)}
+    ${extractedNote}
     ${rewardsSection}
     ${lootSection}
     ${holdingNote}
@@ -351,11 +359,13 @@ export function buildCombatSummaryData(
   companyExperience = 0,
   companyLevel = 1,
   newTraitAwardsBySoldier: Map<string, EarnedTraitAward[]> = new Map(),
+  extracted = false,
 ): CombatSummaryData {
   const creditReward = mission?.creditReward ?? 0;
 
   return {
     victory,
+    extracted,
     mission,
     participants: players,
     playerKills: playerKills ?? new Map(),

@@ -316,6 +316,24 @@ export function clearExpiredEffects(combatants: Combatant[], now: number): void 
       delete c.companyCritChanceBuffUntil;
       delete c.companyCritChanceBonusPct;
     }
+    if (
+      c.companyChanceToHitBuffUntil != null &&
+      now >= c.companyChanceToHitBuffUntil
+    ) {
+      delete c.companyChanceToHitBuffUntil;
+      delete c.companyChanceToHitBonusPct;
+    }
+    if (c.infantryArmorUntil != null && now >= c.infantryArmorUntil) {
+      if ((c.infantryArmorBonusPct ?? 0) > 0) {
+        c.mitigationBonusPct = Math.max(
+          0,
+          (c.mitigationBonusPct ?? 0) - (c.infantryArmorBonusPct ?? 0),
+        );
+      }
+      delete c.infantryArmorUntil;
+      delete c.infantryArmorBonusPct;
+      delete c.allowMitigationOvercapUntil;
+    }
     if (c.stratagemToughnessUntil != null && now >= c.stratagemToughnessUntil) {
       if ((c.stratagemToughnessBonus ?? 0) > 0) {
         c.toughness = Math.max(
@@ -370,6 +388,17 @@ export function clearCombatantEffectsOnDeath(c: Combatant): void {
   delete c.companyAttackSpeedBuffMultiplier;
   delete c.companyCritChanceBuffUntil;
   delete c.companyCritChanceBonusPct;
+  delete c.companyChanceToHitBuffUntil;
+  delete c.companyChanceToHitBonusPct;
+  if ((c.infantryArmorBonusPct ?? 0) > 0) {
+    c.mitigationBonusPct = Math.max(
+      0,
+      (c.mitigationBonusPct ?? 0) - (c.infantryArmorBonusPct ?? 0),
+    );
+  }
+  delete c.infantryArmorUntil;
+  delete c.infantryArmorBonusPct;
+  delete c.allowMitigationOvercapUntil;
   if ((c.stratagemToughnessBonus ?? 0) > 0) {
     c.toughness = Math.max(
       0,
@@ -416,6 +445,13 @@ export function resolveAttack(
   opts?: { damageMultiplier?: number },
 ): AttackResult {
   let baseCth = attacker.chanceToHit ?? 0.6;
+  if (
+    attacker.companyChanceToHitBuffUntil != null &&
+    now < attacker.companyChanceToHitBuffUntil &&
+    attacker.companyChanceToHitBonusPct != null
+  ) {
+    baseCth = Math.min(0.98, baseCth + attacker.companyChanceToHitBonusPct);
+  }
   const blinded = attacker.blindedUntil != null && now < attacker.blindedUntil;
   if (blinded) baseCth *= 1 - BLINDED_HIT_REDUCTION;
   const accuracyDebuffed = attacker.accuracyDebuffUntil != null && now < attacker.accuracyDebuffUntil;
@@ -427,6 +463,9 @@ export function resolveAttack(
     return { attackerId: attacker.id, targetId: target.id, hit: false, evaded: false, damage: 0 };
   }
   let targetEvade = target.chanceToEvade ?? 0.05;
+  if (target.panicUntil != null && now < target.panicUntil) {
+    targetEvade = 0;
+  }
   const attackerEffect = attacker.weaponEffect
     ? WEAPON_EFFECTS[attacker.weaponEffect as keyof typeof WEAPON_EFFECTS]
     : undefined;

@@ -156,7 +156,7 @@ export const COMPANY_LEVEL_PROGRESSION: readonly CompanyProgressionEntry[] = [
     },
     armory: { weapon: 10, armor: 10, equipment: 30, total: toArmoryTotal(10, 10, 30) },
     rerollsOnLevelUp: 6,
-    abilityNode: { type: "none" },
+    abilityNode: { type: "auto", abilityId: "emergency_medevac" },
     featureGates: { eliteMissions: true, extremeMissions: true },
   },
   {
@@ -169,7 +169,10 @@ export const COMPANY_LEVEL_PROGRESSION: readonly CompanyProgressionEntry[] = [
     },
     armory: { weapon: 10, armor: 10, equipment: 30, total: toArmoryTotal(10, 10, 30) },
     rerollsOnLevelUp: 6,
-    abilityNode: { type: "none" },
+    abilityNode: {
+      type: "choice",
+      abilityIds: ["trauma_response", "infantry_armor"],
+    },
     featureGates: { eliteMissions: true, extremeMissions: true },
   },
   {

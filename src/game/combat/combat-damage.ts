@@ -22,8 +22,8 @@ export function toughnessToMitigation(toughness: number): number {
   return Math.min(MAX_MITIGATION, toughness / TOUGHNESS_DIVISOR / 100);
 }
 
-function quantizeMitigation(mitigation: number): number {
-  const clamped = Math.max(0, Math.min(MAX_MITIGATION, mitigation));
+function quantizeMitigationWithCap(mitigation: number, maxCap: number): number {
+  const clamped = Math.max(0, Math.min(maxCap, mitigation));
   return Math.ceil(clamped / MITIGATION_STEP) * MITIGATION_STEP;
 }
 
@@ -42,12 +42,14 @@ export function computeFinalDamage(
     | "stunUntil"
     | "toughnessReducedUntil"
     | "toughnessReductionPct"
+    | "allowMitigationOvercapUntil"
   >,
 ): number {
+  const now = Date.now();
   let effectiveToughness = target.toughness ?? 0;
   if (
     target.toughnessReducedUntil != null &&
-    Date.now() < target.toughnessReducedUntil &&
+    now < target.toughnessReducedUntil &&
     target.toughnessReductionPct != null
   ) {
     effectiveToughness = effectiveToughness * (1 - target.toughnessReductionPct);
@@ -57,10 +59,14 @@ export function computeFinalDamage(
   const additiveBonus =
     target.mitigationBonusPct ??
     Math.max(0, (target.mitigateDamage ?? 0) - fromToughness);
-  let mit = quantizeMitigation(fromToughness + additiveBonus);
-  if (target.stunUntil != null && Date.now() < target.stunUntil) {
+  const overcapActive =
+    target.allowMitigationOvercapUntil != null &&
+    now < target.allowMitigationOvercapUntil;
+  const maxCap = overcapActive ? 0.95 : MAX_MITIGATION;
+  let mit = quantizeMitigationWithCap(fromToughness + additiveBonus, maxCap);
+  if (target.stunUntil != null && now < target.stunUntil) {
     mit *= 0.5; // Stunned: toughness-derived mitigation halved
-    mit = quantizeMitigation(mit);
+    mit = quantizeMitigationWithCap(mit, maxCap);
   }
   const damage = rawDamage * (1 - mit);
   return Math.max(1, Math.ceil(damage));

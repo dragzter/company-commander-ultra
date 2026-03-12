@@ -348,7 +348,14 @@ function syncCompanyAbilityProgress(
   unlocked: CompanyAbilityId[];
   pendingChoiceLevels: number[];
 } {
-  return resolveCompanyAbilityState(companyLevel, choices ?? defaultCompanyAbilityChoices());
+  const effectiveCompanyAbilityLevel = Math.max(
+    1,
+    Math.floor(Number(companyLevel) || 1),
+  );
+  return resolveCompanyAbilityState(
+    effectiveCompanyAbilityLevel,
+    choices ?? defaultCompanyAbilityChoices(),
+  );
 }
 
 export const StoreActions = (set: any, get: () => CompanyStore) => ({
@@ -394,6 +401,7 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
   companyAbilityUnlockedIds: ["focused_fire"] as CompanyAbilityId[],
   companyAbilityPendingChoiceLevels: [],
   companyAbilityNotificationText: "",
+  companyAbilityCooldowns: {},
   companyLevelUpSummary: null,
   equippedStratagemItemId: null,
 
@@ -514,6 +522,7 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
         companyAbilityUnlockedIds: ["focused_fire"] as CompanyAbilityId[],
         companyAbilityPendingChoiceLevels: [],
         companyAbilityNotificationText: "",
+        companyAbilityCooldowns: {},
         equippedStratagemItemId: null,
         company: {
           level: 1,
@@ -580,6 +589,22 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
   setOnboardingRecruitStep: (step: RecruitOnboardingStep) => set({ onboardingRecruitStep: step }),
   setOnboardingRecruitSoldier: (soldier: Soldier | null) => set({ onboardingRecruitSoldier: soldier }),
   dismissCompanyAbilityNotification: () => set({ companyAbilityNotificationText: "" }),
+  setCompanyAbilityCooldownUntil: (
+    abilityId: CompanyAbilityId,
+    untilMs: number,
+  ) =>
+    set((state: CompanyStore) => {
+      const n = Math.max(0, Math.floor(Number(untilMs) || 0));
+      const existing = {
+        ...(state.companyAbilityCooldowns ?? {}),
+      } as Partial<Record<CompanyAbilityId, number>>;
+      if (n <= 0) {
+        delete existing[abilityId];
+      } else {
+        existing[abilityId] = n;
+      }
+      return { companyAbilityCooldowns: existing };
+    }),
   clearCompanyLevelUpSummary: () => set({ companyLevelUpSummary: null }),
   setEquippedStratagemItemId: (itemId: string | null) => {
     const id = itemId?.trim() || null;
@@ -652,6 +677,25 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
       },
     });
     return { success: true };
+  },
+  syncCompanyAbilityState: () => {
+    const state = get();
+    const resolved = syncCompanyAbilityProgress(
+      state.company?.level ?? state.companyLevel ?? 1,
+      state.companyAbilityChoices ?? defaultCompanyAbilityChoices(),
+    );
+    const updatedSoldiers = applyCompanyPassivesToSoldiers(
+      state.company?.soldiers ?? [],
+      resolved.unlocked,
+    );
+    set({
+      companyAbilityUnlockedIds: resolved.unlocked,
+      companyAbilityPendingChoiceLevels: resolved.pendingChoiceLevels,
+      company: {
+        ...state.company,
+        soldiers: updatedSoldiers,
+      },
+    });
   },
   bootstrapNewCompanyIfEmpty: () => {
     get().addInitialTroopsIfEmpty();
@@ -900,6 +944,7 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
         companyAbilityPendingChoiceLevels: resolvedAbilities.pendingChoiceLevels,
         companyAbilityChoices: state.companyAbilityChoices ?? defaultCompanyAbilityChoices(),
         companyAbilityNotificationText: "",
+        companyAbilityCooldowns: {},
         companyLevelUpSummary: null,
         equippedStratagemItemId: null,
       };
@@ -1711,8 +1756,15 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
     abilitiesUsedBySoldier: Map<string, number>,
     healingBySoldier: Map<string, number>,
     victory: boolean,
+    options?: { baseXpOverride?: number },
   ) => {
-    const baseXp = victory ? SOLDIER_XP_BASE_SURVIVE_VICTORY : SOLDIER_XP_BASE_SURVIVE_DEFEAT;
+    const baseXpDefault = victory
+      ? SOLDIER_XP_BASE_SURVIVE_VICTORY
+      : SOLDIER_XP_BASE_SURVIVE_DEFEAT;
+    const baseXp =
+      options?.baseXpOverride != null
+        ? Math.max(0, Number(options.baseXpOverride) || 0)
+        : baseXpDefault;
     let totalKillsThisMission = 0;
     killsBySoldier.forEach((kills) => {
       totalKillsThisMission += Math.max(0, Math.floor(kills || 0));

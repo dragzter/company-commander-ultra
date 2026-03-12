@@ -51,6 +51,7 @@ import {
   getSoldierMedItems,
   FLAME_ICON,
   SHIELD_ICON,
+  SILVER_SHIELD_ICON,
   type SoldierGrenade,
   type SoldierMedItem,
 } from "../../constants/soldier-abilities.ts";
@@ -159,12 +160,29 @@ export function eventConfigs() {
       .replace(/"/g, "&quot;");
   }
 
+  function formatCooldownCompact(totalSeconds: number): string {
+    const secs = Math.max(0, Math.floor(Number(totalSeconds) || 0));
+    if (secs >= 3600) {
+      const h = Math.floor(secs / 3600);
+      const m = Math.floor((secs % 3600) / 60);
+      return `${h}:${String(m).padStart(2, "0")}h`;
+    }
+    if (secs >= 60) {
+      const m = Math.floor(secs / 60);
+      const s = secs % 60;
+      return `${m}:${String(s).padStart(2, "0")}m`;
+    }
+    return `${secs}s`;
+  }
+
   function formatAbilityTermsInTooltip(text: string): string {
     const terms = [
       "Take Cover",
       "Suppress",
       "Suppression",
       "Focused Fire",
+      "Trauma Response",
+      "Infantry Armor",
       "Artillery Barrage",
       "Napalm Barrage",
       "Battle Fervor",
@@ -1337,13 +1355,16 @@ export function eventConfigs() {
     const HAS_MISSION_REINFORCEMENTS =
       MISSION_TOTAL_ENEMY_BUDGET > enemies.length;
     const DEFEND_DEATH_NOTICE_MS = 1_000;
+    usePlayerCompanyStore.getState().syncCompanyAbilityState();
+    const storeStateAtCombatStart = usePlayerCompanyStore.getState();
     const companyAbilityOwned = new Set(
-      usePlayerCompanyStore.getState().companyAbilityUnlockedIds ?? [],
+      storeStateAtCombatStart.companyAbilityUnlockedIds ?? [],
     );
-    const equippedStratagemId =
-      usePlayerCompanyStore.getState().equippedStratagemItemId ?? null;
+    const persistentCompanyAbilityCooldowns =
+      storeStateAtCombatStart.companyAbilityCooldowns ?? {};
+    const equippedStratagemId = storeStateAtCombatStart.equippedStratagemItemId ?? null;
     const equippedStratagemItem = equippedStratagemId
-      ? (usePlayerCompanyStore.getState().company?.inventory ?? []).find(
+      ? (storeStateAtCombatStart.company?.inventory ?? []).find(
           (it) => it.id === equippedStratagemId,
         ) ?? null
       : null;
@@ -1370,6 +1391,9 @@ export function eventConfigs() {
     combatRoot?.classList.add("combat-prestart");
     let focusedFireTargetId: string | null = null;
     let focusedFireUntil = 0;
+    let traumaResponseTicksRemaining = 0;
+    let traumaResponseNextTickAt = 0;
+    let extractionInProgress = false;
     let companyAbilityTargetingMode: {
       abilityId: CompanyAbilityId;
     } | null = null;
@@ -1405,6 +1429,7 @@ export function eventConfigs() {
       suppressed: boolean;
       settingUp: boolean;
       postCoverBuff: boolean;
+      infantryArmor: boolean;
       focusedFire: boolean;
       effectiveIntervalMs: number;
     };
@@ -1507,13 +1532,51 @@ export function eventConfigs() {
 
     const companyCombatAbilities = getCompanyActiveAbilities(companyAbilityOwned)
       .map((def) => def.id);
+
     let stratagemUsesLeft =
       equippedStratagemItem != null ? 1 : 0;
     for (const abilityId of companyCombatAbilities) {
-      companyAbilityCooldownUntil.set(abilityId, 0);
+      const persisted = Math.max(
+        0,
+        Math.floor(
+          Number(
+            persistentCompanyAbilityCooldowns[
+              abilityId as CompanyAbilityId
+            ] ?? 0,
+          ) || 0,
+        ),
+      );
+      companyAbilityCooldownUntil.set(
+        abilityId,
+        persisted,
+      );
       if (abilityId === "artillery_barrage" || abilityId === "napalm_barrage") {
         companyAbilityUsesLeft.set(abilityId, 1);
       }
+    }
+
+    function setCompanyAbilityCooldown(
+      abilityId: CompanyAbilityId,
+      untilMs: number,
+    ): void {
+      companyAbilityCooldownUntil.set(abilityId, untilMs);
+      usePlayerCompanyStore
+        .getState()
+        .setCompanyAbilityCooldownUntil(abilityId, untilMs);
+    }
+
+    function startCompanyAbilityCooldown(
+      abilityId: CompanyAbilityId,
+      nowMs = Date.now(),
+    ): void {
+      const cooldownSeconds =
+        COMPANY_ABILITY_DEFS[abilityId]?.cooldownSeconds ?? 0;
+      const cooldownMs = Math.max(
+        0,
+        Math.floor(Number(cooldownSeconds) || 0) * 1000,
+      );
+      if (cooldownMs <= 0) return;
+      setCompanyAbilityCooldown(abilityId, nowMs + cooldownMs);
     }
 
     function clearCompanyAbilityTargeting(): void {
@@ -1550,7 +1613,8 @@ export function eventConfigs() {
             : 0;
           const usesLeft = companyAbilityUsesLeft.get(id);
           const noUsesLeft = typeof usesLeft === "number" && usesLeft <= 0;
-          const disabled = !!combatWinner || onCooldown || noUsesLeft;
+          const disabled =
+            extractionInProgress || !!combatWinner || onCooldown || noUsesLeft;
           const selected =
             companyAbilityTargetingMode?.abilityId === id
               ? " combat-company-ability-selected"
@@ -1558,14 +1622,15 @@ export function eventConfigs() {
           return `<button type=\"button\" class=\"combat-company-ability-btn${selected}\" data-company-ability-id=\"${id}\" title=\"${def.name}\" ${disabled ? "disabled" : ""}>
             <img src=\"${def.icon}\" alt=\"\" width=\"60\" height=\"60\">
             <span class=\"combat-company-ability-name\">${def.name}</span>
-            ${onCooldown ? `<span class=\"combat-company-ability-cd\">${remaining}</span>` : ""}
+            ${onCooldown ? `<span class=\"combat-company-ability-cd\">${formatCooldownCompact(remaining)}</span>` : ""}
             ${typeof usesLeft === "number" ? `<span class=\"combat-company-ability-uses\">${usesLeft}</span>` : ""}
           </button>`;
         })
         .join("");
       const stratagemHtml = equippedStratagemItem
         ? (() => {
-            const disabled = !!combatWinner || stratagemUsesLeft <= 0;
+            const disabled =
+              extractionInProgress || !!combatWinner || stratagemUsesLeft <= 0;
             const icon = getItemIconUrl(equippedStratagemItem);
             return `<button type="button" class="combat-company-ability-btn combat-stratagem-btn" data-stratagem-item-id="${equippedStratagemItem.id}" title="${equippedStratagemItem.name}" ${disabled ? "disabled" : ""}>
               <img src="${icon}" alt="" width="60" height="60">
@@ -1574,7 +1639,7 @@ export function eventConfigs() {
             </button>`;
           })()
         : "";
-      const html = companyHtml + stratagemHtml;
+      const html = `${stratagemHtml ? `<div class="combat-company-stratagem-group">${stratagemHtml}</div>` : ""}${companyHtml ? `<div class="combat-company-abilities-group">${companyHtml}</div>` : ""}`;
       if (force || companyAbilityBarEl.innerHTML !== html) {
         companyAbilityBarEl.innerHTML = html;
       }
@@ -2089,6 +2154,24 @@ export function eventConfigs() {
         .forEach((el) => el.classList.remove("combat-ability-selected"));
     }
 
+    function triggerAbilityTapFeedback(el: HTMLElement | null): void {
+      if (!el) return;
+      el.classList.remove("combat-ability-btn-pressing");
+      el.classList.remove("combat-ability-btn-tap-flash");
+      // Replay immediately on rapid taps.
+      void el.offsetWidth;
+      el.classList.add("combat-ability-btn-pressing");
+      el.classList.add("combat-ability-btn-tap-flash");
+      window.setTimeout(
+        () => el.classList.remove("combat-ability-btn-pressing"),
+        100,
+      );
+      window.setTimeout(
+        () => el.classList.remove("combat-ability-btn-tap-flash"),
+        180,
+      );
+    }
+
     function highlightSelectedAbility(
       type: "grenade" | "med" | "ability",
       soldierId: string,
@@ -2336,6 +2419,153 @@ export function eventConfigs() {
       });
     }
 
+    function playArtilleryStrikeFX(
+      targetIds: string[],
+      strikeCount = 6,
+      strikeIntervalMs = 190,
+      variant: "artillery" | "napalm" = "artillery",
+    ): Promise<void> {
+      const battleArea = document.querySelector(
+        "#combat-battle-area",
+      ) as HTMLElement | null;
+      if (!battleArea || targetIds.length <= 0) return Promise.resolve();
+
+      return new Promise((resolve) => {
+        let completed = 0;
+        const shuffledIds = [...targetIds].sort(() => Math.random() - 0.5);
+        const totalStrikes = Math.max(strikeCount, shuffledIds.length);
+        for (let i = 0; i < totalStrikes; i++) {
+          window.setTimeout(() => {
+            const targetId = shuffledIds[i % shuffledIds.length];
+            const targetCard = getCombatantCard(targetId) as HTMLElement | null;
+            if (!targetCard) {
+              completed += 1;
+              if (completed >= totalStrikes) resolve();
+              return;
+            }
+            const areaRect = battleArea.getBoundingClientRect();
+            const targetRect = targetCard.getBoundingClientRect();
+            const impactAnchors = [0.24, 0.5, 0.76] as const;
+            const anchorY =
+              impactAnchors[Math.floor(Math.random() * impactAnchors.length)];
+            const impactX =
+              targetRect.left -
+              areaRect.left +
+              targetRect.width * 0.5 +
+              (Math.random() - 0.5) * 14;
+            // Randomly pick top/middle/bottom impact zones to vary strike feel.
+            const impactY =
+              targetRect.top -
+              areaRect.top +
+              targetRect.height * anchorY +
+              (Math.random() - 0.5) * 8;
+            const travelMs = 360;
+            const impactLifeMs = 360;
+
+            const tracer = document.createElement("span");
+            tracer.className = "combat-artillery-tracer";
+            tracer.style.left = `${impactX}px`;
+            tracer.style.top = `${impactY}px`;
+            const tracerDx = `${-42 - Math.random() * 34}px`;
+            const tracerDy = `${118 + Math.random() * 24}px`;
+            tracer.style.setProperty(
+              "--tracer-dx",
+              tracerDx,
+            );
+            tracer.style.setProperty(
+              "--tracer-dy",
+              tracerDy,
+            );
+            battleArea.appendChild(tracer);
+
+            const shell = document.createElement("span");
+            shell.className =
+              variant === "napalm"
+                ? "combat-artillery-shell combat-artillery-shell-napalm"
+                : "combat-artillery-shell";
+            shell.style.left = `${impactX}px`;
+            shell.style.top = `${impactY}px`;
+            shell.style.setProperty("--shell-dx", tracerDx);
+            shell.style.setProperty("--shell-dy", tracerDy);
+            battleArea.appendChild(shell);
+
+            const trail = document.createElement("span");
+            trail.className = "combat-artillery-shell-trail";
+            trail.style.left = shell.style.left;
+            trail.style.top = shell.style.top;
+            trail.style.setProperty("--shell-dx", tracerDx);
+            trail.style.setProperty("--shell-dy", tracerDy);
+            battleArea.appendChild(trail);
+
+            window.setTimeout(() => tracer.remove(), travelMs + 20);
+            window.setTimeout(() => shell.remove(), travelMs + 34);
+            window.setTimeout(() => trail.remove(), travelMs + 12);
+            let flash: HTMLElement | null = null;
+            let burst: HTMLElement | null = null;
+            let hitSpark: HTMLElement | null = null;
+            window.setTimeout(() => {
+              // Start explosion exactly when the shell lands.
+              targetCard.classList.remove("combat-card-impact-rock-small");
+              void targetCard.offsetWidth;
+              targetCard.classList.add("combat-card-impact-rock-small");
+              window.setTimeout(
+                () => targetCard.classList.remove("combat-card-impact-rock-small"),
+                220,
+              );
+
+              flash = document.createElement("span");
+              flash.className =
+                variant === "napalm"
+                  ? "combat-artillery-impact combat-artillery-impact-napalm"
+                  : "combat-artillery-impact";
+              flash.style.left = `${impactX}px`;
+              flash.style.top = `${impactY}px`;
+              battleArea.appendChild(flash);
+
+              hitSpark = document.createElement("span");
+              hitSpark.className = "combat-artillery-hit-spark";
+              hitSpark.style.left = flash.style.left;
+              hitSpark.style.top = flash.style.top;
+              battleArea.appendChild(hitSpark);
+
+              burst = document.createElement("span");
+              burst.className =
+                variant === "napalm"
+                  ? "combat-artillery-burst combat-artillery-burst-napalm"
+                  : "combat-artillery-burst";
+              burst.style.left = flash.style.left;
+              burst.style.top = flash.style.top;
+              battleArea.appendChild(burst);
+            }, travelMs);
+            window.setTimeout(() => {
+              hitSpark?.remove();
+              flash?.remove();
+              burst?.remove();
+              completed += 1;
+              if (completed >= totalStrikes) resolve();
+            }, travelMs + impactLifeMs);
+          }, i * strikeIntervalMs);
+        }
+      });
+    }
+
+    function rockEnemyCardsViolently(): void {
+      const enemyCards = Array.from(
+        document.querySelectorAll("#combat-enemies-grid .combat-card"),
+      ) as HTMLElement[];
+      enemyCards.forEach((card, idx) => {
+        window.setTimeout(() => {
+          card.classList.remove("combat-card-artillery-rock");
+          void card.offsetWidth;
+          card.classList.add("combat-card-artillery-rock");
+          window.setTimeout(
+            () => card.classList.remove("combat-card-artillery-rock"),
+            560,
+          );
+        }, idx * 22);
+      });
+    }
+
     function getCombatantById(id: string): Combatant | undefined {
       return allCombatants.find((c) => c.id === id);
     }
@@ -2346,7 +2576,7 @@ export function eventConfigs() {
     }
 
     function shouldShowCombatFeedback(id: string): boolean {
-      return !isCombatantDownNow(id);
+      return !extractionInProgress && !isCombatantDownNow(id);
     }
 
     function updateCombatCardDownBadge(card: Element, c: Combatant): void {
@@ -2555,6 +2785,7 @@ export function eventConfigs() {
       target: Combatant,
       opts?: { fromEnemyAi?: boolean },
     ) {
+      if (extractionInProgress) return;
       const now = Date.now();
       if (user.hp <= 0 || user.downState || isStunned(user, now)) return;
       if (user.side === "player") {
@@ -2580,6 +2811,7 @@ export function eventConfigs() {
 
       let anyHit = false;
       const doBurst = () => {
+        if (extractionInProgress) return;
         if (target.hp <= 0 || target.downState) return;
         const burstNow = Date.now();
         const focusedFireDamageMultiplier =
@@ -2589,8 +2821,15 @@ export function eventConfigs() {
           burstNow < focusedFireUntil
             ? 1.2
             : 1;
+        const battleFervorDamageMultiplier =
+          user.side === "player" &&
+          user.companyAttackSpeedBuffUntil != null &&
+          burstNow < user.companyAttackSpeedBuffUntil
+            ? 2
+            : 1;
         const result = resolveAttack(user, target, burstNow, {
-          damageMultiplier: focusedFireDamageMultiplier,
+          damageMultiplier:
+            focusedFireDamageMultiplier * battleFervorDamageMultiplier,
         });
         if (result.hit && !result.evaded) anyHit = true;
         animateProjectile(
@@ -2650,8 +2889,12 @@ export function eventConfigs() {
       };
 
       doBurst();
-      setTimeout(() => doBurst(), SUPPRESS_BURST_INTERVAL_MS);
       setTimeout(() => {
+        if (extractionInProgress) return;
+        doBurst();
+      }, SUPPRESS_BURST_INTERVAL_MS);
+      setTimeout(() => {
+        if (extractionInProgress) return;
         doBurst();
         if (
           anyHit &&
@@ -2695,6 +2938,7 @@ export function eventConfigs() {
         resetTargetingUi?: boolean;
       },
     ) {
+      if (extractionInProgress) return;
       if (thrower.hp <= 0 || thrower.downState || isStunned(thrower, Date.now())) {
         if (options?.resetTargetingUi !== false) closeAbilitiesPopup();
         return;
@@ -2790,6 +3034,7 @@ export function eventConfigs() {
       };
 
       setTimeout(() => {
+        if (extractionInProgress) return;
         const aliveTargetPool = (options?.targetPool ?? enemies).filter(
           (c) => c.hp > 0 && !c.downState,
         );
@@ -3207,6 +3452,8 @@ export function eventConfigs() {
           c.side === "enemy" && c.setupUntil != null && now < c.setupUntil;
         const postCoverBuff =
           c.postCoverToughnessUntil != null && now < c.postCoverToughnessUntil;
+        const infantryArmor =
+          c.infantryArmorUntil != null && now < c.infantryArmorUntil;
         const focusedFire =
           c.side === "enemy" &&
           focusedFireTargetId === c.id &&
@@ -3235,6 +3482,7 @@ export function eventConfigs() {
           suppressed,
           settingUp,
           postCoverBuff,
+          infantryArmor,
           focusedFire,
           effectiveIntervalMs: effectiveInterval,
         };
@@ -3252,6 +3500,7 @@ export function eventConfigs() {
           prevSnapshot.suppressed !== nextSnapshot.suppressed ||
           prevSnapshot.settingUp !== nextSnapshot.settingUp ||
           prevSnapshot.postCoverBuff !== nextSnapshot.postCoverBuff ||
+          prevSnapshot.infantryArmor !== nextSnapshot.infantryArmor ||
           prevSnapshot.focusedFire !== nextSnapshot.focusedFire;
         const speedChanged =
           !prevSnapshot ||
@@ -3275,6 +3524,7 @@ export function eventConfigs() {
             card.classList.toggle("combat-card-suppressed", suppressed);
             card.classList.toggle("combat-card-setting-up", settingUp);
             card.classList.toggle("combat-card-post-cover-buff", postCoverBuff);
+            card.classList.toggle("combat-card-infantry-armor", infantryArmor);
             card.classList.toggle("combat-card-focused-fire", focusedFire);
             const ensureTimer = (
               selector: string,
@@ -3344,6 +3594,22 @@ export function eventConfigs() {
             } else {
               card.querySelector(".combat-card-stun-timer")?.remove();
               refs.statusNodeCache.delete("stun-timer");
+            }
+            if (panicked) {
+              const timerEl = ensureTimer(
+                ".combat-card-panic-timer",
+                "panic-timer",
+                "combat-card-panic-timer",
+                timerRail,
+              );
+              if (refreshTimerText)
+                timerEl.textContent = (
+                  ((c.panicUntil ?? 0) - now) /
+                  1000
+                ).toFixed(1);
+            } else {
+              card.querySelector(".combat-card-panic-timer")?.remove();
+              refs.statusNodeCache.delete("panic-timer");
             }
             if (burning) {
               const timerEl = ensureTimer(
@@ -3506,7 +3772,7 @@ export function eventConfigs() {
                 buffShield = document.createElement("div");
                 buffShield.className = "combat-card-post-cover-shield";
                 const img = document.createElement("img");
-                img.src = SHIELD_ICON;
+                img.src = SILVER_SHIELD_ICON;
                 img.alt = "";
                 buffShield.appendChild(img);
                 refs.avatarWrap.appendChild(buffShield);
@@ -3515,6 +3781,35 @@ export function eventConfigs() {
               card.querySelector(".combat-card-post-cover-timer")?.remove();
               card.querySelector(".combat-card-post-cover-shield")?.remove();
               refs.statusNodeCache.delete("post-cover-timer");
+            }
+            if (infantryArmor) {
+              const timerEl = ensureTimer(
+                ".combat-card-infantry-armor-timer",
+                "infantry-armor-timer",
+                "combat-card-infantry-armor-timer",
+                timerRail,
+              );
+              if (refreshTimerText)
+                timerEl.textContent = (
+                  ((c.infantryArmorUntil ?? 0) - now) /
+                  1000
+                ).toFixed(1);
+              let buffShield = card.querySelector(
+                ".combat-card-infantry-armor-shield",
+              ) as HTMLElement | null;
+              if (!buffShield && refs.avatarWrap) {
+                buffShield = document.createElement("div");
+                buffShield.className = "combat-card-infantry-armor-shield";
+                const img = document.createElement("img");
+                img.src = SHIELD_ICON;
+                img.alt = "";
+                buffShield.appendChild(img);
+                refs.avatarWrap.appendChild(buffShield);
+              }
+            } else {
+              card.querySelector(".combat-card-infantry-armor-timer")?.remove();
+              card.querySelector(".combat-card-infantry-armor-shield")?.remove();
+              refs.statusNodeCache.delete("infantry-armor-timer");
             }
             let shieldWrap = card.querySelector(
               ".combat-card-cover-shield",
@@ -3563,8 +3858,15 @@ export function eventConfigs() {
           baseInterval > 0
         ) {
           domWrites.push(() => {
-            refs.spdBadge!.textContent = `SPD: ${(effectiveInterval / 1000).toFixed(1)}s`;
+            const parts = [`SPD: ${(effectiveInterval / 1000).toFixed(1)}s`];
+            if (battleFervor) parts.push("FVR");
+            else if (stimmed) parts.push("STIM");
+            refs.spdBadge!.textContent = parts.join(" ");
             refs.spdBadge!.classList.toggle("combat-card-spd-buffed", stimmed);
+            refs.spdBadge!.classList.toggle(
+              "combat-card-spd-fervor",
+              battleFervor,
+            );
           });
         }
         dirtyStatusCombatantIds.delete(c.id);
@@ -3745,7 +4047,7 @@ export function eventConfigs() {
             continue;
           }
           window.setTimeout(() => {
-            if (combatWinner) return;
+            if (combatWinner || extractionInProgress) return;
             spawnMissionReinforcement(Date.now());
           }, delay);
         }
@@ -3759,6 +4061,7 @@ export function eventConfigs() {
       }
 
       function tick() {
+        if (extractionInProgress) return;
         const now = Date.now();
         if (now >= nextLowHpSampleAt) {
           for (const p of players) {
@@ -3815,6 +4118,39 @@ export function eventConfigs() {
             status: true,
             speed: false,
           });
+        }
+        while (
+          traumaResponseTicksRemaining > 0 &&
+          traumaResponseNextTickAt > 0 &&
+          now >= traumaResponseNextTickAt
+        ) {
+          for (const p of players) {
+            if (p.hp <= 0 || p.downState || p.maxHp <= 0) continue;
+            const pct = 0.12 + Math.random() * 0.12;
+            const healAmount = Math.max(1, Math.ceil(p.maxHp * pct));
+            const oldHp = p.hp;
+            p.hp = Math.min(p.maxHp, p.hp + healAmount);
+            const healed = Math.max(0, p.hp - oldHp);
+            if (healed > 0) {
+              playerHealing.set(p.id, (playerHealing.get(p.id) ?? 0) + healed);
+            }
+            const card = getCombatantCard(p.id);
+            if (card) {
+              if (healed > 0)
+                spawnCombatPopup(card, "combat-heal-popup", `+${healed}`, 1050);
+              card.classList.remove("combat-card-trauma-heal-flash");
+              void card.offsetWidth;
+              card.classList.add("combat-card-trauma-heal-flash");
+              window.setTimeout(
+                () => card.classList.remove("combat-card-trauma-heal-flash"),
+                340,
+              );
+            }
+            markCombatantDirty(p.id, { hp: true, status: false, speed: false });
+          }
+          traumaResponseTicksRemaining -= 1;
+          traumaResponseNextTickAt += 2000;
+          if (traumaResponseTicksRemaining <= 0) traumaResponseNextTickAt = 0;
         }
         clearExpiredEffects(allCombatants, now);
         if (HAS_MISSION_REINFORCEMENTS) {
@@ -4365,8 +4701,15 @@ export function eventConfigs() {
                 now < focusedFireUntil
                   ? 1.2
                   : 1;
+              const battleFervorDamageMultiplier =
+                c.side === "player" &&
+                c.companyAttackSpeedBuffUntil != null &&
+                now < c.companyAttackSpeedBuffUntil
+                  ? 2
+                  : 1;
               const result = resolveAttack(c, target, now, {
-                damageMultiplier: focusedFireDamageMultiplier,
+                damageMultiplier:
+                  focusedFireDamageMultiplier * battleFervorDamageMultiplier,
               });
               if (c.side === "player") {
                 if (
@@ -4402,6 +4745,7 @@ export function eventConfigs() {
                 );
               }
               const showAttackResult = () => {
+                if (extractionInProgress) return;
                 if (!targetCard) return;
                 if (!shouldShowCombatFeedback(result.targetId)) return;
                 if (!result.hit) {
@@ -4455,7 +4799,11 @@ export function eventConfigs() {
       combatTickId = window.setTimeout(tick, 50);
     }
 
-    function processQuitMissionOutcome() {
+    function processQuitMissionOutcome(
+      options: { extracted?: boolean; showSummary?: boolean } = {},
+    ) {
+      const extracted = options.extracted === true;
+      const showSummary = options.showSummary === true;
       if (!combatStarted) return;
       const screen = document.getElementById("combat-screen");
       const missionJson = screen?.getAttribute("data-mission-json");
@@ -4481,6 +4829,11 @@ export function eventConfigs() {
         .map((p) => p.id);
       const participantIds = players.map((p) => p.id);
       const store = usePlayerCompanyStore.getState();
+      const oldLevels = new Map<string, number>(
+        store.company?.soldiers
+          ?.filter((s) => survivorIds.includes(s.id))
+          .map((s) => [s.id, s.level ?? 1]) ?? [],
+      );
       if (!mission?.isDevTest) {
         store.recordSoldierCombatStats(participantIds, playerKills, false);
         store.processCombatKIA(kiaIds, missionName, playerKills, kiaKilledBy);
@@ -4492,6 +4845,7 @@ export function eventConfigs() {
           playerAbilitiesUsed,
           playerHealing,
           false,
+          extracted ? { baseXpOverride: 0 } : undefined,
         );
         // Survivors return to roster at full HP after mission end/quit.
         const survivors = players
@@ -4501,7 +4855,75 @@ export function eventConfigs() {
             hp: p.maxHp,
           }));
         store.syncCombatHpToSoldiers(survivors);
-        store.grantMissionRewards(mission, false, kiaIds.length);
+        if (!extracted) {
+          store.grantMissionRewards(mission, false, kiaIds.length);
+        }
+      }
+      if (!showSummary) return;
+      const baseXp = extracted ? 0 : SOLDIER_XP_BASE_SURVIVE_DEFEAT;
+      const xpEarnedBySoldier = new Map<string, number>();
+      for (const id of participantIds) {
+        const dmg = playerDamage.get(id) ?? 0;
+        const dmgTaken = playerDamageTaken.get(id) ?? 0;
+        const kills = playerKills.get(id) ?? 0;
+        const abilitiesUsed = playerAbilitiesUsed.get(id) ?? 0;
+        const healing = playerHealing.get(id) ?? 0;
+        const xp =
+          baseXp +
+          dmg * SOLDIER_XP_PER_DAMAGE +
+          dmgTaken * SOLDIER_XP_PER_DAMAGE_TAKEN +
+          kills * SOLDIER_XP_PER_KILL +
+          abilitiesUsed * SOLDIER_XP_PER_ABILITY_USE +
+          healing * SOLDIER_XP_PER_HEAL;
+        xpEarnedBySoldier.set(id, Math.round(xp * 10) / 10);
+      }
+      const newStore = usePlayerCompanyStore.getState();
+      const newLevels = new Map<string, number>(
+        newStore.company?.soldiers
+          ?.filter((s) => survivorIds.includes(s.id))
+          .map((s) => [s.id, s.level ?? 1]) ?? [],
+      );
+      const leveledUpIds = new Set<string>();
+      for (const id of survivorIds) {
+        if ((newLevels.get(id) ?? 1) > (oldLevels.get(id) ?? 1))
+          leveledUpIds.add(id);
+      }
+      const soldiersAfterCombat = new Map<
+        string,
+        import("../entities/types.ts").Soldier
+      >(
+        newStore.company?.soldiers
+          ?.filter((s) => players.some((p) => p.id === s.id))
+          .map((s) => [s.id, s]) ?? [],
+      );
+      const companyExpTotal =
+        newStore.company?.experience ?? newStore.companyExperience ?? 0;
+      const companyLvlTotal = newStore.company?.level ?? newStore.companyLevel ?? 1;
+      const summaryData = buildCombatSummaryData(
+        false,
+        mission,
+        players,
+        playerKills,
+        leveledUpIds.size,
+        [],
+        [],
+        leveledUpIds,
+        newLevels,
+        soldiersAfterCombat,
+        xpEarnedBySoldier,
+        0,
+        companyExpTotal,
+        companyLvlTotal,
+        new Map<string, EarnedTraitAward[]>(),
+        true,
+      );
+      const container = document.getElementById("combat-summary-container");
+      if (container) {
+        container.innerHTML = combatSummaryTemplate(summaryData);
+        const overlay = container.querySelector(
+          ".combat-summary-overlay",
+        ) as HTMLElement | null;
+        if (overlay) overlay.classList.add("combat-summary-visible");
       }
     }
 
@@ -4588,25 +5010,232 @@ export function eventConfigs() {
 
     function activateBattleFervor(): void {
       const now = Date.now();
-      const durationMs = 10_000;
-      const speedMult = 0.7;
-      const critBonusPct = 0.2;
-      companyAbilityCooldownUntil.set("battle_fervor", now + 90_000);
+      const durationMs = 15_000;
+      const speedMult = 1 / 1.7;
+      const critBonusPct = 0.3;
+      const hitBonusPct = 0.15;
+      startCompanyAbilityCooldown("battle_fervor", now);
       for (const p of players) {
         if (p.hp <= 0 || p.downState) continue;
         p.companyAttackSpeedBuffUntil = now + durationMs;
         p.companyAttackSpeedBuffMultiplier = speedMult;
         p.companyCritChanceBuffUntil = now + durationMs;
         p.companyCritChanceBonusPct = critBonusPct;
+        p.companyChanceToHitBuffUntil = now + durationMs;
+        p.companyChanceToHitBonusPct = hitBonusPct;
         const oldDue = nextAttackAt.get(p.id) ?? now;
         const remaining = Math.max(0, oldDue - now);
         nextAttackAt.set(p.id, now + remaining * speedMult);
         markCombatantDirty(p.id, { hp: false, status: true, speed: true });
         const card = getCombatantCard(p.id);
-        if (card) spawnCombatPopup(card, "combat-heal-popup", "Fervor", 1000);
+        if (card) {
+          card.classList.remove("combat-card-fervor-burst");
+          // Restart one-shot burst animation for a dramatic activation pop.
+          void card.offsetWidth;
+          card.classList.add("combat-card-fervor-burst");
+          setTimeout(
+            () => card.classList.remove("combat-card-fervor-burst"),
+            520,
+          );
+          spawnCombatPopup(card, "combat-heal-popup", "Fervor", 1000);
+        }
       }
       renderCompanyAbilityBar(true);
       updateCombatUI(true);
+    }
+
+    function activateTraumaResponse(): void {
+      const now = Date.now();
+      const tickCount = 4;
+      const tickIntervalMs = 2000;
+      startCompanyAbilityCooldown("trauma_response", now);
+      traumaResponseTicksRemaining = tickCount;
+      traumaResponseNextTickAt = now + tickIntervalMs;
+      for (const p of players) {
+        if (p.hp <= 0 || p.downState) continue;
+        const card = getCombatantCard(p.id);
+        if (card) spawnCombatPopup(card, "combat-heal-popup", "Trauma", 900);
+      }
+      renderCompanyAbilityBar(true);
+      updateCombatUI(true);
+    }
+
+    function activateInfantryArmor(): void {
+      const now = Date.now();
+      const durationMs = 15_000;
+      const mitigationBonusPct = 0.5;
+      startCompanyAbilityCooldown("infantry_armor", now);
+      for (const p of players) {
+        if (p.hp <= 0 || p.downState) continue;
+        if ((p.infantryArmorBonusPct ?? 0) > 0) {
+          p.mitigationBonusPct = Math.max(
+            0,
+            (p.mitigationBonusPct ?? 0) - (p.infantryArmorBonusPct ?? 0),
+          );
+        }
+        p.mitigationBonusPct = (p.mitigationBonusPct ?? 0) + mitigationBonusPct;
+        p.infantryArmorBonusPct = mitigationBonusPct;
+        p.infantryArmorUntil = now + durationMs;
+        p.allowMitigationOvercapUntil = now + durationMs;
+        markCombatantDirty(p.id, { hp: false, status: true, speed: false });
+        const card = getCombatantCard(p.id);
+        if (card) spawnCombatPopup(card, "combat-heal-popup", "Armor", 900);
+      }
+      renderCompanyAbilityBar(true);
+      updateCombatUI(true);
+    }
+
+    async function playEmergencyMedevacSequence(): Promise<void> {
+      const combatMain = document.querySelector(
+        "#combat-screen .combat-main",
+      ) as HTMLElement | null;
+      if (!combatMain) return;
+      combatMain.querySelector(".combat-medevac-overlay")?.remove();
+      const overlay = document.createElement("div");
+      overlay.className = "combat-medevac-overlay";
+      const heli = document.createElement("img");
+      heli.className = "combat-medevac-heli";
+      heli.src = "/images/medevac_heli.png";
+      heli.alt = "Medevac";
+      overlay.appendChild(heli);
+      combatMain.appendChild(overlay);
+
+      const playerCards = Array.from(
+        document.querySelectorAll("#combat-players-grid .combat-card"),
+      ) as HTMLElement[];
+      const aliveCards = playerCards.filter((card) => {
+        const id = card.getAttribute("data-combatant-id") ?? "";
+        const c = players.find((p) => p.id === id);
+        return !!c && c.hp > 0 && !c.downState;
+      });
+
+      const width = overlay.clientWidth || combatMain.clientWidth || 360;
+      const centerX = width * 0.5;
+      const heliY = Math.max(24, (overlay.clientHeight || 420) * 0.26);
+      const firstLegEndX = centerX - 90;
+      const firstLegStartX = -220;
+      const secondLegEndX = width + 260;
+
+      heli.animate(
+        [
+          {
+            transform: `translate(${firstLegStartX}px, ${heliY}px) scale(1)`,
+            opacity: 0.98,
+          },
+          {
+            transform: `translate(${firstLegEndX}px, ${heliY}px) scale(1.02)`,
+            opacity: 1,
+            offset: 1,
+          },
+        ],
+        {
+          duration: 1650,
+          easing: "cubic-bezier(0.2, 0.9, 0.2, 1)",
+          fill: "forwards",
+        },
+      );
+
+      await new Promise<void>((resolve) => window.setTimeout(resolve, 1450));
+
+      for (const card of aliveCards) {
+        const rect = card.getBoundingClientRect();
+        const overlayRect = overlay.getBoundingClientRect();
+        const cardCx = rect.left + rect.width / 2;
+        const cardCy = rect.top + rect.height / 2;
+        const toX = overlayRect.left + centerX - cardCx;
+        const toY = overlayRect.top + heliY + 8 - cardCy;
+        card.animate(
+          [
+            { transform: "translate(0, 0) scale(1)", opacity: 1 },
+            {
+              transform: `translate(${toX * 0.58}px, ${toY * 0.58}px) scale(0.9)`,
+              opacity: 0.8,
+              offset: 0.72,
+            },
+            {
+              transform: `translate(${toX}px, ${toY}px) scale(0.72)`,
+              opacity: 0,
+            },
+          ],
+          {
+            duration: 1200,
+            easing: "cubic-bezier(0.24, 0.86, 0.25, 1)",
+            fill: "forwards",
+          },
+        );
+      }
+
+      await new Promise<void>((resolve) => window.setTimeout(resolve, 1100));
+
+      heli.animate(
+        [
+          {
+            transform: `translate(${firstLegEndX}px, ${heliY}px) scale(1.02)`,
+            opacity: 1,
+          },
+          {
+            transform: `translate(${secondLegEndX}px, ${heliY - 24}px) scale(0.95)`,
+            opacity: 0.02,
+          },
+        ],
+        {
+          duration: 1850,
+          easing: "cubic-bezier(0.22, 0.8, 0.2, 1)",
+          fill: "forwards",
+        },
+      );
+
+      await new Promise<void>((resolve) => window.setTimeout(resolve, 1700));
+      overlay.remove();
+    }
+
+    function activateEmergencyMedevac(): void {
+      if (extractionInProgress) return;
+      extractionInProgress = true;
+      combatRoot?.classList.add("combat-extract-lock");
+      {
+        startCompanyAbilityCooldown("emergency_medevac", Date.now());
+      }
+      if (combatTickId != null) {
+        clearTimeout(combatTickId);
+        combatTickId = null;
+      }
+      closeAbilitiesPopup();
+      const missionDetailsPopup = document.getElementById(
+        "combat-mission-details-popup",
+      );
+      if (missionDetailsPopup) missionDetailsPopup.hidden = true;
+      const quitConfirmPopup = document.getElementById(
+        "combat-quit-confirm-popup",
+      );
+      if (quitConfirmPopup) quitConfirmPopup.hidden = true;
+      if (defendTimerEl) defendTimerEl.hidden = true;
+      clearCompanyAbilityTargeting();
+      grenadeTargetingMode = null;
+      medTargetingMode = null;
+      suppressTargetingMode = null;
+      targets.clear();
+      const linesG = document.querySelector("#combat-attack-lines-g");
+      if (linesG) linesG.textContent = "";
+      lastAttackLineSignature = "";
+      renderCompanyAbilityBar(true);
+      const run = async () => {
+        await playEmergencyMedevacSequence();
+        const combatMain = document.querySelector(
+          "#combat-screen .combat-main",
+        ) as HTMLElement | null;
+        if (combatMain) {
+          combatMain.querySelector(".combat-outcome-banner")?.remove();
+          const banner = document.createElement("div");
+          banner.className = "combat-outcome-banner combat-outcome-extracted";
+          banner.textContent = "EXTRACTED";
+          combatMain.appendChild(banner);
+          await new Promise<void>((resolve) => window.setTimeout(resolve, 980));
+          banner.remove();
+        }
+        processQuitMissionOutcome({ extracted: true, showSummary: true });
+      };
+      void run();
     }
 
     function activateEquippedStratagem(): void {
@@ -4640,6 +5269,7 @@ export function eventConfigs() {
     }
 
     function startCompanyAbilityTargeting(abilityId: CompanyAbilityId): void {
+      if (extractionInProgress) return;
       if (!combatStarted) return;
       if (combatWinner) return;
       const usesLeft = companyAbilityUsesLeft.get(abilityId);
@@ -4656,6 +5286,7 @@ export function eventConfigs() {
     }
 
     function handleCompanyAbilityBarActivate(e: Event): void {
+      if (extractionInProgress) return;
       if (!combatStarted) return;
       const btn = (e.target as HTMLElement).closest(
         ".combat-company-ability-btn",
@@ -4663,6 +5294,7 @@ export function eventConfigs() {
       if (!btn || btn.disabled) return;
       const now = Date.now();
       if (now - lastCompanyAbilityActivateAt < 220) return;
+      triggerAbilityTapFeedback(btn);
       const stratagemId = btn.dataset.stratagemItemId;
       if (stratagemId) {
         lastCompanyAbilityActivateAt = now;
@@ -4680,6 +5312,18 @@ export function eventConfigs() {
         activateBattleFervor();
         return;
       }
+      if (abilityId === "trauma_response") {
+        activateTraumaResponse();
+        return;
+      }
+      if (abilityId === "infantry_armor") {
+        activateInfantryArmor();
+        return;
+      }
+      if (abilityId === "emergency_medevac") {
+        activateEmergencyMedevac();
+        return;
+      }
       startCompanyAbilityTargeting(abilityId);
     }
 
@@ -4693,7 +5337,7 @@ export function eventConfigs() {
       if (abilityId === "focused_fire") {
         focusedFireTargetId = target.id;
         focusedFireUntil = now + 8_000;
-        companyAbilityCooldownUntil.set("focused_fire", now + 75_000);
+        startCompanyAbilityCooldown("focused_fire", now);
         for (const p of players) {
           if (p.hp <= 0 || p.downState || isInCover(p, now) || isStunned(p, now))
             continue;
@@ -4707,59 +5351,108 @@ export function eventConfigs() {
         }
         applyFocusedFireTargeting(now);
       } else if (abilityId === "artillery_barrage") {
-        const hit = Math.random() < 0.9;
-        if (hit) {
-          const pct = 0.3 + Math.random() * 0.2;
-          const raw = Math.max(1, Math.ceil(target.maxHp * pct));
-          const damage = computeFinalDamage(raw, target);
-          target.hp = Math.max(0, Math.floor(target.hp - damage));
-          const card = getCombatantCard(target.id);
-          if (card) {
-            spawnCombatPopup(
-              card,
-              "combat-damage-popup combat-grenade-damage-popup",
-              String(damage),
-              1500,
-            );
-            card.classList.add("combat-card-shake");
-            setTimeout(() => card.classList.remove("combat-card-shake"), 350);
-          }
-          if (target.hp <= 0) {
-            target.downState =
-              target.side === "player" &&
-              Math.random() < getIncapacitationChance(target)
-                ? "incapacitated"
-                : "kia";
-            if (target.downState === "kia") target.killedBy = "Artillery";
-            clearCombatantEffectsOnDeath(target);
-          }
-        } else {
-          const card = getCombatantCard(target.id);
-          if (card) spawnCombatPopup(card, "combat-miss-popup", "MISS", 1800);
-        }
+        const aliveEnemyIds = enemies
+          .filter((c) => c.hp > 0 && !c.downState)
+          .map((c) => c.id);
+        void playArtilleryStrikeFX(aliveEnemyIds, 8, 190, "artillery").then(
+          () => {
+            if (extractionInProgress) return;
+            window.setTimeout(() => {
+              const aliveEnemies = enemies.filter((c) => c.hp > 0 && !c.downState);
+              if (aliveEnemies.length <= 0) {
+                updateCombatUI(true);
+                return;
+              }
+              rockEnemyCardsViolently();
+              for (const enemy of aliveEnemies) {
+                // Barrage uses a flat 90% accuracy roll and does not allow evade checks.
+                const hit = Math.random() < 0.9;
+                if (hit) {
+                  const pct = 0.36 + Math.random() * 0.24;
+                  const raw = Math.max(1, Math.ceil(enemy.maxHp * pct));
+                  const damage = computeFinalDamage(raw, enemy);
+                  enemy.hp = Math.max(0, Math.floor(enemy.hp - damage));
+                  const card = getCombatantCard(enemy.id);
+                  if (card) {
+                    spawnCombatPopup(
+                      card,
+                      "combat-damage-popup combat-grenade-damage-popup combat-artillery-damage-popup",
+                      String(damage),
+                      2100,
+                    );
+                  }
+                  if (enemy.hp <= 0) {
+                    enemy.downState =
+                      enemy.side === "player" &&
+                      Math.random() < getIncapacitationChance(enemy)
+                        ? "incapacitated"
+                        : "kia";
+                    if (enemy.downState === "kia") enemy.killedBy = "Artillery";
+                    clearCombatantEffectsOnDeath(enemy);
+                  }
+                } else {
+                  const card = getCombatantCard(enemy.id);
+                  if (card)
+                    spawnCombatPopup(card, "combat-miss-popup", "MISS", 1800);
+                }
+                markCombatantDirty(enemy.id);
+              }
+              updateCombatUI(true);
+            }, 180);
+          },
+        );
         companyAbilityUsesLeft.set(
           "artillery_barrage",
           Math.max(0, (companyAbilityUsesLeft.get("artillery_barrage") ?? 1) - 1),
         );
+        clearCompanyAbilityTargeting();
+        renderCompanyAbilityBar(true);
+        updateCombatUI(true);
+        return;
       } else if (abilityId === "napalm_barrage") {
-        const hit = Math.random() < 0.9;
-        if (hit) {
-          const burnPct = 0.08 + Math.random() * 0.05;
-          addBurnStack(target, now, {
-            damagePerTick: Math.max(1, Math.ceil(target.maxHp * burnPct)),
-            ticks: 3,
-            ignoresMitigation: true,
-          });
-          const card = getCombatantCard(target.id);
-          if (card) spawnCombatPopup(card, "combat-smoke-popup", "Napalm", 1500);
-        } else {
-          const card = getCombatantCard(target.id);
-          if (card) spawnCombatPopup(card, "combat-miss-popup", "MISS", 1800);
-        }
+        const aliveEnemyIds = enemies
+          .filter((c) => c.hp > 0 && !c.downState)
+          .map((c) => c.id);
+        void playArtilleryStrikeFX(aliveEnemyIds, 8, 190, "napalm").then(() => {
+          if (extractionInProgress) return;
+          window.setTimeout(() => {
+            const aliveEnemies = enemies.filter((c) => c.hp > 0 && !c.downState);
+            for (const enemy of aliveEnemies) {
+              // Napalm barrage uses a flat 90% accuracy roll and does not allow evade checks.
+              const hit = Math.random() < 0.9;
+              if (hit) {
+                const burnPct = 0.08 + Math.random() * 0.05;
+                addBurnStack(enemy, now, {
+                  damagePerTick: Math.max(1, Math.ceil(enemy.maxHp * burnPct)),
+                  ticks: 4,
+                  ignoresMitigation: true,
+                });
+                const card = getCombatantCard(enemy.id);
+                if (card)
+                  spawnCombatPopup(
+                    card,
+                    "combat-smoke-popup combat-napalm-popup",
+                    "Napalm",
+                    2100,
+                  );
+              } else {
+                const card = getCombatantCard(enemy.id);
+                if (card)
+                  spawnCombatPopup(card, "combat-miss-popup", "MISS", 1800);
+              }
+              markCombatantDirty(enemy.id);
+            }
+            updateCombatUI(true);
+          }, 180);
+        });
         companyAbilityUsesLeft.set(
           "napalm_barrage",
           Math.max(0, (companyAbilityUsesLeft.get("napalm_barrage") ?? 1) - 1),
         );
+        clearCompanyAbilityTargeting();
+        renderCompanyAbilityBar(true);
+        updateCombatUI(true);
+        return;
       }
 
       markCombatantDirty(target.id);
@@ -4769,6 +5462,7 @@ export function eventConfigs() {
     }
 
     function executeAbilityAction(abilityId: string, soldierId: string): void {
+      if (extractionInProgress) return;
       const ability = getSoldierAbilityById(abilityId);
       if (!ability) return;
       const combatant = players.find((p) => p.id === soldierId);
@@ -4782,6 +5476,7 @@ export function eventConfigs() {
     }
 
     function handleCombatCardClick(e: Event, card: HTMLElement | null): void {
+      if (extractionInProgress) return;
       e.stopPropagation();
       if (companyAbilityTargetingMode) {
         if (
@@ -4955,6 +5650,7 @@ export function eventConfigs() {
         selector: DOM.combat.abilitiesPopup,
         eventType: "pointerdown",
         callback: (e: Event) => {
+          if (extractionInProgress) return;
           const ev = e as PointerEvent;
           if (ev.pointerType === "mouse" && ev.button !== 0) return;
           const t = e.target as HTMLElement;
@@ -4962,6 +5658,7 @@ export function eventConfigs() {
           const medBtn = t.closest(".combat-med-item");
           const abilityBtn = t.closest(".combat-ability-icon-slot");
           if (medBtn && !(medBtn as HTMLButtonElement).disabled) {
+            triggerAbilityTapFeedback(medBtn as HTMLElement);
             e.preventDefault();
             e.stopPropagation();
             const soldierId = (medBtn as HTMLElement).dataset.soldierId;
@@ -4997,6 +5694,7 @@ export function eventConfigs() {
             return;
           }
           if (grenadeBtn && !(grenadeBtn as HTMLButtonElement).disabled) {
+            triggerAbilityTapFeedback(grenadeBtn as HTMLElement);
             e.preventDefault();
             e.stopPropagation();
             const soldierId = (grenadeBtn as HTMLElement).dataset.soldierId;
@@ -5030,6 +5728,7 @@ export function eventConfigs() {
             return;
           }
           if (abilityBtn && !(abilityBtn as HTMLButtonElement).disabled) {
+            triggerAbilityTapFeedback(abilityBtn as HTMLElement);
             e.preventDefault();
             e.stopPropagation();
             const soldierId = (abilityBtn as HTMLElement).dataset.soldierId;
@@ -5044,6 +5743,7 @@ export function eventConfigs() {
         selector: "#combat-company-abilities-bar",
         eventType: "pointerdown",
         callback: (e: Event) => {
+          if (extractionInProgress) return;
           const ev = e as PointerEvent;
           if (ev.pointerType === "mouse" && ev.button !== 0) return;
           handleCompanyAbilityBarActivate(e);
@@ -5053,6 +5753,7 @@ export function eventConfigs() {
         selector: "#combat-company-abilities-bar",
         eventType: "click",
         callback: (e: Event) => {
+          if (extractionInProgress) return;
           handleCompanyAbilityBarActivate(e);
         },
       },
@@ -8374,6 +9075,14 @@ export function eventConfigs() {
       eventType: "click",
       callback: (e: Event) => {
         const node = e.currentTarget as HTMLElement;
+        const tree = document.getElementById("company-talent-tree");
+        if (tree) {
+          tree
+            .querySelectorAll(".company-talent-node-choice-focus")
+            .forEach((el) =>
+              el.classList.remove("company-talent-node-choice-focus")
+            );
+        }
         const abilityId = (node.dataset.abilityId ??
           "") as import("../../constants/company-abilities.ts").CompanyAbilityId;
         if (!abilityId) return;
@@ -8413,6 +9122,9 @@ export function eventConfigs() {
         const owned = node.dataset.owned === "1";
         const selected = node.dataset.selected === "1";
         const selectable = node.dataset.selectable === "1";
+        if (selectable) {
+          node.classList.add("company-talent-node-choice-focus");
+        }
         const kind = (node.dataset.kind ?? "passive").toLowerCase();
         const name = node.dataset.name ?? abilityId;
         const description = node.dataset.description ?? "";
@@ -8421,13 +9133,14 @@ export function eventConfigs() {
           0,
           Math.floor(Number(node.dataset.cooldownSeconds ?? 0)),
         );
+        const cooldownLabel = `CD ${formatCooldownCompact(cooldownSeconds)}`;
 
         titleEl.textContent = name;
         kindEl.textContent = kind === "active" ? "Active" : "Passive";
         kindEl.classList.toggle("company-ability-kind-active", kind === "active");
         kindEl.classList.toggle("company-ability-kind-passive", kind !== "active");
         cooldownEl.hidden = !(kind === "active" && cooldownSeconds > 0);
-        cooldownEl.textContent = `CD ${cooldownSeconds}s`;
+        cooldownEl.textContent = cooldownLabel;
         descEl.innerHTML = formatAbilityTermsInTooltip(description);
         iconEl.src = icon;
         iconEl.alt = `${name} icon`;

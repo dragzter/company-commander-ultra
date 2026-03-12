@@ -107,6 +107,16 @@ export interface Combatant {
   companyCritChanceBuffUntil?: number;
   /** Additive crit chance while company buff is active (e.g. 0.2 = +20%). */
   companyCritChanceBonusPct?: number;
+  /** Timestamp (ms) when company hit chance buff ends. */
+  companyChanceToHitBuffUntil?: number;
+  /** Additive chance-to-hit while company buff is active (e.g. 0.15 = +15%). */
+  companyChanceToHitBonusPct?: number;
+  /** Timestamp (ms) when Infantry Armor mitigation buff ends. */
+  infantryArmorUntil?: number;
+  /** Additive mitigation bonus from Infantry Armor while active (e.g. 0.2 = +20%). */
+  infantryArmorBonusPct?: number;
+  /** Allow additive mitigation to overcap the default mitigation limit while active. */
+  allowMitigationOvercapUntil?: number;
   /** Timestamp (ms) when stratagem toughness buff ends. */
   stratagemToughnessUntil?: number;
   /** Flat toughness bonus applied by stratagem buff. */

@@ -26,6 +26,10 @@ export const TAKE_COVER_ICON = "/images/take_cover.png";
 export const SHIELD_ICON =
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cdefs%3E%3ClinearGradient id='wall' x1='0%25' y1='0%25' x2='0%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%2398a4b7'/%3E%3Cstop offset='100%25' stop-color='%2367768d'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect x='2.5' y='5' width='19' height='14' rx='2' fill='url(%23wall)' stroke='%23d4deed' stroke-width='1.1'/%3E%3Cpath d='M2.8 9.6h18.4M2.8 14.2h18.4M7 5.2v4.2M12 9.6v4.6M17 5.2v4.2M9.5 14.2V19M14.5 14.2V19' stroke='%23e9eef8' stroke-opacity='.92' stroke-width='1'/%3E%3C/svg%3E";
 
+/** Silver shield icon for Infantry Armor status overlay */
+export const SILVER_SHIELD_ICON =
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='metal' x1='0%25' y1='0%25' x2='0%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%23f2f6fb'/%3E%3Cstop offset='55%25' stop-color='%23b8c4d3'/%3E%3Cstop offset='100%25' stop-color='%238895a8'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M32 4l22 8v16c0 16.5-8.7 24.6-22 32-13.3-7.4-22-15.5-22-32V12z' fill='url(%23metal)' stroke='%23e9f0fa' stroke-width='2.6'/%3E%3Cpath d='M32 11v42' stroke='%2377859b' stroke-width='2.1' opacity='.85'/%3E%3Cpath d='M16 20h32M18 30h28M22 40h20' stroke='%23e8eef8' stroke-opacity='.82' stroke-width='1.6'/%3E%3C/svg%3E";
+
 /** Machine gun icon for Suppress ability */
 export const SUPPRESS_ICON =
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23fbbf24' stroke='%23d97706' stroke-width='1.2' d='M4 10h2v8H4zM8 8h2v12H8zM12 6h2v16h-2zM16 8h2v12h-2zM20 10h2v8h-2z'/%3E%3Cpath fill='%238b5a2b' d='M2 12h20v2H2z'/%3E%3C/svg%3E";

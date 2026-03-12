@@ -24,6 +24,7 @@ function talentIconNode(
     selected: boolean;
     selectable: boolean;
     levelUnlocked: boolean;
+    choiceLocked?: boolean;
     side?: "left" | "right" | "center";
   },
 ): string {
@@ -37,9 +38,13 @@ function talentIconNode(
         ? "available"
         : "locked";
 
+  const choiceLockedClass = opts.choiceLocked
+    ? " company-talent-node-choice-locked"
+    : "";
+
   return `<button
     type="button"
-    class="company-talent-node ${stateClass}${sideClass}"
+    class="company-talent-node ${stateClass}${sideClass}${choiceLockedClass}"
     data-ability-id="${abilityId}"
     data-level="${opts.level}"
     data-level-label="Lv ${opts.level}"
@@ -135,12 +140,10 @@ export function abilitiesTemplate(): string {
     companyLevel,
     companyAbilityChoices,
     companyAbilityUnlockedIds,
-    companyAbilityPendingChoiceLevels,
     companyAbilityNotificationText,
   } = usePlayerCompanyStore.getState();
 
   const ownedSet = new Set(companyAbilityUnlockedIds ?? []);
-  const pendingSet = new Set(companyAbilityPendingChoiceLevels ?? []);
   const choices = (companyAbilityChoices ?? {}) as Record<
     number,
     CompanyAbilityId | undefined
@@ -166,13 +169,14 @@ export function abilitiesTemplate(): string {
       });
     } else if (node.choice && node.choice.length >= 2) {
       const selected = choices[node.level];
-      const canChooseHere = levelUnlocked && pendingSet.has(node.level);
+      const canChooseHere = levelUnlocked && !selected;
       nodesHtml = `${talentIconNode(node.choice[0], {
         level: node.level,
         owned: ownedSet.has(node.choice[0]),
         selected: selected === node.choice[0],
         selectable: canChooseHere,
         levelUnlocked,
+        choiceLocked: !!selected && selected !== node.choice[0],
         side: "left",
       })}
       ${talentIconNode(node.choice[1], {
@@ -181,6 +185,7 @@ export function abilitiesTemplate(): string {
         selected: selected === node.choice[1],
         selectable: canChooseHere,
         levelUnlocked,
+        choiceLocked: !!selected && selected !== node.choice[1],
         side: "right",
       })}`;
     } else {
@@ -207,7 +212,7 @@ export function abilitiesTemplate(): string {
           <button id="company-abilities-notify-continue" type="button" class="game-btn game-btn-md game-btn-green home-onboarding-continue helper-onboarding-continue">Continue</button>
         </div>
         <div class="home-onboarding-image-wrap helper-onboarding-image-wrap">
-          <img src="/images/portrait_0.png" alt="Squad soldier" class="home-onboarding-image helper-onboarding-image">
+          <img src="/images/green-portrait/portrait_0.png" alt="Squad soldier" class="home-onboarding-image helper-onboarding-image">
         </div>
       </div>
     </div>`
