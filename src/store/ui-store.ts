@@ -37,6 +37,13 @@ export type RecruitOnboardingStep =
   | "market"
   | "troops_recruit"
   | "troops_confirm";
+export type SuppliesOnboardingStep =
+  | "none"
+  | "market_popup"
+  | "market_focus"
+  | "supplies_focus"
+  | "supplies_popup"
+  | "done";
 export type MissionsViewMode = "menu" | "normal" | "epic" | "career" | "dev";
 export type MissionsResumeStep =
   | "none"
@@ -67,6 +74,7 @@ export type CompanyStore = {
   /** Fallen soldiers for memorial display */
   memorialFallen: MemorialEntry[];
   totalEnemiesKilledAllTime: number;
+  totalGrenadesThrownAllTime: number;
   totalMissionsCompleted: number;
   totalMissionsFailed: number;
   companyLevel: number;
@@ -94,7 +102,9 @@ export type CompanyStore = {
   onboardingReadyRoomIntroPending: boolean;
   onboardingCombatTutorialPending: boolean;
   onboardingMedicRecruitNoticePending: boolean;
+  onboardingMedicRecruitNoticeSeen: boolean;
   onboardingMissionTypesIntroPending: boolean;
+  onboardingSuppliesStep: SuppliesOnboardingStep;
   onboardingRecruitStep: RecruitOnboardingStep;
   onboardingRecruitSoldier: Soldier | null;
   companyAbilityChoices: CompanyAbilityChoiceMap;
@@ -129,7 +139,9 @@ export type CompanyStore = {
   setOnboardingReadyRoomIntroPending: (pending: boolean) => void;
   setOnboardingCombatTutorialPending: (pending: boolean) => void;
   setOnboardingMedicRecruitNoticePending: (pending: boolean) => void;
+  setOnboardingMedicRecruitNoticeSeen: (seen: boolean) => void;
   setOnboardingMissionTypesIntroPending: (pending: boolean) => void;
+  setOnboardingSuppliesStep: (step: SuppliesOnboardingStep) => void;
   setOnboardingRecruitStep: (step: RecruitOnboardingStep) => void;
   setOnboardingRecruitSoldier: (soldier: Soldier | null) => void;
   chooseCompanyAbilityAtLevel: (
@@ -144,6 +156,7 @@ export type CompanyStore = {
   ) => void;
   clearCompanyLevelUpSummary: () => void;
   setEquippedStratagemItemId: (itemId: string | null) => void;
+  recordGrenadeThrows: (count: number) => void;
   consumeEquippedStratagemUse: () => { success: boolean; reason?: string };
   bootstrapNewCompanyIfEmpty: () => void;
   ensureMissionBoard: () => void;
@@ -439,8 +452,26 @@ export const usePlayerCompanyStore = createStore<CompanyStore>()(
             merged.onboardingCombatTutorialPending = false;
           if (typeof merged.onboardingMedicRecruitNoticePending !== "boolean")
             merged.onboardingMedicRecruitNoticePending = false;
+          if (typeof merged.onboardingMedicRecruitNoticeSeen !== "boolean")
+            merged.onboardingMedicRecruitNoticeSeen = false;
           if (typeof merged.onboardingMissionTypesIntroPending !== "boolean")
             merged.onboardingMissionTypesIntroPending = false;
+          if (
+            merged.onboardingSuppliesStep !== "none" &&
+            merged.onboardingSuppliesStep !== "market_popup" &&
+            merged.onboardingSuppliesStep !== "market_focus" &&
+            merged.onboardingSuppliesStep !== "supplies_focus" &&
+            merged.onboardingSuppliesStep !== "supplies_popup" &&
+            merged.onboardingSuppliesStep !== "done"
+          ) {
+            merged.onboardingSuppliesStep = "none";
+          }
+          if (
+            typeof merged.totalGrenadesThrownAllTime !== "number" ||
+            merged.totalGrenadesThrownAllTime < 0
+          ) {
+            merged.totalGrenadesThrownAllTime = 0;
+          }
           if (
             merged.onboardingRecruitStep !== "none" &&
             merged.onboardingRecruitStep !== "home_popup" &&

@@ -316,6 +316,22 @@ export function missionsTemplate(
     </div>
   </div>`
       : "";
+  const suppliesIntroPopup =
+    store.onboardingSuppliesStep === "market_popup"
+      ? `
+  <div id="home-supplies-onboarding-popup" class="home-onboarding-popup helper-onboarding-popup" role="dialog" aria-modal="true">
+    <div class="home-onboarding-dialog helper-onboarding-dialog">
+      <div class="home-onboarding-copy helper-onboarding-copy">
+        <h4 class="home-onboarding-title helper-onboarding-title">Resupply Needed</h4>
+        <p class="home-onboarding-text helper-onboarding-text helper-onboarding-typed-text" id="home-supplies-onboarding-typed-text" data-full-text="Commander, it looks like you need supplies. Head to the Market to replenish your armaments."></p>
+        <button id="home-supplies-onboarding-continue" type="button" class="game-btn game-btn-md game-btn-green home-onboarding-continue helper-onboarding-continue">Continue</button>
+      </div>
+      <div class="home-onboarding-image-wrap helper-onboarding-image-wrap">
+        <img src="/images/green-portrait/portrait_0.png" alt="Squad soldier" class="home-onboarding-image helper-onboarding-image">
+      </div>
+    </div>
+  </div>`
+      : "";
   return `
 <div id="missions-screen" class="missions-root troops-market-root">
   ${companyHeaderPartial("Missions")}
@@ -335,5 +351,6 @@ export function missionsTemplate(
     </div>
   </div>
   ${missionTypesOnboardingPopup}
+  ${suppliesIntroPopup}
 </div>`;
 }

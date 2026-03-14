@@ -9636,59 +9636,54 @@ button.missions-filter-chip {
 }
 
 .combat-card-level-badge-elite {
-	min-width: 30px;
-	height: 28px;
-	padding: 0 6px;
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
+	width: 32px;
+	height: 30px;
+	padding: 0;
+	display: inline-block;
+	border: 0;
 	border-radius: 0;
-	background: radial-gradient(ellipse at center, rgba(26, 29, 34, 0.97) 0%, rgba(8, 9, 11, 0.96) 70%, rgba(0, 0, 0, 0.96) 100%);
-	border: 1px solid rgba(240, 220, 165, 0.7);
-	box-shadow: 0 0 10px rgba(255, 225, 150, 0.32), inset 0 0 8px rgba(255, 255, 255, 0.08);
-	color: #ffe6a3;
-	text-shadow: 0 1px 2px rgba(0, 0, 0, 0.75);
+	background: transparent;
+	box-shadow: none;
 	overflow: hidden;
+	top: -9px;
+	left: -9px;
 }
 
 .combat-card-level-badge-elite::before {
-	content: "☠";
+	content: "";
 	position: absolute;
 	inset: 0;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	font-size: 22px;
-	line-height: 1;
-	color: rgba(255, 235, 185, 0.25);
-	filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.55));
+	background-image: url("/images/elite_skull.png");
+	background-repeat: no-repeat;
+	background-size: contain;
+	background-position: center;
+	filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
 	pointer-events: none;
 }
 
 .combat-card-level-badge-elite {
 	position: absolute;
+	z-index: 2;
+}
+
+.combat-card-level-badge-elite-text {
+	position: absolute;
+	left: 50%;
+	top: 50%;
+	transform: translate(-50%, -82%);
+	font-size: calc(0.84rem + 6px);
+	font-weight: 1000;
+	line-height: 1;
+	color: #ff1f1f;
+	text-shadow: 0 0 2px rgba(255, 255, 255, 0.85),
+		0 0 7px rgba(255, 255, 255, 0.72), 0 2px 3px rgba(0, 0, 0, 0.9);
+	letter-spacing: 0.01em;
+	pointer-events: none;
+	z-index: 3;
 }
 
 .combat-card-elite-mark {
-	position: absolute;
-	top: -7px;
-	right: -7px;
-	width: 18px;
-	height: 18px;
-	border-radius: 50%;
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	background: radial-gradient(circle at 35% 35%, rgba(255, 245, 220, 0.98) 0%, rgba(255, 214, 125, 0.88) 38%, rgba(130, 80, 18, 0.98) 100%);
-	border: 1px solid rgba(255, 226, 160, 0.85);
-	box-shadow: 0 0 10px rgba(255, 208, 105, 0.55), 0 1px 3px rgba(0, 0, 0, 0.5);
-	color: rgba(36, 20, 8, 0.92);
-	font-size: 11px;
-	font-weight: 900;
-	line-height: 1;
-	text-shadow: 0 1px 0 rgba(255, 248, 225, 0.35);
-	pointer-events: none;
-	z-index: 2;
+	display: none;
 }
 
 .combat-card-role-badge {
@@ -14744,6 +14739,21 @@ button.missions-filter-chip {
 
 .combat-onboarding-dialog {
 	width: min(95%, 460px);
+}
+
+.combat-onboarding-popup {
+	background: transparent !important;
+	backdrop-filter: none !important;
+	align-items: flex-start !important;
+	justify-content: center !important;
+	padding: 68px 10px 10px !important;
+	pointer-events: none;
+	z-index: 160;
+}
+
+.combat-onboarding-popup .combat-onboarding-dialog {
+	width: min(95%, 470px);
+	pointer-events: auto;
 }
 
 #combat-players-grid .combat-card.combat-card-onboarding-focus {

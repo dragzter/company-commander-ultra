@@ -86,6 +86,7 @@ import {
   ELITE_STAT_BONUS_PCT,
   getMissionBehaviorForDifficulty,
 } from "../../constants/mission-difficulty-tuning.ts";
+import { ENEMY_HP_MULTIPLIER } from "../../constants/combat.ts";
 
 /**
  * Manager which templates are displayed.  Orchestrates all the things that need to happen when
@@ -589,6 +590,11 @@ function ScreenManager() {
         const isEliteUnit = isEncounterElite || isCareerBossElite;
         c.enemyGrenadePoolIds = grenadePoolIds;
         if (isEliteUnit) {
+          if (!isEpicMission) {
+            // Normal-mode elites ignore the base enemy HP handicap.
+            c.hp = Math.max(1, Math.ceil(c.hp / ENEMY_HP_MULTIPLIER));
+            c.maxHp = c.hp;
+          }
           c.isEpicElite = true;
           if (isManhuntElite) c.isManhuntTarget = true;
           applyStandardEliteBuff(c);

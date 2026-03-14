@@ -3,7 +3,15 @@ import { animateHTMLRemove, animateHTMLReplace } from "../utils/html-utils.ts";
 import { Partial } from "../game/html-templates/partials/partial.ts";
 import { DomEventManager } from "../game/ui/event-handlers/dom-event-manager.ts";
 import { eventConfigs } from "../game/ui/event-configs.ts";
-import { type CompanyStore, GAME_STEPS, type GameStep, type MissionsResumeStep, type MissionsViewMode, type RecruitOnboardingStep } from "./ui-store.ts";
+import {
+  type CompanyStore,
+  GAME_STEPS,
+  type GameStep,
+  type MissionsResumeStep,
+  type MissionsViewMode,
+  type RecruitOnboardingStep,
+  type SuppliesOnboardingStep,
+} from "./ui-store.ts";
 import {
   type Company,
   getMaxCompanySize,
@@ -372,6 +380,7 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
   totalMenLostAllTime: 0,
   memorialFallen: [],
   totalEnemiesKilledAllTime: 0,
+  totalGrenadesThrownAllTime: 0,
   totalMissionsCompleted: 0,
   totalMissionsFailed: 0,
   companyLevel: 0,
@@ -397,7 +406,9 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
   onboardingReadyRoomIntroPending: true,
   onboardingCombatTutorialPending: false,
   onboardingMedicRecruitNoticePending: false,
+  onboardingMedicRecruitNoticeSeen: false,
   onboardingMissionTypesIntroPending: false,
+  onboardingSuppliesStep: "none" as SuppliesOnboardingStep,
   onboardingRecruitStep: "none" as RecruitOnboardingStep,
   onboardingRecruitSoldier: null,
   companyAbilityChoices: defaultCompanyAbilityChoices(),
@@ -504,6 +515,7 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
       return {
         creditBalance: STARTING_CREDITS,
         totalMenInCompany: 0,
+        totalGrenadesThrownAllTime: 0,
         totalInventoryCapacity: DEFAULT_INVENTORY_CAPACITY,
         companyLevel: 1,
         companyExperience: 0,
@@ -521,7 +533,9 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
         onboardingReadyRoomIntroPending: true,
         onboardingCombatTutorialPending: false,
         onboardingMedicRecruitNoticePending: false,
+        onboardingMedicRecruitNoticeSeen: false,
         onboardingMissionTypesIntroPending: false,
+        onboardingSuppliesStep: "none",
         onboardingRecruitStep: "none",
         onboardingRecruitSoldier: null,
         companyAbilityChoices: defaultCompanyAbilityChoices(),
@@ -594,7 +608,9 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
   setOnboardingReadyRoomIntroPending: (pending: boolean) => set({ onboardingReadyRoomIntroPending: !!pending }),
   setOnboardingCombatTutorialPending: (pending: boolean) => set({ onboardingCombatTutorialPending: !!pending }),
   setOnboardingMedicRecruitNoticePending: (pending: boolean) => set({ onboardingMedicRecruitNoticePending: !!pending }),
+  setOnboardingMedicRecruitNoticeSeen: (seen: boolean) => set({ onboardingMedicRecruitNoticeSeen: !!seen }),
   setOnboardingMissionTypesIntroPending: (pending: boolean) => set({ onboardingMissionTypesIntroPending: !!pending }),
+  setOnboardingSuppliesStep: (step: SuppliesOnboardingStep) => set({ onboardingSuppliesStep: step }),
   setOnboardingRecruitStep: (step: RecruitOnboardingStep) => set({ onboardingRecruitStep: step }),
   setOnboardingRecruitSoldier: (soldier: Soldier | null) => set({ onboardingRecruitSoldier: soldier }),
   dismissCompanyAbilityNotification: () => set({ companyAbilityNotificationText: "" }),
@@ -615,6 +631,20 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
       return { companyAbilityCooldowns: existing };
     }),
   clearCompanyLevelUpSummary: () => set({ companyLevelUpSummary: null }),
+  recordGrenadeThrows: (count: number) =>
+    set((state: CompanyStore) => {
+      const add = Math.max(0, Math.floor(Number(count) || 0));
+      if (add <= 0) return {};
+      const total = (state.totalGrenadesThrownAllTime ?? 0) + add;
+      const shouldStart =
+        total >= 4 && (state.onboardingSuppliesStep ?? "none") === "none";
+      return {
+        totalGrenadesThrownAllTime: total,
+        onboardingSuppliesStep: shouldStart
+          ? "market_popup"
+          : state.onboardingSuppliesStep,
+      };
+    }),
   setEquippedStratagemItemId: (itemId: string | null) => {
     const id = itemId?.trim() || null;
     if (!id) {
@@ -971,7 +1001,9 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
         onboardingReadyRoomIntroPending: true,
         onboardingCombatTutorialPending: true,
         onboardingMedicRecruitNoticePending: false,
+        onboardingMedicRecruitNoticeSeen: false,
         onboardingMissionTypesIntroPending: false,
+        onboardingSuppliesStep: "none",
         onboardingRecruitStep: "none",
         onboardingRecruitSoldier: null,
         companyAbilityUnlockedIds: resolvedAbilities.unlocked,
@@ -1600,7 +1632,8 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
       const shouldShowMedicNotice =
         victory &&
         nextCompleted >= 2 &&
-        !s.onboardingMedicRecruitNoticePending;
+        !s.onboardingMedicRecruitNoticePending &&
+        !s.onboardingMedicRecruitNoticeSeen;
       return {
         totalMissionsCompleted: nextCompleted,
         totalMissionsFailed: (s.totalMissionsFailed ?? 0) + (victory ? 0 : 1),

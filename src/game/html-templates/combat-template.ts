@@ -49,8 +49,7 @@ function combatCard(c: Combatant, portraitDir: "player" | "enemy"): string {
 <div class="combat-card designation-${des}${downClass}${epicEliteClass}${manhuntTargetClass}" data-combatant-id="${c.id}" data-side="${c.side}"${enemySlotAttr}>
   <div class="combat-card-inner">
     <div class="combat-card-avatar-wrap">
-      <span class="combat-card-level-badge${eliteLevelBadgeClass}">${lvl}</span>
-      ${isEliteEnemy ? `<span class="combat-card-elite-mark" aria-hidden="true">☠</span>` : ""}
+      <span class="combat-card-level-badge${eliteLevelBadgeClass}">${isEliteEnemy ? `<span class="combat-card-level-badge-elite-text">${lvl}</span>` : lvl}</span>
       <img class="combat-card-avatar" src="${imgSrc}" alt="">
       ${weaponHtml}
       ${rb ? `<span class="combat-card-role-badge">${rb}</span>` : ""}

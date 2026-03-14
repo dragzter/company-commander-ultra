@@ -36,6 +36,10 @@ export const marketTemplate = () => {
   const store = usePlayerCompanyStore.getState();
   const recruitOnboardingMarketOnly = store.onboardingRecruitStep === "market";
   const troopsBtnClass = recruitOnboardingMarketOnly ? " blue mbtn mb-3 onboarding-focus-btn" : "blue mbtn mb-3";
+  const suppliesBtnClass =
+    store.onboardingSuppliesStep === "supplies_focus"
+      ? "blue mbtn mb-3 onboarding-focus-btn"
+      : "blue mbtn mb-3";
   const companyLevel = store.company?.level ?? store.companyLevel ?? 1;
   const stratagemsUnlocked = companyLevel >= 3;
   const stratagemsBtnClass = stratagemsUnlocked
@@ -54,7 +58,7 @@ export const marketTemplate = () => {
 				${recruitOnboardingMarketOnly ? "" : `
 				<button id="${c(market.marketArmorLink)}" class="blue mbtn mb-3">Body Armor</button>
 				<button id="${c(market.marketWeaponsLink)}" class="blue mbtn mb-3">Weapons</button>
-				<button id="${c(market.marketSuppliesLink)}" class="blue mbtn mb-3">Supplies</button>
+				<button id="${c(market.marketSuppliesLink)}" class="${suppliesBtnClass}">Supplies</button>
 				<button id="${c(market.marketStratagemsLink)}" class="${stratagemsBtnClass}" ${stratagemsUnlocked ? "" : "disabled"} title="${stratagemsUnlocked ? "Squad-wide tactical support items" : "Unlocks at company level 3"}">${stratagemsLabel}</button>
 				<button id="${c(market.marketDevCatalogLink)}" class="gray mbtn market-dev-btn" title="Developer: view all weapons and armor">Dev Catalog</button>`}
 			</div>
@@ -584,6 +588,22 @@ export const suppliesMarketTemplate = () => {
     section("Common", commonSupplies, 0, "market-section-common") +
     section("Rare", rareSupplies, commonSupplies.length, "market-section-rare") +
     section("Epic", epicSupplies, commonSupplies.length + rareSupplies.length, "market-section-epic");
+  const suppliesOnboardingPopup =
+    store.onboardingSuppliesStep === "supplies_popup"
+      ? `
+  <div id="supplies-market-onboarding-popup" class="home-onboarding-popup helper-onboarding-popup" role="dialog" aria-modal="true">
+    <div class="home-onboarding-dialog helper-onboarding-dialog">
+      <div class="home-onboarding-copy helper-onboarding-copy">
+        <h4 class="home-onboarding-title helper-onboarding-title">Supply Lines</h4>
+        <p class="home-onboarding-text helper-onboarding-text helper-onboarding-typed-text" id="supplies-market-onboarding-typed-text" data-full-text="This is where you replenish consumables. Supply tiers track your squad’s top soldier level, so as your strongest soldier grows, stronger consumables become available in the market."></p>
+        <button id="supplies-market-onboarding-continue" type="button" class="game-btn game-btn-md game-btn-green home-onboarding-continue helper-onboarding-continue">Continue</button>
+      </div>
+      <div class="home-onboarding-image-wrap helper-onboarding-image-wrap">
+        <img src="/images/green-portrait/portrait_0.png" alt="Squad soldier" class="home-onboarding-image helper-onboarding-image">
+      </div>
+    </div>
+  </div>`
+      : "";
 
   return `
 <div id="supplies-market" class="supplies-market-root troops-market-root">
@@ -625,6 +645,7 @@ export const suppliesMarketTemplate = () => {
     </div>
     ${companyActionsTemplate()}
   </div>
+  ${suppliesOnboardingPopup}
 </div>
 `;
 };

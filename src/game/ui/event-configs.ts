@@ -436,7 +436,8 @@ export function eventConfigs() {
     if (marketBtn) {
       marketBtn.classList.toggle(
         "onboarding-market-focus",
-        st.onboardingRecruitStep === "market",
+        st.onboardingRecruitStep === "market" ||
+          st.onboardingSuppliesStep === "market_focus",
       );
     }
   };
@@ -741,6 +742,10 @@ export function eventConfigs() {
       selector: DOM.company.market,
       eventType: "click",
       callback: () => {
+        const st = usePlayerCompanyStore.getState();
+        if (st.onboardingSuppliesStep === "market_focus") {
+          st.setOnboardingSuppliesStep("supplies_focus");
+        }
         UiManager.selectCompanyHomeButton(DOM.company.market);
         UiManager.renderMarketScreen();
       },
@@ -912,6 +917,7 @@ export function eventConfigs() {
       callback: () => {
         const st = usePlayerCompanyStore.getState();
         st.setOnboardingMedicRecruitNoticePending(false);
+        st.setOnboardingMedicRecruitNoticeSeen(true);
         const popup = s_(DOM.company.onboardingMedicPopup) as HTMLElement | null;
         if (popup) {
           popup.classList.add("home-onboarding-popup-hide");
@@ -929,11 +935,42 @@ export function eventConfigs() {
           return;
         const st = usePlayerCompanyStore.getState();
         st.setOnboardingMedicRecruitNoticePending(false);
+        st.setOnboardingMedicRecruitNoticeSeen(true);
         const popup = e.currentTarget as HTMLElement;
         popup.classList.add("home-onboarding-popup-hide");
         window.setTimeout(() => {
           popup.remove();
         }, 240);
+      },
+    },
+    {
+      selector: DOM.company.onboardingSuppliesIntroContinue,
+      eventType: "click",
+      callback: () => {
+        const st = usePlayerCompanyStore.getState();
+        st.setOnboardingSuppliesStep("market_focus");
+        const popup = s_(
+          DOM.company.onboardingSuppliesIntroPopup,
+        ) as HTMLElement | null;
+        if (popup) {
+          popup.classList.add("home-onboarding-popup-hide");
+          window.setTimeout(() => popup.remove(), 260);
+        }
+        const marketBtn = s_(DOM.company.market) as HTMLElement | null;
+        if (marketBtn) marketBtn.classList.add("onboarding-market-focus");
+      },
+    },
+    {
+      selector: DOM.company.onboardingSuppliesIntroPopup,
+      eventType: "click",
+      callback: (e: Event) => {
+        if ((e.target as HTMLElement).id !== "home-supplies-onboarding-popup")
+          return;
+        const st = usePlayerCompanyStore.getState();
+        st.setOnboardingSuppliesStep("market_focus");
+        const popup = e.currentTarget as HTMLElement;
+        popup.classList.add("home-onboarding-popup-hide");
+        window.setTimeout(() => popup.remove(), 240);
       },
     },
     {
@@ -1080,6 +1117,10 @@ export function eventConfigs() {
       selector: DOM.market.marketSuppliesLink,
       eventType: "click",
       callback: () => {
+        const st = usePlayerCompanyStore.getState();
+        if (st.onboardingSuppliesStep === "supplies_focus") {
+          st.setOnboardingSuppliesStep("supplies_popup");
+        }
         UiManager.renderSuppliesMarketScreen();
       },
     },
@@ -1486,6 +1527,7 @@ export function eventConfigs() {
       | "done";
     let onboardingCombatTutorialStep: OnboardingCombatTutorialStep =
       onboardingCombatTutorialEnabled ? "step_1" : "none";
+    let onboardingCombatTutorialPaused = false;
     const isDefendObjectiveMission =
       missionForCombat?.kind === "defend_objective";
     const missionEncounter = missionForCombat?.encounter;
@@ -1706,7 +1748,7 @@ export function eventConfigs() {
       removeCombatOnboardingPopup();
       const popup = document.createElement("div");
       popup.id = "combat-onboarding-popup";
-      popup.className = "home-onboarding-popup helper-onboarding-popup";
+      popup.className = "combat-onboarding-popup helper-onboarding-popup";
       popup.innerHTML = `
       <div class="home-onboarding-dialog helper-onboarding-dialog combat-onboarding-dialog">
         <div class="home-onboarding-copy helper-onboarding-copy">
@@ -1731,6 +1773,10 @@ export function eventConfigs() {
         players.find((p) => p.hp > 0 && !p.downState) ??
         null;
       if (!alivePlayer) return;
+      const abilitiesPopup = document.getElementById("combat-abilities-popup");
+      const popupVisible =
+        abilitiesPopup?.getAttribute("aria-hidden") !== "true";
+      if (popupVisible && popupCombatantId === alivePlayer.id) return;
       const playerCard = getCombatantCard(alivePlayer.id);
       if (!playerCard) return;
       openAbilitiesPopup(alivePlayer, playerCard);
@@ -2232,7 +2278,8 @@ export function eventConfigs() {
               const cooldownClass =
                 !isKnife && grenadeOnCooldown ? " combat-grenade-cooldown" : "";
               const onboardingGuideClass =
-                onboardingCombatTutorialStep === "await_grenade" &&
+                (onboardingCombatTutorialStep === "step_2" ||
+                  onboardingCombatTutorialStep === "await_grenade") &&
                 c.id === popupCombatantId
                   ? " combat-grenade-onboarding-focus"
                   : "";
@@ -3473,6 +3520,7 @@ export function eventConfigs() {
           thrower.side === "player"
         ) {
           onboardingCombatTutorialStep = "done";
+          onboardingCombatTutorialPaused = false;
           setOnboardingCombatPlayerCardFocus(false);
           usePlayerCompanyStore
             .getState()
@@ -4309,6 +4357,13 @@ export function eventConfigs() {
 
       function tick() {
         if (extractionInProgress) return;
+        if (onboardingCombatTutorialPaused) {
+          updateCombatUI();
+          if (!combatWinner) {
+            combatTickId = window.setTimeout(tick, 50);
+          }
+          return;
+        }
         const now = Date.now();
         if (now >= nextLowHpSampleAt) {
           for (const p of players) {
@@ -5945,6 +6000,14 @@ export function eventConfigs() {
       if (visible) btn.removeAttribute("hidden");
       else btn.setAttribute("hidden", "");
     };
+    const setBeginOverlayVisible = (visible: boolean) => {
+      const beginOverlay = document.getElementById(
+        "combat-begin-overlay",
+      ) as HTMLElement | null;
+      if (!beginOverlay) return;
+      if (visible) beginOverlay.removeAttribute("hidden");
+      else beginOverlay.setAttribute("hidden", "");
+    };
     if (onboardingCombatTutorialEnabled) {
       setOnboardingCombatPlayerCardFocus(false);
     }
@@ -6069,6 +6132,7 @@ export function eventConfigs() {
         eventType: "click",
         callback: (e: Event) => {
           const target = e.target as HTMLElement;
+          if (target.closest("#combat-onboarding-popup")) return;
           if (target.closest("#combat-company-abilities-bar")) return;
           const popup = document.getElementById("combat-abilities-popup");
           if (popup?.contains(target)) return;
@@ -6094,6 +6158,7 @@ export function eventConfigs() {
         eventType: "click",
         callback: (e: Event) => {
           const target = e.target as HTMLElement;
+          if (target.closest("#combat-onboarding-popup")) return;
           if (target.closest("#combat-company-abilities-bar")) return;
           const popup = document.getElementById("combat-abilities-popup");
           if (popup?.getAttribute("aria-hidden") === "true") return;
@@ -6151,9 +6216,14 @@ export function eventConfigs() {
             onboardingCombatTutorialStep !== "done"
           ) {
             if (onboardingCombatTutorialStep === "step_1") {
-              showCombatOnboardingPopup(
-                "Welcome to the battle screen. Tap your soldier's card to view their abilities and equipment.",
-              );
+              startCombatSession();
+              window.setTimeout(() => {
+                if (combatWinner || extractionInProgress) return;
+                onboardingCombatTutorialPaused = true;
+                showCombatOnboardingPopup(
+                  "Welcome to the battle screen. Tap your soldier's card to view their abilities and equipment.",
+                );
+              }, 50);
             }
             return;
           }
@@ -6168,6 +6238,8 @@ export function eventConfigs() {
             "#combat-onboarding-continue",
           );
           if (!target) return;
+          e.preventDefault();
+          e.stopPropagation();
           if (!onboardingCombatTutorialEnabled) {
             removeCombatOnboardingPopup();
             return;
@@ -6176,6 +6248,8 @@ export function eventConfigs() {
             onboardingCombatTutorialStep = "await_soldier_tap";
             removeCombatOnboardingPopup();
             setBeginButtonVisible(false);
+            setBeginOverlayVisible(false);
+            combatRoot?.classList.remove("combat-prestart");
             setOnboardingCombatPlayerCardFocus(true);
             return;
           }
@@ -6184,7 +6258,6 @@ export function eventConfigs() {
             removeCombatOnboardingPopup();
             setOnboardingCombatPlayerCardFocus(false);
             primeOnboardingGrenadeSelection();
-            startCombatSession();
           }
         },
       },
@@ -6375,6 +6448,13 @@ export function eventConfigs() {
           e.stopPropagation();
           if (!isDevTestCombat) {
             const store = usePlayerCompanyStore.getState();
+            const grenadeThrowsThisMission = Array.from(
+              missionStatsBySoldier.values(),
+            ).reduce(
+              (sum, s) => sum + Math.max(0, Math.floor(s.grenadeThrows ?? 0)),
+              0,
+            );
+            store.recordGrenadeThrows(grenadeThrowsThisMission);
             store.syncCombatHpToSoldiers(
               players.map((p) => ({ id: p.id, hp: p.maxHp })),
             );
@@ -8651,6 +8731,34 @@ export function eventConfigs() {
       UiManager.renderSuppliesMarketScreen(),
     ),
     ...marketSellPopupHandlers(() => UiManager.renderSuppliesMarketScreen()),
+    {
+      selector: DOM.company.onboardingSuppliesMarketContinue,
+      eventType: "click",
+      callback: () => {
+        const st = usePlayerCompanyStore.getState();
+        st.setOnboardingSuppliesStep("done");
+        const popup = s_(
+          DOM.company.onboardingSuppliesMarketPopup,
+        ) as HTMLElement | null;
+        if (popup) {
+          popup.classList.add("home-onboarding-popup-hide");
+          window.setTimeout(() => popup.remove(), 260);
+        }
+      },
+    },
+    {
+      selector: DOM.company.onboardingSuppliesMarketPopup,
+      eventType: "click",
+      callback: (e: Event) => {
+        if ((e.target as HTMLElement).id !== "supplies-market-onboarding-popup")
+          return;
+        const st = usePlayerCompanyStore.getState();
+        st.setOnboardingSuppliesStep("done");
+        const popup = e.currentTarget as HTMLElement;
+        popup.classList.add("home-onboarding-popup-hide");
+        window.setTimeout(() => popup.remove(), 240);
+      },
+    },
     {
       selector: DOM.supplies.item,
       eventType: "click",
