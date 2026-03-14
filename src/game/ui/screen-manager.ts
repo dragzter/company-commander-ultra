@@ -78,6 +78,14 @@ import { ThrowableItems } from "../../constants/items/throwable.ts";
 import { getScaledThrowableDamage } from "../../constants/items/throwable-scaling.ts";
 import { Images } from "../../constants/images.ts";
 import type { EarnedTraitAward } from "../../constants/veterancy-traits.ts";
+import {
+  ELITE_ABILITY_USES,
+  ELITE_LEVEL_BONUS_MAX,
+  ELITE_LEVEL_BONUS_MIN,
+  ELITE_NON_ELITE_HP_BONUS_PCT,
+  ELITE_STAT_BONUS_PCT,
+  getMissionBehaviorForDifficulty,
+} from "../../constants/mission-difficulty-tuning.ts";
 
 /**
  * Manager which templates are displayed.  Orchestrates all the things that need to happen when
@@ -461,7 +469,9 @@ function ScreenManager() {
               .encounter
           : undefined;
       const finalEncounter = careerEncounter ?? encounter;
+      const isCareerBossMission = !!normalizedMission?.isCareerBoss;
       const mirroredCareerRoles: Designation[] = isCareerMission
+        && !isCareerBossMission
         ? activeSoldiers.map((s) =>
             s.designation === "medic" || s.designation === "support"
               ? s.designation
@@ -469,16 +479,47 @@ function ScreenManager() {
           )
         : [];
       const enemyCount = isCareerMission
-        ? Math.max(1, mirroredCareerRoles.length)
+        ? (isCareerBossMission
+            ? Math.max(1, finalEncounter?.initialEnemyCount ?? 3)
+            : Math.max(1, mirroredCareerRoles.length))
         : (finalEncounter?.initialEnemyCount ?? normalizedMission?.enemyCount ?? 4);
       const enemyBaseLevel =
         isCareerMission && normalizedMission
           ? Math.max(1, Math.min(999, normalizedMission.careerLevel ?? 1))
           : getEnemyLevelFromActiveSquad(activeSoldiers);
       const isEpicMission = !!(normalizedMission?.isEpic ?? normalizedMission?.rarity === "epic");
+      const behavior = getMissionBehaviorForDifficulty(
+        isEpicMission ? "elite" : "normal",
+        normalizedMission?.difficulty ?? 1,
+      );
+      const grenadePoolIds = [...(behavior.grenadePlan.grenadeIds ?? [])];
+      const applyStandardEliteBuff = (c: ReturnType<typeof createEnemyCombatant>) => {
+        c.hp = Math.max(1, Math.ceil(c.hp * (1 + ELITE_STAT_BONUS_PCT)));
+        c.maxHp = c.hp;
+        c.damageMin = Math.max(1, Math.round(c.damageMin * (1 + ELITE_STAT_BONUS_PCT) * 10) / 10);
+        c.damageMax = Math.max(1, Math.round(c.damageMax * (1 + ELITE_STAT_BONUS_PCT) * 10) / 10);
+        c.chanceToHit = Math.min(0.99, (c.chanceToHit ?? 0.6) * (1 + ELITE_STAT_BONUS_PCT));
+        c.chanceToEvade = Math.min(0.95, (c.chanceToEvade ?? 0.05) * (1 + ELITE_STAT_BONUS_PCT));
+        c.mitigateDamage = Math.min(0.95, (c.mitigateDamage ?? 0) * (1 + ELITE_STAT_BONUS_PCT));
+        c.attackIntervalMs = Math.max(
+          450,
+          Math.floor((c.attackIntervalMs ?? 2000) * (1 - ELITE_STAT_BONUS_PCT)),
+        );
+      };
       const roles: Designation[] = [];
       if (isCareerMission) {
-        roles.push(...mirroredCareerRoles);
+        if (isCareerBossMission) {
+          if (finalEncounter) {
+            for (let i = 0; i < finalEncounter.rolesInitial.rifleman; i++)
+              roles.push("rifleman");
+            for (let i = 0; i < finalEncounter.rolesInitial.support; i++)
+              roles.push("support");
+            for (let i = 0; i < finalEncounter.rolesInitial.medic; i++)
+              roles.push("medic");
+          }
+        } else {
+          roles.push(...mirroredCareerRoles);
+        }
       } else if (finalEncounter) {
         for (let i = 0; i < finalEncounter.rolesInitial.rifleman; i++)
           roles.push("rifleman");
@@ -489,71 +530,133 @@ function ScreenManager() {
       }
       while (roles.length < enemyCount) roles.push("rifleman");
       roles.length = enemyCount;
-      for (let i = roles.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        const t = roles[i];
-        roles[i] = roles[j];
-        roles[j] = t;
+      if (!isCareerBossMission) {
+        for (let i = roles.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          const t = roles[i];
+          roles[i] = roles[j];
+          roles[j] = t;
+        }
       }
       const eliteCount = Math.max(0, finalEncounter?.eliteCount ?? 0);
       const eliteIndices = new Set<number>();
       if (eliteCount > 0) {
-        const idxPool = Array.from({ length: enemyCount }, (_, i) => i);
-        for (let i = 0; i < eliteCount && idxPool.length > 0; i++) {
-          const pickAt = Math.floor(Math.random() * idxPool.length);
-          eliteIndices.add(idxPool[pickAt]);
-          idxPool.splice(pickAt, 1);
+        if (isCareerBossMission) {
+          const medicIndex = roles.findIndex((r) => r === "medic");
+          eliteIndices.add(medicIndex >= 0 ? medicIndex : 0);
+        } else {
+          const idxPool = Array.from({ length: enemyCount }, (_, i) => i);
+          for (let i = 0; i < eliteCount && idxPool.length > 0; i++) {
+            const pickAt = Math.floor(Math.random() * idxPool.length);
+            eliteIndices.add(idxPool[pickAt]);
+            idxPool.splice(pickAt, 1);
+          }
         }
       }
       const ENEMY_SLOT_ORDER = [0, 1, 2, 3, 5, 6, 4, 7];
       enemies = Array.from({ length: enemyCount }, (_, i) => {
         const role = roles[i] ?? "rifleman";
+        const isEncounterElite = eliteIndices.has(i);
         const isManhuntElite =
-          normalizedMission?.kind === "manhunt" && eliteIndices.has(i);
+          normalizedMission?.kind === "manhunt" && isEncounterElite;
+        const isCareerBossElite = isCareerBossMission && eliteIndices.has(i);
+        const levelBonus = isEpicMission
+          ? (isEncounterElite
+              ? ELITE_LEVEL_BONUS_MAX
+              : (Math.random() < 0.5 ? ELITE_LEVEL_BONUS_MIN : ELITE_LEVEL_BONUS_MAX))
+          : 0;
+        const enemySpawnLevel = Math.max(
+          1,
+          Math.min(999, enemyBaseLevel + levelBonus),
+        );
         const c = createEnemyCombatant(
           i,
           enemyCount,
-          enemyBaseLevel,
+          enemySpawnLevel,
           isEpicMission,
           normalizedMission?.kind,
-          isManhuntElite ? i : undefined,
+          undefined,
           undefined,
           {
             designation: role,
-            isManhuntTarget: isManhuntElite,
+            isManhuntTarget: false,
             factionId: normalizedMission?.factionId,
           },
         );
         const isMedic = role === "medic";
         const isSupport = role === "support";
-        c.enemyMedkitUses = isMedic
-          ? (finalEncounter?.medicHealsPerMedic ?? c.enemyMedkitUses ?? 0)
-          : 0;
-        c.enemySuppressUses = isSupport
-          ? (finalEncounter?.supportSuppressUses ?? 0)
-          : 0;
+        const isRifleman = role === "rifleman";
+        const isEliteUnit = isEncounterElite || isCareerBossElite;
+        c.enemyGrenadePoolIds = grenadePoolIds;
+        if (isEliteUnit) {
+          c.isEpicElite = true;
+          if (isManhuntElite) c.isManhuntTarget = true;
+          applyStandardEliteBuff(c);
+          if (isEpicMission) c.level = enemySpawnLevel;
+        }
+        c.enemyMedkitUses = isMedic ? behavior.healsPerMedic : 0;
+        c.enemySuppressUses = isSupport ? behavior.suppressUsesPerSupport : 0;
         c.enemyGrenadeThrowsRemaining = 0;
+        if (behavior.grenadePlan.type === "per_rifleman" && isRifleman) {
+          c.enemyGrenadeThrowsRemaining = Math.max(
+            0,
+            behavior.grenadePlan.throwsPerRifleman,
+          );
+        }
+        if (isEpicMission && !isEliteUnit) {
+          c.hp = Math.max(
+            1,
+            Math.ceil(c.hp * (1 + ELITE_NON_ELITE_HP_BONUS_PCT)),
+          );
+          c.maxHp = c.hp;
+        }
+        if (isCareerBossElite) {
+          c.isCareerBoss = true;
+          c.isEpicElite = true;
+          c.hp = Math.max(1, Math.ceil(c.hp * 3));
+          c.maxHp = c.hp;
+          c.enemyGrenadeThrowsRemaining = Math.max(
+            2,
+            c.enemyGrenadeThrowsRemaining ?? 0,
+          );
+          c.enemyMedkitUses = Math.max(4, c.enemyMedkitUses ?? 0);
+          c.enemyMedkitLevel = Math.max(
+            1,
+            Math.min(999, enemyBaseLevel),
+          );
+        }
+        if (isEpicMission && isEliteUnit) {
+          c.enemyGrenadeThrowsRemaining = Math.max(
+            ELITE_ABILITY_USES.grenades,
+            c.enemyGrenadeThrowsRemaining ?? 0,
+          );
+          if (isMedic) {
+            c.enemyMedkitUses = Math.max(
+              ELITE_ABILITY_USES.heals,
+              c.enemyMedkitUses ?? 0,
+            );
+          }
+          if (isSupport) {
+            c.enemySuppressUses = Math.max(
+              ELITE_ABILITY_USES.suppress,
+              c.enemySuppressUses ?? 0,
+            );
+          }
+        }
         c.enemySlotIndex = ENEMY_SLOT_ORDER[i] ?? i % 8;
         return c;
       });
-      if (finalEncounter && finalEncounter.grenadeThrowers > 0 && enemyCount > 0) {
-        const grenadeCandidates =
-          normalizedMission?.kind === "manhunt"
-            ? enemies.filter((e) => e.isManhuntTarget)
-            : enemies.filter((e) => e.hp > 0 && !e.downState);
-        const pool = grenadeCandidates.length > 0 ? grenadeCandidates : enemies;
-        for (
-          let i = 0;
-            i < Math.min(finalEncounter.grenadeThrowers, pool.length);
-          i++
-        ) {
-          const idx = Math.floor(Math.random() * pool.length);
-          const selected = pool[idx];
+      if (behavior.grenadePlan.type === "team_total") {
+        const riflePool = enemies.filter(
+          (e) => (e.designation ?? "").toLowerCase() === "rifleman",
+        );
+        for (let i = 0; i < behavior.grenadePlan.totalThrows && riflePool.length > 0; i++) {
+          const idx = Math.floor(Math.random() * riflePool.length);
+          const selected = riflePool[idx];
           selected.enemyGrenadeThrowsRemaining = Math.max(
             1,
-            selected.enemyGrenadeThrowsRemaining ?? 0,
+            (selected.enemyGrenadeThrowsRemaining ?? 0) + 1,
           );
-          pool.splice(idx, 1);
         }
       }
     }
@@ -954,9 +1057,7 @@ function ScreenManager() {
 const singleton = ScreenManager();
 
 export { singleton as ScreenManager };
-const DEV_TEST_LEVEL = 999;
-const DEV_TEST_GEAR_LEVEL =
-  999 as import("../../constants/items/types.ts").GearLevel;
+const DEV_TEST_LEVEL_DEFAULT = 999;
 const DEV_TEST_SQUAD: Designation[] = [
   "rifleman",
   "rifleman",
@@ -980,6 +1081,8 @@ function createDevSoldier(
   designation: Designation,
   index: number,
   side: "player" | "enemy",
+  level: number,
+  gearLevel: import("../../constants/items/types.ts").GearLevel,
 ): Soldier {
   const weaponBaseId = getDevWeaponBaseId(designation);
   const armorBaseId = getDevArmorBaseId(designation);
@@ -989,8 +1092,8 @@ function createDevSoldier(
   const armorBase =
     RARE_ARMOR_BASES.find((b) => b.baseId === armorBaseId) ??
     RARE_ARMOR_BASES[0];
-  const weapon = createRareWeapon(weaponBase, DEV_TEST_GEAR_LEVEL);
-  const armor = createRareArmor(armorBase, DEV_TEST_GEAR_LEVEL);
+  const weapon = createRareWeapon(weaponBase, gearLevel);
+  const armor = createRareArmor(armorBase, gearLevel);
   const soldier = SoldierManager.generateSoldierAtLevel(
     20,
     designation,
@@ -998,37 +1101,37 @@ function createDevSoldier(
     weapon as import("../../constants/items/types.ts").BallisticWeapon,
     [],
   );
-  for (let lvl = 21; lvl <= DEV_TEST_LEVEL; lvl++) {
+  for (let lvl = 21; lvl <= level; lvl++) {
     SoldierManager.levelUpSoldier(soldier, lvl);
   }
   SoldierManager.refreshCombatProfile(soldier);
-  soldier.level = DEV_TEST_LEVEL;
+  soldier.level = level;
   soldier.name = `${side === "player" ? "Dev" : "Enemy"} ${designation.charAt(0).toUpperCase() + designation.slice(1)} ${index + 1}`;
   soldier.weapon = {
     ...(soldier.weapon ?? {}),
     ...weapon,
-    level: DEV_TEST_GEAR_LEVEL,
+    level: gearLevel,
   };
   soldier.armor = {
     ...(soldier.armor ?? {}),
     ...armor,
-    level: DEV_TEST_GEAR_LEVEL,
+    level: gearLevel,
   };
   const frag = {
     ...ThrowableItems.common.m3_frag_grenade,
-    level: DEV_TEST_GEAR_LEVEL,
+    level: gearLevel,
     damage: getScaledThrowableDamage(
       ThrowableItems.common.m3_frag_grenade.damage ?? 30,
-      DEV_TEST_LEVEL,
+      level,
     ),
   };
   const smoke = {
     ...ThrowableItems.common.mk18_smoke,
-    level: DEV_TEST_GEAR_LEVEL,
+    level: gearLevel,
   };
   const medkit = {
     ...MedicalItems.common.standard_medkit,
-    level: DEV_TEST_GEAR_LEVEL,
+    level: gearLevel,
   };
   soldier.inventory =
     designation === "medic" ? [medkit, frag, smoke] : [frag, smoke];
@@ -1040,11 +1143,38 @@ function createDevCombatants(mission: Mission): {
   enemies: ReturnType<typeof soldierToCombatant>[];
 } {
   const squadSize = Math.max(1, Math.min(4, mission.forcedSquadSize ?? 4));
+  const playerLevel = Math.max(1, Math.min(999, mission.forcedPlayerLevel ?? DEV_TEST_LEVEL_DEFAULT));
+  const enemyLevelBase = Math.max(1, Math.min(999, mission.forcedEnemyLevel ?? playerLevel));
+  const gearLevel = Math.max(
+    1,
+    Math.min(
+      999,
+      mission.forcedGearLevel ?? playerLevel,
+    ),
+  ) as import("../../constants/items/types.ts").GearLevel;
+  const isElite = !!(mission.isEpic ?? mission.rarity === "epic");
+  const encounter = mission.encounter;
+  const enemyCount = Math.max(1, encounter?.initialEnemyCount ?? squadSize);
+  const roles: Designation[] = [];
+  if (encounter) {
+    for (let i = 0; i < encounter.rolesInitial.rifleman; i++) roles.push("rifleman");
+    for (let i = 0; i < encounter.rolesInitial.support; i++) roles.push("support");
+    for (let i = 0; i < encounter.rolesInitial.medic; i++) roles.push("medic");
+  }
+  while (roles.length < enemyCount) roles.push("rifleman");
+  roles.length = enemyCount;
+
   const playerSoldiers = DEV_TEST_SQUAD.slice(0, squadSize).map((d, i) =>
-    createDevSoldier(d, i, "player"),
+    createDevSoldier(d, i, "player", playerLevel, gearLevel),
   );
-  const enemySoldiers = DEV_TEST_SQUAD.slice(0, squadSize).map((d, i) =>
-    createDevSoldier(d, i, "enemy"),
+  const enemySoldiers = roles.map((d, i) =>
+    createDevSoldier(
+      d,
+      i,
+      "enemy",
+      Math.max(1, Math.min(999, enemyLevelBase + (isElite ? (Math.random() < 0.5 ? 1 : 2) : 0))),
+      gearLevel,
+    ),
   );
   const players = playerSoldiers.map((s) => soldierToCombatant(s));
   const redKeys = Object.keys(Images.red_portrait);
@@ -1063,13 +1193,30 @@ function createDevCombatants(mission: Mission): {
       const medkit = (s.inventory ?? []).find(
         (item) => item.id === "standard_medkit",
       );
-      c.enemyMedkitUses = medkit
+      c.enemyMedkitUses = encounter?.medicHealsPerMedic ?? (medkit
         ? Math.min(2, medkit.uses ?? medkit.quantity ?? 1)
-        : 0;
+        : 0);
       c.enemyMedkitLevel = Math.max(1, Math.min(999, medkit?.level ?? 20));
     } else {
       c.enemyMedkitUses = 0;
       c.enemyMedkitLevel = undefined;
+    }
+    if ((c.designation ?? "").toLowerCase() === "support") {
+      c.enemySuppressUses = encounter?.supportSuppressUses ?? 1;
+    } else {
+      c.enemySuppressUses = 0;
+    }
+    if ((c.designation ?? "").toLowerCase() === "rifleman") {
+      c.enemyGrenadeThrowsRemaining =
+        encounter?.grenadeThrowers != null && encounter.initialEnemyCount > 0
+          ? Math.max(0, Math.ceil(encounter.grenadeThrowers / encounter.initialEnemyCount))
+          : 1;
+    } else {
+      c.enemyGrenadeThrowsRemaining = 0;
+    }
+    if (isElite) {
+      c.hp = Math.max(1, Math.ceil(c.hp * 1.05));
+      c.maxHp = c.hp;
     }
     return c;
   });

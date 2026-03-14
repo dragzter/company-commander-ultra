@@ -86,7 +86,7 @@ export const COMPANY_LEVEL_PROGRESSION: readonly CompanyProgressionEntry[] = [
     armory: { weapon: 6, armor: 6, equipment: 20, total: toArmoryTotal(6, 6, 20) },
     rerollsOnLevelUp: 6,
     abilityNode: { type: "auto", abilityId: "gunnery" },
-    featureGates: { eliteMissions: true, extremeMissions: false },
+    featureGates: { eliteMissions: true, extremeMissions: true },
   },
   {
     level: 4,
@@ -99,7 +99,7 @@ export const COMPANY_LEVEL_PROGRESSION: readonly CompanyProgressionEntry[] = [
     armory: { weapon: 8, armor: 8, equipment: 25, total: toArmoryTotal(8, 8, 25) },
     rerollsOnLevelUp: 6,
     abilityNode: { type: "auto", abilityId: "improved_focused_fire" },
-    featureGates: { eliteMissions: true, extremeMissions: false },
+    featureGates: { eliteMissions: true, extremeMissions: true },
   },
   {
     level: 5,
@@ -115,7 +115,7 @@ export const COMPANY_LEVEL_PROGRESSION: readonly CompanyProgressionEntry[] = [
       type: "choice",
       abilityIds: ["artillery_barrage", "napalm_barrage"],
     },
-    featureGates: { eliteMissions: true, extremeMissions: false },
+    featureGates: { eliteMissions: true, extremeMissions: true },
   },
   {
     level: 6,

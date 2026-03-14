@@ -261,6 +261,8 @@ export type Mission = {
   isCareer?: boolean;
   /** Career ladder level (enemy level and reward level source). */
   careerLevel?: number;
+  /** Every 10th career level: boss encounter variant. */
+  isCareerBoss?: boolean;
   rarity?: MissionRarity;
   encounter?: MissionEncounterConfig;
   rewardItems?: string[];

@@ -85,6 +85,9 @@ export function resolveGrenadeThrow(
   primaryTarget: Combatant,
   grenade: Item,
   allEnemies: Combatant[],
+  options?: {
+    forceHit?: boolean;
+  },
 ): GrenadeThrowResult {
   let baseDamage = grenade.damage ?? 0;
   if (isM3ARepressor(grenade)) {
@@ -104,7 +107,7 @@ export function resolveGrenadeThrow(
         : (primaryTarget.chanceToEvade ?? 0.05))
     : GRENADE_EVADE_CHANCE;
 
-  const rollHit = Math.random() < hitChance;
+  const rollHit = options?.forceHit ? true : Math.random() < hitChance;
   if (!rollHit) {
     return {
       throwerId: thrower.id,

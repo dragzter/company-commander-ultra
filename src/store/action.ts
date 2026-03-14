@@ -395,6 +395,9 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
   onboardingHomeIntroPending: false,
   onboardingFirstMissionPending: false,
   onboardingReadyRoomIntroPending: true,
+  onboardingCombatTutorialPending: false,
+  onboardingMedicRecruitNoticePending: false,
+  onboardingMissionTypesIntroPending: false,
   onboardingRecruitStep: "none" as RecruitOnboardingStep,
   onboardingRecruitSoldier: null,
   companyAbilityChoices: defaultCompanyAbilityChoices(),
@@ -516,6 +519,9 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
         onboardingHomeIntroPending: false,
         onboardingFirstMissionPending: false,
         onboardingReadyRoomIntroPending: true,
+        onboardingCombatTutorialPending: false,
+        onboardingMedicRecruitNoticePending: false,
+        onboardingMissionTypesIntroPending: false,
         onboardingRecruitStep: "none",
         onboardingRecruitSoldier: null,
         companyAbilityChoices: defaultCompanyAbilityChoices(),
@@ -586,6 +592,9 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
   setOnboardingHomeIntroPending: (pending: boolean) => set({ onboardingHomeIntroPending: !!pending }),
   setOnboardingFirstMissionPending: (pending: boolean) => set({ onboardingFirstMissionPending: !!pending }),
   setOnboardingReadyRoomIntroPending: (pending: boolean) => set({ onboardingReadyRoomIntroPending: !!pending }),
+  setOnboardingCombatTutorialPending: (pending: boolean) => set({ onboardingCombatTutorialPending: !!pending }),
+  setOnboardingMedicRecruitNoticePending: (pending: boolean) => set({ onboardingMedicRecruitNoticePending: !!pending }),
+  setOnboardingMissionTypesIntroPending: (pending: boolean) => set({ onboardingMissionTypesIntroPending: !!pending }),
   setOnboardingRecruitStep: (step: RecruitOnboardingStep) => set({ onboardingRecruitStep: step }),
   setOnboardingRecruitSoldier: (soldier: Soldier | null) => set({ onboardingRecruitSoldier: soldier }),
   dismissCompanyAbilityNotification: () => set({ companyAbilityNotificationText: "" }),
@@ -645,16 +654,38 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
   },
   chooseCompanyAbilityAtLevel: (level: number, abilityId: CompanyAbilityId) => {
     const state = get();
-    const node = COMPANY_ABILITY_PROGRESSION.find((n) => n.level === level);
+    const companyLevel = Math.max(
+      1,
+      Math.floor(state.company?.level ?? state.companyLevel ?? 1),
+    );
+    const normalizedLevel = Math.max(1, Math.floor(level || 1));
+    const node = COMPANY_ABILITY_PROGRESSION.find(
+      (n) => n.level === normalizedLevel,
+    );
     if (!node?.choice?.includes(abilityId)) {
       return { success: false, reason: "invalid_choice" };
     }
+    if (normalizedLevel > companyLevel) {
+      return { success: false, reason: "level_locked" };
+    }
+    const currentChoices = state.companyAbilityChoices ?? defaultCompanyAbilityChoices();
+    const existingChoice = currentChoices[normalizedLevel];
+    if (existingChoice) {
+      return { success: false, reason: "already_chosen" };
+    }
+    const currentResolved = syncCompanyAbilityProgress(
+      companyLevel,
+      currentChoices,
+    );
+    if (!currentResolved.pendingChoiceLevels.includes(normalizedLevel)) {
+      return { success: false, reason: "not_pending" };
+    }
     const choices: CompanyAbilityChoiceMap = {
-      ...(state.companyAbilityChoices ?? {}),
-      [level]: abilityId,
+      ...currentChoices,
+      [normalizedLevel]: abilityId,
     };
     const resolved = syncCompanyAbilityProgress(
-      state.company?.level ?? state.companyLevel ?? 1,
+      companyLevel,
       choices,
     );
     const previousUnlocked = new Set(state.companyAbilityUnlockedIds ?? []);
@@ -938,6 +969,9 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
         onboardingHomeIntroPending: true,
         onboardingFirstMissionPending: true,
         onboardingReadyRoomIntroPending: true,
+        onboardingCombatTutorialPending: true,
+        onboardingMedicRecruitNoticePending: false,
+        onboardingMissionTypesIntroPending: false,
         onboardingRecruitStep: "none",
         onboardingRecruitSoldier: null,
         companyAbilityUnlockedIds: resolvedAbilities.unlocked,
@@ -1561,10 +1595,19 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
     missionLevel?: number,
     companyXpGainOverride?: number,
   ): { rewardItems: Item[]; lootItems: Item[] } => {
-    set((s: CompanyStore) => ({
-      totalMissionsCompleted: (s.totalMissionsCompleted ?? 0) + (victory ? 1 : 0),
-      totalMissionsFailed: (s.totalMissionsFailed ?? 0) + (victory ? 0 : 1),
-    }));
+    set((s: CompanyStore) => {
+      const nextCompleted = (s.totalMissionsCompleted ?? 0) + (victory ? 1 : 0);
+      const shouldShowMedicNotice =
+        victory &&
+        nextCompleted >= 2 &&
+        !s.onboardingMedicRecruitNoticePending;
+      return {
+        totalMissionsCompleted: nextCompleted,
+        totalMissionsFailed: (s.totalMissionsFailed ?? 0) + (victory ? 0 : 1),
+        onboardingMedicRecruitNoticePending:
+          shouldShowMedicNotice || s.onboardingMedicRecruitNoticePending,
+      };
+    });
     if (!victory || !mission) return { rewardItems: [], lootItems: [] };
     const credits = mission.creditReward ?? 0;
     set((s: CompanyStore) => ({ creditBalance: s.creditBalance + credits }));
@@ -1604,7 +1647,8 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
       }));
     }
 
-    const rewardIds = mission.rewardItems ?? [];
+    const isOnboardingMission = !!mission?.id?.startsWith("onboarding_");
+    const rewardIds = isOnboardingMission ? [] : (mission.rewardItems ?? []);
     const level = lvl; // Company level for armory caps
     const itemLevel = missionLevel != null ? Math.max(1, Math.min(999, missionLevel)) : level; // Mission level (same derivation as enemy soldiers) for item tiers
     const caps = {
@@ -1658,37 +1702,39 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
       addItemToInventory(copy, false);
     }
 
-    /* Loot rolls: each rolled independently on any successful mission */
-    const tier = Math.max(1, Math.min(999, itemLevel)) as import("../constants/items/types.ts").GearLevel;
-    if (Math.random() < LOOT_EPIC_CHANCE) {
-      const isWeapon = Math.random() < 0.5;
-      const epicArmorIds = getEpicArmorBaseIdsForLevel(itemLevel);
-      const baseId = isWeapon
-        ? pickRandomFrom(EPIC_WEAPON_BASE_IDS)
-        : pickRandomFrom(epicArmorIds);
-      if (baseId) {
-        const drop = isWeapon
-          ? createWeaponByBaseId(baseId, tier)
-          : createArmorByBaseId(baseId, tier);
-        if (drop) addItemToInventory(drop, true);
+    if (!isOnboardingMission) {
+      /* Loot rolls: each rolled independently on any successful mission */
+      const tier = Math.max(1, Math.min(999, itemLevel)) as import("../constants/items/types.ts").GearLevel;
+      if (Math.random() < LOOT_EPIC_CHANCE) {
+        const isWeapon = Math.random() < 0.5;
+        const epicArmorIds = getEpicArmorBaseIdsForLevel(itemLevel);
+        const baseId = isWeapon
+          ? pickRandomFrom(EPIC_WEAPON_BASE_IDS)
+          : pickRandomFrom(epicArmorIds);
+        if (baseId) {
+          const drop = isWeapon
+            ? createWeaponByBaseId(baseId, tier)
+            : createArmorByBaseId(baseId, tier);
+          if (drop) addItemToInventory(drop, true);
+        }
       }
-    }
-    if (Math.random() < LOOT_RARE_CHANCE) {
-      const isWeapon = Math.random() < 0.5;
-      const rareArmorIds = getRareArmorBaseIdsForLevel(itemLevel);
-      const baseId = isWeapon
-        ? pickRandomFrom(RARE_WEAPON_BASE_IDS)
-        : pickRandomFrom(rareArmorIds);
-      if (baseId) {
-        const drop = isWeapon
-          ? createWeaponByBaseId(baseId, tier)
-          : createArmorByBaseId(baseId, tier);
-        if (drop) addItemToInventory(drop, true);
+      if (Math.random() < LOOT_RARE_CHANCE) {
+        const isWeapon = Math.random() < 0.5;
+        const rareArmorIds = getRareArmorBaseIdsForLevel(itemLevel);
+        const baseId = isWeapon
+          ? pickRandomFrom(RARE_WEAPON_BASE_IDS)
+          : pickRandomFrom(rareArmorIds);
+        if (baseId) {
+          const drop = isWeapon
+            ? createWeaponByBaseId(baseId, tier)
+            : createArmorByBaseId(baseId, tier);
+          if (drop) addItemToInventory(drop, true);
+        }
       }
-    }
-    if (Math.random() < LOOT_COMMON_SUPPLY_CHANCE) {
-      const supply = pickRandomCommonSupply();
-      if (supply) addItemToInventory(withMissionItemLevel(supply), true);
+      if (Math.random() < LOOT_COMMON_SUPPLY_CHANCE) {
+        const supply = pickRandomCommonSupply();
+        if (supply) addItemToInventory(withMissionItemLevel(supply), true);
+      }
     }
 
     set((s: CompanyStore) => ({
@@ -1733,14 +1779,18 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
         let base = exp !== rawExp ? { ...s, experience: exp } : s;
         const correctLvl = getLevelFromExperience(exp);
         const storedLvl = base.level ?? 1;
-        if (correctLvl === storedLvl) return base;
+        if (correctLvl === storedLvl) {
+          SoldierManager.refreshCombatProfile(base);
+          return base;
+        }
         let soldier: Soldier = { ...base, level: correctLvl };
         if (correctLvl > storedLvl) {
           for (let i = storedLvl + 1; i <= correctLvl; i++) {
             SoldierManager.levelUpSoldier(soldier, i);
           }
-          SoldierManager.refreshCombatProfile(soldier);
         }
+        // Always refresh on level correction (up or down) to avoid stat drift.
+        SoldierManager.refreshCombatProfile(soldier);
         return soldier;
       });
       return { company: { ...state.company, soldiers: newSoldiers } };

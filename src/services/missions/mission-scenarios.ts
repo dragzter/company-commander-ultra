@@ -4,6 +4,10 @@ import type {
   MissionEnemyRoleMix,
   MissionKind,
 } from "../../constants/missions.ts";
+import {
+  getMissionBehaviorForDifficulty,
+  getMissionCompositionForDifficulty,
+} from "../../constants/mission-difficulty-tuning.ts";
 
 function roleMix(
   rifleman: number,
@@ -52,124 +56,36 @@ export function getStandardMissionEncounter(
   difficulty: number,
 ): MissionEncounterConfig {
   const d = Math.max(1, Math.min(4, Math.floor(difficulty || 1)));
+  const composition = getMissionCompositionForDifficulty(kind, d);
+  const behavior = getMissionBehaviorForDifficulty("normal", d);
   const base: MissionEncounterConfig = {
-    initialEnemyCount: 4,
-    totalEnemyCount: 4,
+    initialEnemyCount: composition.initialEnemyCount,
+    totalEnemyCount: composition.totalEnemyCount,
     maxConcurrentEnemies: 8,
-    reinforceIntervalMs: 0,
-    reinforceSetupMs: 2000,
-    rolesInitial: roleMix(4, 0, 0),
-    rolesReinforcement: roleMix(0, 0, 0),
-    medicHealsPerMedic: d >= 4 ? 5 : d >= 3 ? 4 : d >= 2 ? 2 : 1,
-    supportSuppressUses: d >= 2 ? 1 : 0,
-    eliteCount: 0,
-    grenadeThrowers: 0,
+    reinforceIntervalMs: composition.reinforceIntervalMs,
+    reinforceSetupMs: composition.reinforceSetupMs,
+    rolesInitial: roleMix(
+      composition.rolesInitial.rifleman,
+      composition.rolesInitial.medic,
+      composition.rolesInitial.support,
+    ),
+    rolesReinforcement: roleMix(
+      composition.rolesReinforcement.rifleman,
+      composition.rolesReinforcement.medic,
+      composition.rolesReinforcement.support,
+    ),
+    medicHealsPerMedic: behavior.healsPerMedic,
+    supportSuppressUses: behavior.suppressUsesPerSupport,
+    eliteCount: composition.normalEliteCount,
+    grenadeThrowers:
+      behavior.grenadePlan.type === "team_total"
+        ? Math.max(0, behavior.grenadePlan.totalThrows)
+        : Math.max(
+            0,
+            composition.rolesInitial.rifleman *
+              behavior.grenadePlan.throwsPerRifleman,
+          ),
   };
-
-  if (kind === "skirmish") {
-    if (d === 1) {
-      const includeMedic = Math.random() < 0.5;
-      base.initialEnemyCount = 4;
-      base.totalEnemyCount = 4;
-      base.rolesInitial = includeMedic ? roleMix(3, 1, 0) : roleMix(4, 0, 0);
-      base.medicHealsPerMedic = includeMedic ? 1 : 0;
-      base.supportSuppressUses = 0;
-    } else if (d === 2) {
-      const includeMedic = Math.random() < 0.5;
-      base.initialEnemyCount = 6;
-      base.totalEnemyCount = 6;
-      base.rolesInitial = includeMedic ? roleMix(5, 1, 0) : roleMix(5, 0, 1);
-      base.medicHealsPerMedic = includeMedic ? 2 : 0;
-      base.supportSuppressUses = includeMedic ? 0 : 1;
-      base.grenadeThrowers = 1;
-    } else if (d === 3) {
-      base.initialEnemyCount = 8;
-      base.totalEnemyCount = 10;
-      base.rolesInitial = roleMix(6, 1, 1);
-      base.rolesReinforcement = roleMix(2, 0, 0);
-      base.medicHealsPerMedic = 4;
-      base.supportSuppressUses = 1;
-    } else {
-      base.initialEnemyCount = 8;
-      base.totalEnemyCount = 14;
-      base.rolesInitial = roleMix(5, 1, 2);
-      base.rolesReinforcement = roleMix(6, 0, 0);
-      base.medicHealsPerMedic = 5;
-      base.supportSuppressUses = 1;
-    }
-    return cloneEncounter(base);
-  }
-
-  if (kind === "manhunt") {
-    if (d === 1) {
-      base.initialEnemyCount = 4;
-      base.totalEnemyCount = 4;
-      base.rolesInitial = roleMix(4, 0, 0);
-      base.eliteCount = 1;
-      base.grenadeThrowers = 1;
-      base.medicHealsPerMedic = 0;
-      base.supportSuppressUses = 0;
-    } else if (d === 2) {
-      base.initialEnemyCount = 6;
-      base.totalEnemyCount = 6;
-      base.rolesInitial = roleMix(4, 1, 1);
-      base.eliteCount = 1;
-      base.medicHealsPerMedic = 2;
-      base.supportSuppressUses = 1;
-    } else if (d === 3) {
-      base.initialEnemyCount = 8;
-      base.totalEnemyCount = 8;
-      base.rolesInitial = roleMix(6, 1, 1);
-      base.eliteCount = 2;
-      base.medicHealsPerMedic = 4;
-      base.supportSuppressUses = 1;
-    } else {
-      base.initialEnemyCount = 8;
-      base.totalEnemyCount = 10;
-      base.rolesInitial = roleMix(5, 1, 2);
-      base.rolesReinforcement = roleMix(2, 0, 0);
-      base.eliteCount = 2;
-      base.medicHealsPerMedic = 5;
-      base.supportSuppressUses = 1;
-    }
-    return cloneEncounter(base);
-  }
-
-  if (kind === "defend_objective") {
-    base.reinforceIntervalMs = 30_000;
-    if (d === 1) {
-      base.initialEnemyCount = 4;
-      base.totalEnemyCount = 8;
-      base.rolesInitial = roleMix(4, 0, 0);
-      base.rolesReinforcement = roleMix(4, 0, 0);
-      base.medicHealsPerMedic = 0;
-      base.supportSuppressUses = 0;
-    } else if (d === 2) {
-      const includeMedic = Math.random() < 0.5;
-      base.initialEnemyCount = 6;
-      base.totalEnemyCount = 12;
-      base.rolesInitial = includeMedic ? roleMix(5, 1, 0) : roleMix(5, 0, 1);
-      base.rolesReinforcement = roleMix(6, 0, 0);
-      base.medicHealsPerMedic = includeMedic ? 2 : 0;
-      base.supportSuppressUses = includeMedic ? 0 : 1;
-    } else if (d === 3) {
-      base.initialEnemyCount = 8;
-      base.totalEnemyCount = 16;
-      base.rolesInitial = roleMix(6, 1, 1);
-      base.rolesReinforcement = roleMix(7, 0, 1);
-      base.medicHealsPerMedic = 4;
-      base.supportSuppressUses = 1;
-    } else {
-      base.initialEnemyCount = 8;
-      base.totalEnemyCount = 20;
-      base.rolesInitial = roleMix(6, 1, 1);
-      base.rolesReinforcement = roleMix(10, 1, 1);
-      base.medicHealsPerMedic = 5;
-      base.supportSuppressUses = 1;
-    }
-    return cloneEncounter(base);
-  }
-
   return cloneEncounter(base);
 }
 

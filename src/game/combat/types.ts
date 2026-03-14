@@ -61,6 +61,8 @@ export interface Combatant {
   enemySuppressUses?: number;
   /** Enemy AI: number of grenade throws left this combat. */
   enemyGrenadeThrowsRemaining?: number;
+  /** Enemy AI: allowed grenade ids for this combatant. */
+  enemyGrenadePoolIds?: string[];
   /** Timestamp (ms) when smoke effect ends */
   smokedUntil?: number;
   /** Timestamp (ms) when stun ends */
@@ -125,6 +127,8 @@ export interface Combatant {
   isEpicElite?: boolean;
   /** Manhunt high-value target: no HP handicap, gold frame */
   isManhuntTarget?: boolean;
+  /** Career-mode boss elite unit. */
+  isCareerBoss?: boolean;
   /** Weapon effect for proc checks (fire, blind, stun) */
   weaponEffect?: string;
   /** Enemy formation slot index (0..7) used by defend reinforcements. */

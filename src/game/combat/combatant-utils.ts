@@ -133,8 +133,7 @@ export function createEnemyCombatant(
     factionId?: MissionFactionId;
   },
 ): Combatant {
-  const eliteBonus = isEpicMission ? (Math.random() < 0.5 ? 1 : 2) : 0;
-  const level = Math.max(1, Math.min(999, companyLevel + eliteBonus));
+  const level = Math.max(1, Math.min(999, companyLevel));
   const designation = options?.designation ?? "rifleman";
   const soldier = designation === "support"
     ? SoldierManager.getNewSupportMan(level)
@@ -155,28 +154,23 @@ export function createEnemyCombatant(
     c.enemyMedkitLevel = undefined;
   }
   c.soldierRef = undefined;
-  const isEpicElite = isEpicMission && index === 0;
-  const resolvedManhuntTargetIndex = manhuntTargetIndex ?? 0;
-  const isManhuntTarget = options?.isManhuntTarget || (missionKind === "manhunt" && index === resolvedManhuntTargetIndex);
-  if (isEpicElite) {
-    c.isEpicElite = true;
-  }
+  const isManhuntTarget =
+    !!options?.isManhuntTarget ||
+    (missionKind === "manhunt" &&
+      manhuntTargetIndex != null &&
+      index === manhuntTargetIndex);
   if (isManhuntTarget) {
     c.isManhuntTarget = true;
   }
-  if (isEpicMission || isManhuntTarget) {
-    // Elite missions and manhunt target units keep full base HP.
+  if (isEpicMission) {
+    // Elite missions keep full base HP for all enemy units.
     c.hp = Math.max(1, Math.floor(c.hp));
   } else {
     c.hp = Math.max(1, Math.floor(c.hp * ENEMY_HP_MULTIPLIER));
   }
-  if (isManhuntTarget) {
-    // Manhunt target gets a 10% HP buff from level-derived base HP (round up).
-    c.hp = Math.max(1, Math.ceil(c.hp * 1.1));
-  }
   c.maxHp = c.hp;
-  if (isEpicMission || isManhuntTarget) {
-    // Elite missions and manhunt target: no enemy damage handicap.
+  if (isEpicMission) {
+    // Elite missions: no enemy damage handicap.
     c.damageMin = Math.max(1, round1(c.damageMin ?? 4));
     c.damageMax = Math.max(1, round1(c.damageMax ?? 6));
   } else {

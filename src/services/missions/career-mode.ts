@@ -18,6 +18,10 @@ function clampCareerLevel(level: number): number {
   return Math.max(1, Math.min(999, Math.floor(level || 1)));
 }
 
+function isCareerBossLevel(level: number): boolean {
+  return level > 0 && level % 10 === 0;
+}
+
 export function isCareerUnlocked(
   _company: Company | null | undefined,
   onboardingFirstMissionPending: boolean,
@@ -81,9 +85,12 @@ export function createCareerMission(
   careerLevel: number,
 ): Mission {
   const level = clampCareerLevel(careerLevel);
+  const isBossMission = isCareerBossLevel(level);
   const activeSoldiers = getCareerActiveSoldiers(company);
-  const enemyCount = Math.max(1, activeSoldiers.length);
-  const rolesInitial = getCareerRoleCounts(activeSoldiers);
+  const enemyCount = isBossMission ? 3 : Math.max(1, activeSoldiers.length);
+  const rolesInitial = isBossMission
+    ? { rifleman: 2, medic: 1, support: 0 }
+    : getCareerRoleCounts(activeSoldiers);
   const difficulty = getCareerDifficultyByLevel(level);
   const kind: MissionKind = "skirmish";
   const rarity = "normal";
@@ -104,13 +111,18 @@ export function createCareerMission(
     environmentId,
     battleBackground,
     isCareer: true,
+    isCareerBoss: isBossMission,
     careerLevel: level,
-    name: `Career Mission Lv ${level}`,
+    name: isBossMission
+      ? `Career Boss Lv ${level}`
+      : `Career Mission Lv ${level}`,
     difficulty,
     enemyCount,
     creditReward: rewards.creditReward,
     xpReward: rewards.xpReward,
-    flavorText: "Career Ladder: eliminate all hostile targets.",
+    flavorText: isBossMission
+      ? "Career Boss Mission: eliminate the elite leader and his escort."
+      : "Career Ladder: eliminate all hostile targets.",
     encounter: {
       initialEnemyCount: enemyCount,
       totalEnemyCount: enemyCount,
@@ -119,10 +131,12 @@ export function createCareerMission(
       reinforceSetupMs: 2000,
       rolesInitial,
       rolesReinforcement: { rifleman: 0, medic: 0, support: 0 },
-      medicHealsPerMedic: 2,
-      supportSuppressUses: 1,
-      eliteCount: 0,
-      grenadeThrowers: Math.max(1, Math.floor(enemyCount / 3)),
+      medicHealsPerMedic: isBossMission ? 4 : 2,
+      supportSuppressUses: isBossMission ? 0 : 1,
+      eliteCount: isBossMission ? 1 : 0,
+      grenadeThrowers: isBossMission
+        ? 1
+        : Math.max(1, Math.floor(enemyCount / 3)),
     },
     rewardItems: [],
   };

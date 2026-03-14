@@ -92,12 +92,22 @@ export function getSoldierXpRequiredForLevel(level: number): number {
 
 /** Derive level from total XP (RPG-style: level is calculated from XP). */
 export function getLevelFromExperience(totalXp: number): number {
-  let lvl = 1;
-  for (let i = 2; i <= MAX_SOLDIER_LEVEL; i++) {
-    if (totalXp >= getSoldierXpRequiredForLevel(i)) lvl = i;
-    else break;
+  const xp = Math.max(0, Math.floor(Number(totalXp) || 0));
+  if (xp <= 0) return 1;
+  let lo = 1;
+  let hi = MAX_SOLDIER_LEVEL;
+  let ans = 1;
+  while (lo <= hi) {
+    const mid = Math.floor((lo + hi) / 2);
+    const req = getSoldierXpRequiredForLevel(mid);
+    if (xp >= req) {
+      ans = mid;
+      lo = mid + 1;
+    } else {
+      hi = mid - 1;
+    }
   }
-  return lvl;
+  return ans;
 }
 
 /** Soldier combat XP: base for surviving mission, + per damage dealt, + per damage taken, + per kill, + per ability use. Base reduced, damage/deal increased to favor combat participation. */

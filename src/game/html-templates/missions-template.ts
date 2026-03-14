@@ -295,6 +295,27 @@ export function missionsTemplate(
             : '<p class="missions-mode-helper">Career unlocks after intro mission completion.</p>'
         }
       </div>`;
+  const missionTypesOnboardingPopup =
+    store.onboardingMissionTypesIntroPending
+      ? `
+  <div id="missions-types-onboarding-popup" class="home-onboarding-popup helper-onboarding-popup" role="dialog" aria-modal="true" data-step="0">
+    <div class="home-onboarding-dialog helper-onboarding-dialog">
+      <div class="home-onboarding-copy helper-onboarding-copy">
+        <h4 class="home-onboarding-title helper-onboarding-title">Mission Types Briefing</h4>
+        <div class="missions-types-tutorial-tags" id="missions-types-tutorial-tags">
+          <span class="missions-types-tutorial-tag" data-mission-tag="skirmish">Skirmish</span>
+          <span class="missions-types-tutorial-tag" data-mission-tag="defend">Defend</span>
+          <span class="missions-types-tutorial-tag" data-mission-tag="manhunt">Manhunt</span>
+        </div>
+        <p class="home-onboarding-text helper-onboarding-text helper-onboarding-typed-text" id="missions-types-onboarding-typed-text" data-full-text="Mission control online. Let’s walk through your three core mission types and how each plays."></p>
+        <button id="missions-types-onboarding-continue" type="button" class="game-btn game-btn-md game-btn-green home-onboarding-continue helper-onboarding-continue">Continue</button>
+      </div>
+      <div class="home-onboarding-image-wrap helper-onboarding-image-wrap">
+        <img src="/images/green-portrait/portrait_0.png" alt="Squad soldier" class="home-onboarding-image helper-onboarding-image">
+      </div>
+    </div>
+  </div>`
+      : "";
   return `
 <div id="missions-screen" class="missions-root troops-market-root">
   ${companyHeaderPartial("Missions")}
@@ -313,5 +334,6 @@ export function missionsTemplate(
       <p id="mission-flavor-popup-text" class="mission-flavor-popup-text"></p>
     </div>
   </div>
+  ${missionTypesOnboardingPopup}
 </div>`;
 }

@@ -9635,6 +9635,62 @@ button.missions-filter-chip {
 	line-height: 1.2;
 }
 
+.combat-card-level-badge-elite {
+	min-width: 30px;
+	height: 28px;
+	padding: 0 6px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 0;
+	background: radial-gradient(ellipse at center, rgba(26, 29, 34, 0.97) 0%, rgba(8, 9, 11, 0.96) 70%, rgba(0, 0, 0, 0.96) 100%);
+	border: 1px solid rgba(240, 220, 165, 0.7);
+	box-shadow: 0 0 10px rgba(255, 225, 150, 0.32), inset 0 0 8px rgba(255, 255, 255, 0.08);
+	color: #ffe6a3;
+	text-shadow: 0 1px 2px rgba(0, 0, 0, 0.75);
+	overflow: hidden;
+}
+
+.combat-card-level-badge-elite::before {
+	content: "☠";
+	position: absolute;
+	inset: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 22px;
+	line-height: 1;
+	color: rgba(255, 235, 185, 0.25);
+	filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.55));
+	pointer-events: none;
+}
+
+.combat-card-level-badge-elite {
+	position: absolute;
+}
+
+.combat-card-elite-mark {
+	position: absolute;
+	top: -7px;
+	right: -7px;
+	width: 18px;
+	height: 18px;
+	border-radius: 50%;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	background: radial-gradient(circle at 35% 35%, rgba(255, 245, 220, 0.98) 0%, rgba(255, 214, 125, 0.88) 38%, rgba(130, 80, 18, 0.98) 100%);
+	border: 1px solid rgba(255, 226, 160, 0.85);
+	box-shadow: 0 0 10px rgba(255, 208, 105, 0.55), 0 1px 3px rgba(0, 0, 0, 0.5);
+	color: rgba(36, 20, 8, 0.92);
+	font-size: 11px;
+	font-weight: 900;
+	line-height: 1;
+	text-shadow: 0 1px 0 rgba(255, 248, 225, 0.35);
+	pointer-events: none;
+	z-index: 2;
+}
+
 .combat-card-role-badge {
 	position: absolute;
 	bottom: -2px;
@@ -14644,6 +14700,86 @@ button.missions-filter-chip {
 	box-shadow: 0 0 8px rgba(114, 240, 170, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.12);
 	vertical-align: middle;
 	white-space: nowrap;
+}
+
+.missions-types-tutorial-tags {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	margin: 2px 0 4px;
+}
+
+.missions-types-tutorial-tag {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: 3px 9px;
+	border: 1px solid rgba(150, 180, 205, 0.5);
+	border-radius: 5px;
+	font-size: 0.68rem;
+	font-weight: 800;
+	letter-spacing: 0.05em;
+	text-transform: uppercase;
+	color: rgba(190, 216, 236, 0.84);
+	background: linear-gradient(
+		180deg,
+		rgba(28, 46, 62, 0.7) 0%,
+		rgba(18, 30, 44, 0.75) 100%
+	);
+	transition: border-color 120ms ease, color 120ms ease, box-shadow 120ms ease,
+		background 120ms ease;
+}
+
+.missions-types-tutorial-tag.is-active {
+	border-color: rgba(255, 214, 132, 0.94);
+	color: #fff1cf;
+	background: linear-gradient(
+		180deg,
+		rgba(128, 88, 28, 0.86) 0%,
+		rgba(88, 56, 14, 0.9) 100%
+	);
+	box-shadow: 0 0 10px rgba(255, 182, 78, 0.36),
+		inset 0 1px 0 rgba(255, 243, 214, 0.18);
+}
+
+.combat-onboarding-dialog {
+	width: min(95%, 460px);
+}
+
+#combat-players-grid .combat-card.combat-card-onboarding-focus {
+	border-color: rgba(110, 220, 255, 0.95) !important;
+	box-shadow: 0 0 0 2px rgba(90, 195, 255, 0.46),
+	0 0 18px rgba(90, 195, 255, 0.72),
+	0 0 28px rgba(90, 195, 255, 0.34);
+	animation: combat-onboarding-card-pulse 0.78s ease-in-out infinite;
+}
+
+.combat-grenade-item.combat-grenade-onboarding-focus {
+	border-color: rgba(255, 205, 120, 0.98) !important;
+	box-shadow: 0 0 0 2px rgba(255, 172, 74, 0.48),
+	0 0 16px rgba(255, 170, 60, 0.78),
+	0 0 26px rgba(255, 170, 60, 0.38);
+	animation: combat-onboarding-grenade-pulse 0.74s ease-in-out infinite;
+}
+
+@keyframes combat-onboarding-card-pulse {
+	0%, 100% {
+		filter: brightness(1);
+		transform: translateY(0);
+	}
+	50% {
+		filter: brightness(1.16);
+		transform: translateY(-1px);
+	}
+}
+
+@keyframes combat-onboarding-grenade-pulse {
+	0%, 100% {
+		filter: brightness(1);
+	}
+	50% {
+		filter: brightness(1.2);
+	}
 }
 
 .company-action-btn.onboarding-mission-focus {

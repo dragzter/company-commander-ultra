@@ -92,6 +92,9 @@ export type CompanyStore = {
   onboardingHomeIntroPending: boolean;
   onboardingFirstMissionPending: boolean;
   onboardingReadyRoomIntroPending: boolean;
+  onboardingCombatTutorialPending: boolean;
+  onboardingMedicRecruitNoticePending: boolean;
+  onboardingMissionTypesIntroPending: boolean;
   onboardingRecruitStep: RecruitOnboardingStep;
   onboardingRecruitSoldier: Soldier | null;
   companyAbilityChoices: CompanyAbilityChoiceMap;
@@ -124,6 +127,9 @@ export type CompanyStore = {
   setOnboardingHomeIntroPending: (pending: boolean) => void;
   setOnboardingFirstMissionPending: (pending: boolean) => void;
   setOnboardingReadyRoomIntroPending: (pending: boolean) => void;
+  setOnboardingCombatTutorialPending: (pending: boolean) => void;
+  setOnboardingMedicRecruitNoticePending: (pending: boolean) => void;
+  setOnboardingMissionTypesIntroPending: (pending: boolean) => void;
   setOnboardingRecruitStep: (step: RecruitOnboardingStep) => void;
   setOnboardingRecruitSoldier: (soldier: Soldier | null) => void;
   chooseCompanyAbilityAtLevel: (
@@ -429,6 +435,12 @@ export const usePlayerCompanyStore = createStore<CompanyStore>()(
             merged.onboardingFirstMissionPending = false;
           if (typeof merged.onboardingReadyRoomIntroPending !== "boolean")
             merged.onboardingReadyRoomIntroPending = true;
+          if (typeof merged.onboardingCombatTutorialPending !== "boolean")
+            merged.onboardingCombatTutorialPending = false;
+          if (typeof merged.onboardingMedicRecruitNoticePending !== "boolean")
+            merged.onboardingMedicRecruitNoticePending = false;
+          if (typeof merged.onboardingMissionTypesIntroPending !== "boolean")
+            merged.onboardingMissionTypesIntroPending = false;
           if (
             merged.onboardingRecruitStep !== "none" &&
             merged.onboardingRecruitStep !== "home_popup" &&

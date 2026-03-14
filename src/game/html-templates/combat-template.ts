@@ -37,6 +37,11 @@ function combatCard(c: Combatant, portraitDir: "player" | "enemy"): string {
   const des = (c.designation ?? "rifleman").toLowerCase();
   const epicEliteClass = c.isEpicElite ? " combat-card-epic-elite" : "";
   const manhuntTargetClass = c.isManhuntTarget ? " combat-card-manhunt-target" : "";
+  const isEliteEnemy =
+    c.side === "enemy" && !!(c.isEpicElite || c.isManhuntTarget || c.isCareerBoss);
+  const eliteLevelBadgeClass = isEliteEnemy
+    ? " combat-card-level-badge-elite"
+    : "";
   const enemySlotAttr = c.side === "enemy" && c.enemySlotIndex != null
     ? ` data-enemy-slot="${c.enemySlotIndex}"`
     : "";
@@ -44,7 +49,8 @@ function combatCard(c: Combatant, portraitDir: "player" | "enemy"): string {
 <div class="combat-card designation-${des}${downClass}${epicEliteClass}${manhuntTargetClass}" data-combatant-id="${c.id}" data-side="${c.side}"${enemySlotAttr}>
   <div class="combat-card-inner">
     <div class="combat-card-avatar-wrap">
-      <span class="combat-card-level-badge">${lvl}</span>
+      <span class="combat-card-level-badge${eliteLevelBadgeClass}">${lvl}</span>
+      ${isEliteEnemy ? `<span class="combat-card-elite-mark" aria-hidden="true">☠</span>` : ""}
       <img class="combat-card-avatar" src="${imgSrc}" alt="">
       ${weaponHtml}
       ${rb ? `<span class="combat-card-role-badge">${rb}</span>` : ""}

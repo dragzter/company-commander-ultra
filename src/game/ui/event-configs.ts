@@ -91,6 +91,7 @@ import {
   buildCombatSummaryData,
 } from "../html-templates/combat-summary-template.ts";
 import { ThrowableItems } from "../../constants/items/throwable.ts";
+import { getScaledThrowableDamage } from "../../constants/items/throwable-scaling.ts";
 import {
   getMedKitHealValues,
   getMedicAwarenessHealBonusPct,
@@ -121,6 +122,7 @@ import {
   getCompanyPassiveEffects,
   type CompanyAbilityId,
 } from "../../constants/company-abilities.ts";
+import { getMissionBehaviorForDifficulty } from "../../constants/mission-difficulty-tuning.ts";
 
 /**
  * Contains definitions for the events of all html templates.
@@ -367,23 +369,18 @@ export function eventConfigs() {
   }
 
   const initHelperDialogTypewriter = () => {
-    const textEls = Array.from(
-      document.querySelectorAll(
-        ".helper-onboarding-typed-text[data-full-text]",
-      ),
-    ) as HTMLElement[];
-    for (const textEl of textEls) {
-      const fullText = textEl.dataset.fullText ?? "";
-      if (fullText.length === 0) continue;
-      if (textEl.dataset.typed === "true") continue;
-
+    const runTypewriter = (
+      textEl: HTMLElement,
+      fullText: string,
+      durationMs = 1500,
+    ) => {
+      if (!fullText) return;
       textEl.dataset.typed = "true";
       textEl.textContent = fullText;
       const reserveHeight = Math.ceil(textEl.getBoundingClientRect().height);
       if (reserveHeight > 0) textEl.style.minHeight = `${reserveHeight}px`;
       textEl.textContent = "";
       textEl.classList.add("helper-onboarding-text-typing");
-      const durationMs = 1500;
       const start = performance.now();
 
       const renderTyped = (typedText: string) => {
@@ -411,6 +408,18 @@ export function eventConfigs() {
       };
 
       window.requestAnimationFrame(tick);
+    };
+
+    const textEls = Array.from(
+      document.querySelectorAll(
+        ".helper-onboarding-typed-text[data-full-text]",
+      ),
+    ) as HTMLElement[];
+    for (const textEl of textEls) {
+      const fullText = textEl.dataset.fullText ?? "";
+      if (fullText.length === 0) continue;
+      if (textEl.dataset.typed === "true") continue;
+      runTypewriter(textEl, fullText, 1500);
     }
   };
 
@@ -898,6 +907,36 @@ export function eventConfigs() {
       },
     },
     {
+      selector: DOM.company.onboardingMedicContinue,
+      eventType: "click",
+      callback: () => {
+        const st = usePlayerCompanyStore.getState();
+        st.setOnboardingMedicRecruitNoticePending(false);
+        const popup = s_(DOM.company.onboardingMedicPopup) as HTMLElement | null;
+        if (popup) {
+          popup.classList.add("home-onboarding-popup-hide");
+          window.setTimeout(() => {
+            popup.remove();
+          }, 260);
+        }
+      },
+    },
+    {
+      selector: DOM.company.onboardingMedicPopup,
+      eventType: "click",
+      callback: (e: Event) => {
+        if ((e.target as HTMLElement).id !== "home-medic-onboarding-popup")
+          return;
+        const st = usePlayerCompanyStore.getState();
+        st.setOnboardingMedicRecruitNoticePending(false);
+        const popup = e.currentTarget as HTMLElement;
+        popup.classList.add("home-onboarding-popup-hide");
+        window.setTimeout(() => {
+          popup.remove();
+        }, 240);
+      },
+    },
+    {
       selector: DOM.company.companyAbilityContinue,
       eventType: "click",
       callback: () => {
@@ -1064,6 +1103,101 @@ export function eventConfigs() {
   ];
 
   const missionsScreenEventConfig: HandlerInitConfig[] = [
+    {
+      selector: DOM.company.onboardingMissionTypesContinue,
+      eventType: "click",
+      callback: () => {
+        const popup = s_(DOM.company.onboardingMissionTypesPopup) as
+          | HTMLElement
+          | null;
+        if (!popup) return;
+        const textEl = popup.querySelector(
+          "#missions-types-onboarding-typed-text",
+        ) as HTMLElement | null;
+        const tagsWrap = popup.querySelector(
+          "#missions-types-tutorial-tags",
+        ) as HTMLElement | null;
+        const step = Number(popup.dataset.step ?? "0") || 0;
+        const steps = [
+          {
+            text: "Mission control online. Let’s walk through your three core mission types and how each plays.",
+            tag: "",
+          },
+          {
+            text: "Skirmish: eliminate all hostile targets. Straight firefights with role-based pressure and occasional reinforcements at higher difficulty.",
+            tag: "skirmish",
+          },
+          {
+            text: "Defend: hold position while enemy waves reinforce over time. You win by surviving the timer or exhausting the enemy budget.",
+            tag: "defend",
+          },
+          {
+            text: "Manhunt: hunt down elite targets protected by a squad. Expect harder priority enemies and focused takedown pressure.",
+            tag: "manhunt",
+          },
+        ] as const;
+
+        const setActiveTag = (tagId: string) => {
+          if (!tagsWrap) return;
+          tagsWrap
+            .querySelectorAll("[data-mission-tag]")
+            .forEach((el) => {
+              const isActive =
+                (el as HTMLElement).dataset.missionTag === tagId && !!tagId;
+              el.classList.toggle("is-active", isActive);
+            });
+        };
+        const runTypewriter = (el: HTMLElement, fullText: string) => {
+          el.dataset.fullText = fullText;
+          delete el.dataset.typed;
+          el.textContent = fullText;
+          const reserveHeight = Math.ceil(el.getBoundingClientRect().height);
+          if (reserveHeight > 0) el.style.minHeight = `${reserveHeight}px`;
+          el.textContent = "";
+          el.classList.add("helper-onboarding-text-typing");
+          const durationMs = 1500;
+          const start = performance.now();
+          const renderTyped = (typedText: string) => {
+            el.innerHTML = "";
+            const typedSpan = document.createElement("span");
+            typedSpan.textContent = typedText;
+            el.appendChild(typedSpan);
+            const caret = document.createElement("span");
+            caret.className = "helper-onboarding-caret";
+            caret.setAttribute("aria-hidden", "true");
+            el.appendChild(caret);
+          };
+          const tick = (now: number) => {
+            const elapsed = Math.max(0, now - start);
+            const progress = Math.min(1, elapsed / durationMs);
+            const count = Math.max(1, Math.floor(fullText.length * progress));
+            renderTyped(fullText.slice(0, count));
+            if (progress < 1) window.requestAnimationFrame(tick);
+            else {
+              el.dataset.typed = "true";
+              el.textContent = fullText;
+              el.classList.remove("helper-onboarding-text-typing");
+            }
+          };
+          window.requestAnimationFrame(tick);
+        };
+
+        const nextStep = Math.min(step + 1, steps.length - 1);
+        if (step >= steps.length - 1) {
+          const st = usePlayerCompanyStore.getState();
+          st.setOnboardingMissionTypesIntroPending(false);
+          popup.classList.add("home-onboarding-popup-hide");
+          window.setTimeout(() => popup.remove(), 260);
+          return;
+        }
+
+        popup.dataset.step = String(nextStep);
+        if (textEl) {
+          runTypewriter(textEl, steps[nextStep].text);
+        }
+        setActiveTag(steps[nextStep].tag);
+      },
+    },
     {
       selector: DOM.missions.filterChipBtn,
       eventType: "click",
@@ -1248,6 +1382,13 @@ export function eventConfigs() {
         if (popup) popup.setAttribute("hidden", "");
       },
     },
+    {
+      selector: DOM.company.onboardingMissionTypesPopup,
+      eventType: "click",
+      callback: (e: Event) => {
+        if ((e.target as HTMLElement).id !== "missions-types-onboarding-popup") return;
+      },
+    },
   ];
 
   const careerScreenEventConfig: HandlerInitConfig[] = [
@@ -1331,6 +1472,20 @@ export function eventConfigs() {
       }
     }
     const isDevTestCombat = Boolean(missionForCombat?.isDevTest);
+    const onboardingCombatTutorialMission =
+      missionForCombat?.id === "onboarding_skirmish_1";
+    const onboardingCombatTutorialEnabled =
+      onboardingCombatTutorialMission &&
+      !!usePlayerCompanyStore.getState().onboardingCombatTutorialPending;
+    type OnboardingCombatTutorialStep =
+      | "none"
+      | "step_1"
+      | "await_soldier_tap"
+      | "step_2"
+      | "await_grenade"
+      | "done";
+    let onboardingCombatTutorialStep: OnboardingCombatTutorialStep =
+      onboardingCombatTutorialEnabled ? "step_1" : "none";
     const isDefendObjectiveMission =
       missionForCombat?.kind === "defend_objective";
     const missionEncounter = missionForCombat?.encounter;
@@ -1357,11 +1512,14 @@ export function eventConfigs() {
     const DEFEND_DEATH_NOTICE_MS = 1_000;
     usePlayerCompanyStore.getState().syncCompanyAbilityState();
     const storeStateAtCombatStart = usePlayerCompanyStore.getState();
-    const companyAbilityOwned = new Set(
-      storeStateAtCombatStart.companyAbilityUnlockedIds ?? [],
-    );
-    const persistentCompanyAbilityCooldowns =
-      storeStateAtCombatStart.companyAbilityCooldowns ?? {};
+    const companyAbilityOwned = isDevTestCombat
+      ? new Set(
+          (Object.keys(COMPANY_ABILITY_DEFS) as CompanyAbilityId[]),
+        )
+      : new Set(storeStateAtCombatStart.companyAbilityUnlockedIds ?? []);
+    const persistentCompanyAbilityCooldowns = isDevTestCombat
+      ? {}
+      : (storeStateAtCombatStart.companyAbilityCooldowns ?? {});
     const equippedStratagemId = storeStateAtCombatStart.equippedStratagemItemId ?? null;
     const equippedStratagemItem = equippedStratagemId
       ? (storeStateAtCombatStart.company?.inventory ?? []).find(
@@ -1530,6 +1688,54 @@ export function eventConfigs() {
       );
     }
 
+    function setOnboardingCombatPlayerCardFocus(enabled: boolean): void {
+      document
+        .querySelectorAll("#combat-players-grid .combat-card")
+        .forEach((card) =>
+          card.classList.toggle("combat-card-onboarding-focus", enabled),
+        );
+    }
+
+    function removeCombatOnboardingPopup(): void {
+      const existing = document.getElementById("combat-onboarding-popup");
+      if (existing) existing.remove();
+    }
+
+    function showCombatOnboardingPopup(text: string): void {
+      if (!combatRoot) return;
+      removeCombatOnboardingPopup();
+      const popup = document.createElement("div");
+      popup.id = "combat-onboarding-popup";
+      popup.className = "home-onboarding-popup helper-onboarding-popup";
+      popup.innerHTML = `
+      <div class="home-onboarding-dialog helper-onboarding-dialog combat-onboarding-dialog">
+        <div class="home-onboarding-copy helper-onboarding-copy">
+          <h4 class="home-onboarding-title helper-onboarding-title">Combat Briefing</h4>
+          <p class="home-onboarding-text helper-onboarding-text">${text}</p>
+          <button id="combat-onboarding-continue" type="button" class="game-btn game-btn-md game-btn-green home-onboarding-continue helper-onboarding-continue">Continue</button>
+        </div>
+        <div class="home-onboarding-image-wrap helper-onboarding-image-wrap">
+          <img src="/images/green-portrait/portrait_0.png" alt="Squad soldier" class="home-onboarding-image helper-onboarding-image">
+        </div>
+      </div>`;
+      combatRoot.appendChild(popup);
+    }
+
+    function primeOnboardingGrenadeSelection(): void {
+      const alivePlayer =
+        (popupCombatantId
+          ? players.find(
+              (p) => p.id === popupCombatantId && p.hp > 0 && !p.downState,
+            )
+          : null) ??
+        players.find((p) => p.hp > 0 && !p.downState) ??
+        null;
+      if (!alivePlayer) return;
+      const playerCard = getCombatantCard(alivePlayer.id);
+      if (!playerCard) return;
+      openAbilitiesPopup(alivePlayer, playerCard);
+    }
+
     const companyCombatAbilities = getCompanyActiveAbilities(companyAbilityOwned)
       .map((def) => def.id);
 
@@ -1560,6 +1766,7 @@ export function eventConfigs() {
       untilMs: number,
     ): void {
       companyAbilityCooldownUntil.set(abilityId, untilMs);
+      if (isDevTestCombat) return;
       usePlayerCompanyStore
         .getState()
         .setCompanyAbilityCooldownUntil(abilityId, untilMs);
@@ -2024,11 +2231,16 @@ export function eventConfigs() {
                 !canUse || (!isKnife && grenadeOnCooldown);
               const cooldownClass =
                 !isKnife && grenadeOnCooldown ? " combat-grenade-cooldown" : "";
+              const onboardingGuideClass =
+                onboardingCombatTutorialStep === "await_grenade" &&
+                c.id === popupCombatantId
+                  ? " combat-grenade-onboarding-focus"
+                  : "";
               const timerHtml =
                 !isKnife && grenadeOnCooldown
                   ? `<span class="combat-grenade-cooldown-timer">${grenadeRemainingSec}</span>`
                   : "";
-              return `<button type="button" class="combat-grenade-item${btnRarity}${cooldownClass}" data-inventory-index="${g.inventoryIndex}" data-soldier-id="${c.id}" title="${g.item.name}" aria-label="${g.item.name}" ${grenadeDisabled ? "disabled" : ""}>
+              return `<button type="button" class="combat-grenade-item${btnRarity}${cooldownClass}${onboardingGuideClass}" data-inventory-index="${g.inventoryIndex}" data-soldier-id="${c.id}" title="${g.item.name}" aria-label="${g.item.name}" ${grenadeDisabled ? "disabled" : ""}>
             <div class="combat-grenade-icon-wrap item-icon-wrap">
               <img class="combat-grenade-icon" src="${iconUrl}" alt="" width="48" height="48">
               ${renderItemLevelBadge(g.item)}
@@ -3082,6 +3294,12 @@ export function eventConfigs() {
             return boosted;
           })(),
           aliveTargetPool,
+          {
+            forceHit:
+              onboardingCombatTutorialEnabled &&
+              onboardingCombatTutorialStep === "await_grenade" &&
+              thrower.side === "player",
+          },
         );
         const impactTargetCard = getCombatantCard(result.primary.targetId);
         const isThrowingKnife = grenade.item.id === "tk21_throwing_knife";
@@ -3248,6 +3466,17 @@ export function eventConfigs() {
               (playerDamage.get(thrower.id) ?? 0) + grenadeDmg,
             );
           }
+        }
+        if (
+          onboardingCombatTutorialEnabled &&
+          onboardingCombatTutorialStep === "await_grenade" &&
+          thrower.side === "player"
+        ) {
+          onboardingCombatTutorialStep = "done";
+          setOnboardingCombatPlayerCardFocus(false);
+          usePlayerCompanyStore
+            .getState()
+            .setOnboardingCombatTutorialPending(false);
         }
       }, 400);
     }
@@ -3979,11 +4208,16 @@ export function eventConfigs() {
         const isEpicMission = !!(
           missionForCombat?.isEpic ?? missionForCombat?.rarity === "epic"
         );
+        const behavior = getMissionBehaviorForDifficulty(
+          isEpicMission ? "elite" : "normal",
+          missionForCombat?.difficulty ?? 1,
+        );
+        const levelBonus = isEpicMission ? (Math.random() < 0.5 ? 1 : 2) : 0;
         const role = pickReinforcementRole();
         const newcomer = createEnemyCombatant(
           reinforcementSerial++,
           DEFEND_MAX_ENEMIES,
-          enemyBaseLevel,
+          Math.max(1, Math.min(999, enemyBaseLevel + levelBonus)),
           isEpicMission,
           missionForCombat?.kind,
           undefined,
@@ -3993,11 +4227,24 @@ export function eventConfigs() {
             factionId: missionForCombat?.factionId,
           },
         );
-        newcomer.enemyMedkitUses =
-          role === "medic" ? (missionEncounter?.medicHealsPerMedic ?? 0) : 0;
+        newcomer.enemyGrenadePoolIds = [...(behavior.grenadePlan.grenadeIds ?? [])];
+        newcomer.enemyMedkitUses = role === "medic" ? behavior.healsPerMedic : 0;
         newcomer.enemySuppressUses =
-          role === "support" ? (missionEncounter?.supportSuppressUses ?? 0) : 0;
+          role === "support" ? behavior.suppressUsesPerSupport : 0;
         newcomer.enemyGrenadeThrowsRemaining = 0;
+        if (
+          behavior.grenadePlan.type === "per_rifleman" &&
+          role === "rifleman"
+        ) {
+          newcomer.enemyGrenadeThrowsRemaining = Math.max(
+            0,
+            behavior.grenadePlan.throwsPerRifleman,
+          );
+        }
+        if (isEpicMission) {
+          newcomer.hp = Math.max(1, Math.ceil(newcomer.hp * 1.1));
+          newcomer.maxHp = newcomer.hp;
+        }
         newcomer.enemySlotIndex = slot;
         newcomer.setupUntil = spawnAt + DEFEND_REINFORCE_SETUP_MS;
         enemies.push(newcomer);
@@ -4300,7 +4547,8 @@ export function eventConfigs() {
                     incapIds,
                   )
               : new Map<string, EarnedTraitAward[]>();
-            const survivorIds = players
+            // Incapacitated soldiers are still retained by the company and keep mission XP.
+            const nonKiaIds = players
               .filter((p) => !kiaIds.includes(p.id))
               .map((p) => p.id);
             const lowHealthSurvivorIds = players
@@ -4322,7 +4570,7 @@ export function eventConfigs() {
               : Math.max(1, Math.min(999, getAverageCompanyLevel(store.company)));
             if (!isDevTest) {
               store.deductMissionEnergy(
-                survivorIds,
+                nonKiaIds,
                 players.length,
                 hasCasualty,
                 !victory,
@@ -4333,12 +4581,12 @@ export function eventConfigs() {
               ? new Map<string, number>()
               : new Map(
                   store.company?.soldiers
-                    ?.filter((s) => survivorIds.includes(s.id))
+                    ?.filter((s) => nonKiaIds.includes(s.id))
                     .map((s) => [s.id, s.level ?? 1]) ?? [],
                 );
             if (!isDevTest) {
               store.grantSoldierCombatXP(
-                survivorIds,
+                nonKiaIds,
                 playerDamage,
                 playerDamageTaken,
                 playerKills,
@@ -4379,9 +4627,17 @@ export function eventConfigs() {
               const companyDivisor =
                 mission.kind === "defend_objective" ? 6 : 5;
               const baseCompanyXp = totalSoldierXp / companyDivisor;
+              const isEliteMission = !!(
+                mission.isEpic || mission.rarity === "epic"
+              );
+              const companyMissionMult = isEliteMission ? 2 : 1;
               companyXpEarned = Math.max(
                 1,
-                Math.floor(baseCompanyXp * COMPANY_XP_FROM_COMBAT_MULTIPLIER),
+                Math.floor(
+                  baseCompanyXp *
+                    COMPANY_XP_FROM_COMBAT_MULTIPLIER *
+                    companyMissionMult,
+                ),
               );
             }
             const { rewardItems, lootItems } =
@@ -4408,12 +4664,12 @@ export function eventConfigs() {
                   usePlayerCompanyStore
                     .getState()
                     .company?.soldiers?.filter((s) =>
-                      survivorIds.includes(s.id),
+                      nonKiaIds.includes(s.id),
                     )
                     .map((s) => [s.id, s.level ?? 1]) ?? [],
                 );
             const leveledUpIds = new Set<string>();
-            for (const id of survivorIds) {
+            for (const id of nonKiaIds) {
               if ((newLevels.get(id) ?? 1) > (oldLevels.get(id) ?? 1))
                 leveledUpIds.add(id);
             }
@@ -4486,9 +4742,13 @@ export function eventConfigs() {
               0.3,
               Math.min(0.6, st.threshold + (Math.random() * 0.1 - 0.05)),
             );
+            const allowSelfHeal = !!medic.isCareerBoss;
             const allies = enemies.filter(
               (a) =>
-                a.id !== medic.id && a.hp > 0 && !a.downState && a.maxHp > 0,
+                (allowSelfHeal || a.id !== medic.id) &&
+                a.hp > 0 &&
+                !a.downState &&
+                a.maxHp > 0,
             );
             const candidates = allies
               .filter((a) => a.hp / a.maxHp <= dynamicThreshold)
@@ -4500,7 +4760,9 @@ export function eventConfigs() {
 
             // Not deterministic: second heal is intentionally less likely than the first.
             const usesLeft = medic.enemyMedkitUses ?? 0;
-            const healChance = usesLeft >= 2 ? 0.55 : 0.3;
+            const healChance = medic.isCareerBoss
+              ? (usesLeft >= 2 ? 0.8 : 0.6)
+              : (usesLeft >= 2 ? 0.55 : 0.3);
             if (Math.random() > healChance) {
               st.nextCheckAt = now + 600 + Math.floor(Math.random() * 1200);
               continue;
@@ -4585,13 +4847,38 @@ export function eventConfigs() {
             }
             const target =
               alivePlayers[Math.floor(Math.random() * alivePlayers.length)];
-            const grenadePool = [
-              ThrowableItems.common.m3_frag_grenade,
-              ThrowableItems.common.m84_flashbang,
-              ThrowableItems.common.incendiary_grenade,
-            ];
+            const configuredPoolIds = thrower.enemyGrenadePoolIds ?? [];
+            const configuredPool = configuredPoolIds
+              .map((id) =>
+                ThrowableItems.common[
+                  id as keyof typeof ThrowableItems.common
+                ],
+              )
+              .filter(
+                (item): item is (typeof ThrowableItems.common)[keyof typeof ThrowableItems.common] =>
+                  !!item,
+              );
+            const grenadePool =
+              configuredPool.length > 0
+                ? configuredPool
+                : [
+                    ThrowableItems.common.m3_frag_grenade,
+                    ThrowableItems.common.m84_flashbang,
+                    ThrowableItems.common.incendiary_grenade,
+                  ];
+            const grenadeBase =
+              grenadePool[Math.floor(Math.random() * grenadePool.length)];
+            const grenadeLevel = Math.max(
+              1,
+              Math.min(999, thrower.level ?? 1),
+            );
             const grenadeItem = {
-              ...grenadePool[Math.floor(Math.random() * grenadePool.length)],
+              ...grenadeBase,
+              level: grenadeLevel,
+              damage:
+                grenadeBase.damage != null
+                  ? getScaledThrowableDamage(grenadeBase.damage, grenadeLevel)
+                  : grenadeBase.damage,
             };
             executeGrenadeThrow(
               thrower,
@@ -4824,21 +5111,22 @@ export function eventConfigs() {
         if (p.downState === "kia" && p.killedBy)
           kiaKilledBy.set(p.id, p.killedBy);
       }
-      const survivorIds = players
+      // Incapacitated soldiers are still retained by the company and keep mission XP.
+      const nonKiaIds = players
         .filter((p) => !kiaIds.includes(p.id))
         .map((p) => p.id);
       const participantIds = players.map((p) => p.id);
       const store = usePlayerCompanyStore.getState();
       const oldLevels = new Map<string, number>(
         store.company?.soldiers
-          ?.filter((s) => survivorIds.includes(s.id))
+          ?.filter((s) => nonKiaIds.includes(s.id))
           .map((s) => [s.id, s.level ?? 1]) ?? [],
       );
       if (!mission?.isDevTest) {
         store.recordSoldierCombatStats(participantIds, playerKills, false);
         store.processCombatKIA(kiaIds, missionName, playerKills, kiaKilledBy);
         store.grantSoldierCombatXP(
-          survivorIds,
+          nonKiaIds,
           playerDamage,
           playerDamageTaken,
           playerKills,
@@ -4880,11 +5168,11 @@ export function eventConfigs() {
       const newStore = usePlayerCompanyStore.getState();
       const newLevels = new Map<string, number>(
         newStore.company?.soldiers
-          ?.filter((s) => survivorIds.includes(s.id))
+          ?.filter((s) => nonKiaIds.includes(s.id))
           .map((s) => [s.id, s.level ?? 1]) ?? [],
       );
       const leveledUpIds = new Set<string>();
-      for (const id of survivorIds) {
+      for (const id of nonKiaIds) {
         if ((newLevels.get(id) ?? 1) > (oldLevels.get(id) ?? 1))
           leveledUpIds.add(id);
       }
@@ -5596,6 +5884,16 @@ export function eventConfigs() {
         180,
       );
       openAbilitiesPopup(combatant, card);
+      if (
+        onboardingCombatTutorialEnabled &&
+        onboardingCombatTutorialStep === "await_soldier_tap"
+      ) {
+        onboardingCombatTutorialStep = "step_2";
+        setOnboardingCombatPlayerCardFocus(false);
+        showCombatOnboardingPopup(
+          "Tap the grenade and tap an enemy soldier to use it.",
+        );
+      }
     }
 
     primeCombatantDomCache();
@@ -5641,6 +5939,15 @@ export function eventConfigs() {
       renderCompanyAbilityBar(true);
       startCombatLoop();
     };
+    const setBeginButtonVisible = (visible: boolean) => {
+      const btn = s_(DOM.combat.beginBtn) as HTMLButtonElement | null;
+      if (!btn) return;
+      if (visible) btn.removeAttribute("hidden");
+      else btn.setAttribute("hidden", "");
+    };
+    if (onboardingCombatTutorialEnabled) {
+      setOnboardingCombatPlayerCardFocus(false);
+    }
     if (isDevTestCombat) {
       window.setTimeout(() => startCombatSession(), 0);
     }
@@ -5839,7 +6146,46 @@ export function eventConfigs() {
         selector: DOM.combat.beginBtn,
         eventType: "click",
         callback: () => {
+          if (
+            onboardingCombatTutorialEnabled &&
+            onboardingCombatTutorialStep !== "done"
+          ) {
+            if (onboardingCombatTutorialStep === "step_1") {
+              showCombatOnboardingPopup(
+                "Welcome to the battle screen. Tap your soldier's card to view their abilities and equipment.",
+              );
+            }
+            return;
+          }
           startCombatSession();
+        },
+      },
+      {
+        selector: "#combat-screen",
+        eventType: "click",
+        callback: (e: Event) => {
+          const target = (e.target as HTMLElement | null)?.closest(
+            "#combat-onboarding-continue",
+          );
+          if (!target) return;
+          if (!onboardingCombatTutorialEnabled) {
+            removeCombatOnboardingPopup();
+            return;
+          }
+          if (onboardingCombatTutorialStep === "step_1") {
+            onboardingCombatTutorialStep = "await_soldier_tap";
+            removeCombatOnboardingPopup();
+            setBeginButtonVisible(false);
+            setOnboardingCombatPlayerCardFocus(true);
+            return;
+          }
+          if (onboardingCombatTutorialStep === "step_2") {
+            onboardingCombatTutorialStep = "await_grenade";
+            removeCombatOnboardingPopup();
+            setOnboardingCombatPlayerCardFocus(false);
+            primeOnboardingGrenadeSelection();
+            startCombatSession();
+          }
         },
       },
       {
@@ -6043,6 +6389,10 @@ export function eventConfigs() {
           if (onboardingMission) {
             const st = usePlayerCompanyStore.getState();
             st.setOnboardingRecruitStep("home_popup");
+            UiManager.renderCompanyHomePage();
+            return;
+          }
+          if (usePlayerCompanyStore.getState().onboardingMedicRecruitNoticePending) {
             UiManager.renderCompanyHomePage();
             return;
           }
@@ -8209,6 +8559,7 @@ export function eventConfigs() {
           if (guided) {
             st.setOnboardingRecruitStep("none");
             st.setOnboardingRecruitSoldier(null);
+            st.setOnboardingMissionTypesIntroPending(true);
             UiManager.renderRosterScreen();
           } else {
             UiManager.renderMarketTroopsScreen();

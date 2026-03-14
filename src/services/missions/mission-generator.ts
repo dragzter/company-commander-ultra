@@ -9,11 +9,12 @@ import {
   MISSION_FACTION_ORDER,
   MISSION_KIND_ORDER,
 } from "../../constants/missions.ts";
-import { randomInt } from "../../utils/math.ts";
 import {
   computeMissionEnemyCount,
   computeMissionRewards,
 } from "./mission-reward-policy.ts";
+import { getCompanyProgressionEntry } from "../../constants/company-progression.ts";
+import { getEliteSuperCountForDifficulty } from "../../constants/mission-difficulty-tuning.ts";
 import {
   getStandardMissionEncounter,
   normalizeEncounterForMission,
@@ -252,8 +253,12 @@ export function generateMissions(
     1,
     Math.floor(progressionLevelOverride ?? companyLevel),
   );
-  const _extremeUnlocked = progressionLevel >= 6;
-  void _extremeUnlocked;
+  const progression = getCompanyProgressionEntry(progressionLevel);
+  const extremeUnlocked =
+    getCompanyProgressionEntry(
+      Math.max(1, Math.floor(companyLevel || 1)),
+    ).featureGates.extremeMissions;
+  const eliteUnlocked = progression.featureGates.eliteMissions;
   const factionPool = shuffledFactions();
   const environmentPool = shuffledEnvironments();
   const normalFactionPlanByKind = new Map<MissionKind, MissionFactionId[]>();
@@ -297,9 +302,16 @@ export function generateMissions(
   ) => {
     serial += 1;
     const rarity = isEpic ? "epic" : "normal";
-    const encounter = !isEpic
-      ? getStandardMissionEncounter(kind, difficulty)
-      : undefined;
+    const encounter = getStandardMissionEncounter(kind, difficulty);
+    if (isEpic) {
+      encounter.eliteCount = Math.max(
+        0,
+        Math.min(
+          encounter.initialEnemyCount,
+          getEliteSuperCountForDifficulty(difficulty),
+        ),
+      );
+    }
     const enemyCount =
       encounter?.initialEnemyCount ??
       computeMissionEnemyCount(difficulty, rarity, companyLevel, kind);
@@ -357,7 +369,7 @@ export function generateMissions(
     });
   };
 
-  const standardDifficulties = [1, 2, 3];
+  const standardDifficulties = extremeUnlocked ? [1, 2, 3, 4] : [1, 2, 3];
   for (const kind of MISSION_KIND_ORDER) {
     const factionPlan = normalFactionPlanByKind.get(kind) ?? factionPool;
     const envPlan = normalEnvironmentPlanByKind.get(kind) ?? environmentPool;
@@ -371,18 +383,20 @@ export function generateMissions(
       ));
   }
 
-  const EPIC_PER_KIND = 2;
-  for (const kind of MISSION_KIND_ORDER) {
-    const factionPlan = epicFactionPlanByKind.get(kind) ?? factionPool;
-    const envPlan = epicEnvironmentPlanByKind.get(kind) ?? environmentPool;
-    for (let i = 0; i < EPIC_PER_KIND; i++)
-      addMission(
-        kind,
-        randomInt(3, 4),
-        true,
-        factionPlan[i % factionPlan.length] ?? factionPool[0],
-        envPlan[i % envPlan.length] ?? environmentPool[0],
-      );
+  if (eliteUnlocked) {
+    const eliteDifficulties = extremeUnlocked ? [1, 2, 3, 4] : [1, 2, 3];
+    for (const kind of MISSION_KIND_ORDER) {
+      const factionPlan = epicFactionPlanByKind.get(kind) ?? factionPool;
+      const envPlan = epicEnvironmentPlanByKind.get(kind) ?? environmentPool;
+      eliteDifficulties.forEach((difficulty, idx) =>
+        addMission(
+          kind,
+          difficulty,
+          true,
+          factionPlan[idx % factionPlan.length] ?? factionPool[0],
+          envPlan[idx % envPlan.length] ?? environmentPool[0],
+        ));
+    }
   }
 
   return missions.map((m) => normalizeEncounterForMission(m));
@@ -391,7 +405,39 @@ export function generateMissions(
 /** Dev-only fixed high-level sandbox missions (4v4, Lv999, Lv999 gear). */
 export function generateDevTestMissions(): Mission[] {
   const now = Date.now();
-  const base = {
+  const mk = (
+    id: string,
+    name: string,
+    kind: MissionKind,
+    isEpic: boolean,
+    difficulty: 1 | 2 | 3 | 4,
+    flavorText: string,
+  ): Mission => {
+    const encounter = getStandardMissionEncounter(kind, difficulty);
+    return normalizeEncounterForMission({
+      id,
+      kind,
+      factionId: "desert_wolves",
+      environmentId: "city",
+      battleBackground: "city_0.png",
+      difficulty,
+      enemyCount: encounter.initialEnemyCount,
+      creditReward: 0,
+      xpReward: 0,
+      isEpic,
+      rarity: isEpic ? "epic" : "normal",
+      isDevTest: true,
+      forcedPlayerLevel: 20,
+      forcedEnemyLevel: 20,
+      forcedGearLevel: 20,
+      forcedSquadSize: 4,
+      rewardItems: [],
+      name,
+      flavorText,
+      encounter,
+    });
+  };
+  const legacy999 = {
     kind: "skirmish" as MissionKind,
     factionId: "desert_wolves" as MissionFactionId,
     environmentId: "city" as MissionEnvironmentId,
@@ -410,21 +456,53 @@ export function generateDevTestMissions(): Mission[] {
     rewardItems: [] as string[],
   };
   return [
+    mk(
+      `dev-l20-skirmish-normal-${now}`,
+      "Test Mode Lv20 Skirmish",
+      "skirmish",
+      false,
+      2,
+      "Isolated test: Lv20 squad vs level-appropriate normal skirmish.",
+    ),
+    mk(
+      `dev-l20-skirmish-elite-${now}`,
+      "Test Mode Lv20 Elite Skirmish",
+      "skirmish",
+      true,
+      2,
+      "Isolated test: Lv20 squad vs level-appropriate elite skirmish.",
+    ),
+    mk(
+      `dev-l20-manhunt-elite-${now}`,
+      "Test Mode Lv20 Elite Manhunt",
+      "manhunt",
+      true,
+      2,
+      "Isolated test: Lv20 squad vs level-appropriate elite manhunt.",
+    ),
+    mk(
+      `dev-l20-defend-elite-${now}`,
+      "Test Mode Lv20 Elite Defend",
+      "defend_objective",
+      true,
+      2,
+      "Isolated test: Lv20 squad vs level-appropriate elite defend mission.",
+    ),
     {
-      ...base,
+      ...legacy999,
       id: `dev-trait-summary-preview-${now}`,
       name: "Trait Summary Preview",
       flavorText:
         "UI sandbox: preview post-mission trait awards and summary interactions.",
     },
     {
-      ...base,
+      ...legacy999,
       id: `dev-test-duel-a-${now}`,
       name: "Dev Duel A",
       flavorText: "Sandbox test: 4v4 at level 999 with level 999 gear.",
     },
     {
-      ...base,
+      ...legacy999,
       id: `dev-test-duel-b-${now}`,
       name: "Dev Duel B",
       flavorText:

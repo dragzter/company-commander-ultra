@@ -592,6 +592,22 @@ export const companyHomePageTemplate = () => {
     </div>
   `
     : "";
+  const medicOnboardingPopup = store.onboardingMedicRecruitNoticePending
+    ? `
+    <div id="home-medic-onboarding-popup" class="home-onboarding-popup helper-onboarding-popup" role="dialog" aria-modal="true">
+      <div class="home-onboarding-dialog helper-onboarding-dialog">
+        <div class="home-onboarding-copy helper-onboarding-copy">
+          <h4 class="home-onboarding-title helper-onboarding-title">New Recruits Available</h4>
+          <p class="home-onboarding-text helper-onboarding-text helper-onboarding-typed-text" id="home-medic-onboarding-typed-text" data-full-text="Command update: Medics are now available in the Troops market. Recruit one to add battlefield healing to your squad."></p>
+          <button id="home-medic-onboarding-continue" type="button" class="game-btn game-btn-md game-btn-green home-onboarding-continue helper-onboarding-continue">Continue</button>
+        </div>
+        <div class="home-onboarding-image-wrap helper-onboarding-image-wrap">
+          <img src="${onboardingPortrait}" alt="Squad soldier" class="home-onboarding-image helper-onboarding-image">
+        </div>
+      </div>
+    </div>
+  `
+    : "";
   const companyAbilityPopup = (store.companyAbilityNotificationText ?? "").trim()
     ? `
     <div id="home-company-ability-popup" class="home-onboarding-popup helper-onboarding-popup" role="dialog" aria-modal="true">
@@ -663,6 +679,7 @@ export const companyHomePageTemplate = () => {
     ${settingsResetConfirmPopupTemplate()}
     ${onboardingPopup}
     ${recruitOnboardingPopup}
+    ${medicOnboardingPopup}
     ${companyAbilityPopup}
     ${companyLevelUpPopup}
   </div>
