@@ -39,6 +39,8 @@ export interface Combatant {
   /** Enemy portrait folder (e.g. red-portrait, blue-portrait). */
   enemyPortraitDir?: string;
   weaponIconUrl?: string;
+  weaponId?: string;
+  weaponSfx?: string;
   /** Timestamp (ms) when Take Cover ends */
   takeCoverUntil?: number;
   /** Flat toughness bonus granted while Take Cover is active. */

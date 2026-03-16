@@ -1,4 +1,5 @@
 import type { HandlerInitConfig } from "../../../constants/types.ts";
+import { AudioManager } from "../../audio/audio-manager.ts";
 
 function DomEventManager() {
   const handlerMap: Map<
@@ -108,6 +109,7 @@ function DomEventManager() {
 
   const delegatedIds = new Set<string>();
   let _tooltipCaptureAttached = false;
+  let _buttonAudioCaptureAttached = false;
 
   /** Hide equip slot tooltip on any click (capture phase). Slot handlers re-show if needed. */
   function initEquipSlotTooltipHideOnClick() {
@@ -119,6 +121,35 @@ function DomEventManager() {
     };
     document.addEventListener("click", fn, true);
     handlerMap.set("equip-tooltip-hide", {
+      callback: fn as EventListener,
+      selector: "(capture)",
+      elements: [document],
+      eventType: "click",
+      capture: true,
+    });
+  }
+
+  /** Global click SFX for button/button-like controls. */
+  function initGlobalButtonClickAudio() {
+    if (_buttonAudioCaptureAttached) return;
+    _buttonAudioCaptureAttached = true;
+    const fn = (e: Event) => {
+      const target = e.target as HTMLElement | null;
+      if (!target) return;
+      const buttonLike = target.closest(
+        "button, [role='button'], .game-btn, .tab-btn, .market-btn",
+      ) as HTMLElement | null;
+      if (!buttonLike) return;
+      if (
+        buttonLike instanceof HTMLButtonElement &&
+        (buttonLike.disabled || buttonLike.getAttribute("aria-disabled") === "true")
+      ) {
+        return;
+      }
+      AudioManager.UI().playButtonClick();
+    };
+    document.addEventListener("click", fn, true);
+    handlerMap.set("global-button-click-audio", {
       callback: fn as EventListener,
       selector: "(capture)",
       elements: [document],
@@ -174,6 +205,7 @@ function DomEventManager() {
     initEventArray,
     initDelegatedEventArray,
     initEquipSlotTooltipHideOnClick,
+    initGlobalButtonClickAudio,
     removeHandlers,
     getMap: () => new Map(handlerMap),
   };

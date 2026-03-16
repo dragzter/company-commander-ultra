@@ -123,6 +123,7 @@ import {
   type CompanyAbilityId,
 } from "../../constants/company-abilities.ts";
 import { getMissionBehaviorForDifficulty } from "../../constants/mission-difficulty-tuning.ts";
+import { AudioManager } from "../audio/audio-manager.ts";
 
 /**
  * Contains definitions for the events of all html templates.
@@ -130,6 +131,7 @@ import { getMissionBehaviorForDifficulty } from "../../constants/mission-difficu
  */
 export function eventConfigs() {
   const store = usePlayerCompanyStore.getState();
+  const _AudioManager = AudioManager;
 
   function parseSlotItemFromData(slotEl: HTMLElement): Item | null {
     const raw = slotEl.dataset.slotItem;
@@ -791,6 +793,23 @@ export function eventConfigs() {
       callback: () => {
         const popup = s_(DOM.company.settingsPopup) as HTMLElement | null;
         if (popup) popup.hidden = false;
+        const soundToggle = s_(DOM.company.settingsSoundToggle) as
+          | HTMLInputElement
+          | null;
+        const enabled = usePlayerCompanyStore.getState().soundEnabled !== false;
+        if (soundToggle) soundToggle.checked = enabled;
+        _AudioManager.Settings().setSoundEnabled(enabled);
+      },
+    },
+    {
+      selector: DOM.company.settingsSoundToggle,
+      eventType: "change",
+      callback: (e: Event) => {
+        const input = e.target as HTMLInputElement | null;
+        if (!input) return;
+        const enabled = !!input.checked;
+        usePlayerCompanyStore.getState().setSoundEnabled(enabled);
+        _AudioManager.Settings().setSoundEnabled(enabled);
       },
     },
     {
@@ -1635,10 +1654,12 @@ export function eventConfigs() {
     };
     const combatantDomCache = new Map<string, CombatantDomRefs>();
     const combatantUiSnapshotCache = new Map<string, CombatantUiSnapshot>();
+    const deathGruntPlayedCombatantIds = new Set<string>();
     const dirtyHpCombatantIds = new Set<string>();
     const dirtyStatusCombatantIds = new Set<string>();
     const dirtySpeedCombatantIds = new Set<string>();
     let nextTimedUiUpdateAt = 0;
+    let nextCompanyAbilityBarUiUpdateAt = 0;
     let lastAttackLineSignature = "";
 
     function createCombatantDomRefs(card: HTMLElement): CombatantDomRefs {
@@ -2951,6 +2972,9 @@ export function eventConfigs() {
             (playerHealing.get(user.id) ?? 0) + healedAmount,
           );
         }
+        if (healedAmount > 0) {
+          _AudioManager.Weapon().playBandage();
+        }
         const card = getCombatantCard(target.id);
         if (card) {
           spawnCombatPopup(card, "combat-heal-popup", `+${healAmount}`, 1500);
@@ -3067,6 +3091,7 @@ export function eventConfigs() {
       const attackerCard = getCombatantCard(user.id);
       const targetCard = getCombatantCard(target.id);
       if (!attackerCard || !targetCard) return;
+      _AudioManager.Weapon().playSuppress();
 
       let anyHit = false;
       const doBurst = () => {
@@ -3090,6 +3115,14 @@ export function eventConfigs() {
           damageMultiplier:
             focusedFireDamageMultiplier * battleFervorDamageMultiplier,
         });
+        _AudioManager
+          .Weapon()
+          .playShot(
+            user.weaponId,
+            user.weaponSfx,
+            user.designation,
+            user.attackIntervalMs,
+          );
         if (result.hit && !result.evaded) anyHit = true;
         animateProjectile(
           attackerCard,
@@ -3357,9 +3390,26 @@ export function eventConfigs() {
         const isFrag = (grenade.item.tags as string[] | undefined)?.includes(
           "explosive",
         );
+        const isFragGrenadeImpact =
+          grenade.item.id === "m3_frag_grenade" ||
+          grenade.item.id === "m3a_frag_grenade";
         const isSmoke =
           (grenade.item.tags as string[] | undefined)?.includes("smoke") ||
           grenade.item.id === "mk18_smoke";
+        if (isSmoke && result.primary.hit) {
+          _AudioManager.Weapon().playSmokeImpact();
+        }
+        if (grenade.item.id === "m84_flashbang" && result.primary.hit) {
+          _AudioManager.Weapon().playFlashbangImpact();
+        }
+        if (
+          isThrowingKnife &&
+          result.primary.hit &&
+          !result.primary.evaded &&
+          result.primary.damageDealt > 0
+        ) {
+          _AudioManager.Weapon().playKnifeImpact();
+        }
         const overlayType: GrenadeOverlayType = isThrowingKnife
           ? "throwing-knife"
           : isStun
@@ -3435,6 +3485,9 @@ export function eventConfigs() {
             affectedForJolt.push(result.primary.targetId);
           for (const s of result.splash) {
             if (s.hit && !s.evaded) affectedForJolt.push(s.targetId);
+          }
+          if (isFragGrenadeImpact) {
+            _AudioManager.Weapon().playFragImpact();
           }
           const impactVariant: "frag" | "incendiary" | "stun" | "smoke" =
             isIncendiary
@@ -3673,6 +3726,11 @@ export function eventConfigs() {
         const pct = Math.max(0, Math.min(100, (c.hp / c.maxHp) * 100));
         const hpText = `${Math.floor(c.hp)}/${Math.floor(c.maxHp)}`;
         const isDown = Boolean(c.hp <= 0 || c.downState);
+        const isKia = c.downState === "kia";
+        if (isKia && !deathGruntPlayedCombatantIds.has(c.id)) {
+          deathGruntPlayedCombatantIds.add(c.id);
+          _AudioManager.Weapon().playDeathGrunt();
+        }
         const isLowHealth =
           c.side === "player" &&
           c.hp > 0 &&
@@ -3725,8 +3783,7 @@ export function eventConfigs() {
           now < c.companyAttackSpeedBuffUntil;
         const blinded = c.blindedUntil != null && now < c.blindedUntil;
         const suppressed = c.suppressedUntil != null && now < c.suppressedUntil;
-        const settingUp =
-          c.side === "enemy" && c.setupUntil != null && now < c.setupUntil;
+        const settingUp = c.setupUntil != null && now < c.setupUntil;
         const postCoverBuff =
           c.postCoverToughnessUntil != null && now < c.postCoverToughnessUntil;
         const infantryArmor =
@@ -4151,7 +4208,12 @@ export function eventConfigs() {
       }
       for (const write of domWrites) write();
       drawAttackLines(force || timedUpdate);
-      if (timedUpdate || force) renderCompanyAbilityBar();
+      const shouldRenderCompanyAbilityBar =
+        force || now >= nextCompanyAbilityBarUiUpdateAt;
+      if (shouldRenderCompanyAbilityBar) {
+        nextCompanyAbilityBarUiUpdateAt = now + 1000;
+        renderCompanyAbilityBar();
+      }
     }
 
     let combatTickId: number | null = null;
@@ -4201,9 +4263,37 @@ export function eventConfigs() {
       }
       lastBurnTickTimeRef.current = now;
       lastBleedTickTimeRef.current = now;
+      const openingStaggerBuckets = [100, 300, 500] as const;
+      const rollOpeningStaggerDelay = () =>
+        openingStaggerBuckets[
+          Math.floor(Math.random() * openingStaggerBuckets.length)
+        ];
+      const INITIAL_SUPPORT_SETUP_MS = 1000;
+      const missionKind = missionForCombat?.kind ?? "skirmish";
+      const getOpeningPriorityOffset = (
+        combatant: Combatant,
+      ): number => {
+        if (missionKind === "defend_objective") {
+          return combatant.side === "enemy" ? 500 : 0;
+        }
+        if (missionKind === "manhunt") {
+          return combatant.side === "enemy" ? 500 : 0;
+        }
+        // Skirmish and all other mission types: no side priority.
+        return 0;
+      };
       for (const c of allCombatants) {
-        if (c.hp > 0 && !c.downState)
-          nextAttackAt.set(c.id, now + Math.random() * 500);
+        if (c.hp > 0 && !c.downState) {
+          const isSupportUnit = (c.designation ?? "").toLowerCase() === "support";
+          if (isSupportUnit) {
+            c.setupUntil = now + INITIAL_SUPPORT_SETUP_MS;
+          } else {
+            delete c.setupUntil;
+          }
+          const delayMs = getOpeningPriorityOffset(c) + rollOpeningStaggerDelay();
+          const setupGate = c.setupUntil != null ? c.setupUntil : now;
+          nextAttackAt.set(c.id, Math.max(now + delayMs, setupGate));
+        }
       }
       markAllCombatantsDirty();
       if (isDefendObjectiveMission)
@@ -4517,6 +4607,8 @@ export function eventConfigs() {
               : null;
         }
         if (combatWinner) {
+          const outcomeMusicDelayMs = 220;
+          _AudioManager.Intro().fadeOutCombat(outcomeMusicDelayMs);
           closeAbilitiesPopup();
           const missionDetailsPopup = document.getElementById(
             "combat-mission-details-popup",
@@ -4529,6 +4621,10 @@ export function eventConfigs() {
           if (defendTimerEl) defendTimerEl.hidden = true;
           updateCombatUI();
           const victory = combatWinner === "player";
+          window.setTimeout(() => {
+            if (victory) void _AudioManager.Intro().playVictory();
+            else void _AudioManager.Intro().playDefeat();
+          }, outcomeMusicDelayMs);
           const playOutcomeBannerThen = (
             isVictory: boolean,
             done: () => void,
@@ -5025,7 +5121,7 @@ export function eventConfigs() {
             isStunned(c, now)
           )
             continue;
-          if (c.side === "enemy" && (c.setupUntil ?? 0) > now) continue;
+          if ((c.setupUntil ?? 0) > now) continue;
           const due = nextAttackAt.get(c.id) ?? now;
           if (!didAttack && due <= now) {
             const targetId = targets.get(c.id);
@@ -5053,6 +5149,14 @@ export function eventConfigs() {
                 damageMultiplier:
                   focusedFireDamageMultiplier * battleFervorDamageMultiplier,
               });
+              _AudioManager
+                .Weapon()
+                .playShot(
+                  c.weaponId,
+                  c.weaponSfx,
+                  c.designation,
+                  c.attackIntervalMs,
+                );
               if (c.side === "player") {
                 if (
                   target.side === "enemy" &&
@@ -5147,6 +5251,9 @@ export function eventConfigs() {
       const extracted = options.extracted === true;
       const showSummary = options.showSummary === true;
       if (!combatStarted) return;
+      _AudioManager.Intro().stopCombat();
+      _AudioManager.Intro().stopVictory();
+      _AudioManager.Intro().stopDefeat();
       const screen = document.getElementById("combat-screen");
       const missionJson = screen?.getAttribute("data-mission-json");
       let mission: Mission | null = null;
@@ -5295,6 +5402,7 @@ export function eventConfigs() {
         combatant.postCoverToughnessUntil =
           now + companyPassives.postCoverDurationMs;
       }
+      _AudioManager.Weapon().playTakeCover();
       removeTargetsForCombatantInCover(targets, combatant.id);
       assignTargets(players, enemies, targets, now);
       if (isFocusedFireTargetLocked(combatant, now)) {
@@ -5535,6 +5643,7 @@ export function eventConfigs() {
     function activateEmergencyMedevac(): void {
       if (extractionInProgress) return;
       extractionInProgress = true;
+      _AudioManager.Weapon().playMedevac();
       combatRoot?.classList.add("combat-extract-lock");
       {
         startCompanyAbilityCooldown("emergency_medevac", Date.now());
@@ -5981,6 +6090,10 @@ export function eventConfigs() {
         return;
       }
       combatStarted = true;
+      _AudioManager.Intro().stopVictory();
+      _AudioManager.Intro().stopDefeat();
+      _AudioManager.Intro().stop();
+      void _AudioManager.Intro().playCombat();
       setBackButtonEnabled(false);
       const btn = s_(DOM.combat.beginBtn) as HTMLButtonElement | null;
       if (btn) btn.setAttribute("hidden", "");
@@ -6266,6 +6379,9 @@ export function eventConfigs() {
         eventType: "click",
         callback: () => {
           if (combatStarted) return;
+          _AudioManager.Intro().stopCombat();
+          _AudioManager.Intro().stopVictory();
+          _AudioManager.Intro().stopDefeat();
           if (missionForCombat) {
             UiManager.renderReadyRoomScreen(missionForCombat);
             return;
@@ -6338,6 +6454,7 @@ export function eventConfigs() {
           }
           closeAbilitiesPopup();
           processQuitMissionOutcome();
+          void _AudioManager.Intro().play();
           if (!isDevTestCombat) {
             const store = usePlayerCompanyStore.getState();
             store.deductQuitMissionEnergy(players.map((p) => p.id));
@@ -6463,6 +6580,10 @@ export function eventConfigs() {
             clearTimeout(combatTickId);
             combatTickId = null;
           }
+          _AudioManager.Intro().stopCombat();
+          _AudioManager.Intro().stopVictory();
+          _AudioManager.Intro().stopDefeat();
+          void _AudioManager.Intro().play();
           closeAbilitiesPopup();
           const onboardingMission =
             missionForCombat?.id?.startsWith("onboarding_");
@@ -6492,6 +6613,14 @@ export function eventConfigs() {
       .forEach((el) =>
         el.classList.remove("equip-slot-selected", "equip-slot-highlight"),
       );
+    const picker = document.getElementById("equip-picker-popup") as
+      | HTMLElement
+      | null;
+    if (picker) {
+      picker.dataset.suppliesTargetSoldierId = "";
+      picker.dataset.suppliesTargetSlotType = "";
+      picker.dataset.suppliesTargetEqIndex = "";
+    }
   }
 
   function openAvailableSuppliesPopup(
@@ -6606,6 +6735,7 @@ export function eventConfigs() {
             slotType === "equipment" ? eqIndex : undefined,
           );
         if (result.success) {
+          _AudioManager.UI().playItemSwap();
           const popup = document.getElementById("item-stats-popup");
           const picker = document.getElementById("equip-picker-popup");
           const tt = document.getElementById("equip-slot-tooltip");
@@ -6687,6 +6817,9 @@ export function eventConfigs() {
         if (picker) {
           (picker as HTMLElement).dataset.preselectedItem = "";
           (picker as HTMLElement).dataset.preselectedArmoryIndex = "";
+          (picker as HTMLElement).dataset.suppliesTargetSoldierId = "";
+          (picker as HTMLElement).dataset.suppliesTargetSlotType = "";
+          (picker as HTMLElement).dataset.suppliesTargetEqIndex = "";
         }
       },
     },
@@ -6753,6 +6886,7 @@ export function eventConfigs() {
                 slotType === "equipment" ? eqIndex : undefined,
               );
             if (result.success) {
+              _AudioManager.UI().playItemSwap();
               btn.closest(".equip-slot-unequip-wrap")?.remove();
               document
                 .querySelectorAll(".equip-slot")
@@ -6877,6 +7011,7 @@ export function eventConfigs() {
                     slotType === "equipment" ? eqIndex : undefined,
                 });
               if (result.success) {
+                _AudioManager.UI().playItemSwap();
                 UiManager.refreshEquipPickerContent?.();
                 document
                   .querySelectorAll(".equip-slot")
@@ -7087,6 +7222,7 @@ export function eventConfigs() {
                     destSlotType === "equipment" ? destEqIdx : undefined,
                 });
               if (result.success) {
+                _AudioManager.UI().playItemSwap();
                 UiManager.refreshEquipPickerContent?.();
                 openAvailableSuppliesPopup(
                   picker as HTMLElement,
@@ -7106,6 +7242,9 @@ export function eventConfigs() {
               tt.hidden = true;
               tt.classList.remove("equip-slot-tooltip-visible");
             }
+            (picker as HTMLElement).dataset.suppliesTargetSoldierId = "";
+            (picker as HTMLElement).dataset.suppliesTargetSlotType = "";
+            (picker as HTMLElement).dataset.suppliesTargetEqIndex = "";
             slotEl.classList.remove("equip-slot-selected");
             document
               .querySelectorAll(".equip-slot")
@@ -7156,6 +7295,7 @@ export function eventConfigs() {
                       equipmentIndex: eqIdx,
                     });
                   if (result.success) {
+                    _AudioManager.UI().playItemSwap();
                     (picker as HTMLElement).dataset.preselectedItem = "";
                     (picker as HTMLElement).dataset.preselectedArmoryIndex = "";
                     document
@@ -7708,6 +7848,9 @@ export function eventConfigs() {
         if (!soldierId) return;
         const picker = document.getElementById("equip-picker-popup");
         if (!picker) return;
+        (picker as HTMLElement).dataset.suppliesTargetSoldierId = "";
+        (picker as HTMLElement).dataset.suppliesTargetSlotType = "";
+        (picker as HTMLElement).dataset.suppliesTargetEqIndex = "";
         const tt = document.getElementById("equip-slot-tooltip");
         if (tt) {
           tt.hidden = true;
@@ -8209,6 +8352,7 @@ export function eventConfigs() {
                   destEqIndex: slotType === "equipment" ? destEqIdx : undefined,
                 });
               if (result.success) {
+                _AudioManager.UI().playItemSwap();
                 UiManager.renderFormationScreen();
               }
             }
@@ -8509,6 +8653,7 @@ export function eventConfigs() {
                   destEqIndex: slotType === "equipment" ? destEqIdx : undefined,
                 });
               if (result.success) {
+                _AudioManager.UI().playItemSwap();
                 setLastEquipMoveSoldierIds(
                   [srcSoldierId, soldierId].filter(
                     (v, i, a) => a.indexOf(v) === i,

@@ -244,6 +244,13 @@ export function settingsPopupTemplate(): string {
         <button type="button" class="game-btn game-btn-md game-btn-red codex-popup-close popup-close-btn" id="settings-popup-close" aria-label="Close">Close</button>
       </div>
       <div class="settings-popup-body">
+        <section class="settings-panel settings-panel-audio">
+          <h5 class="settings-panel-title">Audio</h5>
+          <label class="settings-toggle-row" for="settings-sound-toggle">
+            <span class="settings-toggle-label">Enable Sound</span>
+            <input id="settings-sound-toggle" class="settings-sound-toggle" type="checkbox" checked>
+          </label>
+        </section>
         <section class="settings-panel settings-panel-danger">
           <h5 class="settings-panel-title">Danger Zone</h5>
           <p class="settings-panel-copy">Resetting erases your company, soldiers, armory, missions, and all progress.</p>

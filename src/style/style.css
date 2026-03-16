@@ -15192,6 +15192,30 @@ button.missions-filter-chip {
 	background: linear-gradient(180deg, rgba(46, 20, 20, 0.72) 0%, rgba(30, 14, 14, 0.88) 100%);
 }
 
+.settings-panel-audio {
+	border-color: rgba(120, 190, 255, 0.3);
+	background: linear-gradient(180deg, rgba(20, 30, 46, 0.72) 0%, rgba(14, 22, 34, 0.88) 100%);
+}
+
+.settings-toggle-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+}
+
+.settings-toggle-label {
+	font-size: 0.9rem;
+	color: rgba(220, 236, 255, 0.96);
+	letter-spacing: 0.04em;
+}
+
+.settings-sound-toggle {
+	width: 18px;
+	height: 18px;
+	accent-color: #57d06b;
+}
+
 .settings-panel-title {
 	margin: 0 0 8px;
 	font-size: 0.9rem;

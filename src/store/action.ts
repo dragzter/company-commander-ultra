@@ -418,6 +418,7 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
   companyAbilityCooldowns: {},
   companyLevelUpSummary: null,
   equippedStratagemItemId: null,
+  soundEnabled: true,
 
   // Actions
   rerollSoldier: async (id: string) => {
@@ -631,6 +632,8 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
       return { companyAbilityCooldowns: existing };
     }),
   clearCompanyLevelUpSummary: () => set({ companyLevelUpSummary: null }),
+  setSoundEnabled: (enabled: boolean) =>
+    set({ soundEnabled: enabled !== false }),
   recordGrenadeThrows: (count: number) =>
     set((state: CompanyStore) => {
       const add = Math.max(0, Math.floor(Number(count) || 0));

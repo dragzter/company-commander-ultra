@@ -114,6 +114,7 @@ export type CompanyStore = {
   companyAbilityCooldowns: Partial<Record<CompanyAbilityId, number>>;
   companyLevelUpSummary: CompanyLevelUpSummary | null;
   equippedStratagemItemId: string | null;
+  soundEnabled: boolean;
 
   // Setters
   setMarketAvailableTroops: (soldiers: Soldier[]) => void;
@@ -156,6 +157,7 @@ export type CompanyStore = {
   ) => void;
   clearCompanyLevelUpSummary: () => void;
   setEquippedStratagemItemId: (itemId: string | null) => void;
+  setSoundEnabled: (enabled: boolean) => void;
   recordGrenadeThrows: (count: number) => void;
   consumeEquippedStratagemUse: () => { success: boolean; reason?: string };
   bootstrapNewCompanyIfEmpty: () => void;
@@ -534,6 +536,9 @@ export const usePlayerCompanyStore = createStore<CompanyStore>()(
             typeof merged.equippedStratagemItemId !== "string"
           ) {
             merged.equippedStratagemItemId = null;
+          }
+          if (typeof merged.soundEnabled !== "boolean") {
+            merged.soundEnabled = true;
           }
           if (
             !merged.companyLevelUpSummary ||

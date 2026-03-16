@@ -7,7 +7,6 @@ import {
   setupConfirmationTemplate,
 } from "../html-templates/game-setup-template.ts";
 import { eventConfigs as ec } from "./event-configs.ts";
-import { AudioManager } from "../audio/audio-manager.ts";
 import { UiServiceManager } from "../../services/ui/ui-service.ts";
 // import { UiAnimationManager } from "../../services/ui/ui-animation-manager.ts";
 import { DomEventManager } from "./event-handlers/dom-event-manager.ts";
@@ -94,7 +93,6 @@ import { ENEMY_HP_MULTIPLIER } from "../../constants/combat.ts";
  * @constructor
  */
 function ScreenManager() {
-  const _AudioManager = AudioManager;
   const _UiServiceManager = UiServiceManager;
   //const _UiAnim = UiAnimationManager;
 
@@ -190,13 +188,7 @@ function ScreenManager() {
     hide.menu();
     show.center();
 
-    _AudioManager.Intro().stop();
-    _AudioManager
-      .Setup()
-      .play()
-      .catch((e) => {
-        console.error("Failed to play setup:", e);
-      });
+    // Keep intro theme running through setup/game flow.
 
     DomEventManager.initEventArray(ec().gameSetup());
   }

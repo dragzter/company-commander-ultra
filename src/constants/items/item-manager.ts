@@ -6,13 +6,21 @@ import {
   //getRandomIndex,
   getRandomNumberFromRange,
 } from "../../utils/math.ts";
-import { BallisticItems } from "./ballistic.ts";
+import { WEAPON_BASES, createWeapon } from "./weapon-bases.ts";
+
+const CommonBallisticItemMap: Record<string, Partial<Item>> = WEAPON_BASES.reduce(
+  (acc, base) => {
+    acc[base.baseId] = createWeapon(base, 1);
+    return acc;
+  },
+  {} as Record<string, Partial<Item>>,
+);
 
 const CommonItemMap: Record<string, Record<string, Partial<Item>>> = {
   throwable: ThrowableItems.common,
   junk: Junk.common,
   medical: MedicalItems.common,
-  ballistic_weapon: BallisticItems.common,
+  ballistic_weapon: CommonBallisticItemMap,
 };
 
 //const ItemKeys = [...Object.keys(CommonItemMap)];

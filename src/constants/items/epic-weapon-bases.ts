@@ -12,6 +12,7 @@ export interface EpicWeaponBase {
   name: string;
   description: string;
   icon: string;
+  weaponSfx?: string;
   damageMinBase: number;
   damageMaxBase: number;
   damagePerLevel: number;
@@ -62,6 +63,7 @@ export function createEpicWeapon(base: EpicWeaponBase, level: GearLevel) {
     description: base.description,
     usable: true,
     icon: base.icon,
+    weaponSfx: base.weaponSfx,
     damage,
     damage_min: damageMin,
     damage_max: damageMax,

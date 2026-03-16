@@ -1,6 +1,9 @@
 import { computeAttackIntervalMs, ENEMY_DAMAGE_MULTIPLIER, ENEMY_HP_MULTIPLIER } from "../../constants/combat";
 import type { WeaponEffectId } from "../../constants/items/types.ts";
 import { WEAPON_EFFECTS } from "../../constants/items/weapon-effects.ts";
+import { WEAPON_BASES } from "../../constants/items/weapon-bases.ts";
+import { RARE_WEAPON_BASES } from "../../constants/items/rare-weapon-bases.ts";
+import { EPIC_WEAPON_BASES } from "../../constants/items/epic-weapon-bases.ts";
 import { RARE_ARMOR_BASES } from "../../constants/items/rare-armor-bases.ts";
 import { EPIC_ARMOR_BASES } from "../../constants/items/epic-armor-bases.ts";
 import type { ArmorImmunity } from "../../constants/items/epic-armor-bases.ts";
@@ -19,6 +22,27 @@ const BLACK_PORTRAIT_KEYS = Object.keys(Images.black_portrait);
 const SAND_PORTRAIT_KEYS = Object.keys(Images.sand_portrait);
 const round1 = (n: number) => Math.round(n * 10) / 10;
 const roundMitigationUp = (n: number) => Math.ceil(n * 1000) / 1000;
+
+function getWeaponBaseIdFromItemId(id: string | undefined): string | undefined {
+  if (!id) return undefined;
+  return id.replace(/_\d+$/, "");
+}
+
+function resolveWeaponSfx(
+  weapon: { id?: string; weaponSfx?: string } | undefined,
+): string | undefined {
+  if (!weapon) return undefined;
+  if (weapon.weaponSfx) return weapon.weaponSfx;
+  const baseId = getWeaponBaseIdFromItemId(weapon.id);
+  if (!baseId) return undefined;
+  const common = WEAPON_BASES.find((b) => b.baseId === baseId);
+  if (common?.weaponSfx) return common.weaponSfx;
+  const rare = RARE_WEAPON_BASES.find((b) => b.baseId === baseId);
+  if (rare?.weaponSfx) return rare.weaponSfx;
+  const epic = EPIC_WEAPON_BASES.find((b) => b.baseId === baseId);
+  if (epic?.weaponSfx) return epic.weaponSfx;
+  return undefined;
+}
 
 function getArmorImmunitiesFromBase(baseId: string | undefined): ArmorImmunity[] {
   if (!baseId) return [];
@@ -55,11 +79,13 @@ function getArmorIncapMultiplier(baseId: string | undefined): number {
 export function soldierToCombatant(soldier: Soldier): Combatant {
   const hp = Math.floor(soldier.attributes?.hit_points ?? 100);
   const weapon = soldier.weapon as {
+    id?: string;
     damage?: number;
     damage_min?: number;
     damage_max?: number;
     speed_base?: number;
     weaponEffect?: WeaponEffectId;
+    weaponSfx?: string;
   } | undefined;
   const dmg = weapon?.damage ?? weapon?.damage_min ?? 4;
   let dmgMin = weapon?.damage_min ?? dmg;
@@ -109,6 +135,8 @@ export function soldierToCombatant(soldier: Soldier): Combatant {
     soldierRef: soldier,
     designation: soldier.designation,
     weaponIconUrl: weapon ? getItemIconUrl(weapon as import("../../constants/items/types.ts").Item) : undefined,
+    weaponId: weapon?.id,
+    weaponSfx: resolveWeaponSfx(weapon),
     weaponEffect,
     immuneToStun: allImmunities.has("stun"),
     immuneToPanic: allImmunities.has("panic"),

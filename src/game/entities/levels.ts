@@ -8,7 +8,6 @@ import {
   type StandardLoadout,
   type TraitDict,
 } from "./types.ts";
-import { BallisticItems } from "../../constants/items/ballistic.ts";
 import { ArmorItems } from "../../constants/items/armor.ts";
 import { MedicalItems } from "../../constants/items/medical-items.ts";
 import { ThrowableItems } from "../../constants/items/throwable.ts";
@@ -21,17 +20,26 @@ import { WEAPON_BASES, createWeapon } from "../../constants/items/weapon-bases.t
  */
 const StandardEquipmentLoadouts: StandardLoadout = {
   rifleman: {
-    weapon: BallisticItems.common.m5_assault_rifle,
+    weapon: createWeapon(
+      WEAPON_BASES.find((b) => b.baseId === "m5_assault_rifle")!,
+      1,
+    ),
     armor: ArmorItems.common.s3_flak_jacket,
     inventory: [ThrowableItems.common.m3_frag_grenade],
   },
   support: {
-    weapon: BallisticItems.common.fasw_machine_gun,
+    weapon: createWeapon(
+      WEAPON_BASES.find((b) => b.baseId === "m240_delta")!,
+      1,
+    ),
     armor: ArmorItems.common.m108_flak_jacket,
     inventory: [ThrowableItems.common.mk18_smoke],
   }, // Machine gunner
   medic: {
-    weapon: BallisticItems.common.m5_assault_rifle,
+    weapon: createWeapon(
+      WEAPON_BASES.find((b) => b.baseId === "m5_assault_rifle")!,
+      1,
+    ),
     armor: ArmorItems.common.s3_flak_jacket,
     inventory: [MedicalItems.common.standard_medkit],
   },

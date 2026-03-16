@@ -181,12 +181,12 @@ export function resolveGrenadeThrow(
     return { throwerId: thrower.id, primaryTargetId: primaryTarget.id, grenadeDamage: 0, primary, splash };
   }
 
-  /* Throwing knife: single-target damage from item, mitigated, no splash. */
+  /* Throwing knife: single-target direct damage, ignores mitigation/toughness, no splash. */
   if (isThrowingKnife(grenade)) {
     const knifeDmg = grenade.damage != null
       ? grenade.damage
       : getScaledThrowableDamage(20, grenade.level ?? 1);
-    const damageDealt = computeFinalDamage(knifeDmg, primaryTarget);
+    const damageDealt = Math.max(1, Math.ceil(knifeDmg));
     const newHp = Math.max(0, Math.floor(primaryTarget.hp - damageDealt));
     primaryTarget.hp = newHp;
     const grenadeKiller = primaryTarget.side === "player" ? thrower.name : undefined;

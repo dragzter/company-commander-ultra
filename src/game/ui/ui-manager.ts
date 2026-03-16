@@ -9,6 +9,7 @@ import { ScreenManager } from "./screen-manager.ts";
 import { DOM } from "../../constants/css-selectors.ts";
 import { s_, sa_ } from "../../utils/html-utils.ts";
 import { Styler } from "../../utils/styler-manager.ts";
+import { DomEventManager } from "./event-handlers/dom-event-manager.ts";
 import {
   GAME_STEPS,
   type GameStep,
@@ -25,6 +26,7 @@ function UiManager() {
   const _UiServiceManager = UiServiceManager;
   const _UiAnim = UiAnimationManager;
   const _ScreenManager = ScreenManager;
+  const _DomEventManager = DomEventManager;
 
   const { gameBoard, create, parseHTML } = _UiServiceManager;
   const { g_menu, dom_insert, show, board, center, left, right, lower, upper } =
@@ -65,10 +67,14 @@ function UiManager() {
     const state = usePlayerCompanyStore.getState();
 
     state.initializeCompany();
+    _DomEventManager.initGlobalButtonClickAudio();
 
     const gameEnter = s_(DOM.enterGame);
 
     gameEnter.addEventListener("click", () => {
+      _AudioManager
+        .Settings()
+        .setSoundEnabled(usePlayerCompanyStore.getState().soundEnabled !== false);
       _AudioManager
         .Intro()
         .play()
@@ -252,6 +258,7 @@ function UiManager() {
   }
 
   function renderReadyRoomScreen(mission?: Mission | null) {
+    _AudioManager.Intro().fadeOutAll(240);
     _ScreenManager.generate.createReadyRoomPage(mission);
   }
 

@@ -23,6 +23,7 @@ export const DOM = {
     statsMemorial: "#company-stats-memorial",
     settingsPopup: "#settings-popup",
     settingsPopupClose: "#settings-popup-close",
+    settingsSoundToggle: "#settings-sound-toggle",
     settingsResetBtn: "#settings-reset-game-btn",
     settingsResetConfirmPopup: "#settings-reset-confirm-popup",
     settingsResetConfirmYes: "#settings-reset-confirm-yes",
