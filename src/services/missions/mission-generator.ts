@@ -5,6 +5,7 @@ import type {
   MissionKind,
 } from "../../constants/missions.ts";
 import {
+  filterAvailableBattleBackgrounds,
   MISSION_ENVIRONMENT_META,
   MISSION_FACTION_ORDER,
   MISSION_KIND_ORDER,
@@ -23,12 +24,21 @@ import {
 /** Bump this when mission generation output changes and old boards should be regenerated. */
 export const MISSION_BOARD_SCHEMA_VERSION = 10;
 
-const ENVIRONMENT_ORDER: MissionEnvironmentId[] = [
+const ENVIRONMENT_ORDER_ALL: MissionEnvironmentId[] = [
   "city",
   "forest",
   "harbor",
   "village",
+  "desert",
+  "structure",
 ];
+
+const ENVIRONMENT_ORDER: MissionEnvironmentId[] = ENVIRONMENT_ORDER_ALL.filter(
+  (id) =>
+    filterAvailableBattleBackgrounds(
+      MISSION_ENVIRONMENT_META[id].battleBackgrounds,
+    ).length > 0,
+);
 
 const LOCATIONS_BY_ENVIRONMENT: Record<MissionEnvironmentId, string[]> = {
   city: [
@@ -54,6 +64,18 @@ const LOCATIONS_BY_ENVIRONMENT: Record<MissionEnvironmentId, string[]> = {
     "the river crossing",
     "the old market road",
     "the outskirts",
+  ],
+  desert: [
+    "the dune corridor",
+    "the salt flats",
+    "the canyon pass",
+    "the sun-baked outpost",
+  ],
+  structure: [
+    "the industrial complex",
+    "the abandoned facility",
+    "the concrete sector",
+    "the fortified compound",
   ],
 };
 
@@ -197,11 +219,10 @@ function composeMissionText(
     RISK_CLAUSES[riskBucket(difficulty)],
     `${salt}:risk`,
   );
-  const envCue = MISSION_ENVIRONMENT_META[environmentId].titleCue;
   const fill = (tpl: string) =>
     tpl.replaceAll("{LOC}", loc).replaceAll("{OBJ}", obj);
   const baseTitle = fill(titleTpl);
-  const name = isEpic ? `Elite: ${envCue} ${baseTitle}` : `${envCue} ${baseTitle}`;
+  const name = isEpic ? `Elite: ${baseTitle}` : baseTitle;
   const flavorText = `${fill(descTpl)} ${risk}`;
   return { name, flavorText };
 }
@@ -322,10 +343,11 @@ export function generateMissions(
       missionLevel: progressionLevel,
     });
     const id = `${isEpic ? "epic" : "mission"}-${kind}-${serial}-${Date.now()}`;
-    const envBackgrounds =
-      MISSION_ENVIRONMENT_META[environmentId].battleBackgrounds;
+    const envBackgrounds = filterAvailableBattleBackgrounds(
+      MISSION_ENVIRONMENT_META[environmentId].battleBackgrounds,
+    );
     const battleBackground = pickDeterministic(
-      envBackgrounds,
+      envBackgrounds.length ? envBackgrounds : ["city_0.png"],
       `${id}:env-bg`,
     );
     const text = composeUniqueMissionText(

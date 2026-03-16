@@ -21,7 +21,10 @@ import {
 } from "../../constants/gear-market.ts";
 import { getItemIconUrl, renderItemLevelBadge } from "../../utils/item-utils.ts";
 import { getWeaponRestrictRole } from "../../utils/equip-utils.ts";
-import { getMaxSoldierLevel } from "../../utils/company-utils.ts";
+import {
+  getAverageCompanyLevel,
+  getMaxSoldierLevel,
+} from "../../utils/company-utils.ts";
 import { MAX_GEAR_LEVEL } from "../../constants/items/types.ts";
 import { getItemSellPrice } from "../../utils/sell-pricing.ts";
 import { CREDIT_SYMBOL } from "../../constants/currency.ts";
@@ -35,6 +38,10 @@ export const marketTemplate = () => {
   const c = (d: string) => clrHash(d);
   const store = usePlayerCompanyStore.getState();
   const recruitOnboardingMarketOnly = store.onboardingRecruitStep === "market";
+  const onboardingMarketSectionsLocked =
+    store.onboardingMarketSectionsLocked === true;
+  const showTroopsOnlyMarket =
+    recruitOnboardingMarketOnly || onboardingMarketSectionsLocked;
   const troopsBtnClass = recruitOnboardingMarketOnly ? " blue mbtn mb-3 onboarding-focus-btn" : "blue mbtn mb-3";
   const suppliesBtnClass =
     store.onboardingSuppliesStep === "supplies_focus"
@@ -46,6 +53,27 @@ export const marketTemplate = () => {
     ? "blue mbtn mb-3"
     : "gray mbtn mb-3 market-locked-btn";
   const stratagemsLabel = stratagemsUnlocked ? "Stratagems" : "Stratagems (Lv3)";
+  const marketTutorialPopup =
+    store.onboardingSuppliesStep === "supplies_focus"
+      ? `
+  <div id="market-sections-onboarding-popup" class="home-onboarding-popup helper-onboarding-popup" role="dialog" aria-modal="true" data-step="0">
+    <div class="home-onboarding-dialog helper-onboarding-dialog">
+      <div class="home-onboarding-copy helper-onboarding-copy">
+        <h4 class="home-onboarding-title helper-onboarding-title">Market Briefing</h4>
+        <div class="missions-types-tutorial-tags" id="market-sections-tutorial-tags">
+          <span class="missions-types-tutorial-tag" data-market-tag="armor">Armor</span>
+          <span class="missions-types-tutorial-tag" data-market-tag="weapons">Weapons</span>
+          <span class="missions-types-tutorial-tag" data-market-tag="supplies">Supplies</span>
+        </div>
+        <p class="home-onboarding-text helper-onboarding-text helper-onboarding-typed-text" id="market-sections-onboarding-typed-text" data-full-text="Market operations online. Let’s quickly review your three core purchasing lanes."></p>
+        <button id="market-sections-onboarding-continue" type="button" class="game-btn game-btn-md game-btn-green home-onboarding-continue helper-onboarding-continue">Continue</button>
+      </div>
+      <div class="home-onboarding-image-wrap helper-onboarding-image-wrap">
+        <img src="/images/green-portrait/portrait_0.png" alt="Squad soldier" class="home-onboarding-image helper-onboarding-image">
+      </div>
+    </div>
+  </div>`
+      : "";
 
   return `
 	<div id="cc-market" class="flex h-100 column">
@@ -53,12 +81,12 @@ export const marketTemplate = () => {
 	
 		<div class="text-center">
 			<h1>Market</h1>
-			<div class="flex column align-center justify-between">
-				<button id="${c(market.marketTroopsLink)}" class="${troopsBtnClass}">Troops</button>
-				${recruitOnboardingMarketOnly ? "" : `
-				<button id="${c(market.marketArmorLink)}" class="blue mbtn mb-3">Body Armor</button>
-				<button id="${c(market.marketWeaponsLink)}" class="blue mbtn mb-3">Weapons</button>
-				<button id="${c(market.marketSuppliesLink)}" class="${suppliesBtnClass}">Supplies</button>
+				<div class="flex column align-center justify-between">
+					<button id="${c(market.marketTroopsLink)}" class="${troopsBtnClass}">Troops</button>
+					${showTroopsOnlyMarket ? "" : `
+					<button id="${c(market.marketArmorLink)}" class="blue mbtn mb-3">Body Armor</button>
+					<button id="${c(market.marketWeaponsLink)}" class="blue mbtn mb-3">Weapons</button>
+					<button id="${c(market.marketSuppliesLink)}" class="${suppliesBtnClass}">Supplies</button>
 				<button id="${c(market.marketStratagemsLink)}" class="${stratagemsBtnClass}" ${stratagemsUnlocked ? "" : "disabled"} title="${stratagemsUnlocked ? "Squad-wide tactical support items" : "Unlocks at company level 3"}">${stratagemsLabel}</button>
 				<button id="${c(market.marketDevCatalogLink)}" class="gray mbtn market-dev-btn" title="Developer: view all weapons and armor">Dev Catalog</button>`}
 			</div>
@@ -66,6 +94,7 @@ export const marketTemplate = () => {
 		</div>
 
 		${companyActionsTemplate()}
+    ${marketTutorialPopup}
 	</div>
 	`;
 };
@@ -186,12 +215,13 @@ function marketSellPopupHtml(companyLevel: number, inventory: import("../../cons
 export const weaponsMarketTemplate = () => {
   const store = usePlayerCompanyStore.getState();
   const maxLevel = Math.max(1, getMaxSoldierLevel(store.company));
+  const avgLevel = Math.max(1, getAverageCompanyLevel(store.company));
   const selectedTier = Math.max(1, Math.min(maxLevel, store.marketTierLevel || maxLevel));
   const companyLvl = store.company?.level ?? store.companyLevel ?? 1;
   const creditBalance = store.creditBalance;
   const inv = store.company?.inventory ?? [];
 
-  const allWeapons = getWeaponsMarketItems(selectedTier, companyLvl);
+  const allWeapons = getWeaponsMarketItems(selectedTier, companyLvl, avgLevel);
   const commonWeapons = allWeapons.filter((e) => (e.item.rarity ?? "common") === "common");
   const rareWeapons = allWeapons.filter((e) => e.item.rarity === "rare");
   const epicWeapons = allWeapons.filter((e) => e.item.rarity === "epic");
@@ -345,12 +375,13 @@ export const stratagemsMarketTemplate = () => {
 export const armorMarketTemplate = () => {
   const store = usePlayerCompanyStore.getState();
   const maxLevel = Math.max(1, getMaxSoldierLevel(store.company));
+  const avgLevel = Math.max(1, getAverageCompanyLevel(store.company));
   const selectedTier = Math.max(1, Math.min(maxLevel, store.marketTierLevel || maxLevel));
   const companyLvl = store.company?.level ?? store.companyLevel ?? 1;
   const creditBalance = store.creditBalance;
   const inv = store.company?.inventory ?? [];
 
-  const allArmor = getArmorMarketItems(selectedTier, companyLvl);
+  const allArmor = getArmorMarketItems(selectedTier, companyLvl, avgLevel);
   const commonArmor = allArmor.filter((e) => (e.item.rarity ?? "common") === "common");
   const rareArmor = allArmor.filter((e) => e.item.rarity === "rare");
   const epicArmor = allArmor.filter((e) => e.item.rarity === "epic");
@@ -559,6 +590,7 @@ function abbreviateItemName(name: string): string {
 export const suppliesMarketTemplate = () => {
   const store = usePlayerCompanyStore.getState();
   const maxLevel = Math.max(1, getMaxSoldierLevel(store.company));
+  const avgLevel = Math.max(1, getAverageCompanyLevel(store.company));
   const selectedTier = Math.max(1, Math.min(maxLevel, store.marketTierLevel || maxLevel));
   const creditBalance = store.creditBalance;
   const companyLvl = store.company?.level ?? store.companyLevel ?? 1;
@@ -583,7 +615,10 @@ export const suppliesMarketTemplate = () => {
     </div>`
       : "";
 
-  const { common: commonSupplies, rare: rareSupplies, epic: epicSupplies } = getSuppliesMarketItems(selectedTier, companyLvl);
+  const { common: commonSupplies, rare: rareSupplies, epic: epicSupplies } =
+    getSuppliesMarketItems(selectedTier, companyLvl, {
+      squadAverageLevel: avgLevel,
+    });
   const sections =
     section("Common", commonSupplies, 0, "market-section-common") +
     section("Rare", rareSupplies, commonSupplies.length, "market-section-rare") +

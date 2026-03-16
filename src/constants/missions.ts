@@ -181,7 +181,9 @@ export type MissionEnvironmentId =
   | "city"
   | "forest"
   | "harbor"
-  | "village";
+  | "village"
+  | "desert"
+  | "structure";
 
 export const MISSION_ENVIRONMENT_META: Record<
   MissionEnvironmentId,
@@ -207,7 +209,37 @@ export const MISSION_ENVIRONMENT_META: Record<
     titleCue: "Village",
     battleBackgrounds: ["village_0.png"],
   },
+  desert: {
+    name: "Desert",
+    titleCue: "Desert",
+    battleBackgrounds: ["desert_0.png"],
+  },
+  structure: {
+    name: "Structure",
+    titleCue: "Structure",
+    battleBackgrounds: ["structure_0.png"],
+  },
 };
+
+/** Battle backgrounds confirmed to exist in `public/images/battle_bg`. */
+export const AVAILABLE_BATTLE_BACKGROUNDS = new Set<string>([
+  "city_0.png",
+  "city_1.png",
+  "city_2.png",
+  "city_03.png",
+  "city_04.png",
+  "city_05.png",
+  "forrest_0.png",
+  "harbor_0.png",
+  "village_0.png",
+  "desert_0.png",
+]);
+
+export function filterAvailableBattleBackgrounds(
+  backgrounds: string[],
+): string[] {
+  return backgrounds.filter((bg) => AVAILABLE_BATTLE_BACKGROUNDS.has(bg));
+}
 
 export interface MissionEnemyRoleMix {
   rifleman: number;

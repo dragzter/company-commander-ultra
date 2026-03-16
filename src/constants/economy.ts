@@ -3,8 +3,8 @@ import {
   getCompanyProgressionEntry,
 } from "./company-progression.ts";
 
-/** Starting credits when beginning a new game (100k for testing) */
-export const STARTING_CREDITS = 100_000;
+/** Starting credits when beginning a new game */
+export const STARTING_CREDITS = 5_000;
 export const MAX_COMPANY_LEVEL = MAX_COMPANY_LEVEL_FROM_PROGRESSION;
 
 /** Base cost to recruit one soldier from the market */

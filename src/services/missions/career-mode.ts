@@ -5,6 +5,7 @@ import type {
   MissionKind,
 } from "../../constants/missions.ts";
 import {
+  filterAvailableBattleBackgrounds,
   MISSION_ENVIRONMENT_META,
   MISSION_FACTION_ORDER,
 } from "../../constants/missions.ts";
@@ -68,15 +69,31 @@ function getCareerFaction(level: number): MissionFactionId {
 }
 
 function getCareerEnvironment(level: number): MissionEnvironmentId {
-  const order: MissionEnvironmentId[] = ["city", "forest", "harbor", "village"];
-  return order[(Math.max(1, level) - 1) % order.length];
+  const orderAll: MissionEnvironmentId[] = [
+    "city",
+    "forest",
+    "harbor",
+    "village",
+    "desert",
+    "structure",
+  ];
+  const order = orderAll.filter(
+    (id) =>
+      filterAvailableBattleBackgrounds(
+        MISSION_ENVIRONMENT_META[id].battleBackgrounds,
+      ).length > 0,
+  );
+  const safeOrder = order.length ? order : (["city"] as MissionEnvironmentId[]);
+  return safeOrder[(Math.max(1, level) - 1) % safeOrder.length];
 }
 
 function getCareerBattleBackground(
   environmentId: MissionEnvironmentId,
   level: number,
 ): string {
-  const pool = MISSION_ENVIRONMENT_META[environmentId].battleBackgrounds;
+  const pool = filterAvailableBattleBackgrounds(
+    MISSION_ENVIRONMENT_META[environmentId].battleBackgrounds,
+  );
   return pool[(Math.max(1, level) - 1) % Math.max(1, pool.length)] ?? "city_0.png";
 }
 

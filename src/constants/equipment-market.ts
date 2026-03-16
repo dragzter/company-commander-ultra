@@ -9,6 +9,7 @@ export interface EquipmentMarketEntry {
   price: number;
 }
 
+
 /** Per-use base pricing. Leveled supplies scale price with tier. */
 const SUPPLIES_BASE_PRICES = {
   smoke: 95 * 5,
@@ -122,14 +123,13 @@ function getCommonSupplies(tier: GearLevel, _companyLvl: number): EquipmentMarke
 }
 
 /** Rare: M3A Repressor. Damage scales with thrower level at use time. */
-function getRareSupplies(_tier: GearLevel, companyLvl: number): EquipmentMarketEntry[] {
-  if (companyLvl < 2) return [];
-  const item = createLeveledSupply(
-    { ...ThrowableItems.rare.m3a_repressor } as Item,
-    1,
-    { noLevel: true },
-  );
-  return [{ item, price: supplyPrice(SUPPLIES_BASE_PRICES.m3a_repressor, 1) }];
+function getRareSupplies(
+  _tier: GearLevel,
+  _companyLvl: number,
+  _squadAverageLevel: number,
+): EquipmentMarketEntry[] {
+  // Rare supplies are drop-only (mission rewards), not in store.
+  return [];
 }
 
 /** Epic: Psychic Shredder - no level. */
@@ -147,13 +147,17 @@ function getEpicSupplies(companyLvl: number): EquipmentMarketEntry[] {
 export function getSuppliesMarketItems(
   tier: number,
   companyLvl: number,
-  options: { allowPost20?: boolean } = {},
+  options: { allowPost20?: boolean; squadAverageLevel?: number } = {},
 ): { common: EquipmentMarketEntry[]; rare: EquipmentMarketEntry[]; epic: EquipmentMarketEntry[] } {
   const maxTier = options.allowPost20 ? 999 : 20;
   const t = Math.max(1, Math.min(maxTier, Math.floor(tier))) as GearLevel;
+  const avgLevel = Math.max(
+    1,
+    Math.floor(options.squadAverageLevel ?? tier),
+  );
   return {
     common: getCommonSupplies(t, companyLvl),
-    rare: getRareSupplies(t, companyLvl),
+    rare: getRareSupplies(t, companyLvl, avgLevel),
     epic: getEpicSupplies(companyLvl),
   };
 }

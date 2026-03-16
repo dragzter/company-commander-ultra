@@ -74,7 +74,12 @@ function UiManager() {
     gameEnter.addEventListener("click", () => {
       _AudioManager
         .Settings()
-        .setSoundEnabled(usePlayerCompanyStore.getState().soundEnabled !== false);
+        .setMusicEnabled(
+          usePlayerCompanyStore.getState().musicEnabled !== false,
+        );
+      _AudioManager
+        .Settings()
+        .setSfxEnabled(usePlayerCompanyStore.getState().sfxEnabled !== false);
       _AudioManager
         .Intro()
         .play()

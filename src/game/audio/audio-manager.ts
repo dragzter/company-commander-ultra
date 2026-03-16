@@ -19,7 +19,12 @@ function AudioManager() {
   const smokeImpactSfx = new Audio("audio/weapons/smoke_grenade.wav");
   const medevacSfx = new Audio("audio/weapons/medevac.wav");
   const takeCoverSfx = new Audio("audio/weapons/take_cover.wav");
-  const deathGruntSfx = new Audio("audio/weapons/death_grunt.wav");
+  const reloadSfx = new Audio("audio/weapons/reload.wav");
+  const deathGruntPool = [
+    new Audio("audio/weapons/death_grunt.wav"),
+    new Audio("audio/weapons/death_grunt2.wav"),
+    new Audio("audio/weapons/death_grunt3.wav"),
+  ];
   const bandageSfx = new Audio("audio/weapons/bandage.wav");
   const knifeImpactPool = Array.from(
     { length: 4 },
@@ -32,16 +37,22 @@ function AudioManager() {
   let weaponShotSequence = 0;
   let currentCombatTrack: HTMLAudioElement | null = null;
   let lastCombatTrackIndex = -1;
-  let soundEnabled = true;
+  let musicEnabled = true;
+  let sfxEnabled = true;
   const urlReader = URLReader;
 
-  function isAudioDisabled(): boolean {
+  function isMusicDisabled(): boolean {
     const { audio } = urlReader(document.location.search);
-    return !soundEnabled || Boolean(audio && !JSON.parse(audio));
+    return !musicEnabled || Boolean(audio && !JSON.parse(audio));
+  }
+
+  function isSfxDisabled(): boolean {
+    const { audio } = urlReader(document.location.search);
+    return !sfxEnabled || Boolean(audio && !JSON.parse(audio));
   }
 
   function playTrack(track: HTMLAudioElement) {
-    if (isAudioDisabled()) return;
+    if (isMusicDisabled()) return;
 
     return new Promise((resolve, reject) => {
       track.addEventListener(
@@ -72,7 +83,7 @@ function AudioManager() {
   }
 
   async function ensureIntro(): Promise<void> {
-    if (isAudioDisabled()) return;
+    if (isMusicDisabled()) return;
     stopCombatTheme();
     stopVictoryTheme();
     stopDefeatTheme();
@@ -148,7 +159,7 @@ function AudioManager() {
   }
 
   async function playCombatTheme(): Promise<void> {
-    if (isAudioDisabled()) return;
+    if (isMusicDisabled()) return;
     stopVictoryTheme();
     stopDefeatTheme();
     stopCombatTheme();
@@ -165,7 +176,7 @@ function AudioManager() {
   }
 
   async function playVictoryTheme(): Promise<void> {
-    if (isAudioDisabled()) return;
+    if (isMusicDisabled()) return;
     stopCombatTheme();
     stopDefeatTheme();
     victoryTrack.volume = 0.2;
@@ -178,7 +189,7 @@ function AudioManager() {
   }
 
   async function playDefeatTheme(): Promise<void> {
-    if (isAudioDisabled()) return;
+    if (isMusicDisabled()) return;
     stopCombatTheme();
     stopVictoryTheme();
     defeatTrack.volume = 0.2;
@@ -197,7 +208,7 @@ function AudioManager() {
   }
 
   function playSuppress(): void {
-    if (isAudioDisabled()) return;
+    if (isSfxDisabled()) return;
     suppressSfx.pause();
     suppressSfx.currentTime = 0;
     suppressSfx.volume = 0.1 * GLOBAL_AUDIO_GAIN;
@@ -207,7 +218,7 @@ function AudioManager() {
   }
 
   function playFragImpact(): void {
-    if (isAudioDisabled()) return;
+    if (isSfxDisabled()) return;
     fragImpactSfx.pause();
     fragImpactSfx.currentTime = 0;
     fragImpactSfx.volume = 0.3 * GLOBAL_AUDIO_GAIN;
@@ -217,7 +228,7 @@ function AudioManager() {
   }
 
   function playFlashbangImpact(): void {
-    if (isAudioDisabled()) return;
+    if (isSfxDisabled()) return;
     flashbangImpactSfx.pause();
     flashbangImpactSfx.currentTime = 0;
     flashbangImpactSfx.volume = 0.22 * GLOBAL_AUDIO_GAIN;
@@ -227,7 +238,7 @@ function AudioManager() {
   }
 
   function playSmokeImpact(): void {
-    if (isAudioDisabled()) return;
+    if (isSfxDisabled()) return;
     smokeImpactSfx.pause();
     smokeImpactSfx.currentTime = 0;
     smokeImpactSfx.volume = 0.24 * GLOBAL_AUDIO_GAIN;
@@ -237,7 +248,7 @@ function AudioManager() {
   }
 
   function playMedevac(): void {
-    if (isAudioDisabled()) return;
+    if (isSfxDisabled()) return;
     medevacSfx.pause();
     medevacSfx.currentTime = 0;
     medevacSfx.volume = 0.26 * GLOBAL_AUDIO_GAIN;
@@ -247,7 +258,7 @@ function AudioManager() {
   }
 
   function playTakeCover(): void {
-    if (isAudioDisabled()) return;
+    if (isSfxDisabled()) return;
     takeCoverSfx.pause();
     takeCoverSfx.currentTime = 0;
     takeCoverSfx.volume = 0.2 * GLOBAL_AUDIO_GAIN;
@@ -256,18 +267,30 @@ function AudioManager() {
     });
   }
 
+  function playReload(): void {
+    if (isSfxDisabled()) return;
+    reloadSfx.pause();
+    reloadSfx.currentTime = 0;
+    reloadSfx.volume = 0.1 * GLOBAL_AUDIO_GAIN;
+    void reloadSfx.play().catch(() => {
+      // Ignore transient autoplay/channel errors.
+    });
+  }
+
   function playDeathGrunt(): void {
-    if (isAudioDisabled()) return;
-    deathGruntSfx.pause();
-    deathGruntSfx.currentTime = 0;
-    deathGruntSfx.volume = 0.2 * GLOBAL_AUDIO_GAIN;
-    void deathGruntSfx.play().catch(() => {
+    if (isSfxDisabled()) return;
+    const sfx =
+      deathGruntPool[Math.floor(Math.random() * deathGruntPool.length)];
+    sfx.pause();
+    sfx.currentTime = 0;
+    sfx.volume = 0.2 * GLOBAL_AUDIO_GAIN;
+    void sfx.play().catch(() => {
       // Ignore transient autoplay/channel errors.
     });
   }
 
   function playBandage(): void {
-    if (isAudioDisabled()) return;
+    if (isSfxDisabled()) return;
     bandageSfx.pause();
     bandageSfx.currentTime = 0;
     bandageSfx.volume = 0.2 * GLOBAL_AUDIO_GAIN;
@@ -277,7 +300,7 @@ function AudioManager() {
   }
 
   function playKnifeImpact(): void {
-    if (isAudioDisabled()) return;
+    if (isSfxDisabled()) return;
     // Explicitly reset prior knife impacts so each new throw restarts the cue.
     for (const sfx of knifeImpactPool) {
       sfx.pause();
@@ -292,7 +315,7 @@ function AudioManager() {
   }
 
   function playUiButtonClick(): void {
-    if (isAudioDisabled()) return;
+    if (isSfxDisabled()) return;
     buttonClickSfx.pause();
     buttonClickSfx.currentTime = 0;
     buttonClickSfx.volume = 0.12 * GLOBAL_AUDIO_GAIN;
@@ -302,7 +325,7 @@ function AudioManager() {
   }
 
   function playUiItemSwap(): void {
-    if (isAudioDisabled()) return;
+    if (isSfxDisabled()) return;
     const playFallback = () => {
       itemSwapFallbackSfx.pause();
       itemSwapFallbackSfx.currentTime = 0;
@@ -417,7 +440,7 @@ function AudioManager() {
     designation?: string,
     attackIntervalMs?: number,
   ): void {
-    if (isAudioDisabled()) return;
+    if (isSfxDisabled()) return;
 
     const src = (weaponSfx ?? "").trim() || WEAPON_SHOT_DEFAULT;
     let pool = weaponShotPools.get(src);
@@ -449,10 +472,13 @@ function AudioManager() {
     // Per-shot playback-rate jitter changes perceived clip length naturally.
     const rateJitter = 1 + (Math.random() * 0.08 - 0.04); // +/-4%
     // Keep all weapon shots controlled and never obnoxiously loud.
-    shot.volume = Math.max(
-      profile.minVolume,
-      Math.min(profile.maxVolume, profile.volume * ambientGain + microJitter),
-    ) * GLOBAL_AUDIO_GAIN;
+    const rawVolume =
+      Math.max(
+        profile.minVolume,
+        Math.min(profile.maxVolume, profile.volume * ambientGain + microJitter),
+      ) * GLOBAL_AUDIO_GAIN;
+    // Hard-cap weapon fire output at 20%.
+    shot.volume = Math.min(0.2, rawVolume);
     shot.playbackRate = Math.max(
       0.75,
       Math.min(1.3, profile.playbackRate * rateJitter),
@@ -462,15 +488,25 @@ function AudioManager() {
     });
   }
 
-  function setSoundEnabled(enabled: boolean): void {
-    soundEnabled = enabled !== false;
-    if (!soundEnabled) {
+  function setMusicEnabled(enabled: boolean): void {
+    musicEnabled = enabled !== false;
+    if (!musicEnabled) {
       stopIntro();
       stopSetup();
       stopCombatTheme();
       stopVictoryTheme();
       stopDefeatTheme();
     }
+  }
+
+  function setSfxEnabled(enabled: boolean): void {
+    sfxEnabled = enabled !== false;
+  }
+
+  function setSoundEnabled(enabled: boolean): void {
+    const on = enabled !== false;
+    setMusicEnabled(on);
+    setSfxEnabled(on);
   }
 
   return {
@@ -504,6 +540,7 @@ function AudioManager() {
       playSmokeImpact: () => playSmokeImpact(),
       playMedevac: () => playMedevac(),
       playTakeCover: () => playTakeCover(),
+      playReload: () => playReload(),
       playDeathGrunt: () => playDeathGrunt(),
       playBandage: () => playBandage(),
       playKnifeImpact: () => playKnifeImpact(),
@@ -513,8 +550,12 @@ function AudioManager() {
       playItemSwap: () => playUiItemSwap(),
     }),
     Settings: () => ({
+      setMusicEnabled: (enabled: boolean) => setMusicEnabled(enabled),
+      setSfxEnabled: (enabled: boolean) => setSfxEnabled(enabled),
+      isMusicEnabled: () => musicEnabled,
+      isSfxEnabled: () => sfxEnabled,
       setSoundEnabled: (enabled: boolean) => setSoundEnabled(enabled),
-      isSoundEnabled: () => soundEnabled,
+      isSoundEnabled: () => musicEnabled && sfxEnabled,
     }),
   };
 }

@@ -217,6 +217,21 @@ export function abilitiesTemplate(): string {
       </div>
     </div>`
     : "";
+  const tacticsIntroPopup = usePlayerCompanyStore.getState()
+    .onboardingTacticsIntroPending
+    ? `<div id="tactics-onboarding-popup" class="home-onboarding-popup helper-onboarding-popup" role="dialog" aria-modal="true">
+      <div class="home-onboarding-dialog helper-onboarding-dialog">
+        <div class="home-onboarding-copy helper-onboarding-copy">
+          <h4 class="home-onboarding-title helper-onboarding-title">Tactics</h4>
+          <p class="home-onboarding-text helper-onboarding-text helper-onboarding-typed-text" id="tactics-onboarding-typed-text" data-full-text="These are your company abilities. As your company levels up, you gain passive bonuses and active abilities. Active abilities appear in the battle action bar during missions."></p>
+          <button id="tactics-onboarding-continue" type="button" class="game-btn game-btn-md game-btn-green home-onboarding-continue helper-onboarding-continue">Continue</button>
+        </div>
+        <div class="home-onboarding-image-wrap helper-onboarding-image-wrap">
+          <img src="/images/green-portrait/portrait_0.png" alt="Squad soldier" class="home-onboarding-image helper-onboarding-image">
+        </div>
+      </div>
+    </div>`
+    : "";
 
   return `
 <div id="abilities-screen" class="abilities-root troops-market-root">
@@ -252,6 +267,7 @@ export function abilitiesTemplate(): string {
     ${companyActionsTemplate()}
   </div>
 
+  ${tacticsIntroPopup}
   ${notifyPopup}
 </div>`;
 }

@@ -213,8 +213,20 @@ const SOLDIER_BASE: Soldier = {
 };
 
 /** Level benefits for codex: stat gains and special bonuses per level. */
-export function getLevelBenefitsForCodex(): { level: number; gains: string; gainsBadges: string[]; special?: string }[] {
-  const rows: { level: number; gains: string; gainsBadges: string[]; special?: string }[] = [];
+export function getLevelBenefitsForCodex(): {
+  level: number;
+  levelLabel?: string;
+  gains: string;
+  gainsBadges: string[];
+  special?: string;
+}[] {
+  const rows: {
+    level: number;
+    levelLabel?: string;
+    gains: string;
+    gainsBadges: string[];
+    special?: string;
+  }[] = [];
   for (let i = 0; i < ATTRIBUTES_INCREASES_BY_LEVEL.length; i++) {
     const def = ATTRIBUTES_INCREASES_BY_LEVEL[i];
     const lvl = def.level;
@@ -250,6 +262,14 @@ export function getLevelBenefitsForCodex(): { level: number; gains: string; gain
       special,
     });
   }
+  rows.push({
+    level: 21,
+    levelLabel: "Lv 21-999",
+    gains: "+5 HP per level",
+    gainsBadges: ["+5 HP / level"],
+    special:
+      "Base DEX/MOR/TGH/AWR no longer increase from levels. Progression after Lv20 is primarily HP, gear, traits, and abilities.",
+  });
   return rows;
 }
 

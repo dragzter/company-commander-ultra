@@ -13,7 +13,6 @@ import {
   SOLDIER_XP_PER_KILL,
   SOLDIER_XP_PER_ABILITY_USE,
   SOLDIER_XP_PER_HEAL,
-  COMPANY_XP_FROM_COMBAT_MULTIPLIER,
 } from "../../constants/economy.ts";
 import {
   getItemArmoryCategory,
@@ -59,6 +58,7 @@ import {
   TAKE_COVER_DURATION_MS,
   isInCover,
   isStunned,
+  isSuppressed,
   assignTargets,
   applyBurnTicks,
   addBurnStack,
@@ -132,6 +132,12 @@ import { AudioManager } from "../audio/audio-manager.ts";
 export function eventConfigs() {
   const store = usePlayerCompanyStore.getState();
   const _AudioManager = AudioManager;
+  const COMPANY_XP_BY_DIFFICULTY: Record<number, number> = {
+    1: 80,
+    2: 110,
+    3: 150,
+    4: 200,
+  };
 
   function parseSlotItemFromData(slotEl: HTMLElement): Item | null {
     const raw = slotEl.dataset.slotItem;
@@ -309,7 +315,7 @@ export function eventConfigs() {
       entries.push({
         title: "Fire and Maneuver",
         type: "Company",
-        desc: "Take Cover cooldown reduced by 10s.",
+        desc: "Take Cover cooldown reduced by 15s. After cover ends: +30% toughness for 5s.",
       });
     }
     if (companyOwned.has("entrenchment_techniques")) {
@@ -436,10 +442,19 @@ export function eventConfigs() {
       );
     }
     if (marketBtn) {
+      const marketLocked = !!st.onboardingFirstMissionPending;
+      if (marketLocked) {
+        marketBtn.setAttribute("disabled", "true");
+        marketBtn.setAttribute("aria-disabled", "true");
+      } else {
+        marketBtn.removeAttribute("disabled");
+        marketBtn.setAttribute("aria-disabled", "false");
+      }
       marketBtn.classList.toggle(
         "onboarding-market-focus",
         st.onboardingRecruitStep === "market" ||
-          st.onboardingSuppliesStep === "market_focus",
+          st.onboardingSuppliesStep === "market_focus" ||
+          st.onboardingSuppliesStep === "supplies_focus",
       );
     }
   };
@@ -745,6 +760,7 @@ export function eventConfigs() {
       eventType: "click",
       callback: () => {
         const st = usePlayerCompanyStore.getState();
+        if (st.onboardingFirstMissionPending) return;
         if (st.onboardingSuppliesStep === "market_focus") {
           st.setOnboardingSuppliesStep("supplies_focus");
         }
@@ -793,23 +809,42 @@ export function eventConfigs() {
       callback: () => {
         const popup = s_(DOM.company.settingsPopup) as HTMLElement | null;
         if (popup) popup.hidden = false;
-        const soundToggle = s_(DOM.company.settingsSoundToggle) as
+        const musicToggle = s_(DOM.company.settingsMusicToggle) as
           | HTMLInputElement
           | null;
-        const enabled = usePlayerCompanyStore.getState().soundEnabled !== false;
-        if (soundToggle) soundToggle.checked = enabled;
-        _AudioManager.Settings().setSoundEnabled(enabled);
+        const sfxToggle = s_(DOM.company.settingsSfxToggle) as
+          | HTMLInputElement
+          | null;
+        const musicEnabled =
+          usePlayerCompanyStore.getState().musicEnabled !== false;
+        const sfxEnabled =
+          usePlayerCompanyStore.getState().sfxEnabled !== false;
+        if (musicToggle) musicToggle.checked = musicEnabled;
+        if (sfxToggle) sfxToggle.checked = sfxEnabled;
+        _AudioManager.Settings().setMusicEnabled(musicEnabled);
+        _AudioManager.Settings().setSfxEnabled(sfxEnabled);
       },
     },
     {
-      selector: DOM.company.settingsSoundToggle,
+      selector: DOM.company.settingsMusicToggle,
       eventType: "change",
       callback: (e: Event) => {
         const input = e.target as HTMLInputElement | null;
         if (!input) return;
         const enabled = !!input.checked;
-        usePlayerCompanyStore.getState().setSoundEnabled(enabled);
-        _AudioManager.Settings().setSoundEnabled(enabled);
+        usePlayerCompanyStore.getState().setMusicEnabled(enabled);
+        _AudioManager.Settings().setMusicEnabled(enabled);
+      },
+    },
+    {
+      selector: DOM.company.settingsSfxToggle,
+      eventType: "change",
+      callback: (e: Event) => {
+        const input = e.target as HTMLInputElement | null;
+        if (!input) return;
+        const enabled = !!input.checked;
+        usePlayerCompanyStore.getState().setSfxEnabled(enabled);
+        _AudioManager.Settings().setSfxEnabled(enabled);
       },
     },
     {
@@ -1136,10 +1171,6 @@ export function eventConfigs() {
       selector: DOM.market.marketSuppliesLink,
       eventType: "click",
       callback: () => {
-        const st = usePlayerCompanyStore.getState();
-        if (st.onboardingSuppliesStep === "supplies_focus") {
-          st.setOnboardingSuppliesStep("supplies_popup");
-        }
         UiManager.renderSuppliesMarketScreen();
       },
     },
@@ -1158,6 +1189,116 @@ export function eventConfigs() {
       eventType: "click",
       callback: () => {
         UiManager.renderDevCatalogScreen();
+      },
+    },
+    {
+      selector: "#market-sections-onboarding-continue",
+      eventType: "click",
+      callback: () => {
+        const popup = s_("#market-sections-onboarding-popup") as HTMLElement | null;
+        if (!popup) return;
+        const textEl = popup.querySelector(
+          "#market-sections-onboarding-typed-text",
+        ) as HTMLElement | null;
+        const tagsWrap = popup.querySelector(
+          "#market-sections-tutorial-tags",
+        ) as HTMLElement | null;
+        const step = Number(popup.dataset.step ?? "0") || 0;
+        const steps = [
+          {
+            text: "Market operations online. Let’s quickly review your three core purchasing lanes.",
+            tag: "",
+          },
+          {
+            text: "Body Armor: improves survivability through toughness and defensive effects. Prioritize this when your squad is taking heavy fire.",
+            tag: "armor",
+          },
+          {
+            text: "Weapons: increase your squad’s damage output and role identity. Better weapons speed up clears and reduce incoming pressure.",
+            tag: "weapons",
+          },
+          {
+            text: "Supplies: restock consumables like grenades and medkits. Supply tiers track your top squad level, so stronger troops unlock stronger supplies.",
+            tag: "supplies",
+          },
+        ] as const;
+
+        const setActiveTag = (tagId: string) => {
+          if (!tagsWrap) return;
+          tagsWrap.querySelectorAll("[data-market-tag]").forEach((el) => {
+            const isActive =
+              (el as HTMLElement).dataset.marketTag === tagId && !!tagId;
+            el.classList.toggle("is-active", isActive);
+          });
+        };
+        const runTypewriter = (el: HTMLElement, fullText: string) => {
+          el.dataset.fullText = fullText;
+          delete el.dataset.typed;
+          el.textContent = fullText;
+          const reserveHeight = Math.ceil(el.getBoundingClientRect().height);
+          if (reserveHeight > 0) el.style.minHeight = `${reserveHeight}px`;
+          el.textContent = "";
+          el.classList.add("helper-onboarding-text-typing");
+          const durationMs = 1500;
+          const start = performance.now();
+          const renderTyped = (typedText: string) => {
+            el.innerHTML = "";
+            const span = document.createElement("span");
+            span.className = "helper-onboarding-text-typing";
+            span.textContent = typedText;
+            el.appendChild(span);
+            const caret = document.createElement("span");
+            caret.className = "helper-onboarding-caret";
+            el.appendChild(caret);
+          };
+          const tick = (now: number) => {
+            const elapsed = Math.max(0, now - start);
+            const progress = Math.min(1, elapsed / durationMs);
+            const count = Math.max(1, Math.floor(fullText.length * progress));
+            renderTyped(fullText.slice(0, count));
+            if (progress < 1) {
+              window.requestAnimationFrame(tick);
+            } else {
+              el.textContent = fullText;
+              el.classList.remove("helper-onboarding-text-typing");
+            }
+          };
+          window.requestAnimationFrame(tick);
+        };
+
+        if (step < steps.length - 1) {
+          const next = step + 1;
+          popup.dataset.step = String(next);
+          if (textEl) runTypewriter(textEl, steps[next].text);
+          setActiveTag(steps[next].tag);
+          return;
+        }
+
+        const st = usePlayerCompanyStore.getState();
+        st.setOnboardingSuppliesStep("done");
+        st.setOnboardingMarketSectionsLocked(false);
+        popup.classList.add("home-onboarding-popup-hide");
+        window.setTimeout(() => {
+          popup.remove();
+          UiManager.renderMarketScreen();
+        }, 260);
+      },
+    },
+    {
+      selector: "#market-sections-onboarding-popup",
+      eventType: "click",
+      callback: (e: Event) => {
+        if ((e.target as HTMLElement).id !== "market-sections-onboarding-popup")
+          return;
+        const st = usePlayerCompanyStore.getState();
+        st.setOnboardingSuppliesStep("done");
+        st.setOnboardingMarketSectionsLocked(false);
+        const popup = e.currentTarget as HTMLElement;
+        popup.classList.add("home-onboarding-popup-hide");
+        window.setTimeout(() => {
+          popup.remove();
+          UiManager.renderMarketScreen();
+        }, 240);
       },
     },
   ];
@@ -2295,7 +2436,9 @@ export function eventConfigs() {
               const hasUses = g.item.uses != null || g.item.quantity != null;
               const btnRarity = rarity !== "common" ? ` rarity-${rarity}` : "";
               const grenadeDisabled =
-                !canUse || (!isKnife && grenadeOnCooldown);
+                !canUse ||
+                (!isKnife && grenadeOnCooldown) ||
+                onboardingCombatTutorialStep === "step_2";
               const cooldownClass =
                 !isKnife && grenadeOnCooldown ? " combat-grenade-cooldown" : "";
               const onboardingGuideClass =
@@ -3486,7 +3629,7 @@ export function eventConfigs() {
           for (const s of result.splash) {
             if (s.hit && !s.evaded) affectedForJolt.push(s.targetId);
           }
-          if (isFragGrenadeImpact) {
+          if (isFragGrenadeImpact || isIncendiary) {
             _AudioManager.Weapon().playFragImpact();
           }
           const impactVariant: "frag" | "incendiary" | "stun" | "smoke" =
@@ -4222,6 +4365,8 @@ export function eventConfigs() {
 
     function startCombatLoop() {
       const now = Date.now();
+      const randomBetween = (min: number, max: number) =>
+        min + Math.floor(Math.random() * (max - min + 1));
       const defendEndAt = isDefendObjectiveMission
         ? now + DEFEND_DURATION_MS
         : Number.POSITIVE_INFINITY;
@@ -4237,6 +4382,8 @@ export function eventConfigs() {
       const enemyGrenadeState = new Map<string, { nextCheckAt: number }>();
       const enemyCoverState = new Map<string, { nextCheckAt: number }>();
       let nextEnemyCoverGlobalAt = now + 900 + Math.floor(Math.random() * 800);
+      let reloadCuesRemaining = randomBetween(1, 2);
+      let nextReloadCueAt = now + randomBetween(4_000, 10_000);
       for (const e of enemies) {
         if ((e.designation ?? "").toLowerCase() !== "medic") continue;
         enemyMedicState.set(e.id, {
@@ -4263,23 +4410,29 @@ export function eventConfigs() {
       }
       lastBurnTickTimeRef.current = now;
       lastBleedTickTimeRef.current = now;
-      const openingStaggerBuckets = [100, 300, 500] as const;
-      const rollOpeningStaggerDelay = () =>
-        openingStaggerBuckets[
+      const openingStaggerBuckets = [0, 180, 320, 500, 750, 1000] as const;
+      const rollOpeningStaggerDelay = (side: "player" | "enemy") => {
+        // Keep first-volley cadence irregular so squads do not fire in sync.
+        // Slightly bias players away from 0ms so mission-side priority remains clear.
+        if (side === "player" && Math.random() < 0.2) return 0;
+        return openingStaggerBuckets[
           Math.floor(Math.random() * openingStaggerBuckets.length)
         ];
+      };
       const INITIAL_SUPPORT_SETUP_MS = 1000;
       const missionKind = missionForCombat?.kind ?? "skirmish";
       const getOpeningPriorityOffset = (
         combatant: Combatant,
       ): number => {
         if (missionKind === "defend_objective") {
+          // Defend: player side opens, enemy starts slightly after.
           return combatant.side === "enemy" ? 500 : 0;
         }
         if (missionKind === "manhunt") {
+          // Manhunt: player side opens, enemy follows shortly after.
           return combatant.side === "enemy" ? 500 : 0;
         }
-        // Skirmish and all other mission types: no side priority.
+        // Skirmish/default: no side priority.
         return 0;
       };
       for (const c of allCombatants) {
@@ -4290,7 +4443,8 @@ export function eventConfigs() {
           } else {
             delete c.setupUntil;
           }
-          const delayMs = getOpeningPriorityOffset(c) + rollOpeningStaggerDelay();
+          const delayMs =
+            getOpeningPriorityOffset(c) + rollOpeningStaggerDelay(c.side);
           const setupGate = c.setupUntil != null ? c.setupUntil : now;
           nextAttackAt.set(c.id, Math.max(now + delayMs, setupGate));
         }
@@ -4445,6 +4599,44 @@ export function eventConfigs() {
         ).length;
       }
 
+      const getRetargetJitterMs = (): number =>
+        40 + Math.floor(Math.random() * 181); // 40..220ms
+
+      function applyRetargetCadenceJitter(
+        prevTargets: ReadonlyMap<string, string>,
+        now: number,
+      ): void {
+        for (const c of allCombatants) {
+          if (
+            c.hp <= 0 ||
+            c.downState ||
+            isInCover(c, now) ||
+            isStunned(c, now) ||
+            isSuppressed(c, now)
+          ) {
+            continue;
+          }
+          const prevTargetId = prevTargets.get(c.id) ?? "";
+          const nextTargetId = targets.get(c.id) ?? "";
+          if (!nextTargetId || nextTargetId === prevTargetId) continue;
+
+          // During active focused fire, preserve immediate retarget feel.
+          if (
+            c.side === "player" &&
+            focusedFireTargetId != null &&
+            now < focusedFireUntil &&
+            nextTargetId === focusedFireTargetId
+          ) {
+            continue;
+          }
+
+          const due = nextAttackAt.get(c.id);
+          if (due == null || due <= now) {
+            nextAttackAt.set(c.id, now + getRetargetJitterMs());
+          }
+        }
+      }
+
       function tick() {
         if (extractionInProgress) return;
         if (onboardingCombatTutorialPaused) {
@@ -4455,6 +4647,23 @@ export function eventConfigs() {
           return;
         }
         const now = Date.now();
+        if (reloadCuesRemaining > 0 && now >= nextReloadCueAt && !combatWinner) {
+          const alivePlayers = players.filter((p) => {
+            if (p.hp <= 0 || p.downState) return false;
+            if (p.setupUntil != null && now < p.setupUntil) return false;
+            return true;
+          });
+          const aliveEnemies = enemies.some((e) => e.hp > 0 && !e.downState);
+          if (alivePlayers.length > 0 && aliveEnemies) {
+            _AudioManager.Weapon().playReload();
+            reloadCuesRemaining -= 1;
+            if (reloadCuesRemaining > 0) {
+              nextReloadCueAt = now + randomBetween(12_000, 25_000);
+            }
+          } else {
+            nextReloadCueAt = now + 1_000;
+          }
+        }
         if (now >= nextLowHpSampleAt) {
           for (const p of players) {
             if (p.hp <= 0 || p.downState || p.maxHp <= 0) continue;
@@ -4544,6 +4753,31 @@ export function eventConfigs() {
           traumaResponseNextTickAt += 2000;
           if (traumaResponseTicksRemaining <= 0) traumaResponseNextTickAt = 0;
         }
+        for (const c of allCombatants) {
+          if (
+            !c.postCoverPendingApply ||
+            c.side !== "player" ||
+            c.takeCoverUntil == null ||
+            now < c.takeCoverUntil ||
+            c.hp <= 0 ||
+            c.downState
+          ) {
+            continue;
+          }
+          const postCoverBonus = Math.max(
+            1,
+            Math.round(
+              (c.toughness ?? 0) * (companyPassives.postCoverToughnessPct ?? 0),
+            ),
+          );
+          if (postCoverBonus > 0 && companyPassives.postCoverDurationMs > 0) {
+            c.toughness = Math.max(0, (c.toughness ?? 0) + postCoverBonus);
+            c.postCoverToughnessBonus = postCoverBonus;
+            c.postCoverToughnessUntil = now + companyPassives.postCoverDurationMs;
+            markCombatantDirty(c.id, { hp: false, status: true, speed: false });
+          }
+          delete c.postCoverPendingApply;
+        }
         clearExpiredEffects(allCombatants, now);
         if (HAS_MISSION_REINFORCEMENTS) {
           for (const e of enemies) {
@@ -4583,8 +4817,10 @@ export function eventConfigs() {
                 : 0);
           }
         }
+        const prevTargets = new Map(targets);
         assignTargets(players, enemies, targets, now);
         applyFocusedFireTargeting(now);
+        applyRetargetCadenceJitter(prevTargets, now);
         const defeatedEnemies = getEnemyDefeatedCount();
         if (isDefendObjectiveMission) {
           combatWinner = players.every((p) => p.hp <= 0 || p.downState)
@@ -4771,23 +5007,21 @@ export function eventConfigs() {
             }
             let companyXpEarned = 0;
             if (!isDevTest && victory && mission) {
-              let totalSoldierXp = 0;
-              xpEarnedBySoldier.forEach((xp) => {
-                totalSoldierXp += Math.max(0, xp);
-              });
-              const companyDivisor =
-                mission.kind === "defend_objective" ? 6 : 5;
-              const baseCompanyXp = totalSoldierXp / companyDivisor;
+              const difficultyKey = Math.max(
+                1,
+                Math.min(4, Math.floor(mission.difficulty ?? 1)),
+              );
+              const baseCompanyXp =
+                COMPANY_XP_BY_DIFFICULTY[difficultyKey] ??
+                COMPANY_XP_BY_DIFFICULTY[1];
               const isEliteMission = !!(
                 mission.isEpic || mission.rarity === "epic"
               );
-              const companyMissionMult = isEliteMission ? 2 : 1;
+              const companyMissionMult = isEliteMission ? 1.5 : 1;
               companyXpEarned = Math.max(
                 1,
                 Math.floor(
-                  baseCompanyXp *
-                    COMPANY_XP_FROM_COMBAT_MULTIPLIER *
-                    companyMissionMult,
+                  baseCompanyXp * companyMissionMult,
                 ),
               );
             }
@@ -5389,18 +5623,14 @@ export function eventConfigs() {
       const coverCdMs =
         combatant.side === "player" ? TAKE_COVER_COOLDOWN_MS : 60_000;
       combatant.takeCoverCooldownUntil = now + coverCdMs;
-      if (combatant.side === "player" && companyPassives.postCoverToughnessPct > 0) {
-        const postCoverBonus = Math.max(
-          1,
-          Math.round((combatant.toughness ?? 0) * companyPassives.postCoverToughnessPct),
-        );
-        combatant.toughness = Math.max(
-          0,
-          (combatant.toughness ?? 0) + postCoverBonus,
-        );
-        combatant.postCoverToughnessBonus = postCoverBonus;
-        combatant.postCoverToughnessUntil =
-          now + companyPassives.postCoverDurationMs;
+      if (
+        combatant.side === "player" &&
+        companyPassives.postCoverToughnessPct > 0 &&
+        companyPassives.postCoverDurationMs > 0
+      ) {
+        combatant.postCoverPendingApply = true;
+      } else {
+        delete combatant.postCoverPendingApply;
       }
       _AudioManager.Weapon().playTakeCover();
       removeTargetsForCombatantInCover(targets, combatant.id);
@@ -6177,6 +6407,14 @@ export function eventConfigs() {
             return;
           }
           if (grenadeBtn && !(grenadeBtn as HTMLButtonElement).disabled) {
+            if (
+              onboardingCombatTutorialEnabled &&
+              onboardingCombatTutorialStep === "step_2"
+            ) {
+              e.preventDefault();
+              e.stopPropagation();
+              return;
+            }
             triggerAbilityTapFeedback(grenadeBtn as HTMLElement);
             e.preventDefault();
             e.stopPropagation();
@@ -6370,7 +6608,16 @@ export function eventConfigs() {
             onboardingCombatTutorialStep = "await_grenade";
             removeCombatOnboardingPopup();
             setOnboardingCombatPlayerCardFocus(false);
-            primeOnboardingGrenadeSelection();
+            const abilitiesPopup = document.getElementById(
+              "combat-abilities-popup",
+            );
+            const popupVisible =
+              abilitiesPopup?.getAttribute("aria-hidden") !== "true";
+            if (!popupVisible) {
+              primeOnboardingGrenadeSelection();
+            } else {
+              updateCombatUI(true);
+            }
           }
         },
       },
@@ -8784,6 +9031,7 @@ export function eventConfigs() {
           if (guided) {
             st.setOnboardingRecruitStep("none");
             st.setOnboardingRecruitSoldier(null);
+            st.setOnboardingMarketSectionsLocked(true);
             st.setOnboardingMissionTypesIntroPending(true);
             UiManager.renderRosterScreen();
           } else {
@@ -9675,6 +9923,31 @@ export function eventConfigs() {
 
   const abilitiesScreenEventConfig: HandlerInitConfig[] = [
     {
+      selector: "#tactics-onboarding-continue",
+      eventType: "click",
+      callback: () => {
+        const st = usePlayerCompanyStore.getState();
+        st.setOnboardingTacticsIntroPending(false);
+        const popup = s_("#tactics-onboarding-popup") as HTMLElement | null;
+        if (popup) {
+          popup.classList.add("home-onboarding-popup-hide");
+          window.setTimeout(() => popup.remove(), 260);
+        }
+      },
+    },
+    {
+      selector: "#tactics-onboarding-popup",
+      eventType: "click",
+      callback: (e: Event) => {
+        if ((e.target as HTMLElement).id !== "tactics-onboarding-popup") return;
+        const st = usePlayerCompanyStore.getState();
+        st.setOnboardingTacticsIntroPending(false);
+        const popup = e.currentTarget as HTMLElement;
+        popup.classList.add("home-onboarding-popup-hide");
+        window.setTimeout(() => popup.remove(), 240);
+      },
+    },
+    {
       selector: ".company-talent-node[data-ability-id]",
       eventType: "click",
       callback: (e: Event) => {
@@ -9777,7 +10050,7 @@ export function eventConfigs() {
         } else {
           learnBtn.hidden = false;
           learnBtn.disabled = true;
-          learnBtn.textContent = "Locked";
+          learnBtn.textContent = `Locked - Available at Lv ${lvl}`;
           learnBtn.dataset.state = "locked";
         }
         actionsEl.hidden = false;

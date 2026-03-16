@@ -30,28 +30,22 @@ function marketTier(avgCompanyLevel: number): GearLevel {
   return clampGearLevel(avgCompanyLevel);
 }
 
-/** Min company level to see rare armor in store. */
-export const RARE_GEAR_MIN_LEVEL = 1;
 /** Min company level to see epic items. (Temporarily 1 to enable in store.) */
 export const EPIC_GEAR_MIN_LEVEL = 1;
-/** Rare weapons unlock at gear tier 5+. */
-export const RARE_WEAPON_MIN_LEVEL = 5;
 
 /** All weapons at company level: one tier per base. Rare at lvl 2+, Epic at lvl 4+. Sorted by price. */
-export function getWeaponsMarketItems(avgCompanyLevel: number, companyLevel: number): GearMarketEntry[] {
-  const tier = marketTier(avgCompanyLevel);
+export function getWeaponsMarketItems(
+  selectedTierLevel: number,
+  _companyLevel: number,
+  _squadAverageLevel = selectedTierLevel,
+): GearMarketEntry[] {
+  const tier = marketTier(selectedTierLevel);
   const entries: GearMarketEntry[] = [];
   for (const base of WEAPON_BASES) {
     const item = createWeapon(base, tier);
     entries.push({ item, price: getWeaponPrice(item) });
   }
-  if (companyLevel >= RARE_GEAR_MIN_LEVEL && tier >= RARE_WEAPON_MIN_LEVEL) {
-    for (const base of RARE_WEAPON_BASES) {
-      if (base.storeAvailable === false) continue;
-      const item = createRareWeapon(base, tier);
-      entries.push({ item, price: getWeaponPrice(item) });
-    }
-  }
+  // Rare weapons are drop-only (mission rewards), not in store.
   // Epic weapons are drop-only (mission rewards), not in store
   entries.sort((a, b) => a.price - b.price);
   return entries;
@@ -77,22 +71,18 @@ export function getWeaponsMarketItemsAll(tier: GearLevel): GearMarketEntry[] {
 }
 
 /** All armor at company level: one tier per base. Rare at lvl 2+, Epic at lvl 4+. Sorted by price. */
-export function getArmorMarketItems(avgCompanyLevel: number, companyLevel: number): GearMarketEntry[] {
-  const tier = marketTier(avgCompanyLevel);
+export function getArmorMarketItems(
+  selectedTierLevel: number,
+  _companyLevel: number,
+  _squadAverageLevel = selectedTierLevel,
+): GearMarketEntry[] {
+  const tier = marketTier(selectedTierLevel);
   const entries: GearMarketEntry[] = [];
   for (const base of ARMOR_BASES) {
     const item = createArmor(base, tier);
     entries.push({ item, price: getArmorPrice(item) });
   }
-  if (companyLevel >= RARE_GEAR_MIN_LEVEL) {
-    for (const base of RARE_ARMOR_BASES) {
-      if (base.storeAvailable === false) continue;
-      const minLvl = base.minLevel ?? 1;
-      if (tier < minLvl) continue;
-      const item = createRareArmor(base, tier);
-      entries.push({ item, price: getArmorPrice(item) });
-    }
-  }
+  // Rare armor is drop-only (mission rewards), not in store.
   // Epic armor is drop-only (mission rewards), not in store
   entries.sort((a, b) => a.price - b.price);
   return entries;

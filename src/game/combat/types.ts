@@ -49,6 +49,8 @@ export interface Combatant {
   postCoverToughnessUntil?: number;
   /** Flat toughness bonus granted by post-cover doctrine. */
   postCoverToughnessBonus?: number;
+  /** One-shot marker: apply post-cover doctrine buff when Take Cover ends. */
+  postCoverPendingApply?: boolean;
   /** Timestamp (ms) when Take Cover can next be used */
   takeCoverCooldownUntil?: number;
   /** Timestamp (ms) when Suppress cooldown ends */

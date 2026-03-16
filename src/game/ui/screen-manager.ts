@@ -985,7 +985,7 @@ function ScreenManager() {
     );
     DomEventManager.initEquipSlotTooltipHideOnClick();
     UiManager.selectCompanyHomeButton(DOM.company.inventory);
-    Styler.setCenterBG("bg_81.jpg", true);
+    Styler.setCenterBG("/images/armory_bg.png", true);
     show.center();
   }
 

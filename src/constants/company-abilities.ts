@@ -128,8 +128,9 @@ export const COMPANY_ABILITY_DEFS: Record<CompanyAbilityId, CompanyAbilityDef> =
       id: "fire_and_maneuver",
       kind: "passive",
       name: "Fire and Maneuver",
-      short: "Take Cover cooldown reduced by 15s.",
-      description: "Take Cover cooldown reduced by 15s (60s -> 45s).",
+      short: "Take Cover cooldown -15s. After cover ends: +30% toughness for 5s.",
+      description:
+        "Take Cover cooldown reduced by 15s (60s -> 45s). After Take Cover expires, gain +30% toughness for 5s.",
       icon: "/images/fire_m.png",
     },
     grenadier_training: {
@@ -258,7 +259,7 @@ export function getCompanyPassiveEffects(
   let supportSuppressCooldownReductionMs = 0;
   let takeCoverCooldownReductionMs = 0;
   let postCoverToughnessPct = 0;
-  const postCoverDurationMs = 6_000;
+  let postCoverDurationMs = 0;
   let playerGrenadeDamageMultiplier = 1;
 
   if (owned.has("advanced_tactical_training")) {
@@ -270,7 +271,14 @@ export function getCompanyPassiveEffects(
   if (owned.has("targeting_optics")) chanceToHitBonusPct += 0.01;
   if (owned.has("gunnery")) supportSuppressCooldownReductionMs += 10_000;
   if (owned.has("fire_and_maneuver")) takeCoverCooldownReductionMs += 15_000;
-  if (owned.has("entrenchment_techniques")) postCoverToughnessPct += 0.1;
+  if (owned.has("entrenchment_techniques")) {
+    postCoverToughnessPct = 0.1;
+    postCoverDurationMs = 6_000;
+  }
+  if (owned.has("fire_and_maneuver")) {
+    postCoverToughnessPct = 0.3;
+    postCoverDurationMs = 5_000;
+  }
   if (owned.has("grenadier_training")) playerGrenadeDamageMultiplier *= 1.15;
 
   return {
@@ -349,7 +357,7 @@ export function getCompanyPassiveTraitEntries(
     out.push({
       title: "Fire and Maneuver",
       type: "Company",
-      desc: "Take Cover cooldown reduced by 15s.",
+      desc: "Take Cover cooldown reduced by 15s. After cover ends: +30% toughness for 5s.",
     });
   }
   if (owned.has("entrenchment_techniques")) {

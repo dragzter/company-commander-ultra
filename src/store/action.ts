@@ -408,7 +408,9 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
   onboardingMedicRecruitNoticePending: false,
   onboardingMedicRecruitNoticeSeen: false,
   onboardingMissionTypesIntroPending: false,
+  onboardingTacticsIntroPending: false,
   onboardingSuppliesStep: "none" as SuppliesOnboardingStep,
+  onboardingMarketSectionsLocked: false,
   onboardingRecruitStep: "none" as RecruitOnboardingStep,
   onboardingRecruitSoldier: null,
   companyAbilityChoices: defaultCompanyAbilityChoices(),
@@ -418,7 +420,8 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
   companyAbilityCooldowns: {},
   companyLevelUpSummary: null,
   equippedStratagemItemId: null,
-  soundEnabled: true,
+  musicEnabled: true,
+  sfxEnabled: true,
 
   // Actions
   rerollSoldier: async (id: string) => {
@@ -536,7 +539,9 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
         onboardingMedicRecruitNoticePending: false,
         onboardingMedicRecruitNoticeSeen: false,
         onboardingMissionTypesIntroPending: false,
+        onboardingTacticsIntroPending: true,
         onboardingSuppliesStep: "none",
+        onboardingMarketSectionsLocked: false,
         onboardingRecruitStep: "none",
         onboardingRecruitSoldier: null,
         companyAbilityChoices: defaultCompanyAbilityChoices(),
@@ -609,9 +614,26 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
   setOnboardingReadyRoomIntroPending: (pending: boolean) => set({ onboardingReadyRoomIntroPending: !!pending }),
   setOnboardingCombatTutorialPending: (pending: boolean) => set({ onboardingCombatTutorialPending: !!pending }),
   setOnboardingMedicRecruitNoticePending: (pending: boolean) => set({ onboardingMedicRecruitNoticePending: !!pending }),
-  setOnboardingMedicRecruitNoticeSeen: (seen: boolean) => set({ onboardingMedicRecruitNoticeSeen: !!seen }),
+  setOnboardingMedicRecruitNoticeSeen: (seen: boolean) =>
+    set((state: CompanyStore) => {
+      const nextSeen = !!seen;
+      const hasGrenadeThreshold =
+        (state.totalGrenadesThrownAllTime ?? 0) >= 4;
+      const suppliesIdle = (state.onboardingSuppliesStep ?? "none") === "none";
+      const medicPending = state.onboardingMedicRecruitNoticePending ?? false;
+      return {
+        onboardingMedicRecruitNoticeSeen: nextSeen,
+        onboardingSuppliesStep:
+          nextSeen && !medicPending && hasGrenadeThreshold && suppliesIdle
+            ? "market_popup"
+            : state.onboardingSuppliesStep,
+      };
+    }),
   setOnboardingMissionTypesIntroPending: (pending: boolean) => set({ onboardingMissionTypesIntroPending: !!pending }),
+  setOnboardingTacticsIntroPending: (pending: boolean) => set({ onboardingTacticsIntroPending: !!pending }),
   setOnboardingSuppliesStep: (step: SuppliesOnboardingStep) => set({ onboardingSuppliesStep: step }),
+  setOnboardingMarketSectionsLocked: (locked: boolean) =>
+    set({ onboardingMarketSectionsLocked: !!locked }),
   setOnboardingRecruitStep: (step: RecruitOnboardingStep) => set({ onboardingRecruitStep: step }),
   setOnboardingRecruitSoldier: (soldier: Soldier | null) => set({ onboardingRecruitSoldier: soldier }),
   dismissCompanyAbilityNotification: () => set({ companyAbilityNotificationText: "" }),
@@ -632,15 +654,22 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
       return { companyAbilityCooldowns: existing };
     }),
   clearCompanyLevelUpSummary: () => set({ companyLevelUpSummary: null }),
-  setSoundEnabled: (enabled: boolean) =>
-    set({ soundEnabled: enabled !== false }),
+  setMusicEnabled: (enabled: boolean) =>
+    set({ musicEnabled: enabled !== false }),
+  setSfxEnabled: (enabled: boolean) =>
+    set({ sfxEnabled: enabled !== false }),
   recordGrenadeThrows: (count: number) =>
     set((state: CompanyStore) => {
       const add = Math.max(0, Math.floor(Number(count) || 0));
       if (add <= 0) return {};
       const total = (state.totalGrenadesThrownAllTime ?? 0) + add;
+      const medicReminderResolved =
+        (state.onboardingMedicRecruitNoticeSeen ?? false) === true &&
+        (state.onboardingMedicRecruitNoticePending ?? false) === false;
       const shouldStart =
-        total >= 4 && (state.onboardingSuppliesStep ?? "none") === "none";
+        total >= 4 &&
+        (state.onboardingSuppliesStep ?? "none") === "none" &&
+        medicReminderResolved;
       return {
         totalGrenadesThrownAllTime: total,
         onboardingSuppliesStep: shouldStart
@@ -1006,7 +1035,9 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
         onboardingMedicRecruitNoticePending: false,
         onboardingMedicRecruitNoticeSeen: false,
         onboardingMissionTypesIntroPending: false,
+        onboardingTacticsIntroPending: true,
         onboardingSuppliesStep: "none",
+        onboardingMarketSectionsLocked: true,
         onboardingRecruitStep: "none",
         onboardingRecruitSoldier: null,
         companyAbilityUnlockedIds: resolvedAbilities.unlocked,
@@ -1739,22 +1770,35 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
     }
 
     if (!isOnboardingMission) {
-      /* Loot rolls: each rolled independently on any successful mission */
+      /* Loot rolls: each rolled independently on successful missions */
       const tier = Math.max(1, Math.min(999, itemLevel)) as import("../constants/items/types.ts").GearLevel;
-      if (Math.random() < LOOT_EPIC_CHANCE) {
-        const isWeapon = Math.random() < 0.5;
-        const epicArmorIds = getEpicArmorBaseIdsForLevel(itemLevel);
-        const baseId = isWeapon
-          ? pickRandomFrom(EPIC_WEAPON_BASE_IDS)
-          : pickRandomFrom(epicArmorIds);
-        if (baseId) {
-          const drop = isWeapon
-            ? createWeaponByBaseId(baseId, tier)
-            : createArmorByBaseId(baseId, tier);
-          if (drop) addItemToInventory(drop, true);
+      const missionRarity = mission.rarity ?? (mission.isEpic ? "epic" : "normal");
+      const difficulty = Math.max(1, Math.min(4, Math.floor(mission.difficulty ?? 1)));
+      const normalLootByDifficulty: Record<number, { rare: number; common: number }> = {
+        1: { rare: 0, common: 0 },
+        2: { rare: 0.01, common: 0.03 },
+        3: { rare: 0.02, common: 0.05 },
+        4: { rare: 0.05, common: 0.1 },
+      };
+
+      if (missionRarity === "epic" && Math.random() < LOOT_EPIC_CHANCE) {
+          const isWeapon = Math.random() < 0.5;
+          const epicArmorIds = getEpicArmorBaseIdsForLevel(itemLevel);
+          const baseId = isWeapon
+            ? pickRandomFrom(EPIC_WEAPON_BASE_IDS)
+            : pickRandomFrom(epicArmorIds);
+          if (baseId) {
+            const drop = isWeapon
+              ? createWeaponByBaseId(baseId, tier)
+              : createArmorByBaseId(baseId, tier);
+            if (drop) addItemToInventory(drop, true);
+          }
         }
-      }
-      if (Math.random() < LOOT_RARE_CHANCE) {
+      const rareChance =
+        missionRarity === "normal"
+          ? (normalLootByDifficulty[difficulty]?.rare ?? 0)
+          : LOOT_RARE_CHANCE;
+      if (Math.random() < rareChance) {
         const isWeapon = Math.random() < 0.5;
         const rareArmorIds = getRareArmorBaseIdsForLevel(itemLevel);
         const baseId = isWeapon
@@ -1767,7 +1811,11 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
           if (drop) addItemToInventory(drop, true);
         }
       }
-      if (Math.random() < LOOT_COMMON_SUPPLY_CHANCE) {
+      const commonSupplyChance =
+        missionRarity === "normal"
+          ? (normalLootByDifficulty[difficulty]?.common ?? 0)
+          : LOOT_COMMON_SUPPLY_CHANCE;
+      if (Math.random() < commonSupplyChance) {
         const supply = pickRandomCommonSupply();
         if (supply) addItemToInventory(withMissionItemLevel(supply), true);
       }

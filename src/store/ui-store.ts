@@ -104,7 +104,9 @@ export type CompanyStore = {
   onboardingMedicRecruitNoticePending: boolean;
   onboardingMedicRecruitNoticeSeen: boolean;
   onboardingMissionTypesIntroPending: boolean;
+  onboardingTacticsIntroPending: boolean;
   onboardingSuppliesStep: SuppliesOnboardingStep;
+  onboardingMarketSectionsLocked: boolean;
   onboardingRecruitStep: RecruitOnboardingStep;
   onboardingRecruitSoldier: Soldier | null;
   companyAbilityChoices: CompanyAbilityChoiceMap;
@@ -114,7 +116,8 @@ export type CompanyStore = {
   companyAbilityCooldowns: Partial<Record<CompanyAbilityId, number>>;
   companyLevelUpSummary: CompanyLevelUpSummary | null;
   equippedStratagemItemId: string | null;
-  soundEnabled: boolean;
+  musicEnabled: boolean;
+  sfxEnabled: boolean;
 
   // Setters
   setMarketAvailableTroops: (soldiers: Soldier[]) => void;
@@ -142,7 +145,9 @@ export type CompanyStore = {
   setOnboardingMedicRecruitNoticePending: (pending: boolean) => void;
   setOnboardingMedicRecruitNoticeSeen: (seen: boolean) => void;
   setOnboardingMissionTypesIntroPending: (pending: boolean) => void;
+  setOnboardingTacticsIntroPending: (pending: boolean) => void;
   setOnboardingSuppliesStep: (step: SuppliesOnboardingStep) => void;
+  setOnboardingMarketSectionsLocked: (locked: boolean) => void;
   setOnboardingRecruitStep: (step: RecruitOnboardingStep) => void;
   setOnboardingRecruitSoldier: (soldier: Soldier | null) => void;
   chooseCompanyAbilityAtLevel: (
@@ -157,7 +162,8 @@ export type CompanyStore = {
   ) => void;
   clearCompanyLevelUpSummary: () => void;
   setEquippedStratagemItemId: (itemId: string | null) => void;
-  setSoundEnabled: (enabled: boolean) => void;
+  setMusicEnabled: (enabled: boolean) => void;
+  setSfxEnabled: (enabled: boolean) => void;
   recordGrenadeThrows: (count: number) => void;
   consumeEquippedStratagemUse: () => { success: boolean; reason?: string };
   bootstrapNewCompanyIfEmpty: () => void;
@@ -458,6 +464,8 @@ export const usePlayerCompanyStore = createStore<CompanyStore>()(
             merged.onboardingMedicRecruitNoticeSeen = false;
           if (typeof merged.onboardingMissionTypesIntroPending !== "boolean")
             merged.onboardingMissionTypesIntroPending = false;
+          if (typeof merged.onboardingTacticsIntroPending !== "boolean")
+            merged.onboardingTacticsIntroPending = false;
           if (
             merged.onboardingSuppliesStep !== "none" &&
             merged.onboardingSuppliesStep !== "market_popup" &&
@@ -467,6 +475,9 @@ export const usePlayerCompanyStore = createStore<CompanyStore>()(
             merged.onboardingSuppliesStep !== "done"
           ) {
             merged.onboardingSuppliesStep = "none";
+          }
+          if (typeof merged.onboardingMarketSectionsLocked !== "boolean") {
+            merged.onboardingMarketSectionsLocked = false;
           }
           if (
             typeof merged.totalGrenadesThrownAllTime !== "number" ||
@@ -537,8 +548,19 @@ export const usePlayerCompanyStore = createStore<CompanyStore>()(
           ) {
             merged.equippedStratagemItemId = null;
           }
-          if (typeof merged.soundEnabled !== "boolean") {
-            merged.soundEnabled = true;
+          if (typeof merged.musicEnabled !== "boolean") {
+            merged.musicEnabled =
+              typeof (merged as { soundEnabled?: unknown }).soundEnabled ===
+              "boolean"
+                ? !!(merged as { soundEnabled?: boolean }).soundEnabled
+                : true;
+          }
+          if (typeof merged.sfxEnabled !== "boolean") {
+            merged.sfxEnabled =
+              typeof (merged as { soundEnabled?: unknown }).soundEnabled ===
+              "boolean"
+                ? !!(merged as { soundEnabled?: boolean }).soundEnabled
+                : true;
           }
           if (
             !merged.companyLevelUpSummary ||

@@ -51,7 +51,7 @@ function codexLevelsHTML(): string {
 				: "";
 			return `
 		<div class="codex-level-row">
-			<span class="codex-level-num">Lv ${r.level}</span>
+			<span class="codex-level-num">${r.levelLabel ?? `Lv ${r.level}`}</span>
 			<div class="codex-level-gains">${gainsHtml}</div>
 			<div class="codex-level-special-wrap">${specialHtml}</div>
 		</div>`;
@@ -172,7 +172,7 @@ export function codexPopupTemplate(): string {
         <div class="codex-tab-panel active" data-panel="stats"><div class="codex-stats-content"><section class="codex-section"><h5 class="codex-section-title">Base Stats</h5><div class="codex-stat-table">${statsRows}</div></section>${combatSection}</div></div>
         <div class="codex-tab-panel" data-panel="traits"><p class="codex-traits-intro">Traits add a little flavor to your soldiers—each modifies base stats as shown below.</p><div class="codex-traits-grid">${codexTraitsHTML()}</div></div>
         <div class="codex-tab-panel" data-panel="effects"><div class="codex-effects-content"><section class="codex-section"><h5 class="codex-section-title">Status Effects</h5><div class="codex-stat-table">${effectsRows}</div></section></div></div>
-        <div class="codex-tab-panel" data-panel="levels"><div class="codex-levels-content"><section class="codex-section"><h5 class="codex-section-title">Level Benefits</h5><p class="codex-levels-intro">Soldiers gain stats and bonuses at each level. Every 4th level (4, 8, 12, 16) grants +1% Chance to Hit; level 20 grants +2%.</p><div class="codex-level-rows">${codexLevelsHTML()}</div></section></div></div>
+        <div class="codex-tab-panel" data-panel="levels"><div class="codex-levels-content"><section class="codex-section"><h5 class="codex-section-title">Level Benefits</h5><p class="codex-levels-intro">Soldiers can level up to Lv 999. Most base stat growth happens through Lv20, then progression continues mainly through HP gains, gear scaling, traits, and abilities.</p><div class="codex-level-rows">${codexLevelsHTML()}</div></section></div></div>
       </div>
     </div>
   </div>`;
@@ -245,16 +245,33 @@ export function settingsPopupTemplate(): string {
       </div>
       <div class="settings-popup-body">
         <section class="settings-panel settings-panel-audio">
-          <h5 class="settings-panel-title">Audio</h5>
-          <label class="settings-toggle-row" for="settings-sound-toggle">
-            <span class="settings-toggle-label">Enable Sound</span>
-            <input id="settings-sound-toggle" class="settings-sound-toggle" type="checkbox" checked>
+          <div class="settings-panel-head">
+            <h5 class="settings-panel-title">Audio</h5>
+            <p class="settings-panel-copy">Set music and sound effects independently.</p>
+          </div>
+          <label class="settings-toggle-row settings-sound-switch" for="settings-music-toggle">
+            <span class="settings-toggle-label">Music</span>
+            <input id="settings-music-toggle" class="settings-sound-toggle" type="checkbox" checked>
+            <span class="settings-sound-track" aria-hidden="true">
+              <span class="settings-sound-thumb"></span>
+            </span>
+          </label>
+          <label class="settings-toggle-row settings-sound-switch" for="settings-sfx-toggle">
+            <span class="settings-toggle-label">SFX</span>
+            <input id="settings-sfx-toggle" class="settings-sound-toggle" type="checkbox" checked>
+            <span class="settings-sound-track" aria-hidden="true">
+              <span class="settings-sound-thumb"></span>
+            </span>
           </label>
         </section>
         <section class="settings-panel settings-panel-danger">
-          <h5 class="settings-panel-title">Danger Zone</h5>
-          <p class="settings-panel-copy">Resetting erases your company, soldiers, armory, missions, and all progress.</p>
-          <button type="button" id="settings-reset-game-btn" class="game-btn game-btn-md game-btn-red settings-reset-btn">Reset Game</button>
+          <div class="settings-panel-head">
+            <h5 class="settings-panel-title">Danger Zone</h5>
+            <p class="settings-panel-copy">Resetting erases your company, soldiers, armory, missions, and all progress.</p>
+          </div>
+          <div class="settings-danger-actions">
+            <button type="button" id="settings-reset-game-btn" class="game-btn game-btn-md game-btn-red settings-reset-btn">Reset Game</button>
+          </div>
         </section>
       </div>
     </div>
@@ -416,6 +433,8 @@ export const marketCreditsPartial = (creditBalance: number) => {
 };
 
 export const companyActionsTemplate = () => {
+  const store = usePlayerCompanyStore.getState();
+  const marketLocked = !!store.onboardingFirstMissionPending;
   const actions = [
     ["company-go-home", "Home", Images.btn.sq_home, "company-action-home"],
     ["company-go-missions", "Missions", Images.btn.sq_mission, "company-action-missions"],
@@ -431,7 +450,7 @@ export const companyActionsTemplate = () => {
         .map(
           ([id, label, img, styleClass]) => `
         <div class="company-action-item">
-          <button id="${id}" class="mbtn icon-btn company-action-btn ${styleClass}" data-tooltip="${label}">
+          <button id="${id}" class="mbtn icon-btn company-action-btn ${styleClass}${id === "company-go-market" && marketLocked ? " company-action-btn-locked" : ""}" data-tooltip="${label}" ${id === "company-go-market" && marketLocked ? "disabled aria-disabled=\"true\" title=\"Complete your first mission to unlock Market\"" : ""}>
             <img class="grid-img-fit" src="/images/ui/square/${img}" alt="${label}" />
           </button>
           <span class="company-action-label">${label}</span>
@@ -464,7 +483,6 @@ export const companyHomePageTemplate = () => {
   const totalInventoryCapacity = getTotalArmorySlots(companyLvl);
   const totalItemsInInventory = company?.inventory?.length ?? storeItems ?? 0;
   const levelSnap = getCompanyLevelSnapshot(companyLvl);
-  const nextSnap = levelSnap.next;
 
   const xpFloor = companyLvl <= 1 ? 0 : getXpRequiredForLevel(companyLvl - 1);
   const xpCeiling = getXpRequiredForLevel(companyLvl + 1);
@@ -481,7 +499,6 @@ export const companyHomePageTemplate = () => {
     <div class="company-home-buttons-row">
       <button id="company-stats-memorial" class="game-btn game-btn-md game-btn-blue codex-memorial-btn">Memorial Wall</button>
       <button id="company-go-codex" class="game-btn game-btn-md game-btn-blue codex-memorial-btn">Game Codex</button>
-      <button id="company-go-settings" class="game-btn game-btn-md game-btn-blue codex-memorial-btn company-home-settings-btn"><span class="company-home-settings-gear" aria-hidden="true">⚙</span> Settings</button>
     </div>
   `;
 
@@ -501,8 +518,13 @@ export const companyHomePageTemplate = () => {
   const heroBlock = `
     <section class="company-home-hero">
       <div class="company-home-hero-top">
-        <h2 class="company-home-hero-title">Command Center</h2>
-        <span class="company-home-hero-subtitle">${heroSubtitle}</span>
+        <div class="company-home-hero-head">
+          <div class="company-home-hero-head-copy">
+            <h2 class="company-home-hero-title">Command Center</h2>
+            <span class="company-home-hero-subtitle">${heroSubtitle}</span>
+          </div>
+          <button id="company-go-settings" class="game-btn game-btn-md game-btn-blue codex-memorial-btn company-home-settings-btn" aria-label="Settings"><span class="company-home-settings-gear" aria-hidden="true">⚙</span> Settings</button>
+        </div>
       </div>
       <div class="company-home-kpi-strip">
         <div class="company-home-kpi">
@@ -544,10 +566,6 @@ export const companyHomePageTemplate = () => {
         ${statRow("Active Slots", `${levelSnap.current.roster.active}`, "neutral")}
         ${statRow("Armory W/A/S", `${levelSnap.current.armory.weapon}/${levelSnap.current.armory.armor}/${levelSnap.current.armory.equipment}`, "neutral")}
         ${statRow("Medic/Gunner Caps", `${levelSnap.current.roleCaps.active.medic}/${levelSnap.current.roleCaps.active.support}`, "neutral")}
-        ${statRow("Rerolls On Level", `+${levelSnap.current.rerollsOnLevelUp}`, "accent")}
-        ${nextSnap ? statRow("Next Roster Capacity", `${nextSnap.roster.total}`, "accent") : statRow("Next Level", "MAX", "accent")}
-        ${nextSnap ? statRow("Next Active Slots", `${nextSnap.roster.active}`, "accent") : statRow("Next Active", "MAX", "accent")}
-        ${nextSnap ? statRow("Next Armory W/A/S", `${nextSnap.armory.weapon}/${nextSnap.armory.armor}/${nextSnap.armory.equipment}`, "accent") : statRow("Next Armory", "MAX", "accent")}
       </div>
     </section>
   `;

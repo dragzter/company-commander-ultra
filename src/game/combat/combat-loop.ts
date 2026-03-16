@@ -362,6 +362,7 @@ export function clearCombatantEffectsOnDeath(c: Combatant): void {
   delete c.takeCoverUntil;
   delete c.postCoverToughnessBonus;
   delete c.postCoverToughnessUntil;
+  delete c.postCoverPendingApply;
   delete c.takeCoverCooldownUntil;
   delete c.suppressCooldownUntil;
   delete c.suppressedUntil;
