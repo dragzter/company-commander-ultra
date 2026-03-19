@@ -129,7 +129,7 @@ export interface Item {
   passiveEffectName?: string; // Epic armor: effect box label (replaces generic "Effect")
   bonuses?: WeaponBonus[] | ArmorBonus[]; // Rare/epic weapons: flat stat bonuses; armor: flat or percent
   weaponEffect?: WeaponEffectId; // Epic weapons: passive combat trait
-  /** Optional per-weapon shot sound source under public/ (e.g. audio/weapons/mg_burst_1.wav). */
+  /** Optional per-weapon shot sound source under public/ (e.g. audio/weapons/mg_burst_1.m4a). */
   weaponSfx?: string;
 }
 

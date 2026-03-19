@@ -96,6 +96,11 @@
 	-moz-osx-font-smoothing: grayscale;
 }
 
+html,
+body {
+	touch-action: manipulation;
+}
+
 body {
 	margin: 0;
 	min-width: 380px;

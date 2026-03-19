@@ -111,9 +111,9 @@ export const COMPANY_ABILITY_DEFS: Record<CompanyAbilityId, CompanyAbilityDef> =
       id: "gunnery",
       kind: "passive",
       name: "Gunnery",
-      short: "Support suppression cooldown reduced by 10s.",
+      short: "Support suppression cooldown reduced by 20s; suppress fire cannot be evaded.",
       description:
-        "Support soldiers suppress more often. Suppression cooldown is reduced by 10s (now 50s).",
+        "Support soldiers suppress more often. Suppression cooldown is reduced by 20s (now 40s), and suppress attacks cannot be evaded.",
       icon: "/images/gunnery.png",
     },
     entrenchment_techniques: {
@@ -218,6 +218,7 @@ export type CompanyPassiveEffects = {
   >;
   chanceToHitBonusPct: number;
   supportSuppressCooldownReductionMs: number;
+  suppressIgnoresEvade: boolean;
   takeCoverCooldownReductionMs: number;
   postCoverToughnessPct: number;
   postCoverDurationMs: number;
@@ -257,6 +258,7 @@ export function getCompanyPassiveEffects(
   const flatStats: CompanyPassiveEffects["flatStats"] = {};
   let chanceToHitBonusPct = 0;
   let supportSuppressCooldownReductionMs = 0;
+  let suppressIgnoresEvade = false;
   let takeCoverCooldownReductionMs = 0;
   let postCoverToughnessPct = 0;
   let postCoverDurationMs = 0;
@@ -269,7 +271,10 @@ export function getCompanyPassiveEffects(
     flatStats.toughness = (flatStats.toughness ?? 0) + 4;
   }
   if (owned.has("targeting_optics")) chanceToHitBonusPct += 0.01;
-  if (owned.has("gunnery")) supportSuppressCooldownReductionMs += 10_000;
+  if (owned.has("gunnery")) {
+    supportSuppressCooldownReductionMs += 20_000;
+    suppressIgnoresEvade = true;
+  }
   if (owned.has("fire_and_maneuver")) takeCoverCooldownReductionMs += 15_000;
   if (owned.has("entrenchment_techniques")) {
     postCoverToughnessPct = 0.1;
@@ -285,6 +290,7 @@ export function getCompanyPassiveEffects(
     flatStats,
     chanceToHitBonusPct,
     supportSuppressCooldownReductionMs,
+    suppressIgnoresEvade,
     takeCoverCooldownReductionMs,
     postCoverToughnessPct,
     postCoverDurationMs,
@@ -343,7 +349,7 @@ export function getCompanyPassiveTraitEntries(
     out.push({
       title: "Gunnery",
       type: "Company",
-      desc: "Support suppression cooldown reduced by 10s.",
+      desc: "Support suppression cooldown reduced by 20s. Suppress attacks cannot be evaded.",
     });
   }
   if (owned.has("improved_focused_fire")) {

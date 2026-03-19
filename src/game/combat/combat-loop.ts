@@ -443,7 +443,7 @@ export function resolveAttack(
   attacker: Combatant,
   target: Combatant,
   now: number = Date.now(),
-  opts?: { damageMultiplier?: number },
+  opts?: { damageMultiplier?: number; ignoreEvade?: boolean },
 ): AttackResult {
   let baseCth = attacker.chanceToHit ?? 0.6;
   if (
@@ -474,7 +474,7 @@ export function resolveAttack(
   if (ignorePct != null && ignorePct > 0) {
     targetEvade = targetEvade * (1 - ignorePct);
   }
-  const evadeRoll = Math.random() < targetEvade;
+  const evadeRoll = !opts?.ignoreEvade && Math.random() < targetEvade;
   if (evadeRoll) {
     return { attackerId: attacker.id, targetId: target.id, hit: true, evaded: true, damage: 0 };
   }

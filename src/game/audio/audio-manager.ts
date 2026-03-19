@@ -2,75 +2,78 @@ import { URLReader } from "../../utils/url-reader.ts";
 
 function AudioManager() {
   const GLOBAL_AUDIO_GAIN = 0.9;
-  const intro = new Audio("audio/theme/intro_2.wav");
-  const setupTrack = new Audio("audio/theme/A-Dangerous-Plan.mp3");
+  const intro = new Audio("audio/theme/intro_2.m4a");
+  const setupTrack = new Audio("audio/theme/A-Dangerous-Plan.m4a");
   const combatTracks = [
-    new Audio("audio/theme/combat1.wav"),
-    new Audio("audio/theme/combat2.wav"),
+    new Audio("audio/theme/combat1.m4a"),
+    new Audio("audio/theme/combat2.m4a"),
   ];
-  const victoryTrack = new Audio("audio/theme/victory.wav");
-  const defeatTrack = new Audio("audio/theme/defeat.wav");
+  const victoryTrack = new Audio("audio/theme/victory.m4a");
+  const defeatTrack = new Audio("audio/theme/defeat.m4a");
   const buttonClickPool = Array.from(
     { length: 6 },
-    () => new Audio("audio/theme/button_click.wav"),
+    () => new Audio("audio/theme/button_click.m4a"),
   );
   const itemSwapPool = Array.from(
     { length: 4 },
-    () => new Audio("audio/theme/slick_swap.wav"),
+    () => new Audio("audio/theme/slick_swap.m4a"),
   );
   const itemSwapFallbackPool = Array.from(
     { length: 4 },
-    () => new Audio("audio/theme/click_swap.wav"),
+    () => new Audio("audio/theme/click_swap.m4a"),
   );
   const suppressPool = Array.from(
     { length: 5 },
-    () => new Audio("audio/weapons/heavy_suppress.wav"),
+    () => new Audio("audio/weapons/heavy_suppress.m4a"),
   );
   const fragImpactPool = Array.from(
     { length: 4 },
-    () => new Audio("audio/weapons/frag_grenade.wav"),
+    () => new Audio("audio/weapons/frag_grenade.m4a"),
   );
   const flashbangImpactPool = Array.from(
     { length: 4 },
-    () => new Audio("audio/weapons/flashbang.wav"),
+    () => new Audio("audio/weapons/flashbang.m4a"),
   );
   const smokeImpactPool = Array.from(
     { length: 4 },
-    () => new Audio("audio/weapons/smoke_grenade.wav"),
+    () => new Audio("audio/weapons/smoke_grenade.m4a"),
   );
   const medevacPool = Array.from(
     { length: 3 },
-    () => new Audio("audio/weapons/medevac.wav"),
+    () => new Audio("audio/weapons/medevac.m4a"),
   );
   const takeCoverPool = Array.from(
     { length: 3 },
-    () => new Audio("audio/weapons/take_cover.wav"),
+    () => new Audio("audio/weapons/take_cover.m4a"),
   );
   const reloadPool = Array.from(
     { length: 3 },
-    () => new Audio("audio/weapons/reload.wav"),
+    () => new Audio("audio/weapons/reload.m4a"),
   );
   const deathGruntPool = [
-    new Audio("audio/weapons/death_grunt.wav"),
-    new Audio("audio/weapons/death_grunt2.wav"),
-    new Audio("audio/weapons/death_grunt3.wav"),
+    new Audio("audio/weapons/death_grunt.m4a"),
+    new Audio("audio/weapons/death_grunt2.m4a"),
+    new Audio("audio/weapons/death_grunt3.m4a"),
   ];
   const bandagePool = Array.from(
     { length: 3 },
-    () => new Audio("audio/weapons/bandage.wav"),
+    () => new Audio("audio/weapons/bandage.m4a"),
   );
   const knifeImpactPool = Array.from(
     { length: 4 },
-    () => new Audio("audio/weapons/knife_impact.wav"),
+    () => new Audio("audio/weapons/knife_impact.m4a"),
   );
   let knifeImpactPoolIndex = 0;
-  const WEAPON_SHOT_DEFAULT = "audio/weapons/mg_burst_1.wav";
+  const WEAPON_SHOT_DEFAULT = "audio/weapons/mg_burst_1.m4a";
   const weaponShotPools = new Map<string, HTMLAudioElement[]>();
   const weaponShotPoolIndexBySrc = new Map<string, number>();
   const sfxPoolIndexByName = new Map<string, number>();
+  const sfxLastPlayedAtByKey = new Map<string, number>();
+  const sfxBurstTimestampsMs: number[] = [];
   let weaponShotSequence = 0;
   let currentCombatTrack: HTMLAudioElement | null = null;
   let lastCombatTrackIndex = -1;
+  let combatMixActive = false;
   let lastButtonClickAt = 0;
   let audioPrimed = false;
   let primingInFlight = false;
@@ -80,11 +83,19 @@ function AudioManager() {
   let appInBackground = false;
   let lifecycleBound = false;
   const urlReader = URLReader;
+  const SFX_BURST_WINDOW_MS = 140;
+  const SFX_BURST_LIMIT = 8;
+  const SFX_GLOBAL_MIN_INTERVAL_MS = 12;
+  const WEAPON_GLOBAL_MIN_INTERVAL_MS = 30;
+  const WEAPON_PER_SRC_MIN_INTERVAL_MS = 78;
+  const COMBAT_WEAPON_GLOBAL_MIN_INTERVAL_MS = 95;
+  const COMBAT_WEAPON_PER_SRC_MIN_INTERVAL_MS = 130;
 
   function nextFromPool(
     name: string,
     pool: HTMLAudioElement[],
-  ): HTMLAudioElement {
+    allowSteal = false,
+  ): HTMLAudioElement | null {
     const last = sfxPoolIndexByName.get(name) ?? 0;
     for (let i = 0; i < pool.length; i++) {
       const idx = (last + i) % pool.length;
@@ -99,8 +110,11 @@ function AudioManager() {
         return candidate;
       }
     }
-    sfxPoolIndexByName.set(name, (last + 1) % pool.length);
-    return pool[last];
+    if (allowSteal) {
+      sfxPoolIndexByName.set(name, (last + 1) % pool.length);
+      return pool[last];
+    }
+    return null;
   }
 
   function playFromPool(
@@ -109,15 +123,39 @@ function AudioManager() {
     volume: number,
     playbackRate = 1,
     startOffset = 0,
+    allowSteal = false,
   ): void {
     if (appInBackground) return;
-    const sfx = nextFromPool(name, pool);
+    if (!canPlaySfx(name, SFX_GLOBAL_MIN_INTERVAL_MS)) return;
+    const sfx = nextFromPool(name, pool, allowSteal);
+    if (!sfx) return;
     sfx.playbackRate = playbackRate;
     sfx.volume = Math.max(0, Math.min(1, volume));
     sfx.currentTime = Math.max(0, startOffset);
     void sfx.play().catch(() => {
       // Ignore transient autoplay/channel errors.
     });
+  }
+
+  function trimSfxBurst(nowMs: number): void {
+    while (
+      sfxBurstTimestampsMs.length > 0 &&
+      nowMs - sfxBurstTimestampsMs[0] > SFX_BURST_WINDOW_MS
+    ) {
+      sfxBurstTimestampsMs.shift();
+    }
+  }
+
+  function canPlaySfx(key: string, minIntervalMs: number): boolean {
+    if (isSfxDisabled() || appInBackground) return false;
+    const nowMs = performance.now();
+    const lastAt = sfxLastPlayedAtByKey.get(key) ?? -Infinity;
+    if (nowMs - lastAt < minIntervalMs) return false;
+    trimSfxBurst(nowMs);
+    if (sfxBurstTimestampsMs.length >= SFX_BURST_LIMIT) return false;
+    sfxLastPlayedAtByKey.set(key, nowMs);
+    sfxBurstTimestampsMs.push(nowMs);
+    return true;
   }
 
   function primeAudioNow(): void {
@@ -283,6 +321,7 @@ function AudioManager() {
 
   function stopCombatTheme(): void {
     if (!currentCombatTrack) return;
+    combatMixActive = false;
     currentCombatTrack.pause();
     currentCombatTrack.currentTime = 0;
     currentCombatTrack = null;
@@ -290,6 +329,7 @@ function AudioManager() {
 
   function fadeOutCombatTheme(durationMs = 220): void {
     if (!currentCombatTrack) return;
+    combatMixActive = false;
     const track = currentCombatTrack;
     currentCombatTrack = null;
     fadeOutTrack(track, durationMs);
@@ -344,6 +384,7 @@ function AudioManager() {
     lastCombatTrackIndex = idx;
     const track = combatTracks[idx];
     currentCombatTrack = track;
+    combatMixActive = true;
     track.volume = 0.03;
     track.loop = true;
     await playTrack(track);
@@ -352,6 +393,7 @@ function AudioManager() {
   async function playVictoryTheme(): Promise<void> {
     if (isMusicDisabled()) return;
     stopCombatTheme();
+    combatMixActive = false;
     stopDefeatTheme();
     victoryTrack.volume = 0.2;
     victoryTrack.loop = false;
@@ -365,6 +407,7 @@ function AudioManager() {
   async function playDefeatTheme(): Promise<void> {
     if (isMusicDisabled()) return;
     stopCombatTheme();
+    combatMixActive = false;
     stopVictoryTheme();
     defeatTrack.volume = 0.2;
     defeatTrack.loop = false;
@@ -383,26 +426,34 @@ function AudioManager() {
 
   function playSuppress(): void {
     if (isSfxDisabled()) return;
-    playFromPool("suppress", suppressPool, 0.1 * GLOBAL_AUDIO_GAIN);
+    const minInterval = combatMixActive ? 320 : 180;
+    if (!canPlaySfx("suppress", minInterval)) return;
+    playFromPool("suppress", suppressPool, 0.085 * GLOBAL_AUDIO_GAIN);
   }
 
   function playFragImpact(): void {
     if (isSfxDisabled()) return;
-    playFromPool("frag-impact", fragImpactPool, 0.3 * GLOBAL_AUDIO_GAIN);
+    const minInterval = combatMixActive ? 220 : 120;
+    if (!canPlaySfx("frag-impact", minInterval)) return;
+    playFromPool("frag-impact", fragImpactPool, 0.24 * GLOBAL_AUDIO_GAIN);
   }
 
   function playFlashbangImpact(): void {
     if (isSfxDisabled()) return;
+    const minInterval = combatMixActive ? 220 : 120;
+    if (!canPlaySfx("flashbang-impact", minInterval)) return;
     playFromPool(
       "flashbang-impact",
       flashbangImpactPool,
-      0.22 * GLOBAL_AUDIO_GAIN,
+      0.2 * GLOBAL_AUDIO_GAIN,
     );
   }
 
   function playSmokeImpact(): void {
     if (isSfxDisabled()) return;
-    playFromPool("smoke-impact", smokeImpactPool, 0.24 * GLOBAL_AUDIO_GAIN);
+    const minInterval = combatMixActive ? 220 : 120;
+    if (!canPlaySfx("smoke-impact", minInterval)) return;
+    playFromPool("smoke-impact", smokeImpactPool, 0.2 * GLOBAL_AUDIO_GAIN);
   }
 
   function playMedevac(): void {
@@ -422,6 +473,7 @@ function AudioManager() {
 
   function playDeathGrunt(): void {
     if (isSfxDisabled()) return;
+    if (!canPlaySfx("death-grunt", 90)) return;
     const sfx =
       deathGruntPool[Math.floor(Math.random() * deathGruntPool.length)];
     sfx.pause();
@@ -439,6 +491,7 @@ function AudioManager() {
 
   function playKnifeImpact(): void {
     if (isSfxDisabled()) return;
+    if (!canPlaySfx("knife-impact", 70)) return;
     // Explicitly reset prior knife impacts so each new throw restarts the cue.
     for (const sfx of knifeImpactPool) {
       sfx.pause();
@@ -457,12 +510,20 @@ function AudioManager() {
     const now = performance.now();
     if (now - lastButtonClickAt < 80) return;
     lastButtonClickAt = now;
-    playFromPool("ui-button", buttonClickPool, 0.12 * GLOBAL_AUDIO_GAIN);
+    playFromPool(
+      "ui-button",
+      buttonClickPool,
+      0.12 * GLOBAL_AUDIO_GAIN,
+      1,
+      0,
+      true,
+    );
   }
 
   function playUiItemSwap(): void {
     if (isSfxDisabled()) return;
-    const sfx = nextFromPool("ui-item-swap", itemSwapPool);
+    const sfx = nextFromPool("ui-item-swap", itemSwapPool, true);
+    if (!sfx) return;
     sfx.currentTime = 0;
     sfx.volume = 0.14 * GLOBAL_AUDIO_GAIN;
     void sfx.play().catch(() => {
@@ -470,6 +531,9 @@ function AudioManager() {
         "ui-item-swap-fallback",
         itemSwapFallbackPool,
         0.14 * GLOBAL_AUDIO_GAIN,
+        1,
+        0,
+        true,
       );
     });
   }
@@ -572,11 +636,21 @@ function AudioManager() {
     attackIntervalMs?: number,
   ): void {
     if (isSfxDisabled()) return;
+    const globalMin = combatMixActive
+      ? COMBAT_WEAPON_GLOBAL_MIN_INTERVAL_MS
+      : WEAPON_GLOBAL_MIN_INTERVAL_MS;
+    const perSrcMin = combatMixActive
+      ? COMBAT_WEAPON_PER_SRC_MIN_INTERVAL_MS
+      : WEAPON_PER_SRC_MIN_INTERVAL_MS;
+    if (!canPlaySfx("weapon-shot-global", globalMin))
+      return;
 
     const src = (weaponSfx ?? "").trim() || WEAPON_SHOT_DEFAULT;
+    if (!canPlaySfx(`weapon-src:${src}`, perSrcMin))
+      return;
     let pool = weaponShotPools.get(src);
     if (!pool) {
-      pool = Array.from({ length: 8 }, () => {
+      pool = Array.from({ length: 2 }, () => {
         const a = new Audio(src);
         a.preload = "auto";
         return a;
@@ -585,8 +659,24 @@ function AudioManager() {
       weaponShotPoolIndexBySrc.set(src, 0);
     }
     const idx = weaponShotPoolIndexBySrc.get(src) ?? 0;
-    const shot = pool[idx];
-    weaponShotPoolIndexBySrc.set(src, (idx + 1) % pool.length);
+    let shot: HTMLAudioElement | null = null;
+    let nextIdx = idx;
+    for (let i = 0; i < pool.length; i++) {
+      const probeIdx = (idx + i) % pool.length;
+      const candidate = pool[probeIdx];
+      const endedish =
+        candidate.ended ||
+        candidate.paused ||
+        !Number.isFinite(candidate.duration) ||
+        candidate.currentTime >= Math.max(0, candidate.duration - 0.05);
+      if (endedish) {
+        shot = candidate;
+        nextIdx = (probeIdx + 1) % pool.length;
+        break;
+      }
+    }
+    if (!shot) return;
+    weaponShotPoolIndexBySrc.set(src, nextIdx);
 
     const profile = getWeaponShotProfile(
       weaponId,
@@ -594,14 +684,12 @@ function AudioManager() {
       designation,
       attackIntervalMs,
     );
-    shot.pause();
-    // Small randomized seek into the transient to avoid machine-like repetition.
-    const startOffsetSec = Math.random() * 0.014; // 0-14ms
-    shot.currentTime = startOffsetSec;
-    const ambientGain = rollAmbientGain(profile.preferAudibleAmbient);
-    const microJitter = Math.random() * 0.015 - 0.0075;
-    // Per-shot playback-rate jitter changes perceived clip length naturally.
-    const rateJitter = 1 + (Math.random() * 0.08 - 0.04); // +/-4%
+    shot.currentTime = 0;
+    const ambientGain = combatMixActive
+      ? 0.5
+      : rollAmbientGain(profile.preferAudibleAmbient);
+    const microJitter = combatMixActive ? 0 : Math.random() * 0.015 - 0.0075;
+    const rateJitter = combatMixActive ? 1 : 1 + (Math.random() * 0.08 - 0.04); // +/-4%
     // Keep all weapon shots controlled and never obnoxiously loud.
     const rawVolume =
       Math.max(

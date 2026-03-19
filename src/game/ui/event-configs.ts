@@ -308,7 +308,7 @@ export function eventConfigs() {
       entries.push({
         title: "Gunnery",
         type: "Company",
-        desc: "Support suppress cooldown reduced by 10s.",
+        desc: "Support suppress cooldown reduced by 20s. Suppress attacks cannot be evaded.",
       });
     }
     if (companyOwned.has("fire_and_maneuver")) {
@@ -1881,10 +1881,12 @@ export function eventConfigs() {
     let nextCompanyAbilityBarUiUpdateAt = 0;
     let lastAttackLineSignature = "";
 
+    const formatSecondsTimer = (milliseconds: number): string =>
+      (Math.max(0, milliseconds) / 1000).toFixed(1);
+
     const formatCombatTimer = (untilMs: number, nowMs: number): string => {
       const remaining = Math.max(0, untilMs - nowMs);
-      if (isIosMobilePerfMode) return String(Math.ceil(remaining / 1000));
-      return (remaining / 1000).toFixed(1);
+      return formatSecondsTimer(remaining);
     };
 
     function createCombatantDomRefs(card: HTMLElement): CombatantDomRefs {
@@ -2458,12 +2460,12 @@ export function eventConfigs() {
       const now = Date.now();
       const takeCoverOnCooldown = (combatant.takeCoverCooldownUntil ?? 0) > now;
       const takeCoverRemainingSec = takeCoverOnCooldown
-        ? Math.ceil((combatant.takeCoverCooldownUntil! - now) / 1000)
-        : 0;
+        ? formatSecondsTimer(combatant.takeCoverCooldownUntil! - now)
+        : "";
       const suppressOnCooldown = (combatant.suppressCooldownUntil ?? 0) > now;
       const suppressRemainingSec = suppressOnCooldown
-        ? Math.ceil((combatant.suppressCooldownUntil! - now) / 1000)
-        : 0;
+        ? formatSecondsTimer(combatant.suppressCooldownUntil! - now)
+        : "";
       const designation = (combatant.designation ?? "").toLowerCase();
       const abilities = getSoldierAbilities().filter((a) => {
         if (a.designationRestrict) return designation === a.designationRestrict;
@@ -2507,8 +2509,8 @@ export function eventConfigs() {
         const eqNow = Date.now();
         const grenadeOnCooldown = (c.grenadeCooldownUntil ?? 0) > eqNow;
         const grenadeRemainingSec = grenadeOnCooldown
-          ? Math.ceil((c.grenadeCooldownUntil! - eqNow) / 1000)
-          : 0;
+          ? formatSecondsTimer(c.grenadeCooldownUntil! - eqNow)
+          : "";
         return equipmentSlots
           .map((slot) => {
             if (slot.type === "grenade") {
@@ -2579,12 +2581,12 @@ export function eventConfigs() {
         const now = Date.now();
         const takeCoverOnCooldown = (c.takeCoverCooldownUntil ?? 0) > now;
         const takeCoverRemainingSec = takeCoverOnCooldown
-          ? Math.ceil((c.takeCoverCooldownUntil! - now) / 1000)
-          : 0;
+          ? formatSecondsTimer(c.takeCoverCooldownUntil! - now)
+          : "";
         const suppressOnCooldown = (c.suppressCooldownUntil ?? 0) > now;
         const suppressRemainingSec = suppressOnCooldown
-          ? Math.ceil((c.suppressCooldownUntil! - now) / 1000)
-          : 0;
+          ? formatSecondsTimer(c.suppressCooldownUntil! - now)
+          : "";
         const des = (c.designation ?? "").toLowerCase();
         const abils = getSoldierAbilities().filter((a) => {
           if (a.designationRestrict) return des === a.designationRestrict;
@@ -3596,6 +3598,10 @@ export function eventConfigs() {
         const result = resolveAttack(user, target, burstNow, {
           damageMultiplier:
             focusedFireDamageMultiplier * battleFervorDamageMultiplier,
+          ignoreEvade:
+            user.side === "player" &&
+            user.designation === "support" &&
+            companyPassives.suppressIgnoresEvade,
         });
         _AudioManager
           .Weapon()
@@ -3931,8 +3937,10 @@ export function eventConfigs() {
         const shakeTargetCard = (id: string) => {
           const card = getCombatantCard(id);
           if (card) {
-            card.classList.add("combat-card-shake");
-            scheduleCombatClassRemoval(card, "combat-card-shake", 400);
+            card.classList.remove("combat-card-grenade-jolt");
+            void card.offsetWidth;
+            card.classList.add("combat-card-grenade-jolt");
+            scheduleCombatClassRemoval(card, "combat-card-grenade-jolt", 280);
           }
         };
         if (result.primary.hit && !result.primary.evaded) {
