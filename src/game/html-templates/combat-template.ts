@@ -95,18 +95,8 @@ export function combatTemplate(
   <div class="combat-main combat-main-with-drawer">
     <div id="combat-targeting-hint" class="combat-targeting-hint" aria-hidden="true"></div>
     <div id="combat-battle-area" class="combat-battle-area">
-      <svg id="combat-attack-lines-svg" class="combat-attack-lines-svg" aria-hidden="true">
-        <defs>
-          <marker id="combat-arrow-player" markerWidth="6" markerHeight="6" refX="5.5" refY="3" orient="auto">
-            <path d="M0,0 L6,3 L0,6 Z" fill="rgba(100, 200, 100, 0.8)" />
-          </marker>
-          <marker id="combat-arrow-enemy" markerWidth="6" markerHeight="6" refX="5.5" refY="3" orient="auto">
-            <path d="M0,0 L6,3 L0,6 Z" fill="rgba(220, 80, 80, 0.8)" />
-          </marker>
-        </defs>
-        <g id="combat-attack-lines-g"></g>
-      </svg>
-      <svg id="combat-projectiles-svg" class="combat-projectiles-svg" aria-hidden="true"><g id="combat-projectiles-g"></g></svg>
+      <canvas id="combat-lines-canvas" class="combat-lines-canvas" aria-hidden="true"></canvas>
+      <canvas id="combat-projectiles-canvas" class="combat-projectiles-canvas" aria-hidden="true"></canvas>
       <div class="combat-row combat-enemies">
         <div class="combat-formation" id="combat-enemies-grid">
           <div class="combat-cards-row combat-formation-back" id="combat-enemies-back-row">

@@ -146,6 +146,7 @@ function DomEventManager() {
       ) {
         return;
       }
+      AudioManager.Settings().primeAudio();
       AudioManager.UI().playButtonClick();
     };
     document.addEventListener("click", fn, true);

@@ -12433,8 +12433,8 @@ button.missions-filter-chip {
 	}
 }
 
-/* Attack lines SVG (behind projectiles) */
-.combat-attack-lines-svg {
+/* Canvas FX layers */
+.combat-lines-canvas {
 	position: absolute;
 	inset: 0;
 	width: 100%;
@@ -12443,8 +12443,7 @@ button.missions-filter-chip {
 	z-index: 4;
 }
 
-/* Projectile SVG */
-.combat-projectiles-svg {
+.combat-projectiles-canvas {
 	position: absolute;
 	inset: 0;
 	width: 100%;
@@ -12455,6 +12454,18 @@ button.missions-filter-chip {
 
 .combat-projectile-grenade {
 	pointer-events: none;
+}
+
+.combat-grenade-flight {
+	position: absolute;
+	pointer-events: none;
+	width: 28px;
+	height: 28px;
+	object-fit: contain;
+	z-index: 6;
+	will-change: transform;
+	transform: translateZ(0);
+	backface-visibility: hidden;
 }
 
 .combat-damage-popup {
@@ -17588,4 +17599,65 @@ input[type="text"] {
   0% { transform: translate(-50%, -50%) scale(0.96); opacity: 0.88; }
   50% { transform: translate(-50%, -50%) scale(1.05); opacity: 1; }
   100% { transform: translate(-50%, -50%) scale(0.96); opacity: 0.88; }
+}
+
+/* iOS mobile perf profile: tone down high-frequency combat effects to reduce frame/audio contention. */
+.ios-mobile-perf .combat-card:hover {
+  transform: none !important;
+}
+
+.ios-mobile-perf #combat-screen .combat-card {
+  transition: none !important;
+}
+
+.ios-mobile-perf .combat-card-suppressed,
+.ios-mobile-perf .combat-card-low-health,
+.ios-mobile-perf .combat-card-suppress-arrow,
+.ios-mobile-perf .combat-card-dot-flame,
+.ios-mobile-perf .combat-card-battle-fervor,
+.ios-mobile-perf .combat-card-spd-badge.combat-card-spd-buffed,
+.ios-mobile-perf .combat-card-spd-badge.combat-card-spd-fervor,
+.ios-mobile-perf .combat-card-infantry-armor,
+.ios-mobile-perf .combat-card-infantry-armor-shield,
+.ios-mobile-perf .combat-card-post-cover-shield {
+  animation-duration: 1.35s !important;
+}
+
+.ios-mobile-perf .combat-card-latched,
+.ios-mobile-perf .combat-card-tap-flash,
+.ios-mobile-perf .combat-card-pressing,
+.ios-mobile-perf .combat-card-reinforce-arrival::before,
+.ios-mobile-perf .combat-card-reinforce-arrival::after,
+.ios-mobile-perf .combat-card-grenade-target,
+.ios-mobile-perf .combat-card-grenade-target::before,
+.ios-mobile-perf .combat-card-grenade-target::after,
+.ios-mobile-perf .combat-card-crit-shake,
+.ios-mobile-perf .combat-card-shake {
+  animation: none !important;
+}
+
+.ios-mobile-perf .combat-card-pressing,
+.ios-mobile-perf .combat-card-latched {
+  transform: none !important;
+}
+
+.ios-mobile-perf .combat-card-dot-flame,
+.ios-mobile-perf .combat-card-cover-shield,
+.ios-mobile-perf .combat-card-infantry-armor-shield,
+.ios-mobile-perf .combat-card-post-cover-shield {
+  filter: none !important;
+}
+
+.ios-mobile-perf .combat-card-cover-shield,
+.ios-mobile-perf .combat-card-infantry-armor-shield,
+.ios-mobile-perf .combat-card-post-cover-shield {
+  box-shadow: none !important;
+}
+
+.ios-mobile-perf .combat-card-infantry-armor-shield::after {
+  animation-duration: 1.4s !important;
+}
+
+.ios-mobile-perf .combat-lines-canvas {
+  opacity: 0.85;
 }

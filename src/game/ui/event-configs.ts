@@ -1799,9 +1799,23 @@ export function eventConfigs() {
     const dirtyHpCombatantIds = new Set<string>();
     const dirtyStatusCombatantIds = new Set<string>();
     const dirtySpeedCombatantIds = new Set<string>();
+    const isIosMobilePerfMode =
+      document.documentElement.classList.contains("ios-mobile-perf") ||
+      document.body?.classList.contains("ios-mobile-perf");
+    const COMBAT_TIMED_UI_UPDATE_MS = isIosMobilePerfMode ? 90 : 100;
+    const COMBAT_ATTACK_LINES_UPDATE_MS = isIosMobilePerfMode ? 130 : 100;
+    const COMBAT_TICK_MAX_SLEEP_MS = isIosMobilePerfMode ? 24 : 34;
+    const COMBAT_ABILITIES_POPUP_REFRESH_MS = isIosMobilePerfMode ? 1500 : 1000;
     let nextTimedUiUpdateAt = 0;
+    let nextAttackLinesUiUpdateAt = 0;
     let nextCompanyAbilityBarUiUpdateAt = 0;
     let lastAttackLineSignature = "";
+
+    const formatCombatTimer = (untilMs: number, nowMs: number): string => {
+      const remaining = Math.max(0, untilMs - nowMs);
+      if (isIosMobilePerfMode) return String(Math.ceil(remaining / 1000));
+      return (remaining / 1000).toFixed(1);
+    };
 
     function createCombatantDomRefs(card: HTMLElement): CombatantDomRefs {
       return {
@@ -2568,7 +2582,10 @@ export function eventConfigs() {
 
       if (abilitiesPopupRefreshIntervalId != null)
         clearInterval(abilitiesPopupRefreshIntervalId);
-      abilitiesPopupRefreshIntervalId = setInterval(refreshAbilitiesList, 1000);
+      abilitiesPopupRefreshIntervalId = setInterval(
+        refreshAbilitiesList,
+        COMBAT_ABILITIES_POPUP_REFRESH_MS,
+      );
     }
 
     function clearSelectedHighlight() {
@@ -2685,6 +2702,254 @@ export function eventConfigs() {
 
     const BULLET_ICON =
       "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3E%3Cellipse cx='4' cy='4' rx='3.2' ry='1.2' fill='%23ffcc44' stroke='%23fff' stroke-width='0.4'/%3E%3C/svg%3E";
+    const MAX_CANVAS_DPR = 2;
+    const IOS_BULLET_PROJECTILE_MIN_INTERVAL_MS = 28;
+    const projectileIconCache = new Map<string, HTMLImageElement>();
+    let projectileCanvasAnimationId: number | null = null;
+    let lastIosBulletProjectileAt = 0;
+    const projectileFxQueue: Array<{
+      iconUrl: string;
+      startAt: number;
+      durationMs: number;
+      ax: number;
+      ay: number;
+      tx: number;
+      ty: number;
+      size: number;
+      isGrenade: boolean;
+      arcHeight: number;
+      angleDeg: number;
+      hasDrawn: boolean;
+      highPriority: boolean;
+    }> = [];
+
+    function getScaledCanvasContext(
+      canvasId: string,
+      dprMax = MAX_CANVAS_DPR,
+    ): { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D } | null {
+      const canvas = document.querySelector(canvasId) as HTMLCanvasElement | null;
+      if (!canvas) return null;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return null;
+      const cssW = Math.max(1, Math.round(canvas.clientWidth));
+      const cssH = Math.max(1, Math.round(canvas.clientHeight));
+      const dpr = Math.max(
+        1,
+        Math.min(dprMax, window.devicePixelRatio || 1),
+      );
+      const pixelW = Math.round(cssW * dpr);
+      const pixelH = Math.round(cssH * dpr);
+      if (canvas.width !== pixelW || canvas.height !== pixelH) {
+        canvas.width = pixelW;
+        canvas.height = pixelH;
+      }
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      return { canvas, ctx };
+    }
+
+    function clearFxCanvas(canvasId: string): void {
+      const data = getScaledCanvasContext(canvasId);
+      if (!data) return;
+      data.ctx.clearRect(0, 0, data.canvas.clientWidth, data.canvas.clientHeight);
+    }
+
+    function clearAttackLinesCanvas(): void {
+      clearFxCanvas("#combat-lines-canvas");
+    }
+
+    function clearProjectilesCanvas(): void {
+      projectileFxQueue.length = 0;
+      if (projectileCanvasAnimationId != null) {
+        window.cancelAnimationFrame(projectileCanvasAnimationId);
+        projectileCanvasAnimationId = null;
+      }
+      clearFxCanvas("#combat-projectiles-canvas");
+    }
+
+    function getProjectileIcon(iconUrl: string): HTMLImageElement {
+      const cached = projectileIconCache.get(iconUrl);
+      if (cached) return cached;
+      const img = new Image();
+      img.decoding = "async";
+      img.src = iconUrl;
+      projectileIconCache.set(iconUrl, img);
+      return img;
+    }
+
+    function drawProjectileFrame(now: number): void {
+      const data = getScaledCanvasContext(
+        "#combat-projectiles-canvas",
+        isIosMobilePerfMode ? 1 : MAX_CANVAS_DPR,
+      );
+      if (!data) {
+        projectileFxQueue.length = 0;
+        projectileCanvasAnimationId = null;
+        return;
+      }
+      const { canvas, ctx } = data;
+      const width = canvas.clientWidth;
+      const height = canvas.clientHeight;
+      ctx.clearRect(0, 0, width, height);
+      if (!projectileFxQueue.length) {
+        projectileCanvasAnimationId = null;
+        return;
+      }
+      const nextQueue: typeof projectileFxQueue = [];
+      for (const fx of projectileFxQueue) {
+        const elapsed = now - fx.startAt;
+        const rawT = elapsed / Math.max(1, fx.durationMs);
+        const expired = rawT >= 1;
+        // Under heavy load a projectile may miss its first frame entirely.
+        // Force one near-end frame so it is still visible.
+        const catchupT = fx.isGrenade ? 0.62 : 0.94;
+        const t = Math.max(0, Math.min(1, expired && !fx.hasDrawn ? catchupT : rawT));
+        if (expired && fx.hasDrawn) continue;
+        if (t >= 1) continue;
+        const eased = fx.isGrenade
+          ? t
+          : t < 0.5
+            ? 2 * t * t
+            : 1 - (-2 * t + 2) ** 2 / 2;
+        const x = fx.ax + (fx.tx - fx.ax) * eased;
+        const yBase = fx.ay + (fx.ty - fx.ay) * eased;
+        const y = fx.isGrenade
+          ? yBase - Math.sin(Math.PI * t) * fx.arcHeight
+          : yBase;
+        ctx.save();
+        ctx.translate(x, y);
+        const drawAngle = fx.isGrenade
+          ? Math.atan2(
+              (fx.ty - fx.ay) - Math.cos(Math.PI * t) * fx.arcHeight * Math.PI,
+              fx.tx - fx.ax,
+            )
+          : (fx.angleDeg * Math.PI) / 180;
+        ctx.rotate(drawAngle);
+        if (fx.iconUrl === BULLET_ICON) {
+          ctx.fillStyle = "rgba(255, 204, 68, 0.92)";
+          ctx.strokeStyle = "rgba(255,255,255,0.9)";
+          ctx.lineWidth = 0.8;
+          const w = fx.size * 0.85;
+          const h = Math.max(2, fx.size * 0.34);
+          ctx.beginPath();
+          ctx.ellipse(0, 0, w * 0.5, h * 0.5, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+        } else {
+          const icon = getProjectileIcon(fx.iconUrl);
+          if (icon.complete && icon.naturalWidth > 0) {
+            ctx.drawImage(icon, -fx.size / 2, -fx.size / 2, fx.size, fx.size);
+          } else {
+            ctx.fillStyle = fx.isGrenade
+              ? "rgba(255, 144, 64, 0.95)"
+              : "rgba(235, 235, 235, 0.9)";
+            ctx.beginPath();
+            ctx.arc(0, 0, Math.max(2, fx.size * 0.35), 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+        ctx.restore();
+        fx.hasDrawn = true;
+        if (!expired) nextQueue.push(fx);
+      }
+      projectileFxQueue.length = 0;
+      projectileFxQueue.push(...nextQueue);
+      if (!projectileFxQueue.length) {
+        projectileCanvasAnimationId = null;
+        return;
+      }
+      projectileCanvasAnimationId = window.requestAnimationFrame(
+        drawProjectileFrame,
+      );
+    }
+
+    function enqueueProjectileFx(
+      iconUrl: string,
+      ax: number,
+      ay: number,
+      tx: number,
+      ty: number,
+      durationMs: number,
+      size: number,
+      isGrenade: boolean,
+      highPriority = false,
+    ): void {
+      const MAX_ACTIVE_BULLET_FX = isIosMobilePerfMode ? 16 : 30;
+      const MAX_ACTIVE_GRENADE_FX = isIosMobilePerfMode ? 8 : 12;
+      const MAX_TOTAL_PROJECTILE_FX = isIosMobilePerfMode ? 34 : 52;
+      const dx = tx - ax;
+      const arcHeight = isGrenade
+        ? Math.max(24, Math.min(88, Math.abs(dx) * 0.18 + 26))
+        : 0;
+      const countByType = (wantGrenade: boolean) =>
+        projectileFxQueue.reduce(
+          (n, q) => n + (q.isGrenade === wantGrenade ? 1 : 0),
+          0,
+        );
+      if (isGrenade) {
+        while (countByType(true) >= MAX_ACTIVE_GRENADE_FX) {
+          const idx =
+            projectileFxQueue.findIndex((q) => q.isGrenade && q.hasDrawn) >= 0
+              ? projectileFxQueue.findIndex((q) => q.isGrenade && q.hasDrawn)
+              : projectileFxQueue.findIndex((q) => q.isGrenade);
+          if (idx < 0) break;
+          projectileFxQueue.splice(idx, 1);
+        }
+      } else {
+        while (countByType(false) >= MAX_ACTIVE_BULLET_FX) {
+          const idx =
+            projectileFxQueue.findIndex(
+              (q) => !q.isGrenade && !q.highPriority && q.hasDrawn,
+            ) >= 0
+              ? projectileFxQueue.findIndex(
+                  (q) => !q.isGrenade && !q.highPriority && q.hasDrawn,
+                )
+              : projectileFxQueue.findIndex((q) => !q.isGrenade && !q.highPriority);
+          const fallbackIdx =
+            idx >= 0 ? idx : projectileFxQueue.findIndex((q) => !q.isGrenade);
+          if (fallbackIdx < 0) break;
+          projectileFxQueue.splice(fallbackIdx, 1);
+        }
+      }
+      while (projectileFxQueue.length >= MAX_TOTAL_PROJECTILE_FX) {
+        const dropBullet =
+          projectileFxQueue.findIndex((q) => !q.isGrenade && !q.highPriority) >= 0
+            ? projectileFxQueue.findIndex((q) => !q.isGrenade && !q.highPriority)
+            : projectileFxQueue.findIndex((q) => !q.isGrenade);
+        if (dropBullet >= 0) {
+          projectileFxQueue.splice(dropBullet, 1);
+          continue;
+        }
+        const dropGrenade =
+          projectileFxQueue.findIndex((q) => q.isGrenade && q.hasDrawn) >= 0
+            ? projectileFxQueue.findIndex((q) => q.isGrenade && q.hasDrawn)
+            : projectileFxQueue.findIndex((q) => q.isGrenade);
+        if (dropGrenade >= 0) {
+          projectileFxQueue.splice(dropGrenade, 1);
+          continue;
+        }
+        projectileFxQueue.shift();
+      }
+      projectileFxQueue.push({
+        iconUrl,
+        startAt: performance.now(),
+        durationMs: Math.max(120, durationMs),
+        ax,
+        ay,
+        tx,
+        ty,
+        size,
+        isGrenade,
+        arcHeight,
+        angleDeg: (Math.atan2(ty - ay, tx - ax) * 180) / Math.PI,
+        hasDrawn: false,
+        highPriority,
+      });
+      if (projectileCanvasAnimationId == null) {
+        projectileCanvasAnimationId = window.requestAnimationFrame(
+          drawProjectileFrame,
+        );
+      }
+    }
 
     function animateProjectile(
       attackerCard: Element,
@@ -2693,10 +2958,10 @@ export function eventConfigs() {
       durationMs: number,
       size = 10,
       isGrenade = false,
+      highPriority = false,
     ) {
       const battleArea = document.querySelector("#combat-battle-area");
-      const projectilesG = document.querySelector("#combat-projectiles-g");
-      if (!battleArea || !projectilesG) return;
+      if (!battleArea) return;
       const areaRect = battleArea.getBoundingClientRect();
       const toArea = (r: DOMRect) => ({
         left: r.left - areaRect.left,
@@ -2710,37 +2975,24 @@ export function eventConfigs() {
       const ay = (ar.top + ar.bottom) / 2;
       const tx = (tr.left + tr.right) / 2;
       const ty = (tr.top + tr.bottom) / 2;
-      const angle = Math.atan2(ty - ay, tx - ax);
-      const deg = (angle * 180) / Math.PI;
-      const img = document.createElementNS(
-        "http://www.w3.org/2000/svg",
-        "image",
-      );
-      img.setAttribute("href", iconUrl);
-      img.setAttribute("x", String(ax - size / 2));
-      img.setAttribute("y", String(ay - size / 2));
-      img.setAttribute("width", String(size));
-      img.setAttribute("height", String(size));
-      if (!isGrenade)
-        img.setAttribute("transform", `rotate(${deg} ${ax} ${ay})`);
-      if (isGrenade) img.classList.add("combat-projectile-grenade");
-      projectilesG.appendChild(img);
-      const tStart = performance.now();
-
-      function tick(now: number) {
-        const t = Math.min(1, (now - tStart) / durationMs);
-        const eased = t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
-        const x = ax + (tx - ax) * eased;
-        const y = ay + (ty - ay) * eased;
-        img.setAttribute("x", String(x - size / 2));
-        img.setAttribute("y", String(y - size / 2));
-        if (!isGrenade)
-          img.setAttribute("transform", `rotate(${deg} ${x} ${y})`);
-        if (t < 1) requestAnimationFrame(tick);
-        else img.remove();
+      if (isIosMobilePerfMode && !isGrenade && !highPriority) {
+        const now = performance.now();
+        if (now - lastIosBulletProjectileAt < IOS_BULLET_PROJECTILE_MIN_INTERVAL_MS) {
+          return;
+        }
+        lastIosBulletProjectileAt = now;
       }
-
-      requestAnimationFrame(tick);
+      enqueueProjectileFx(
+        iconUrl,
+        ax,
+        ay,
+        tx,
+        ty,
+        durationMs,
+        size,
+        isGrenade,
+        highPriority,
+      );
     }
 
     function animateGrenadeProjectile(
@@ -2769,6 +3021,29 @@ export function eventConfigs() {
       ) as HTMLElement | null;
       const impactCard = getCombatantCard(impactTargetId) as HTMLElement | null;
       if (!battleArea || !impactCard) return;
+
+      if (isIosMobilePerfMode) {
+        // iOS low-latency path: single lightweight impact pulse, no shard fan-out.
+        impactCard.classList.remove("combat-card-grenade-jolt");
+        void impactCard.offsetWidth;
+        impactCard.classList.add("combat-card-grenade-jolt");
+        window.setTimeout(
+          () => impactCard.classList.remove("combat-card-grenade-jolt"),
+          180,
+        );
+        const fx = document.createElement("div");
+        fx.className = `combat-grenade-impact-fx combat-grenade-impact-${variant}`;
+        const ring = document.createElement("span");
+        ring.className = "combat-grenade-impact-ring ring-a";
+        fx.appendChild(ring);
+        const areaRect = battleArea.getBoundingClientRect();
+        const impactRect = impactCard.getBoundingClientRect();
+        fx.style.left = `${impactRect.left - areaRect.left + impactRect.width / 2}px`;
+        fx.style.top = `${impactRect.top - areaRect.top + impactRect.height / 2}px`;
+        battleArea.appendChild(fx);
+        window.setTimeout(() => fx.remove(), 260);
+        return;
+      }
 
       const areaRect = battleArea.getBoundingClientRect();
       const impactRect = impactCard.getBoundingClientRect();
@@ -3273,6 +3548,8 @@ export function eventConfigs() {
           BULLET_ICON,
           ATTACK_PROJECTILE_MS,
           10,
+          false,
+          true,
         );
         if (result.damage > 0 && shouldShowCombatFeedback(target.id)) {
           if (result.critical) {
@@ -3392,10 +3669,17 @@ export function eventConfigs() {
       const throwerCard = getCombatantCard(thrower.id);
       const targetCard = getCombatantCard(target.id);
 
+      const grenadeTravelMs = isIosMobilePerfMode ? 200 : 280;
       if (throwerCard && targetCard) {
         const iconUrl = getItemIconUrl(grenade.item);
-        animateGrenadeProjectile(throwerCard, targetCard, iconUrl, 350);
+        animateGrenadeProjectile(
+          throwerCard,
+          targetCard,
+          iconUrl,
+          grenadeTravelMs,
+        );
       }
+      const grenadeImpactDelayMs = grenadeTravelMs + (isIosMobilePerfMode ? 12 : 28);
 
       const showDamage = (id: string, damage: number) => {
         if (!shouldShowCombatFeedback(id)) return;
@@ -3722,15 +4006,27 @@ export function eventConfigs() {
             .getState()
             .setOnboardingCombatTutorialPending(false);
         }
-      }, 400);
+      }, grenadeImpactDelayMs);
     }
 
     const LINE_OFFSET_PX = 3; /* 2 × 3 = 6px between parallel lines for mutual fire */
 
     function drawAttackLines(force = false) {
       const battleArea = document.querySelector("#combat-battle-area");
-      const linesG = document.querySelector("#combat-attack-lines-g");
-      if (!battleArea || !linesG) return;
+      const lineCanvasData = getScaledCanvasContext("#combat-lines-canvas");
+      if (!battleArea || !lineCanvasData) return;
+      const { canvas, ctx } = lineCanvasData;
+      const aliveCount = allCombatants.reduce(
+        (count, c) => count + (c.hp > 0 && !c.downState ? 1 : 0),
+        0,
+      );
+      // In crowded mobile battles, attack-line SVG updates are a top source of jank.
+      // Drop them when many units are alive; restores responsiveness for core combat actions.
+      if (isIosMobilePerfMode && aliveCount >= 10) {
+        ctx.clearRect(0, 0, canvas.clientWidth, canvas.clientHeight);
+        lastAttackLineSignature = "";
+        return;
+      }
       const areaRect = battleArea.getBoundingClientRect();
       const toArea = (r: DOMRect) => ({
         left: r.left - areaRect.left,
@@ -3789,8 +4085,7 @@ export function eventConfigs() {
         .join("|");
       if (!force && signature === lastAttackLineSignature) return;
       lastAttackLineSignature = signature;
-      linesG.textContent = "";
-      const frag = document.createDocumentFragment();
+      ctx.clearRect(0, 0, canvas.clientWidth, canvas.clientHeight);
 
       const pairKey = (a: string, b: string) =>
         a < b ? `${a}|${b}` : `${b}|${a}`;
@@ -3834,30 +4129,37 @@ export function eventConfigs() {
         const y1 = ac.y + perpY * offset;
         const x2 = tc.x + perpX * offset;
         const y2 = tc.y + perpY * offset;
-        const line = document.createElementNS(
-          "http://www.w3.org/2000/svg",
-          "line",
-        );
-        line.setAttribute("x1", String(x1));
-        line.setAttribute("y1", String(y1));
-        line.setAttribute("x2", String(x2));
-        line.setAttribute("y2", String(y2));
         const isPlayer = s.attackerSide === "player";
         const isSupportAttacker = attacker != null && isSupport(attacker);
-        line.setAttribute(
-          "stroke",
-          isPlayer ? "rgba(100, 200, 100, 0.6)" : "rgba(220, 80, 80, 0.6)",
-        );
-        line.setAttribute("stroke-width", isSupportAttacker ? "3" : "1");
-        if (!isSupportAttacker) line.setAttribute("stroke-dasharray", "4 6");
-        line.setAttribute(
-          "marker-end",
-          isPlayer ? "url(#combat-arrow-player)" : "url(#combat-arrow-enemy)",
-        );
-        line.setAttribute("stroke-linecap", "round");
-        frag.appendChild(line);
+        const stroke = isPlayer
+          ? "rgba(100, 200, 100, 0.6)"
+          : "rgba(220, 80, 80, 0.6)";
+        ctx.save();
+        ctx.strokeStyle = stroke;
+        ctx.lineWidth = isSupportAttacker ? 3 : 1;
+        ctx.lineCap = "round";
+        ctx.setLineDash(isSupportAttacker ? [] : [4, 6]);
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        const angle = Math.atan2(y2 - y1, x2 - x1);
+        const headLen = isSupportAttacker ? 8 : 7;
+        const halfSpread = 0.47;
+        const hx1 = x2 - headLen * Math.cos(angle - halfSpread);
+        const hy1 = y2 - headLen * Math.sin(angle - halfSpread);
+        const hx2 = x2 - headLen * Math.cos(angle + halfSpread);
+        const hy2 = y2 - headLen * Math.sin(angle + halfSpread);
+        ctx.fillStyle = stroke;
+        ctx.beginPath();
+        ctx.moveTo(x2, y2);
+        ctx.lineTo(hx1, hy1);
+        ctx.lineTo(hx2, hy2);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
       }
-      linesG.appendChild(frag);
     }
 
     function updateHpBarsAll(force = false) {
@@ -3894,8 +4196,19 @@ export function eventConfigs() {
 
     function updateCombatUI(force = false) {
       const now = Date.now();
+      const aliveCount = allCombatants.reduce(
+        (count, c) => count + (c.hp > 0 && !c.downState ? 1 : 0),
+        0,
+      );
+      const crowdedMobileBattle = isIosMobilePerfMode && aliveCount >= 7;
+      const timedIntervalMs = crowdedMobileBattle
+        ? 240
+        : COMBAT_TIMED_UI_UPDATE_MS;
+      const attackLineIntervalMs = crowdedMobileBattle
+        ? 420
+        : COMBAT_ATTACK_LINES_UPDATE_MS;
       const timedUpdate = force || now >= nextTimedUiUpdateAt;
-      if (timedUpdate) nextTimedUiUpdateAt = now + 100;
+      if (timedUpdate) nextTimedUiUpdateAt = now + timedIntervalMs;
       updateHpBarsAll(force);
       const popup = document.getElementById("combat-abilities-popup");
       if (popup?.getAttribute("aria-hidden") !== "true" && popupCombatantId) {
@@ -3903,6 +4216,7 @@ export function eventConfigs() {
         if (c && (c.hp <= 0 || c.downState)) closeAbilitiesPopup();
       }
       const domWrites: Array<() => void> = [];
+      const omitStatusTimers = isIosMobilePerfMode;
       for (const c of allCombatants) {
         const needsStatus =
           force || timedUpdate || dirtyStatusCombatantIds.has(c.id);
@@ -4040,34 +4354,48 @@ export function eventConfigs() {
               return rail;
             };
             const timerRail = ensureTimerRail();
+            if (omitStatusTimers) {
+              timerRail.replaceChildren();
+              card.querySelector(".combat-card-cover-timer")?.remove();
+              card.querySelector(".combat-card-setup-timer")?.remove();
+              card.querySelector(".combat-card-focused-fire-timer")?.remove();
+              card.querySelector(".combat-card-blind-timer")?.remove();
+              card.querySelector(".combat-card-suppress-timer")?.remove();
+              card.querySelector(".combat-card-smoke-timer")?.remove();
+              card.querySelector(".combat-card-stun-timer")?.remove();
+              card.querySelector(".combat-card-panic-timer")?.remove();
+              card.querySelector(".combat-card-stim-timer")?.remove();
+              card.querySelector(".combat-card-fervor-timer")?.remove();
+              card.querySelector(".combat-card-burn-timer")?.remove();
+              card.querySelector(".combat-card-post-cover-timer")?.remove();
+              card.querySelector(".combat-card-infantry-armor-timer")?.remove();
+            }
             if (smoked) {
-              const timerEl = ensureTimer(
-                ".combat-card-smoke-timer",
-                "smoke-timer",
-                "combat-card-smoke-timer",
-                timerRail,
-              );
-              if (refreshTimerText)
-                timerEl.textContent = (
-                  ((c.smokedUntil ?? 0) - now) /
-                  1000
-                ).toFixed(1);
+              if (!omitStatusTimers) {
+                const timerEl = ensureTimer(
+                  ".combat-card-smoke-timer",
+                  "smoke-timer",
+                  "combat-card-smoke-timer",
+                  timerRail,
+                );
+                if (refreshTimerText)
+                  timerEl.textContent = formatCombatTimer(c.smokedUntil ?? 0, now);
+              }
             } else {
               card.querySelector(".combat-card-smoke-timer")?.remove();
               refs.statusNodeCache.delete("smoke-timer");
             }
             if (stunned) {
-              const timerEl = ensureTimer(
-                ".combat-card-stun-timer",
-                "stun-timer",
-                "combat-card-stun-timer",
-                timerRail,
-              );
-              if (refreshTimerText)
-                timerEl.textContent = (
-                  ((c.stunUntil ?? 0) - now) /
-                  1000
-                ).toFixed(1);
+              if (!omitStatusTimers) {
+                const timerEl = ensureTimer(
+                  ".combat-card-stun-timer",
+                  "stun-timer",
+                  "combat-card-stun-timer",
+                  timerRail,
+                );
+                if (refreshTimerText)
+                  timerEl.textContent = formatCombatTimer(c.stunUntil ?? 0, now);
+              }
             } else {
               card.querySelector(".combat-card-stun-timer")?.remove();
               refs.statusNodeCache.delete("stun-timer");
@@ -4080,10 +4408,7 @@ export function eventConfigs() {
                 timerRail,
               );
               if (refreshTimerText)
-                timerEl.textContent = (
-                  ((c.panicUntil ?? 0) - now) /
-                  1000
-                ).toFixed(1);
+                timerEl.textContent = formatCombatTimer(c.panicUntil ?? 0, now);
             } else {
               card.querySelector(".combat-card-panic-timer")?.remove();
               refs.statusNodeCache.delete("panic-timer");
@@ -4096,10 +4421,7 @@ export function eventConfigs() {
                 timerRail,
               );
               if (refreshTimerText)
-                timerEl.textContent = (
-                  ((c.burningUntil ?? 0) - now) /
-                  1000
-                ).toFixed(1);
+                timerEl.textContent = formatCombatTimer(c.burningUntil ?? 0, now);
             } else {
               card.querySelector(".combat-card-burn-timer")?.remove();
               refs.statusNodeCache.delete("burn-timer");
@@ -4129,10 +4451,10 @@ export function eventConfigs() {
                 timerRail,
               );
               if (refreshTimerText)
-                timerEl.textContent = (
-                  ((c.attackSpeedBuffUntil ?? 0) - now) /
-                  1000
-                ).toFixed(1);
+                timerEl.textContent = formatCombatTimer(
+                  c.attackSpeedBuffUntil ?? 0,
+                  now,
+                );
             } else {
               card.querySelector(".combat-card-stim-timer")?.remove();
               refs.statusNodeCache.delete("stim-timer");
@@ -4145,10 +4467,10 @@ export function eventConfigs() {
                 timerRail,
               );
               if (refreshTimerText)
-                timerEl.textContent = (
-                  ((c.companyAttackSpeedBuffUntil ?? 0) - now) /
-                  1000
-                ).toFixed(1);
+                timerEl.textContent = formatCombatTimer(
+                  c.companyAttackSpeedBuffUntil ?? 0,
+                  now,
+                );
             } else {
               card.querySelector(".combat-card-fervor-timer")?.remove();
               refs.statusNodeCache.delete("fervor-timer");
@@ -4161,10 +4483,7 @@ export function eventConfigs() {
                 timerRail,
               );
               if (refreshTimerText)
-                timerEl.textContent = (
-                  ((c.blindedUntil ?? 0) - now) /
-                  1000
-                ).toFixed(1);
+                timerEl.textContent = formatCombatTimer(c.blindedUntil ?? 0, now);
             } else {
               card.querySelector(".combat-card-blind-timer")?.remove();
               refs.statusNodeCache.delete("blind-timer");
@@ -4189,10 +4508,10 @@ export function eventConfigs() {
                 timerRail,
               );
               if (refreshTimerText)
-                timerEl.textContent = (
-                  ((c.suppressedUntil ?? 0) - now) /
-                  1000
-                ).toFixed(1);
+                timerEl.textContent = formatCombatTimer(
+                  c.suppressedUntil ?? 0,
+                  now,
+                );
             } else {
               card.querySelector(".combat-card-suppress-arrow-wrap")?.remove();
               card.querySelector(".combat-card-suppress-timer")?.remove();
@@ -4206,10 +4525,7 @@ export function eventConfigs() {
                 timerRail,
               );
               if (refreshTimerText)
-                timerEl.textContent = (
-                  ((c.setupUntil ?? 0) - now) /
-                  1000
-                ).toFixed(1);
+                timerEl.textContent = formatCombatTimer(c.setupUntil ?? 0, now);
             } else {
               card.querySelector(".combat-card-setup-timer")?.remove();
               refs.statusNodeCache.delete("setup-timer");
@@ -4222,10 +4538,10 @@ export function eventConfigs() {
                 timerRail,
               );
               if (refreshTimerText)
-                timerEl.textContent = (
-                  ((focusedFireUntil ?? 0) - now) /
-                  1000
-                ).toFixed(1);
+                timerEl.textContent = formatCombatTimer(
+                  focusedFireUntil ?? 0,
+                  now,
+                );
             } else {
               card.querySelector(".combat-card-focused-fire-timer")?.remove();
               refs.statusNodeCache.delete("focused-fire-timer");
@@ -4238,10 +4554,10 @@ export function eventConfigs() {
                 timerRail,
               );
               if (refreshTimerText)
-                timerEl.textContent = (
-                  ((c.postCoverToughnessUntil ?? 0) - now) /
-                  1000
-                ).toFixed(1);
+                timerEl.textContent = formatCombatTimer(
+                  c.postCoverToughnessUntil ?? 0,
+                  now,
+                );
               let buffShield = card.querySelector(
                 ".combat-card-post-cover-shield",
               ) as HTMLElement | null;
@@ -4267,10 +4583,10 @@ export function eventConfigs() {
                 timerRail,
               );
               if (refreshTimerText)
-                timerEl.textContent = (
-                  ((c.infantryArmorUntil ?? 0) - now) /
-                  1000
-                ).toFixed(1);
+                timerEl.textContent = formatCombatTimer(
+                  c.infantryArmorUntil ?? 0,
+                  now,
+                );
               let buffShield = card.querySelector(
                 ".combat-card-infantry-armor-shield",
               ) as HTMLElement | null;
@@ -4301,18 +4617,20 @@ export function eventConfigs() {
                 shieldWrap.appendChild(img);
                 refs.avatarWrap.appendChild(shieldWrap);
               }
-              const timerEl = ensureTimer(
-                ".combat-card-cover-timer",
-                "cover-timer",
-                "combat-card-cover-timer",
-                timerRail,
-              );
-              if (refreshTimerText)
-                timerEl.textContent = (
-                  ((c.takeCoverUntil ?? 0) - now) /
-                  1000
-                ).toFixed(1);
-              timerEl.style.opacity = "1";
+              if (!omitStatusTimers) {
+                const timerEl = ensureTimer(
+                  ".combat-card-cover-timer",
+                  "cover-timer",
+                  "combat-card-cover-timer",
+                  timerRail,
+                );
+                if (refreshTimerText)
+                  timerEl.textContent = formatCombatTimer(
+                    c.takeCoverUntil ?? 0,
+                    now,
+                  );
+                timerEl.style.opacity = "1";
+              }
             } else {
               shieldWrap?.remove();
               const timerEl = card.querySelector(
@@ -4350,7 +4668,11 @@ export function eventConfigs() {
         dirtySpeedCombatantIds.delete(c.id);
       }
       for (const write of domWrites) write();
-      drawAttackLines(force || timedUpdate);
+      const shouldDrawAttackLines = force || now >= nextAttackLinesUiUpdateAt;
+      if (shouldDrawAttackLines) {
+        nextAttackLinesUiUpdateAt = now + attackLineIntervalMs;
+        drawAttackLines(force);
+      }
       const shouldRenderCompanyAbilityBar =
         force || now >= nextCompanyAbilityBarUiUpdateAt;
       if (shouldRenderCompanyAbilityBar) {
@@ -5472,11 +5794,11 @@ export function eventConfigs() {
         if (!combatWinner)
           combatTickId = window.setTimeout(
             tick,
-            Math.min(50, Math.max(0, nextDue - now)),
+            Math.min(COMBAT_TICK_MAX_SLEEP_MS, Math.max(0, nextDue - now)),
           );
       }
 
-      combatTickId = window.setTimeout(tick, 50);
+      combatTickId = window.setTimeout(tick, 16);
     }
 
     function processQuitMissionOutcome(
@@ -5897,8 +6219,8 @@ export function eventConfigs() {
       medTargetingMode = null;
       suppressTargetingMode = null;
       targets.clear();
-      const linesG = document.querySelector("#combat-attack-lines-g");
-      if (linesG) linesG.textContent = "";
+      clearAttackLinesCanvas();
+      clearProjectilesCanvas();
       lastAttackLineSignature = "";
       renderCompanyAbilityBar(true);
       const run = async () => {

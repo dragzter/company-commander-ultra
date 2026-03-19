@@ -10,22 +10,55 @@ function AudioManager() {
   ];
   const victoryTrack = new Audio("audio/theme/victory.wav");
   const defeatTrack = new Audio("audio/theme/defeat.wav");
-  const buttonClickSfx = new Audio("audio/theme/button_click.wav");
-  const itemSwapSfx = new Audio("audio/theme/slick_swap.wav");
-  const itemSwapFallbackSfx = new Audio("audio/theme/click_swap.wav");
-  const suppressSfx = new Audio("audio/weapons/heavy_suppress.wav");
-  const fragImpactSfx = new Audio("audio/weapons/frag_grenade.wav");
-  const flashbangImpactSfx = new Audio("audio/weapons/flashbang.wav");
-  const smokeImpactSfx = new Audio("audio/weapons/smoke_grenade.wav");
-  const medevacSfx = new Audio("audio/weapons/medevac.wav");
-  const takeCoverSfx = new Audio("audio/weapons/take_cover.wav");
-  const reloadSfx = new Audio("audio/weapons/reload.wav");
+  const buttonClickPool = Array.from(
+    { length: 6 },
+    () => new Audio("audio/theme/button_click.wav"),
+  );
+  const itemSwapPool = Array.from(
+    { length: 4 },
+    () => new Audio("audio/theme/slick_swap.wav"),
+  );
+  const itemSwapFallbackPool = Array.from(
+    { length: 4 },
+    () => new Audio("audio/theme/click_swap.wav"),
+  );
+  const suppressPool = Array.from(
+    { length: 5 },
+    () => new Audio("audio/weapons/heavy_suppress.wav"),
+  );
+  const fragImpactPool = Array.from(
+    { length: 4 },
+    () => new Audio("audio/weapons/frag_grenade.wav"),
+  );
+  const flashbangImpactPool = Array.from(
+    { length: 4 },
+    () => new Audio("audio/weapons/flashbang.wav"),
+  );
+  const smokeImpactPool = Array.from(
+    { length: 4 },
+    () => new Audio("audio/weapons/smoke_grenade.wav"),
+  );
+  const medevacPool = Array.from(
+    { length: 3 },
+    () => new Audio("audio/weapons/medevac.wav"),
+  );
+  const takeCoverPool = Array.from(
+    { length: 3 },
+    () => new Audio("audio/weapons/take_cover.wav"),
+  );
+  const reloadPool = Array.from(
+    { length: 3 },
+    () => new Audio("audio/weapons/reload.wav"),
+  );
   const deathGruntPool = [
     new Audio("audio/weapons/death_grunt.wav"),
     new Audio("audio/weapons/death_grunt2.wav"),
     new Audio("audio/weapons/death_grunt3.wav"),
   ];
-  const bandageSfx = new Audio("audio/weapons/bandage.wav");
+  const bandagePool = Array.from(
+    { length: 3 },
+    () => new Audio("audio/weapons/bandage.wav"),
+  );
   const knifeImpactPool = Array.from(
     { length: 4 },
     () => new Audio("audio/weapons/knife_impact.wav"),
@@ -34,12 +67,103 @@ function AudioManager() {
   const WEAPON_SHOT_DEFAULT = "audio/weapons/mg_burst_1.wav";
   const weaponShotPools = new Map<string, HTMLAudioElement[]>();
   const weaponShotPoolIndexBySrc = new Map<string, number>();
+  const sfxPoolIndexByName = new Map<string, number>();
   let weaponShotSequence = 0;
   let currentCombatTrack: HTMLAudioElement | null = null;
   let lastCombatTrackIndex = -1;
+  let lastButtonClickAt = 0;
+  let audioPrimed = false;
+  let primingInFlight = false;
+  let gestureUnlockBound = false;
   let musicEnabled = true;
   let sfxEnabled = true;
   const urlReader = URLReader;
+
+  function nextFromPool(
+    name: string,
+    pool: HTMLAudioElement[],
+  ): HTMLAudioElement {
+    const last = sfxPoolIndexByName.get(name) ?? 0;
+    for (let i = 0; i < pool.length; i++) {
+      const idx = (last + i) % pool.length;
+      const candidate = pool[idx];
+      const endedish =
+        candidate.ended ||
+        candidate.paused ||
+        !Number.isFinite(candidate.duration) ||
+        candidate.currentTime >= Math.max(0, candidate.duration - 0.05);
+      if (endedish) {
+        sfxPoolIndexByName.set(name, (idx + 1) % pool.length);
+        return candidate;
+      }
+    }
+    sfxPoolIndexByName.set(name, (last + 1) % pool.length);
+    return pool[last];
+  }
+
+  function playFromPool(
+    name: string,
+    pool: HTMLAudioElement[],
+    volume: number,
+    playbackRate = 1,
+    startOffset = 0,
+  ): void {
+    const sfx = nextFromPool(name, pool);
+    sfx.playbackRate = playbackRate;
+    sfx.volume = Math.max(0, Math.min(1, volume));
+    sfx.currentTime = Math.max(0, startOffset);
+    void sfx.play().catch(() => {
+      // Ignore transient autoplay/channel errors.
+    });
+  }
+
+  function primeAudioNow(): void {
+    if (audioPrimed || primingInFlight) return;
+    primingInFlight = true;
+    const warm = [
+      ...buttonClickPool,
+      ...itemSwapPool,
+      ...itemSwapFallbackPool,
+      ...suppressPool,
+      ...fragImpactPool,
+      ...flashbangImpactPool,
+      ...smokeImpactPool,
+      ...medevacPool,
+      ...takeCoverPool,
+      ...reloadPool,
+      ...deathGruntPool,
+      ...bandagePool,
+      ...knifeImpactPool,
+    ];
+    // Silent warmup only: preload media data without triggering audible cues.
+    for (const a of warm) {
+      a.preload = "auto";
+      try {
+        a.load();
+      } catch {
+        // Ignore transient preload failures.
+      }
+    }
+    audioPrimed = true;
+    primingInFlight = false;
+  }
+
+  function bindGestureUnlock(): void {
+    if (gestureUnlockBound) return;
+    gestureUnlockBound = true;
+    const opts = { capture: true, passive: true };
+    const onUnlock = () => {
+      primeAudioNow();
+      document.removeEventListener("touchstart", onUnlock, opts);
+      document.removeEventListener("pointerdown", onUnlock, opts);
+      document.removeEventListener("mousedown", onUnlock, opts);
+      document.removeEventListener("keydown", onUnlock, opts);
+    };
+    document.addEventListener("touchstart", onUnlock, opts);
+    document.addEventListener("pointerdown", onUnlock, opts);
+    document.addEventListener("mousedown", onUnlock, opts);
+    document.addEventListener("keydown", onUnlock, opts);
+  }
 
   function isMusicDisabled(): boolean {
     const { audio } = urlReader(document.location.search);
@@ -209,72 +333,41 @@ function AudioManager() {
 
   function playSuppress(): void {
     if (isSfxDisabled()) return;
-    suppressSfx.pause();
-    suppressSfx.currentTime = 0;
-    suppressSfx.volume = 0.1 * GLOBAL_AUDIO_GAIN;
-    void suppressSfx.play().catch(() => {
-      // Ignore transient autoplay/channel errors.
-    });
+    playFromPool("suppress", suppressPool, 0.1 * GLOBAL_AUDIO_GAIN);
   }
 
   function playFragImpact(): void {
     if (isSfxDisabled()) return;
-    fragImpactSfx.pause();
-    fragImpactSfx.currentTime = 0;
-    fragImpactSfx.volume = 0.3 * GLOBAL_AUDIO_GAIN;
-    void fragImpactSfx.play().catch(() => {
-      // Ignore transient autoplay/channel errors.
-    });
+    playFromPool("frag-impact", fragImpactPool, 0.3 * GLOBAL_AUDIO_GAIN);
   }
 
   function playFlashbangImpact(): void {
     if (isSfxDisabled()) return;
-    flashbangImpactSfx.pause();
-    flashbangImpactSfx.currentTime = 0;
-    flashbangImpactSfx.volume = 0.22 * GLOBAL_AUDIO_GAIN;
-    void flashbangImpactSfx.play().catch(() => {
-      // Ignore transient autoplay/channel errors.
-    });
+    playFromPool(
+      "flashbang-impact",
+      flashbangImpactPool,
+      0.22 * GLOBAL_AUDIO_GAIN,
+    );
   }
 
   function playSmokeImpact(): void {
     if (isSfxDisabled()) return;
-    smokeImpactSfx.pause();
-    smokeImpactSfx.currentTime = 0;
-    smokeImpactSfx.volume = 0.24 * GLOBAL_AUDIO_GAIN;
-    void smokeImpactSfx.play().catch(() => {
-      // Ignore transient autoplay/channel errors.
-    });
+    playFromPool("smoke-impact", smokeImpactPool, 0.24 * GLOBAL_AUDIO_GAIN);
   }
 
   function playMedevac(): void {
     if (isSfxDisabled()) return;
-    medevacSfx.pause();
-    medevacSfx.currentTime = 0;
-    medevacSfx.volume = 0.26 * GLOBAL_AUDIO_GAIN;
-    void medevacSfx.play().catch(() => {
-      // Ignore transient autoplay/channel errors.
-    });
+    playFromPool("medevac", medevacPool, 0.26 * GLOBAL_AUDIO_GAIN);
   }
 
   function playTakeCover(): void {
     if (isSfxDisabled()) return;
-    takeCoverSfx.pause();
-    takeCoverSfx.currentTime = 0;
-    takeCoverSfx.volume = 0.2 * GLOBAL_AUDIO_GAIN;
-    void takeCoverSfx.play().catch(() => {
-      // Ignore transient autoplay/channel errors.
-    });
+    playFromPool("take-cover", takeCoverPool, 0.2 * GLOBAL_AUDIO_GAIN);
   }
 
   function playReload(): void {
     if (isSfxDisabled()) return;
-    reloadSfx.pause();
-    reloadSfx.currentTime = 0;
-    reloadSfx.volume = 0.1 * GLOBAL_AUDIO_GAIN;
-    void reloadSfx.play().catch(() => {
-      // Ignore transient autoplay/channel errors.
-    });
+    playFromPool("reload", reloadPool, 0.1 * GLOBAL_AUDIO_GAIN);
   }
 
   function playDeathGrunt(): void {
@@ -291,12 +384,7 @@ function AudioManager() {
 
   function playBandage(): void {
     if (isSfxDisabled()) return;
-    bandageSfx.pause();
-    bandageSfx.currentTime = 0;
-    bandageSfx.volume = 0.2 * GLOBAL_AUDIO_GAIN;
-    void bandageSfx.play().catch(() => {
-      // Ignore transient autoplay/channel errors.
-    });
+    playFromPool("bandage", bandagePool, 0.2 * GLOBAL_AUDIO_GAIN);
   }
 
   function playKnifeImpact(): void {
@@ -316,30 +404,23 @@ function AudioManager() {
 
   function playUiButtonClick(): void {
     if (isSfxDisabled()) return;
-    buttonClickSfx.pause();
-    buttonClickSfx.currentTime = 0;
-    buttonClickSfx.volume = 0.12 * GLOBAL_AUDIO_GAIN;
-    void buttonClickSfx.play().catch(() => {
-      // Ignore transient autoplay/channel errors.
-    });
+    const now = performance.now();
+    if (now - lastButtonClickAt < 80) return;
+    lastButtonClickAt = now;
+    playFromPool("ui-button", buttonClickPool, 0.12 * GLOBAL_AUDIO_GAIN);
   }
 
   function playUiItemSwap(): void {
     if (isSfxDisabled()) return;
-    const playFallback = () => {
-      itemSwapFallbackSfx.pause();
-      itemSwapFallbackSfx.currentTime = 0;
-      itemSwapFallbackSfx.volume = 0.14 * GLOBAL_AUDIO_GAIN;
-      void itemSwapFallbackSfx.play().catch(() => {
-        // Ignore transient autoplay/channel errors.
-      });
-    };
-    itemSwapSfx.pause();
-    itemSwapSfx.currentTime = 0;
-    itemSwapSfx.volume = 0.14 * GLOBAL_AUDIO_GAIN;
-    void itemSwapSfx.play().catch(() => {
-      // If slick_swap.wav is missing, use the existing click_swap.wav.
-      playFallback();
+    const sfx = nextFromPool("ui-item-swap", itemSwapPool);
+    sfx.currentTime = 0;
+    sfx.volume = 0.14 * GLOBAL_AUDIO_GAIN;
+    void sfx.play().catch(() => {
+      playFromPool(
+        "ui-item-swap-fallback",
+        itemSwapFallbackPool,
+        0.14 * GLOBAL_AUDIO_GAIN,
+      );
     });
   }
 
@@ -556,6 +637,8 @@ function AudioManager() {
       isSfxEnabled: () => sfxEnabled,
       setSoundEnabled: (enabled: boolean) => setSoundEnabled(enabled),
       isSoundEnabled: () => musicEnabled && sfxEnabled,
+      primeAudio: () => primeAudioNow(),
+      bindGestureUnlock: () => bindGestureUnlock(),
     }),
   };
 }

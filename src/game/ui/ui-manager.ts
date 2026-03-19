@@ -68,6 +68,15 @@ function UiManager() {
 
     state.initializeCompany();
     _DomEventManager.initGlobalButtonClickAudio();
+    _AudioManager.Settings().bindGestureUnlock();
+    const ua = navigator.userAgent || "";
+    const iosTouchMac =
+      navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1;
+    const isIosMobile = /iPhone|iPad|iPod/i.test(ua) || iosTouchMac;
+    if (isIosMobile) {
+      document.documentElement.classList.add("ios-mobile-perf");
+      document.body?.classList.add("ios-mobile-perf");
+    }
 
     const gameEnter = s_(DOM.enterGame);
 
