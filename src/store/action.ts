@@ -7,8 +7,10 @@ import {
   type CompanyStore,
   GAME_STEPS,
   type GameStep,
+  type MarketFlareOffer,
   type MissionsResumeStep,
   type MissionsViewMode,
+  type PendingFlareNotice,
   type RecruitOnboardingStep,
   type SuppliesOnboardingStep,
 } from "./ui-store.ts";
@@ -55,7 +57,10 @@ import type { Item } from "../constants/items/types.ts";
 import { TARGET_TYPES } from "../constants/items/types.ts";
 import { MAX_EQUIPMENT_SLOTS } from "../constants/inventory-slots.ts";
 import { weaponWieldOk, canEquipItemLevel } from "../utils/equip-utils.ts";
-import { isStratagemItem } from "../constants/stratagem-market.ts";
+import {
+  isStratagemItem,
+  STRATAGEM_ARMORY_SLOTS,
+} from "../constants/stratagem-market.ts";
 import { getRewardItemById, pickRandomCommonSupply } from "../utils/reward-utils.ts";
 import {
   createWeaponByBaseId,
@@ -210,8 +215,129 @@ function resolveRecruitLevel(company: Company | null | undefined, highestAchieve
   return Math.max(Math.max(1, highestAchieved), getRecruitLevelFromCompany(company));
 }
 
+function countStratagemArmoryItems(items: Item[]): number {
+  return items.reduce((sum, item) => sum + (isStratagemItem(item) ? 1 : 0), 0);
+}
+
 const VETERANCY_CHECKPOINTS = [25, 55, 90, 130, 175, 225, 280, 340, 410];
 const MAX_EARNED_TRAITS_PER_SOLDIER = 5;
+const RANDOM_FLARE_ROLL_CHANCE = 0.05;
+
+type RosterFlareBuffDef =
+  | {
+      kind: "flat";
+      stat: "dexterity" | "morale" | "toughness" | "awareness";
+      amount: number;
+    }
+  | { kind: "hit"; amount: number }
+  | { kind: "mitigation"; amount: number };
+
+const ROSTER_FLARE_BUFFS: readonly RosterFlareBuffDef[] = [
+  { kind: "flat", stat: "dexterity", amount: 1 },
+  { kind: "flat", stat: "morale", amount: 1 },
+  { kind: "flat", stat: "toughness", amount: 1 },
+  { kind: "flat", stat: "awareness", amount: 1 },
+  { kind: "hit", amount: 0.003 },
+  { kind: "mitigation", amount: 0.003 },
+];
+
+function getRandomMarketFlareOffer(): MarketFlareOffer {
+  const offers: MarketFlareOffer[] = [
+    {
+      id: `flare_offer_frag_${Date.now()}`,
+      title: "Quartermaster Special",
+      description:
+        "Greetings commander, M3 frag grenades are running 50% off for this visit.",
+      discountPct: 0.5,
+      appliesTo: "frag_grenade",
+      createdAt: Date.now(),
+    },
+    {
+      id: `flare_offer_supplies_${Date.now()}`,
+      title: "Flash Sale",
+      description:
+        "Short window: all supplies are discounted by 10% while you're in market.",
+      discountPct: 0.1,
+      appliesTo: "supplies",
+      createdAt: Date.now(),
+    },
+    {
+      id: `flare_offer_weapons_${Date.now()}`,
+      title: "Arms Dealer Discount",
+      description:
+        "Weapons contract pricing active: 10% off weapons for this stop.",
+      discountPct: 0.1,
+      appliesTo: "weapons",
+      createdAt: Date.now(),
+    },
+    {
+      id: `flare_offer_armor_${Date.now()}`,
+      title: "Armor Refit Bonus",
+      description:
+        "Depot overstock: 10% off body armor until you leave market.",
+      discountPct: 0.1,
+      appliesTo: "armor",
+      createdAt: Date.now(),
+    },
+  ];
+  return offers[Math.floor(Math.random() * offers.length)] as MarketFlareOffer;
+}
+
+function pickRosterFlareTarget(state: CompanyStore): Soldier | null {
+  const soldiers = state.company?.soldiers ?? [];
+  if (soldiers.length === 0) return null;
+  const slots = getFormationSlots(state.company);
+  const activeCap = getActiveSlots(state.company);
+  const activeIds = new Set(
+    slots.slice(0, activeCap).filter((id): id is string => typeof id === "string"),
+  );
+  const active = soldiers.filter((s) => activeIds.has(s.id));
+  const pool = active.length > 0 ? active : soldiers;
+  return pool[Math.floor(Math.random() * pool.length)] ?? null;
+}
+
+function applyRosterFlareBuff(
+  soldier: Soldier,
+  buff: RosterFlareBuffDef,
+): { soldier: Soldier; line: string } {
+  if (buff.kind === "flat") {
+    const next = {
+      ...soldier,
+      personalFlatBonuses: {
+        ...(soldier.personalFlatBonuses ?? {}),
+        [buff.stat]:
+          ((soldier.personalFlatBonuses?.[buff.stat] ?? 0) as number) +
+          buff.amount,
+      },
+    };
+    SoldierManager.refreshCombatProfile(next);
+    const label =
+      buff.stat === "dexterity"
+        ? "DEX"
+        : buff.stat === "morale"
+          ? "MOR"
+          : buff.stat === "toughness"
+            ? "TGH"
+            : "AWR";
+    return { soldier: next, line: `+${buff.amount} ${label}` };
+  }
+  if (buff.kind === "hit") {
+    const next = {
+      ...soldier,
+      personalChanceToHitBonusPct:
+        (soldier.personalChanceToHitBonusPct ?? 0) + buff.amount,
+    };
+    SoldierManager.refreshCombatProfile(next);
+    return { soldier: next, line: "+0.3% HIT" };
+  }
+  const next = {
+    ...soldier,
+    personalMitigationBonusPct:
+      (soldier.personalMitigationBonusPct ?? 0) + buff.amount,
+  };
+  SoldierManager.refreshCombatProfile(next);
+  return { soldier: next, line: "+0.3% MIT" };
+}
 
 function meetsTraitRequirements(
   soldier: Soldier,
@@ -419,6 +545,9 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
   companyAbilityNotificationText: "",
   companyAbilityCooldowns: {},
   companyLevelUpSummary: null,
+  randomEventRollArmed: false,
+  activeMarketFlareOffer: null,
+  pendingFlareNotice: null,
   equippedStratagemItemId: null,
   musicEnabled: true,
   sfxEnabled: true,
@@ -550,6 +679,9 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
         companyAbilityNotificationText: "",
         companyAbilityCooldowns: {},
         equippedStratagemItemId: null,
+        randomEventRollArmed: false,
+        activeMarketFlareOffer: null,
+        pendingFlareNotice: null,
         company: {
           level: 1,
           experience: 0,
@@ -654,6 +786,67 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
       return { companyAbilityCooldowns: existing };
     }),
   clearCompanyLevelUpSummary: () => set({ companyLevelUpSummary: null }),
+  armPostMissionFlareRoll: () => set({ randomEventRollArmed: true }),
+  tryTriggerFlareEvent: (target: "market" | "roster") => {
+    const state = get();
+    if (!state.randomEventRollArmed) return;
+    const onboardingBusy =
+      (state.onboardingFirstMissionPending ?? false) ||
+      (state.onboardingRecruitStep ?? "none") !== "none" ||
+      ((state.onboardingSuppliesStep ?? "none") !== "none" &&
+        (state.onboardingSuppliesStep ?? "none") !== "done") ||
+      (state.onboardingMedicRecruitNoticePending ?? false) ||
+      (state.onboardingMissionTypesIntroPending ?? false);
+    if (onboardingBusy) return;
+    if (state.pendingFlareNotice) {
+      set({ randomEventRollArmed: false });
+      return;
+    }
+    set({ randomEventRollArmed: false });
+    if (Math.random() >= RANDOM_FLARE_ROLL_CHANCE) return;
+
+    if (target === "market") {
+      const offer = getRandomMarketFlareOffer();
+      const notice: PendingFlareNotice = {
+        id: `flare_notice_market_${Date.now()}`,
+        target: "market",
+        title: offer.title,
+        body: offer.description,
+      };
+      set({
+        activeMarketFlareOffer: offer,
+        pendingFlareNotice: notice,
+      });
+      return;
+    }
+
+    set((s: CompanyStore) => {
+      const targetSoldier = pickRosterFlareTarget(s);
+      if (!targetSoldier) return {};
+      const buff =
+        ROSTER_FLARE_BUFFS[
+          Math.floor(Math.random() * ROSTER_FLARE_BUFFS.length)
+        ] ?? ROSTER_FLARE_BUFFS[0];
+      const applied = applyRosterFlareBuff(targetSoldier, buff);
+      const soldiers = (s.company?.soldiers ?? []).map((sol) =>
+        sol.id === targetSoldier.id ? applied.soldier : sol,
+      );
+      return {
+        company: {
+          ...s.company,
+          soldiers,
+        },
+        pendingFlareNotice: {
+          id: `flare_notice_roster_${Date.now()}`,
+          target: "roster",
+          title: "Training Update",
+          body: `${applied.soldier.name} completed extra drills. Permanent ${applied.line}.`,
+        } as PendingFlareNotice,
+      };
+    });
+  },
+  dismissFlareNotice: () => set({ pendingFlareNotice: null }),
+  clearMarketFlareOffer: () => set({ activeMarketFlareOffer: null }),
   setMusicEnabled: (enabled: boolean) =>
     set({ musicEnabled: enabled !== false }),
   setSfxEnabled: (enabled: boolean) =>
@@ -1046,6 +1239,9 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
         companyAbilityNotificationText: "",
         companyAbilityCooldowns: {},
         companyLevelUpSummary: null,
+        randomEventRollArmed: false,
+        activeMarketFlareOffer: null,
+        pendingFlareNotice: null,
         equippedStratagemItemId: null,
       };
     }),
@@ -1185,9 +1381,16 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
         inv = inv.slice();
         inv[existingIdx] = { ...ex, uses: exUses + addUses };
       } else {
-        const counts = countArmoryByCategory(inv);
-        const cat = getItemArmoryCategory(item);
-        if (counts[cat] >= caps[cat]) return { success: false, reason: "capacity" };
+        if (isStratagemItem(item)) {
+          const stratagemCount = countStratagemArmoryItems(inv);
+          if (stratagemCount >= STRATAGEM_ARMORY_SLOTS) {
+            return { success: false, reason: "capacity" };
+          }
+        } else {
+          const counts = countArmoryByCategory(inv);
+          const cat = getItemArmoryCategory(item);
+          if (counts[cat] >= caps[cat]) return { success: false, reason: "capacity" };
+        }
         inv = [...inv, item];
       }
     }
@@ -1740,12 +1943,18 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
         inv = inv.slice();
         inv[existingIdx] = { ...ex, uses: exUses + addUses };
       } else {
-        const counts = countArmoryByCategory(inv);
-        const cat = getItemArmoryCategory(copy);
-        if (counts[cat] < caps[cat]) {
-          inv = [...inv, copy];
+        if (isStratagemItem(copy)) {
+          const stratagemCount = countStratagemArmoryItems(inv);
+          if (stratagemCount < STRATAGEM_ARMORY_SLOTS) inv = [...inv, copy];
+          else holding = [...holding, copy];
         } else {
-          holding = [...holding, copy];
+          const counts = countArmoryByCategory(inv);
+          const cat = getItemArmoryCategory(copy);
+          if (counts[cat] < caps[cat]) {
+            inv = [...inv, copy];
+          } else {
+            holding = [...holding, copy];
+          }
         }
       }
     };
@@ -2219,12 +2428,18 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
         inv = inv.slice();
         inv[existingIdx] = { ...ex, uses: exUses + addUses };
       } else {
-        const counts = countArmoryByCategory(inv);
-        const cat = getItemArmoryCategory(copy);
-        if (counts[cat] < caps[cat]) {
-          inv = [...inv, copy];
+        if (isStratagemItem(copy)) {
+          const stratagemCount = countStratagemArmoryItems(inv);
+          if (stratagemCount < STRATAGEM_ARMORY_SLOTS) inv = [...inv, copy];
+          else remaining.push(copy);
         } else {
-          remaining.push(copy);
+          const counts = countArmoryByCategory(inv);
+          const cat = getItemArmoryCategory(copy);
+          if (counts[cat] < caps[cat]) {
+            inv = [...inv, copy];
+          } else {
+            remaining.push(copy);
+          }
         }
       }
     }
@@ -2267,9 +2482,16 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
         inv = inv.slice();
         inv[existingIdx] = { ...ex, uses: exUses + addUses };
       } else {
-        const counts = countArmoryByCategory(inv);
-        const cat = getItemArmoryCategory(item);
-        if (counts[cat] >= caps[cat]) return { success: false, reason: "armory full" };
+        if (isStratagemItem(item)) {
+          const stratagemCount = countStratagemArmoryItems(inv);
+          if (stratagemCount >= STRATAGEM_ARMORY_SLOTS) {
+            return { success: false, reason: "armory full" };
+          }
+        } else {
+          const counts = countArmoryByCategory(inv);
+          const cat = getItemArmoryCategory(item);
+          if (counts[cat] >= caps[cat]) return { success: false, reason: "armory full" };
+        }
         inv = [...inv, item];
       }
     }

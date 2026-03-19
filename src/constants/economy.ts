@@ -117,7 +117,7 @@ export const SOLDIER_XP_PER_DAMAGE = 0.22;
 export const SOLDIER_XP_PER_DAMAGE_TAKEN = 0.12;
 export const SOLDIER_XP_PER_KILL = 6;
 export const SOLDIER_XP_PER_ABILITY_USE = 1.5;
-export const SOLDIER_XP_PER_HEAL = 0.08;
+export const SOLDIER_XP_PER_HEAL = 0.1;
 
 /** Multiplier applied to company XP derived from total soldier combat XP. */
 export const COMPANY_XP_FROM_COMBAT_MULTIPLIER = 1.21;

@@ -5,6 +5,9 @@ export type StratagemDef = {
   unlockLevel: number;
 };
 
+/** Dedicated armory capacity for stratagem items (fixed, not level-scaled). */
+export const STRATAGEM_ARMORY_SLOTS = 5;
+
 export const STRATAGEM_DEFS: readonly StratagemDef[] = [
   {
     unlockLevel: 3,

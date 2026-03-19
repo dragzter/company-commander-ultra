@@ -106,6 +106,26 @@ function SoldierManager() {
         PRECISION,
       );
     }
+    if ((soldier.personalChanceToHitBonusPct ?? 0) > 0) {
+      soldier.combatProfile.chanceToHit = toFNum(
+        Math.min(
+          MAX_HIT_CHANCE,
+          soldier.combatProfile.chanceToHit +
+            (soldier.personalChanceToHitBonusPct ?? 0),
+        ),
+        PRECISION,
+      );
+    }
+    if ((soldier.personalMitigationBonusPct ?? 0) > 0) {
+      soldier.combatProfile.mitigateDamage = toFNum(
+        Math.min(
+          MAX_MITIGATION,
+          soldier.combatProfile.mitigateDamage +
+            (soldier.personalMitigationBonusPct ?? 0),
+        ),
+        PRECISION,
+      );
+    }
     if (soldier.armor) applyArmorPercentToCombatProfile(soldier, soldier.armor);
     if (soldier.weapon) {
       applyWeaponPercentToCombatProfile(soldier, soldier.weapon);
@@ -249,6 +269,10 @@ function SoldierManager() {
     applyFlatStats(
       attrs,
       (soldier.companyFlatBonuses ?? {}) as Partial<Record<keyof Attributes, number>>,
+    );
+    applyFlatStats(
+      attrs,
+      (soldier.personalFlatBonuses ?? {}) as Partial<Record<keyof Attributes, number>>,
     );
     const armor = (soldier.armor ?? {}) as Armor;
     const weapon = (soldier.weapon ?? {}) as BallisticWeapon;

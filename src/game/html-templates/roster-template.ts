@@ -135,6 +135,24 @@ function rosterTraitsPopupHtml(): string {
 </div>`;
 }
 
+function rosterFlarePopupHtml(): string {
+  const notice = usePlayerCompanyStore.getState().pendingFlareNotice;
+  if (!notice || notice.target !== "roster") return "";
+  return `
+<div id="roster-flare-popup" class="home-onboarding-popup helper-onboarding-popup" role="dialog" aria-modal="true">
+  <div class="home-onboarding-dialog helper-onboarding-dialog">
+    <div class="home-onboarding-copy helper-onboarding-copy">
+      <h4 class="home-onboarding-title helper-onboarding-title">${escapeHtml(notice.title)}</h4>
+      <p class="home-onboarding-text helper-onboarding-text">${escapeHtml(notice.body)}</p>
+      <button id="roster-flare-continue" type="button" class="game-btn game-btn-md game-btn-green home-onboarding-continue helper-onboarding-continue">Continue</button>
+    </div>
+    <div class="home-onboarding-image-wrap helper-onboarding-image-wrap">
+      <img src="/images/green-portrait/portrait_0.png" alt="Squad soldier" class="home-onboarding-image helper-onboarding-image">
+    </div>
+  </div>
+</div>`;
+}
+
 export function rosterTemplate(): string {
   const store = usePlayerCompanyStore.getState();
   const company = store.company;
@@ -189,6 +207,7 @@ export function rosterTemplate(): string {
   ${equipPickerHtml}
   ${restTroopsPopupHtml(soldiers, activeIds)}
   ${rosterTraitsPopupHtml()}
+  ${rosterFlarePopupHtml()}
   ${itemStatsPopupHtml()}
   ${companyHeaderPartial("Squad Roster")}
   <div class="roster-role-banner">${roleSummary}</div>

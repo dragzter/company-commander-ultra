@@ -54,7 +54,6 @@ import { Styler } from "../../utils/styler-manager.ts";
 import { SoldierManager } from "../entities/soldier/soldier-manager.ts";
 import type { Designation, Soldier } from "../entities/types.ts";
 import type { Mission } from "../../constants/missions.ts";
-import { generateDevTestMissions } from "../../services/missions/mission-generator.ts";
 import {
   getStandardMissionEncounter,
   normalizeEncounterForMission,
@@ -306,7 +305,8 @@ function ScreenManager() {
       ? [normalizeEncounterForMission(createOnboardingSkirmish())]
       : (usePlayerCompanyStore.getState().missionBoard ?? []);
     const companyLevel = usePlayerCompanyStore.getState().companyLevel ?? 1;
-    const activeMode = usePlayerCompanyStore.getState().missionsViewMode ?? "menu";
+    const requestedMode = usePlayerCompanyStore.getState().missionsViewMode ?? "menu";
+    const activeMode = requestedMode === "dev" ? "menu" : requestedMode;
     const resumeStep = usePlayerCompanyStore.getState().missionsResumeStep;
     const initialKindFilter =
       activeMode === "normal" &&
@@ -316,13 +316,11 @@ function ScreenManager() {
         resumeStep === "manhunt")
         ? resumeStep
         : "all";
-    const devMissions = activeMode === "dev" ? generateDevTestMissions() : [];
     const content = parseHTML(
       missionsTemplate(
         missions,
         companyLevel,
         activeMode,
-        devMissions,
         initialKindFilter,
       ),
     );

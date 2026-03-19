@@ -116,6 +116,7 @@ import {
   createCareerMission,
   isCareerUnlocked,
 } from "../../services/missions/career-mode.ts";
+import { isStratagemItem } from "../../constants/stratagem-market.ts";
 import {
   COMPANY_ABILITY_DEFS,
   getCompanyActiveAbilities,
@@ -183,6 +184,18 @@ export function eventConfigs() {
       return `${m}:${String(s).padStart(2, "0")}m`;
     }
     return `${secs}s`;
+  }
+
+  function setSettingsSquadNameStatus(
+    text: string,
+    kind: "error" | "success" | "neutral" = "neutral",
+  ) {
+    const status = s_(DOM.company.settingsSquadNameStatus) as HTMLElement | null;
+    if (!status) return;
+    status.textContent = text;
+    status.classList.remove("is-error", "is-success");
+    if (kind === "error") status.classList.add("is-error");
+    if (kind === "success") status.classList.add("is-success");
   }
 
   function formatAbilityTermsInTooltip(text: string): string {
@@ -798,6 +811,13 @@ export function eventConfigs() {
       callback: () => {
         const popup = s_(DOM.company.settingsPopup) as HTMLElement | null;
         if (popup) popup.hidden = false;
+        const squadNameInput = s_(
+          DOM.company.settingsSquadNameInput,
+        ) as HTMLInputElement | null;
+        if (squadNameInput) {
+          squadNameInput.value = usePlayerCompanyStore.getState().companyName ?? "";
+        }
+        setSettingsSquadNameStatus("");
         const musicToggle = s_(DOM.company.settingsMusicToggle) as
           | HTMLInputElement
           | null;
@@ -812,6 +832,34 @@ export function eventConfigs() {
         if (sfxToggle) sfxToggle.checked = sfxEnabled;
         _AudioManager.Settings().setMusicEnabled(musicEnabled);
         _AudioManager.Settings().setSfxEnabled(sfxEnabled);
+      },
+    },
+    {
+      selector: DOM.company.settingsSquadNameSave,
+      eventType: "click",
+      callback: () => {
+        const input = s_(DOM.company.settingsSquadNameInput) as HTMLInputElement | null;
+        if (!input) return;
+        const nextName = (input.value ?? "").trim();
+        if (nextName.length < 5 || nextName.length > 15) {
+          setSettingsSquadNameStatus("Name must be 5-15 characters.", "error");
+          return;
+        }
+        usePlayerCompanyStore.getState().setCompanyName(nextName);
+        const headerName = document.querySelector(".company-header-name") as HTMLElement | null;
+        if (headerName) headerName.textContent = nextName;
+        setSettingsSquadNameStatus("Squad name updated.", "success");
+      },
+    },
+    {
+      selector: DOM.company.settingsSquadNameInput,
+      eventType: "keydown",
+      callback: (e: Event) => {
+        const ke = e as KeyboardEvent;
+        if (ke.key !== "Enter") return;
+        ke.preventDefault();
+        const saveBtn = s_(DOM.company.settingsSquadNameSave) as HTMLButtonElement | null;
+        saveBtn?.click();
       },
     },
     {
@@ -1131,6 +1179,31 @@ export function eventConfigs() {
   applyHomeOnboardingFocus();
 
   const marketEventConfig: HandlerInitConfig[] = [
+    {
+      selector: "#market-flare-continue",
+      eventType: "click",
+      callback: () => {
+        const st = usePlayerCompanyStore.getState();
+        st.dismissFlareNotice();
+        const popup = document.getElementById("market-flare-popup");
+        if (popup) {
+          popup.classList.add("home-onboarding-popup-hide");
+          window.setTimeout(() => popup.remove(), 220);
+        }
+      },
+    },
+    {
+      selector: "#market-flare-popup",
+      eventType: "click",
+      callback: (e: Event) => {
+        if (e.target !== e.currentTarget) return;
+        const st = usePlayerCompanyStore.getState();
+        st.dismissFlareNotice();
+        const popup = e.currentTarget as HTMLElement;
+        popup.classList.add("home-onboarding-popup-hide");
+        window.setTimeout(() => popup.remove(), 220);
+      },
+    },
     {
       selector: DOM.market.marketTroopsLink,
       eventType: "click",
@@ -1503,14 +1576,6 @@ export function eventConfigs() {
         const st = usePlayerCompanyStore.getState();
         st.setMissionsResumeState("career", null);
         UiManager.renderMissionsScreen("career");
-      },
-    },
-    {
-      selector: DOM.missions.modeDevBtn,
-      eventType: "click",
-      callback: () => {
-        usePlayerCompanyStore.getState().setMissionsResumeState("none", null);
-        UiManager.renderMissionsScreen("dev");
       },
     },
     {
@@ -3610,6 +3675,7 @@ export function eventConfigs() {
             user.weaponSfx,
             user.designation,
             user.attackIntervalMs,
+            user.side,
           );
         if (result.hit && !result.evaded) anyHit = true;
         animateProjectile(
@@ -5774,6 +5840,7 @@ export function eventConfigs() {
                   c.weaponSfx,
                   c.designation,
                   c.attackIntervalMs,
+                  c.side,
                 );
               if (c.side === "player") {
                 if (
@@ -7206,6 +7273,7 @@ export function eventConfigs() {
             store.syncCombatHpToSoldiers(
               players.map((p) => ({ id: p.id, hp: p.maxHp })),
             );
+            store.armPostMissionFlareRoll();
           }
           if (combatTickId != null) {
             clearTimeout(combatTickId);
@@ -8143,6 +8211,31 @@ export function eventConfigs() {
 
   const rosterScreenEventConfig: HandlerInitConfig[] = [
     {
+      selector: "#roster-flare-continue",
+      eventType: "click",
+      callback: () => {
+        const st = usePlayerCompanyStore.getState();
+        st.dismissFlareNotice();
+        const popup = document.getElementById("roster-flare-popup");
+        if (popup) {
+          popup.classList.add("home-onboarding-popup-hide");
+          window.setTimeout(() => popup.remove(), 220);
+        }
+      },
+    },
+    {
+      selector: "#roster-flare-popup",
+      eventType: "click",
+      callback: (e: Event) => {
+        if (e.target !== e.currentTarget) return;
+        const st = usePlayerCompanyStore.getState();
+        st.dismissFlareNotice();
+        const popup = e.currentTarget as HTMLElement;
+        popup.classList.add("home-onboarding-popup-hide");
+        window.setTimeout(() => popup.remove(), 220);
+      },
+    },
+    {
       selector: "#roster-empty-recruit-btn",
       eventType: "click",
       callback: () => {
@@ -8578,16 +8671,21 @@ export function eventConfigs() {
           delete (popup as HTMLElement).dataset.unequipEqIndex;
           titleEl.textContent = "";
           bodyEl.innerHTML = getItemPopupBodyHtml(item);
+          const isStratagem = isStratagemItem(item);
           const isEquippable =
             (item.type as string) === "ballistic_weapon" ||
             (item.type as string) === "armor" ||
             (item.type as string) === "throwable" ||
             (item.type as string) === "medical" ||
-            (item.type as string) === "gear";
+            (item.type as string) === "gear" ||
+            isStratagem;
           if (equipBtn) {
             (equipBtn as HTMLElement).style.display = isEquippable
               ? ""
               : "none";
+            (equipBtn as HTMLElement).textContent = isStratagem
+              ? "Equip Stratagem"
+              : "Equip";
           }
           if (sellBtn) {
             const inArmory = indexStr != null && indexStr !== "";
@@ -8622,7 +8720,7 @@ export function eventConfigs() {
       callback: () => {
         const popup = document.getElementById("item-stats-popup");
         const picker = document.getElementById("equip-picker-popup");
-        if (!popup || !picker) return;
+        if (!popup) return;
         const tt = document.getElementById("equip-slot-tooltip");
         if (tt) {
           tt.hidden = true;
@@ -8632,6 +8730,15 @@ export function eventConfigs() {
         const idxStr = (popup as HTMLElement).dataset.itemIndex;
         if (!json) return;
         const item = JSON.parse(json.replace(/&quot;/g, '"'));
+        if (isStratagemItem(item)) {
+          usePlayerCompanyStore
+            .getState()
+            .setEquippedStratagemItemId(item.id ?? null);
+          popup.hidden = true;
+          UiManager.renderInventoryScreen();
+          return;
+        }
+        if (!picker) return;
         (picker as HTMLElement).dataset.openedFrom = "inventory";
         (picker as HTMLElement).dataset.preselectedItem = json;
         (picker as HTMLElement).dataset.preselectedArmoryIndex = idxStr ?? "";
@@ -9542,7 +9649,9 @@ export function eventConfigs() {
         const el = (e.target as HTMLElement).closest(".supplies-market-item");
         if (!el) return;
         const idxStr = (el as HTMLElement).dataset.suppliesIndex;
-        const priceStr = (el as HTMLElement).dataset.suppliesPrice;
+        const priceStr =
+          (el as HTMLElement).dataset.finalPrice ??
+          (el as HTMLElement).dataset.suppliesPrice;
         const itemJson = (el as HTMLElement).dataset.suppliesItem;
         if (idxStr == null || priceStr == null || !itemJson) return;
         let item: import("../../constants/items/types.ts").Item;
@@ -9736,7 +9845,9 @@ export function eventConfigs() {
         callback: (e: Event) => {
           const el = (e.target as HTMLElement).closest(".gear-market-item");
           if (!el) return;
-          const priceStr = (el as HTMLElement).dataset.gearPrice;
+          const priceStr =
+            (el as HTMLElement).dataset.finalPrice ??
+            (el as HTMLElement).dataset.gearPrice;
           const itemJson = (el as HTMLElement).dataset.gearItem;
           if (!priceStr || !itemJson) return;
           let item: import("../../constants/items/types.ts").Item;
@@ -10027,7 +10138,9 @@ export function eventConfigs() {
         const el = (e.target as HTMLElement).closest(".stratagems-market-item");
         if (!el) return;
         const itemJson = (el as HTMLElement).dataset.stratagemItem;
-        const priceStr = (el as HTMLElement).dataset.stratagemPrice;
+        const priceStr =
+          (el as HTMLElement).dataset.finalPrice ??
+          (el as HTMLElement).dataset.stratagemPrice;
         if (!itemJson || !priceStr) return;
         let item: Item;
         try {

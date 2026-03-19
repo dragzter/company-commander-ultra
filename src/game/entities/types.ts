@@ -85,6 +85,14 @@ export interface Soldier {
   >;
   /** Company-wide hit chance bonus as decimal (e.g., 0.01 = +1%). */
   companyChanceToHitBonusPct?: number;
+  /** Permanent soldier-specific flat bonuses earned from random events. */
+  personalFlatBonuses?: Partial<
+    Pick<Attributes, "dexterity" | "morale" | "awareness" | "toughness">
+  >;
+  /** Permanent soldier-specific hit chance bonus as decimal (e.g., 0.003 = +0.3%). */
+  personalChanceToHitBonusPct?: number;
+  /** Permanent soldier-specific mitigation bonus as decimal (e.g., 0.003 = +0.3%). */
+  personalMitigationBonusPct?: number;
   /** Hidden veterancy progression and counters used for trait unlocks. */
   veterancy?: SoldierVeterancyStats;
 

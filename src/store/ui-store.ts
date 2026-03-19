@@ -52,6 +52,22 @@ export type MissionsResumeStep =
   | "career"
   | "ready_room";
 
+export type MarketFlareOffer = {
+  id: string;
+  title: string;
+  description: string;
+  discountPct: number;
+  appliesTo: "frag_grenade" | "supplies" | "weapons" | "armor";
+  createdAt: number;
+};
+
+export type PendingFlareNotice = {
+  id: string;
+  target: "market" | "roster";
+  title: string;
+  body: string;
+};
+
 export type CompanyLevelUpSummary = {
   fromLevel: number;
   toLevel: number;
@@ -115,6 +131,9 @@ export type CompanyStore = {
   companyAbilityNotificationText: string;
   companyAbilityCooldowns: Partial<Record<CompanyAbilityId, number>>;
   companyLevelUpSummary: CompanyLevelUpSummary | null;
+  randomEventRollArmed: boolean;
+  activeMarketFlareOffer: MarketFlareOffer | null;
+  pendingFlareNotice: PendingFlareNotice | null;
   equippedStratagemItemId: string | null;
   musicEnabled: boolean;
   sfxEnabled: boolean;
@@ -161,6 +180,10 @@ export type CompanyStore = {
     untilMs: number,
   ) => void;
   clearCompanyLevelUpSummary: () => void;
+  armPostMissionFlareRoll: () => void;
+  tryTriggerFlareEvent: (target: "market" | "roster") => void;
+  dismissFlareNotice: () => void;
+  clearMarketFlareOffer: () => void;
   setEquippedStratagemItemId: (itemId: string | null) => void;
   setMusicEnabled: (enabled: boolean) => void;
   setSfxEnabled: (enabled: boolean) => void;
@@ -383,6 +406,19 @@ export const usePlayerCompanyStore = createStore<CompanyStore>()(
                     typeof s.grenadeHitBonusPct === "number"
                       ? s.grenadeHitBonusPct
                       : 0,
+                  personalFlatBonuses:
+                    typeof s.personalFlatBonuses === "object" &&
+                    s.personalFlatBonuses
+                      ? s.personalFlatBonuses
+                      : {},
+                  personalChanceToHitBonusPct:
+                    typeof s.personalChanceToHitBonusPct === "number"
+                      ? s.personalChanceToHitBonusPct
+                      : 0,
+                  personalMitigationBonusPct:
+                    typeof s.personalMitigationBonusPct === "number"
+                      ? s.personalMitigationBonusPct
+                      : 0,
                   veterancy: {
                     ...getSoldierVeterancyDefaults(),
                     ...(typeof s.veterancy === "object" && s.veterancy
@@ -582,6 +618,56 @@ export const usePlayerCompanyStore = createStore<CompanyStore>()(
               createdAt: Math.max(0, Math.floor(summary.createdAt || 0)),
             };
           }
+          if (typeof merged.randomEventRollArmed !== "boolean") {
+            merged.randomEventRollArmed = false;
+          }
+          if (
+            !merged.activeMarketFlareOffer ||
+            typeof merged.activeMarketFlareOffer !== "object"
+          ) {
+            merged.activeMarketFlareOffer = null;
+          } else {
+            const offer = merged.activeMarketFlareOffer as MarketFlareOffer;
+            const appliesTo = offer.appliesTo;
+            const validApplies =
+              appliesTo === "frag_grenade" ||
+              appliesTo === "supplies" ||
+              appliesTo === "weapons" ||
+              appliesTo === "armor";
+            if (!validApplies) {
+              merged.activeMarketFlareOffer = null;
+            } else {
+              merged.activeMarketFlareOffer = {
+                id: String(offer.id ?? `offer_${Date.now()}`),
+                title: String(offer.title ?? "Special offer"),
+                description: String(offer.description ?? ""),
+                discountPct: Math.max(
+                  0,
+                  Math.min(0.95, Number(offer.discountPct ?? 0)),
+                ),
+                appliesTo,
+                createdAt: Math.max(0, Math.floor(offer.createdAt ?? 0)),
+              };
+            }
+          }
+          if (
+            !merged.pendingFlareNotice ||
+            typeof merged.pendingFlareNotice !== "object"
+          ) {
+            merged.pendingFlareNotice = null;
+          } else {
+            const notice = merged.pendingFlareNotice as PendingFlareNotice;
+            const target = notice.target;
+            const validTarget = target === "market" || target === "roster";
+            merged.pendingFlareNotice = validTarget
+              ? {
+                  id: String(notice.id ?? `notice_${Date.now()}`),
+                  target,
+                  title: String(notice.title ?? ""),
+                  body: String(notice.body ?? ""),
+                }
+              : null;
+          }
           {
             const companyLevel = Math.max(
               1,
@@ -606,6 +692,19 @@ export const usePlayerCompanyStore = createStore<CompanyStore>()(
                   ...s,
                   companyFlatBonuses: { ...effects.flatStats },
                   companyChanceToHitBonusPct: effects.chanceToHitBonusPct,
+                  personalFlatBonuses:
+                    typeof s.personalFlatBonuses === "object" &&
+                    s.personalFlatBonuses
+                      ? s.personalFlatBonuses
+                      : {},
+                  personalChanceToHitBonusPct:
+                    typeof s.personalChanceToHitBonusPct === "number"
+                      ? s.personalChanceToHitBonusPct
+                      : 0,
+                  personalMitigationBonusPct:
+                    typeof s.personalMitigationBonusPct === "number"
+                      ? s.personalMitigationBonusPct
+                      : 0,
                 } as Soldier;
                 SoldierManager.refreshCombatProfile(hydrated);
                 return hydrated;

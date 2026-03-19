@@ -6,6 +6,10 @@ import {
   getArmorArmorySlots,
   getEquipmentArmorySlots,
 } from "../../constants/economy.ts";
+import {
+  isStratagemItem,
+  STRATAGEM_ARMORY_SLOTS,
+} from "../../constants/stratagem-market.ts";
 import { getItemIconUrl, renderItemLevelBadge } from "../../utils/item-utils.ts";
 import type { Item, ArmorBonus } from "../../constants/items/types.ts";
 import { ITEM_TYPES } from "../../constants/items/types.ts";
@@ -345,7 +349,11 @@ function inventoryItemCard(item: Item, index: number): string {
   const qty = item.quantity ?? 1;
   const badgeN = uses ?? (item.quantity != null ? item.quantity : (qty > 1 ? qty : null));
   const isWeapon = item.type === "ballistic_weapon" || item.type === "melee_weapon";
-  const isSupplies = item.type === "throwable" || item.type === "medical" || item.type === "gear";
+  const isSupplies =
+    item.type === "throwable" ||
+    item.type === "medical" ||
+    item.type === "gear" ||
+    isStratagemItem(item);
   const weaponRole = isWeapon ? (getWeaponRestrictRole(item) ?? (item as { restrictRole?: string }).restrictRole ?? "any") : null;
   const roleBadgeHtml = weaponRole ? `<span class="market-weapon-role-badge role-${weaponRole}">${WEAPON_ROLE_LABELS[weaponRole] ?? weaponRole}</span>` : "";
   const usesBadgeHtml = isSupplies && badgeN != null && badgeN >= 1 ? `<span class="market-item-uses-badge">×${badgeN}</span>` : "";
@@ -379,7 +387,11 @@ function holdingItemCard(item: Item): string {
   const rarity = item.rarity ?? "common";
   const badgeN = uses ?? (item.quantity != null ? item.quantity : (qty > 1 ? qty : null));
   const isWeapon = item.type === "ballistic_weapon" || item.type === "melee_weapon";
-  const isSupplies = item.type === "throwable" || item.type === "medical" || item.type === "gear";
+  const isSupplies =
+    item.type === "throwable" ||
+    item.type === "medical" ||
+    item.type === "gear" ||
+    isStratagemItem(item);
   const weaponRole = isWeapon ? (getWeaponRestrictRole(item) ?? (item as { restrictRole?: string }).restrictRole ?? "any") : null;
   const roleBadgeHtml = weaponRole ? `<span class="market-weapon-role-badge role-${weaponRole}">${WEAPON_ROLE_LABELS[weaponRole] ?? weaponRole}</span>` : "";
   const usesBadgeHtml = isSupplies && badgeN != null && badgeN >= 1 ? `<span class="market-item-uses-badge">×${badgeN}</span>` : "";
@@ -414,7 +426,9 @@ export function inventoryTemplate(): string {
     });
   const weapons = sortByValueAsc(filterByType(items, ITEM_TYPES.ballistic_weapon));
   const armor = sortByValueAsc(filterByType(items, ITEM_TYPES.armor));
+  const stratagems = sortByValueAsc(items.filter((i) => isStratagemItem(i)));
   const equipment = sortByValueAsc(items.filter((i) => {
+    if (isStratagemItem(i)) return false;
     const t = i.type as string;
     return t === ITEM_TYPES.throwable || t === ITEM_TYPES.medical || t === ITEM_TYPES.gear;
   }));
@@ -422,10 +436,12 @@ export function inventoryTemplate(): string {
   const weaponIndices = weapons.map((w) => items.indexOf(w));
   const armorIndices = armor.map((a) => items.indexOf(a));
   const equipmentIndices = equipment.map((e) => items.indexOf(e));
+  const stratagemIndices = stratagems.map((s) => items.indexOf(s));
 
   const weaponSlots = getWeaponArmorySlots(companyLevel);
   const armorSlots = getArmorArmorySlots(companyLevel);
   const equipmentSlots = getEquipmentArmorySlots(companyLevel);
+  const stratagemSlots = STRATAGEM_ARMORY_SLOTS;
   const levelSnapshot = getCompanyLevelSnapshot(companyLevel);
   const nextLevel = levelSnapshot.next;
 
@@ -480,6 +496,7 @@ export function inventoryTemplate(): string {
   <div class="inventory-main market-main-2col">
     ${armorySectionSlots(weapons, weaponIndices, weaponSlots, "inventory-weapons", "Weapons")}
     ${armorySectionSlots(armor, armorIndices, armorSlots, "inventory-armor", "Armor")}
+    ${armorySectionSlots(stratagems, stratagemIndices, stratagemSlots, "inventory-stratagems", "Stratagems")}
     ${armorySectionSlots(equipment, equipmentIndices, equipmentSlots, "inventory-equipment", "Equipment & Supplies")}
     ${holdingSection}
   </div>
@@ -493,7 +510,7 @@ export function inventoryTemplate(): string {
           <img src="/images/soldier_count.png" alt="" class="roster-soldier-count-icon" width="14" height="18" aria-hidden="true">
           <strong>Soldiers</strong> ${company?.soldiers?.length ?? 0}
         </span>
-        <span class="recruit-balance-item inventory-level-label">Armory W/A/S ${levelSnapshot.current.armory.weapon}/${levelSnapshot.current.armory.armor}/${levelSnapshot.current.armory.equipment}</span>
+        <span class="recruit-balance-item inventory-level-label">Armory W/A/S ${levelSnapshot.current.armory.weapon}/${levelSnapshot.current.armory.armor}/${levelSnapshot.current.armory.equipment} • Strat ${STRATAGEM_ARMORY_SLOTS}</span>
         <span class="recruit-balance-item inventory-level-label">Lv ${levelSnapshot.current.level}</span>
         ${nextLevel ? `<span class="recruit-balance-item inventory-level-label">Next Lv ${nextLevel.level}: ${nextLevel.armory.weapon}/${nextLevel.armory.armor}/${nextLevel.armory.equipment}</span>` : '<span class="recruit-balance-item inventory-level-label">MAX</span>'}
       </div>

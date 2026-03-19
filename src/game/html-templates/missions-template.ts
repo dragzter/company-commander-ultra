@@ -193,7 +193,6 @@ export function missionsTemplate(
   missions: Mission[],
   companyLevel = 1,
   activeMode: "menu" | "normal" | "epic" | "career" | "dev" = "menu",
-  devMissions: Mission[] = [],
   initialKindFilter: MissionKind | "all" = "all",
 ): string {
   const store = usePlayerCompanyStore.getState();
@@ -237,19 +236,7 @@ export function missionsTemplate(
           ? epicSection
           : emptyState
         : '<div class="missions-empty-state">Epic missions unlock at Company Level 2.</div>'
-      : mode === "dev"
-        ? devMissions.length > 0
-          ? `
-      <div class="missions-section missions-section-dev">
-        <div class="missions-kind-banner missions-kind-banner-dev">Dev Test Missions</div>
-        <div class="missions-grid missions-grid-dev">
-          ${sortMissionsByDifficulty(devMissions)
-            .map((m) => missionCard(m))
-            .join("")}
-        </div>
-      </div>`
-          : '<div class="missions-empty-state">No dev test missions available.</div>'
-        : mode === "normal"
+      : mode === "normal"
           ? regularSections
             ? `${regularFilters}<div class="missions-filter-empty-state" hidden>No missions match these filters.</div>${regularSections}`
             : emptyState
@@ -268,6 +255,7 @@ export function missionsTemplate(
           </span>
           <span class="missions-mode-divider" aria-hidden="true"></span>
           <span class="missions-mode-label">Elite Missions</span>
+          ${showEpic ? "" : `<span class="missions-mode-lock-hint">Unlocks at Company Lv 2 (Current: Lv ${companyLevel})</span>`}
         </button>
         <button id="missions-mode-career" class="game-btn game-btn-lg game-btn-blue missions-mode-menu-btn missions-mode-menu-btn-career" type="button" ${careerUnlocked ? "" : "disabled"}>
           <span class="missions-mode-icon-block">
@@ -277,21 +265,9 @@ export function missionsTemplate(
           <span class="missions-mode-label">Career</span>
         </button>
         <p class="missions-mode-helper missions-mode-helper-career-desc">Climb an endless ladder of mirrored squad battles, one level at a time.</p>
-        <button id="missions-mode-dev" class="game-btn game-btn-md game-btn-black missions-mode-menu-btn missions-mode-menu-btn-dev" type="button">
-          <span class="missions-mode-icon-block missions-mode-icon-block-dev">
-            <img src="/images/career_m.png" alt="" width="40" height="40" aria-hidden="true">
-          </span>
-          <span class="missions-mode-divider" aria-hidden="true"></span>
-          <span class="missions-mode-label">Dev 999 Test</span>
-        </button>
-        ${
-          showEpic
-            ? '<p class="missions-mode-helper">Elite missions available.</p>'
-            : `<p class="missions-mode-helper">Elite missions unlock at Company Level 2. Current Level: ${companyLevel}.</p>`
-        }
         ${
           careerUnlocked
-            ? '<p class="missions-mode-helper">Career ladder unlocked.</p>'
+            ? ""
             : '<p class="missions-mode-helper">Career unlocks after intro mission completion.</p>'
         }
       </div>`;

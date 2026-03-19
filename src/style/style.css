@@ -2278,6 +2278,7 @@ button.mbtn {
 	align-items: center;
 	gap: 10px;
 	justify-content: flex-start;
+	position: relative;
 	padding: 10px 14px 10px 10px;
 	width: 100%;
 	min-width: 0;
@@ -2316,17 +2317,20 @@ button.mbtn {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	border-radius: 8px;
+	border: none;
+	background: transparent;
+	box-shadow: none;
+	border-radius: 0;
 }
 
 .missions-mode-menu-btn img {
-	width: 52px;
-	height: 52px;
-	border-radius: 8px;
+	width: 58px;
+	height: 58px;
+	border-radius: 0;
 	padding: 4px;
-	border: 2px solid rgba(250, 255, 225, 0.95);
-	box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.65), 0 2px 8px rgba(0, 0, 0, 0.35);
-	background: rgba(0, 0, 0, 0.28);
+	border: none;
+	box-shadow: none;
+	background: transparent;
 }
 
 .missions-mode-divider {
@@ -2345,6 +2349,20 @@ button.mbtn {
 .missions-mode-menu-btn:disabled {
 	opacity: 0.55;
 	filter: grayscale(0.2);
+}
+
+.missions-mode-lock-hint {
+	position: absolute;
+	left: 104px;
+	right: 12px;
+	bottom: 10px;
+	font-size: 0.62rem;
+	line-height: 1.1;
+	letter-spacing: 0.03em;
+	text-transform: none;
+	color: rgba(255, 214, 214, 0.98);
+	text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
+	pointer-events: none;
 }
 
 .missions-mode-helper {
@@ -15165,6 +15183,55 @@ button.missions-filter-chip {
 	background: rgba(255, 255, 255, 0.04);
 }
 
+.codex-slots-content {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+
+.codex-slot-table {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+
+.codex-slot-row {
+	display: grid;
+	grid-template-columns: 56px repeat(5, minmax(0, 1fr));
+	align-items: center;
+	gap: 6px;
+	padding: 6px 8px;
+	border-radius: 4px;
+	background: rgba(255, 255, 255, 0.02);
+	border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.codex-slot-row-head {
+	background: rgba(255, 255, 255, 0.08);
+	border-color: rgba(255, 255, 255, 0.12);
+}
+
+.codex-slot-lv {
+	font-size: 0.72rem;
+	font-weight: 800;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--accent-cyan-1);
+}
+
+.codex-slot-value {
+	font-size: 0.73rem;
+	font-weight: 700;
+	color: var(--white-2);
+	text-align: center;
+	letter-spacing: 0.03em;
+}
+
+.codex-slot-unlocked {
+	color: #baffce;
+	text-shadow: 0 0 8px rgba(100, 236, 153, 0.35);
+}
+
 .codex-level-num {
 	flex-shrink: 0;
 	width: 2.8em;
@@ -15189,7 +15256,7 @@ button.missions-filter-chip {
 
 .codex-level-special-wrap {
 	flex-shrink: 0;
-	min-width: 5em;
+	min-width: 0;
 	text-align: right;
 }
 
@@ -15205,6 +15272,57 @@ button.missions-filter-chip {
 	color: #b8e8ff;
 	border: 1px solid rgba(80, 160, 220, 0.6);
 	box-shadow: 0 0 10px rgba(60, 140, 200, 0.25);
+}
+
+.codex-level-special-note {
+	display: block;
+	font-size: 0.73rem;
+	font-weight: 600;
+	line-height: 1.35;
+	letter-spacing: 0.01em;
+	color: var(--white-3);
+	opacity: 0.9;
+	text-align: left;
+	white-space: normal;
+	overflow-wrap: anywhere;
+	word-break: break-word;
+	max-width: 100%;
+}
+
+.codex-level-row-range {
+	display: grid;
+	grid-template-columns: 90px 1fr;
+	align-items: start;
+	gap: 6px 10px;
+}
+
+.codex-level-row-range .codex-level-num {
+	width: auto;
+}
+
+.codex-level-row-range .codex-level-gains {
+	min-width: 0;
+}
+
+.codex-level-special-wrap-range {
+	grid-column: 1 / -1;
+	width: 100%;
+	min-width: 0;
+	text-align: left;
+}
+
+.codex-level-range-note {
+	margin: 2px 0 8px;
+	padding: 6px 8px;
+	border-radius: 4px;
+	background: rgba(255, 255, 255, 0.04);
+	border: 1px solid rgba(255, 255, 255, 0.08);
+	font-size: 0.73rem;
+	line-height: 1.35;
+	color: var(--white-3);
+	white-space: normal;
+	overflow-wrap: anywhere;
+	word-break: break-word;
 }
 
 .codex-popup-header {
@@ -15278,11 +15396,85 @@ button.missions-filter-chip {
 	background: rgba(116, 188, 255, 0.75);
 }
 
+.settings-panel-identity {
+	border-color: rgba(151, 201, 255, 0.36);
+	background: linear-gradient(180deg, rgba(22, 35, 58, 0.86) 0%, rgba(13, 24, 43, 0.94) 100%);
+}
+
+.settings-panel-identity::before {
+	background: rgba(135, 198, 255, 0.78);
+}
+
+.settings-input-group {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.settings-input-label {
+	font-size: 0.72rem;
+	font-weight: 700;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: rgba(186, 216, 246, 0.92);
+}
+
+.settings-text-input {
+	width: 100%;
+	height: 36px;
+	border-radius: 6px;
+	border: 1px solid rgba(122, 171, 223, 0.55);
+	background: rgba(11, 20, 34, 0.95);
+	color: rgba(236, 243, 255, 0.98);
+	padding: 0 10px;
+	font-size: 0.9rem;
+	letter-spacing: 0.03em;
+}
+
+.settings-text-input:focus {
+	outline: none;
+	border-color: rgba(150, 216, 255, 0.95);
+	box-shadow: 0 0 0 1px rgba(150, 216, 255, 0.35), 0 0 10px rgba(88, 179, 255, 0.25);
+}
+
+.settings-identity-actions {
+	margin-top: 8px;
+}
+
+.settings-name-save-btn {
+	width: 100%;
+	height: 36px;
+	font-size: 0.84rem;
+	letter-spacing: 0.06em;
+}
+
+.settings-input-status {
+	min-height: 1.1em;
+	margin: 6px 0 0;
+	font-size: 0.72rem;
+	font-weight: 700;
+	letter-spacing: 0.05em;
+	text-transform: uppercase;
+	color: rgba(172, 220, 255, 0.9);
+}
+
+.settings-input-status.is-error {
+	color: rgba(255, 163, 163, 0.96);
+}
+
+.settings-input-status.is-success {
+	color: rgba(159, 242, 178, 0.96);
+}
+
 .settings-toggle-row {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
 	gap: 10px;
+}
+
+.settings-panel-audio .settings-toggle-row + .settings-toggle-row {
+	margin-top: 8px;
 }
 
 .settings-panel-head {
@@ -15478,23 +15670,28 @@ button.missions-filter-chip {
 
 .codex-tabs {
 	display: flex;
+	flex-wrap: wrap;
 	gap: 2px;
 	border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 	padding-bottom: 0;
+	align-items: stretch;
 }
 
 .codex-tab {
 	background: none;
 	border: none;
 	color: var(--gray-2);
-	padding: 6px 14px;
+	padding: 6px 10px;
 	cursor: pointer;
-	font-size: 0.85rem;
+	font-size: 0.8rem;
 	font-weight: 600;
 	border-bottom: 2px solid transparent;
 	margin-bottom: -1px;
 	transition: color 0.2s, border-color 0.2s;
 	border-radius: 4px 4px 0 0;
+	flex: 1 1 auto;
+	min-width: 72px;
+	text-align: center;
 }
 
 .codex-tab:hover {
@@ -15681,6 +15878,10 @@ button.missions-filter-chip {
 	display: grid;
 	grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
 	gap: 6px;
+}
+
+.codex-combat-effects-grid {
+	grid-template-columns: 1fr;
 }
 
 .codex-combat-card {

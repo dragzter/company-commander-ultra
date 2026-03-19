@@ -36,7 +36,7 @@ function AudioManager() {
   );
   const smokeImpactPool = Array.from(
     { length: 4 },
-    () => new Audio("audio/weapons/smoke_grenade.m4a"),
+    () => new Audio("audio/weapons/smoke.wav"),
   );
   const medevacPool = Array.from(
     { length: 3 },
@@ -70,6 +70,7 @@ function AudioManager() {
   const sfxPoolIndexByName = new Map<string, number>();
   const sfxLastPlayedAtByKey = new Map<string, number>();
   const sfxBurstTimestampsMs: number[] = [];
+  const sfxCutoffTimeoutByElement = new WeakMap<HTMLAudioElement, number>();
   let weaponShotSequence = 0;
   let currentCombatTrack: HTMLAudioElement | null = null;
   let lastCombatTrackIndex = -1;
@@ -90,6 +91,13 @@ function AudioManager() {
   const WEAPON_PER_SRC_MIN_INTERVAL_MS = 78;
   const COMBAT_WEAPON_GLOBAL_MIN_INTERVAL_MS = 95;
   const COMBAT_WEAPON_PER_SRC_MIN_INTERVAL_MS = 130;
+  const WEB_AUDIO_ENABLED = true;
+  const WEB_AUDIO_MAX_ACTIVE_VOICES = 14;
+  const webAudioBufferCache = new Map<string, AudioBuffer>();
+  const webAudioBufferLoading = new Set<string>();
+  const webAudioActiveSources = new Set<AudioBufferSourceNode>();
+  let webAudioContext: AudioContext | null = null;
+  let webAudioMasterGain: GainNode | null = null;
 
   function nextFromPool(
     name: string,
@@ -124,17 +132,32 @@ function AudioManager() {
     playbackRate = 1,
     startOffset = 0,
     allowSteal = false,
+    maxDurationMs = 0,
+    skipGate = false,
   ): void {
     if (appInBackground) return;
-    if (!canPlaySfx(name, SFX_GLOBAL_MIN_INTERVAL_MS)) return;
+    if (!skipGate && !canPlaySfx(name, SFX_GLOBAL_MIN_INTERVAL_MS)) return;
     const sfx = nextFromPool(name, pool, allowSteal);
     if (!sfx) return;
+    const priorTimeout = sfxCutoffTimeoutByElement.get(sfx);
+    if (priorTimeout != null) {
+      window.clearTimeout(priorTimeout);
+      sfxCutoffTimeoutByElement.delete(sfx);
+    }
     sfx.playbackRate = playbackRate;
     sfx.volume = Math.max(0, Math.min(1, volume));
     sfx.currentTime = Math.max(0, startOffset);
     void sfx.play().catch(() => {
       // Ignore transient autoplay/channel errors.
     });
+    if (maxDurationMs > 0) {
+      const timeoutId = window.setTimeout(() => {
+        sfx.pause();
+        sfx.currentTime = 0;
+        sfxCutoffTimeoutByElement.delete(sfx);
+      }, maxDurationMs);
+      sfxCutoffTimeoutByElement.set(sfx, timeoutId);
+    }
   }
 
   function trimSfxBurst(nowMs: number): void {
@@ -146,13 +169,18 @@ function AudioManager() {
     }
   }
 
-  function canPlaySfx(key: string, minIntervalMs: number): boolean {
+  function canPlaySfx(
+    key: string,
+    minIntervalMs: number,
+    bypassBurstLimit = false,
+  ): boolean {
     if (isSfxDisabled() || appInBackground) return false;
     const nowMs = performance.now();
     const lastAt = sfxLastPlayedAtByKey.get(key) ?? -Infinity;
     if (nowMs - lastAt < minIntervalMs) return false;
     trimSfxBurst(nowMs);
-    if (sfxBurstTimestampsMs.length >= SFX_BURST_LIMIT) return false;
+    if (!bypassBurstLimit && sfxBurstTimestampsMs.length >= SFX_BURST_LIMIT)
+      return false;
     sfxLastPlayedAtByKey.set(key, nowMs);
     sfxBurstTimestampsMs.push(nowMs);
     return true;
@@ -185,6 +213,9 @@ function AudioManager() {
         // Ignore transient preload failures.
       }
     }
+    if (WEB_AUDIO_ENABLED) {
+      void primeWebAudioNow();
+    }
     audioPrimed = true;
     primingInFlight = false;
   }
@@ -194,6 +225,7 @@ function AudioManager() {
     gestureUnlockBound = true;
     const opts = { capture: true, passive: true };
     const onUnlock = () => {
+      if (WEB_AUDIO_ENABLED) void ensureWebAudioContext();
       primeAudioNow();
       document.removeEventListener("touchstart", onUnlock, opts);
       document.removeEventListener("pointerdown", onUnlock, opts);
@@ -226,6 +258,14 @@ function AudioManager() {
     for (const a of allPools) {
       a.pause();
       a.currentTime = 0;
+    }
+    for (const src of Array.from(webAudioActiveSources)) {
+      try {
+        src.stop(0);
+      } catch {
+        // no-op
+      }
+      webAudioActiveSources.delete(src);
     }
   }
 
@@ -264,6 +304,106 @@ function AudioManager() {
     return appInBackground || !sfxEnabled || Boolean(audio && !JSON.parse(audio));
   }
 
+  async function ensureWebAudioContext(): Promise<AudioContext | null> {
+    if (!WEB_AUDIO_ENABLED || isSfxDisabled()) return null;
+    if (!webAudioContext) {
+      const Ctor = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!Ctor) return null;
+      webAudioContext = new Ctor();
+      webAudioMasterGain = webAudioContext.createGain();
+      webAudioMasterGain.gain.value = 1;
+      webAudioMasterGain.connect(webAudioContext.destination);
+    }
+    if (webAudioContext.state === "suspended") {
+      try {
+        await webAudioContext.resume();
+      } catch {
+        return null;
+      }
+    }
+    return webAudioContext;
+  }
+
+  async function loadWebAudioBuffer(src: string): Promise<AudioBuffer | null> {
+    const ctx = await ensureWebAudioContext();
+    if (!ctx) return null;
+    if (webAudioBufferCache.has(src)) return webAudioBufferCache.get(src) ?? null;
+    if (webAudioBufferLoading.has(src)) return null;
+    webAudioBufferLoading.add(src);
+    try {
+      const resp = await fetch(src, { cache: "force-cache" });
+      if (!resp.ok) throw new Error(`Failed to fetch ${src}`);
+      const arr = await resp.arrayBuffer();
+      const buf = await ctx.decodeAudioData(arr.slice(0));
+      webAudioBufferCache.set(src, buf);
+      return buf;
+    } catch {
+      return null;
+    } finally {
+      webAudioBufferLoading.delete(src);
+    }
+  }
+
+  async function primeWebAudioNow(): Promise<void> {
+    const preload = [
+      "audio/weapons/heavy_suppress.m4a",
+      "audio/weapons/frag_grenade.m4a",
+      "audio/weapons/flashbang.m4a",
+      "audio/weapons/smoke.wav",
+      "audio/weapons/mg_burst_1.m4a",
+      "audio/weapons/mg_burst_3.m4a",
+      "audio/weapons/mg_burts_2.m4a",
+      "audio/weapons/heavy_mg_1.m4a",
+      "audio/weapons/heavy_mg_2.m4a",
+    ];
+    for (const src of preload) {
+      void loadWebAudioBuffer(src);
+    }
+  }
+
+  async function playWebAudioSfx(
+    src: string,
+    opts?: {
+      volume?: number;
+      playbackRate?: number;
+      maxDurationMs?: number;
+    },
+  ): Promise<boolean> {
+    if (!WEB_AUDIO_ENABLED || isSfxDisabled() || appInBackground) return false;
+    const ctx = await ensureWebAudioContext();
+    if (!ctx || !webAudioMasterGain) return false;
+    if (webAudioActiveSources.size >= WEB_AUDIO_MAX_ACTIVE_VOICES) return false;
+    const buffer = await loadWebAudioBuffer(src);
+    if (!buffer) return false;
+    const srcNode = ctx.createBufferSource();
+    srcNode.buffer = buffer;
+    srcNode.playbackRate.value = Math.max(0.7, Math.min(1.35, opts?.playbackRate ?? 1));
+    const gainNode = ctx.createGain();
+    gainNode.gain.value = Math.max(0, Math.min(1, opts?.volume ?? 0.2));
+    srcNode.connect(gainNode);
+    gainNode.connect(webAudioMasterGain);
+    webAudioActiveSources.add(srcNode);
+    srcNode.onended = () => {
+      webAudioActiveSources.delete(srcNode);
+      try {
+        srcNode.disconnect();
+        gainNode.disconnect();
+      } catch {
+        // no-op
+      }
+    };
+    try {
+      srcNode.start(0);
+      if ((opts?.maxDurationMs ?? 0) > 0) {
+        srcNode.stop(ctx.currentTime + (opts!.maxDurationMs as number) / 1000);
+      }
+      return true;
+    } catch {
+      webAudioActiveSources.delete(srcNode);
+      return false;
+    }
+  }
+
   function playTrack(track: HTMLAudioElement) {
     if (isMusicDisabled()) return;
 
@@ -274,10 +414,7 @@ function AudioManager() {
           track
             .play()
             .then(resolve)
-            .catch((e) => {
-              console.error("Audio playback failed:", e);
-              reject(e as Error);
-            });
+            .catch((e) => reject(e as Error));
         },
         { once: true },
       );
@@ -428,32 +565,79 @@ function AudioManager() {
     if (isSfxDisabled()) return;
     const minInterval = combatMixActive ? 320 : 180;
     if (!canPlaySfx("suppress", minInterval)) return;
-    playFromPool("suppress", suppressPool, 0.085 * GLOBAL_AUDIO_GAIN);
+    void playWebAudioSfx("audio/weapons/heavy_suppress.m4a", {
+      volume: 0.085 * GLOBAL_AUDIO_GAIN,
+      maxDurationMs: 440,
+    }).then((played) => {
+      if (played) return;
+      playFromPool("suppress", suppressPool, 0.085 * GLOBAL_AUDIO_GAIN);
+    });
   }
 
   function playFragImpact(): void {
     if (isSfxDisabled()) return;
     const minInterval = combatMixActive ? 220 : 120;
-    if (!canPlaySfx("frag-impact", minInterval)) return;
-    playFromPool("frag-impact", fragImpactPool, 0.24 * GLOBAL_AUDIO_GAIN);
+    if (!canPlaySfx("frag-impact", minInterval, true)) return;
+    void playWebAudioSfx("audio/weapons/frag_grenade.m4a", {
+      volume: 0.36 * GLOBAL_AUDIO_GAIN,
+      maxDurationMs: 520,
+    }).then((played) => {
+      if (played) return;
+      playFromPool(
+        "frag-impact",
+        fragImpactPool,
+        0.36 * GLOBAL_AUDIO_GAIN,
+        1,
+        0,
+        true,
+        520,
+        true,
+      );
+    });
   }
 
   function playFlashbangImpact(): void {
     if (isSfxDisabled()) return;
     const minInterval = combatMixActive ? 220 : 120;
-    if (!canPlaySfx("flashbang-impact", minInterval)) return;
-    playFromPool(
-      "flashbang-impact",
-      flashbangImpactPool,
-      0.2 * GLOBAL_AUDIO_GAIN,
-    );
+    if (!canPlaySfx("flashbang-impact", minInterval, true)) return;
+    void playWebAudioSfx("audio/weapons/flashbang.m4a", {
+      volume: 0.24 * GLOBAL_AUDIO_GAIN,
+      maxDurationMs: 460,
+    }).then((played) => {
+      if (played) return;
+      playFromPool(
+        "flashbang-impact",
+        flashbangImpactPool,
+        0.24 * GLOBAL_AUDIO_GAIN,
+        1,
+        0,
+        true,
+        460,
+        true,
+      );
+    });
   }
 
   function playSmokeImpact(): void {
     if (isSfxDisabled()) return;
     const minInterval = combatMixActive ? 220 : 120;
-    if (!canPlaySfx("smoke-impact", minInterval)) return;
-    playFromPool("smoke-impact", smokeImpactPool, 0.2 * GLOBAL_AUDIO_GAIN);
+    if (!canPlaySfx("smoke-impact", minInterval, true)) return;
+    void playWebAudioSfx("audio/weapons/smoke.wav", {
+      volume: 0.22 * GLOBAL_AUDIO_GAIN,
+      maxDurationMs: 500,
+    }).then((played) => {
+      if (played) return;
+      playFromPool(
+        "smoke-impact",
+        smokeImpactPool,
+        0.22 * GLOBAL_AUDIO_GAIN,
+        1,
+        0,
+        true,
+        500,
+        true,
+      );
+    });
   }
 
   function playMedevac(): void {
@@ -634,8 +818,13 @@ function AudioManager() {
     weaponSfx?: string,
     designation?: string,
     attackIntervalMs?: number,
+    side?: "player" | "enemy",
   ): void {
     if (isSfxDisabled()) return;
+    if (combatMixActive && side === "enemy") {
+      // Sample enemy gunfire heavily on mobile to prevent long-session audio jank.
+      if (!canPlaySfx("enemy-shot-sample", 220)) return;
+    }
     const globalMin = combatMixActive
       ? COMBAT_WEAPON_GLOBAL_MIN_INTERVAL_MS
       : WEAPON_GLOBAL_MIN_INTERVAL_MS;
@@ -702,8 +891,15 @@ function AudioManager() {
       0.75,
       Math.min(1.3, profile.playbackRate * rateJitter),
     );
-    void shot.play().catch(() => {
-      // Ignore transient autoplay/channel errors.
+    void playWebAudioSfx(src, {
+      volume: shot.volume,
+      playbackRate: shot.playbackRate,
+      maxDurationMs: combatMixActive ? 320 : 420,
+    }).then((played) => {
+      if (played) return;
+      void shot.play().catch(() => {
+        // Ignore transient autoplay/channel errors.
+      });
     });
   }
 
@@ -752,7 +948,15 @@ function AudioManager() {
         weaponSfx?: string,
         designation?: string,
         attackIntervalMs?: number,
-      ) => playWeaponShot(weaponId, weaponSfx, designation, attackIntervalMs),
+        side?: "player" | "enemy",
+      ) =>
+        playWeaponShot(
+          weaponId,
+          weaponSfx,
+          designation,
+          attackIntervalMs,
+          side,
+        ),
       playSuppress: () => playSuppress(),
       playFragImpact: () => playFragImpact(),
       playFlashbangImpact: () => playFlashbangImpact(),

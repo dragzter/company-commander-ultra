@@ -95,6 +95,7 @@ export const marketTemplate = () => {
 
 		${companyActionsTemplate()}
     ${marketTutorialPopup}
+    ${marketFlarePopupHtml()}
 	</div>
 	`;
 };
@@ -139,12 +140,35 @@ function marketItemCard(
   slotClass: string,
   nameOverride?: string,
 ): string {
+  const store = usePlayerCompanyStore.getState();
+  const offer = store.activeMarketFlareOffer;
+  const isFrag =
+    entry.item.id === "m3_frag_grenade" ||
+    entry.item.name.toLowerCase().includes("frag grenade");
+  const isSupply = slotClass.includes("supplies-market-item");
+  const isStratagem = slotClass.includes("stratagems-market-item");
+  const isGear = slotClass.includes("gear-market-item");
+  const offerApplies =
+    !!offer &&
+    ((offer.appliesTo === "frag_grenade" && isFrag) ||
+      (offer.appliesTo === "supplies" && isSupply && !isStratagem) ||
+      (offer.appliesTo === "weapons" &&
+        isGear &&
+        (entry.item.type === "ballistic_weapon" ||
+          entry.item.type === "melee_weapon")) ||
+      (offer.appliesTo === "armor" && isGear && entry.item.type === "armor"));
+  const discountedPrice = offerApplies
+    ? Math.max(1, Math.round(entry.price * (1 - offer!.discountPct)))
+    : entry.price;
+  const mergedDataAttrs =
+    dataAttrs +
+    ` data-base-price="${entry.price}" data-final-price="${discountedPrice}"`;
   const iconUrl = getItemIconUrl(entry.item);
   const name = nameOverride ?? entry.item.name;
   const uses = entry.item.uses;
   const rarity = entry.item.rarity ?? "common";
   const rarityClass = rarity !== "common" ? ` market-item-rarity-${rarity} rarity-${rarity}` : "";
-  const isSupplies = slotClass.includes("supplies-market-item");
+  const isSupplies = isSupply;
   const isWeapon = slotClass.includes("gear-market-item") && (entry.item.type === "ballistic_weapon" || entry.item.type === "melee_weapon");
   const usesBadgeHtml = uses != null ? `<span class="market-item-uses-badge">×${uses}</span>` : "";
   const weaponRole = isWeapon
@@ -159,16 +183,40 @@ function marketItemCard(
     : "";
   const slotLevelUsesBadge = !isSupplies && uses != null ? usesBadgeHtml : "";
   return `
-<div class="market-item-slot ${slotClass}${rarityClass}" ${dataAttrs} role="button" tabindex="0">
+<div class="market-item-slot ${slotClass}${rarityClass}" ${mergedDataAttrs} role="button" tabindex="0">
   <div class="market-item-inner">
     ${iconHtml}
     <div class="market-item-details">
       <span class="market-item-name">${name}</span>
-      <span class="market-item-price">$${entry.price}</span>
+      <span class="market-item-price">${offerApplies ? `<s>$${entry.price}</s> <strong>$${discountedPrice}</strong>` : `$${discountedPrice}`}</span>
     </div>
   </div>
   ${slotLevelUsesBadge}
 </div>`;
+}
+
+function marketFlareOfferBannerHtml(): string {
+  const offer = usePlayerCompanyStore.getState().activeMarketFlareOffer;
+  if (!offer) return "";
+  return `<div class="missions-mode-helper market-flare-offer-banner">${offer.description}</div>`;
+}
+
+function marketFlarePopupHtml(): string {
+  const notice = usePlayerCompanyStore.getState().pendingFlareNotice;
+  if (!notice || notice.target !== "market") return "";
+  return `
+  <div id="market-flare-popup" class="home-onboarding-popup helper-onboarding-popup" role="dialog" aria-modal="true">
+    <div class="home-onboarding-dialog helper-onboarding-dialog">
+      <div class="home-onboarding-copy helper-onboarding-copy">
+        <h4 class="home-onboarding-title helper-onboarding-title">${escapeAttr(notice.title)}</h4>
+        <p class="home-onboarding-text helper-onboarding-text">${escapeAttr(notice.body)}</p>
+        <button id="market-flare-continue" type="button" class="game-btn game-btn-md game-btn-green home-onboarding-continue helper-onboarding-continue">Continue</button>
+      </div>
+      <div class="home-onboarding-image-wrap helper-onboarding-image-wrap">
+        <img src="/images/green-portrait/portrait_0.png" alt="Quartermaster" class="home-onboarding-image helper-onboarding-image">
+      </div>
+    </div>
+  </div>`;
 }
 
 function marketSellItemCard(item: import("../../constants/items/types.ts").Item, index: number, companyLevel: number): string {
@@ -270,6 +318,7 @@ export const weaponsMarketTemplate = () => {
     </div>
   </div>
   ${companyHeaderPartial("Weapons Market")}
+  ${marketFlareOfferBannerHtml()}
   <div class="weapons-market-main market-main-2col">
     ${sections}
   </div>
@@ -347,6 +396,7 @@ export const stratagemsMarketTemplate = () => {
     </div>
   </div>
   ${companyHeaderPartial("Stratagems Market")}
+  ${marketFlareOfferBannerHtml()}
   <div class="supplies-market-main market-main-2col">
     <div class="market-section market-section-common">
       <h4 class="market-section-title">Squad-Wide Support</h4>
@@ -430,6 +480,7 @@ export const armorMarketTemplate = () => {
     </div>
   </div>
   ${companyHeaderPartial("Body Armor Market")}
+  ${marketFlareOfferBannerHtml()}
   <div class="armor-market-main market-main-2col">
     ${sections}
   </div>
@@ -663,6 +714,7 @@ export const suppliesMarketTemplate = () => {
     </div>
   </div>
   ${companyHeaderPartial("Supplies Market")}
+  ${marketFlareOfferBannerHtml()}
   <div class="supplies-market-main market-main-2col">
     ${sections}
   </div>

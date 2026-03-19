@@ -4,7 +4,10 @@ import {
   getXpRequiredForLevel,
   MAX_COMPANY_LEVEL,
 } from "../../constants/economy.ts";
-import { getCompanyLevelSnapshot } from "../../constants/company-progression.ts";
+import {
+  COMPANY_LEVEL_PROGRESSION,
+  getCompanyLevelSnapshot,
+} from "../../constants/company-progression.ts";
 import type { MemorialEntry } from "../entities/memorial-types.ts";
 import { clrHash } from "../../utils/html-utils.ts";
 import { Images } from "../../constants/images.ts";
@@ -46,9 +49,20 @@ function codexLevelsHTML(): string {
 				r.gainsBadges.length > 0
 					? r.gainsBadges.map((b) => `<span class="codex-stat-badge codex-badge-positive">${b}</span>`).join("")
 					: '<span class="codex-stat-badge codex-badge-neutral">Base</span>';
+			const isRangeRow = Boolean(r.levelLabel);
 			const specialHtml = r.special
-				? `<span class="codex-level-special">${r.special}</span>`
+				? isRangeRow
+					? `<div class="codex-level-range-note">${r.special}</div>`
+					: `<span class="codex-level-special">${r.special}</span>`
 				: "";
+			if (isRangeRow) {
+				return `
+		<div class="codex-level-row codex-level-row-range">
+			<span class="codex-level-num">${r.levelLabel ?? `Lv ${r.level}`}</span>
+			<div class="codex-level-gains">${gainsHtml}</div>
+		</div>
+		${specialHtml}`;
+			}
 			return `
 		<div class="codex-level-row">
 			<span class="codex-level-num">${r.levelLabel ?? `Lv ${r.level}`}</span>
@@ -57,6 +71,24 @@ function codexLevelsHTML(): string {
 		</div>`;
 		})
 		.join("");
+}
+
+/** Builds soldier slot unlock rows for the codex Slots tab. */
+function codexSlotsHTML(): string {
+  return COMPANY_LEVEL_PROGRESSION.map((row, i) => {
+    const prev = i > 0 ? COMPANY_LEVEL_PROGRESSION[i - 1] : null;
+    const rosterIncreased = !prev || row.roster.total > prev.roster.total;
+    const activeIncreased = !prev || row.roster.active > prev.roster.active;
+    return `
+      <div class="codex-slot-row">
+        <span class="codex-slot-lv">Lv ${row.level}</span>
+        <span class="codex-slot-value${rosterIncreased ? " codex-slot-unlocked" : ""}">${row.roster.total}</span>
+        <span class="codex-slot-value${activeIncreased ? " codex-slot-unlocked" : ""}">${row.roster.active}</span>
+        <span class="codex-slot-value">${row.roleCaps.active.rifleman}</span>
+        <span class="codex-slot-value">${row.roleCaps.active.support}</span>
+        <span class="codex-slot-value">${row.roleCaps.active.medic}</span>
+      </div>`;
+  }).join("");
 }
 
 /** Builds trait cards for the codex Traits tab. */
@@ -172,7 +204,7 @@ export function codexPopupTemplate(): string {
         <div class="codex-tab-panel active" data-panel="stats"><div class="codex-stats-content"><section class="codex-section"><h5 class="codex-section-title">Base Stats</h5><div class="codex-stat-table">${statsRows}</div></section>${combatSection}</div></div>
         <div class="codex-tab-panel" data-panel="traits"><p class="codex-traits-intro">Traits add a little flavor to your soldiers—each modifies base stats as shown below.</p><div class="codex-traits-grid">${codexTraitsHTML()}</div></div>
         <div class="codex-tab-panel" data-panel="effects"><div class="codex-effects-content"><section class="codex-section"><h5 class="codex-section-title">Status Effects</h5><div class="codex-stat-table">${effectsRows}</div></section></div></div>
-        <div class="codex-tab-panel" data-panel="levels"><div class="codex-levels-content"><section class="codex-section"><h5 class="codex-section-title">Level Benefits</h5><p class="codex-levels-intro">Soldiers can level up to Lv 999. Most base stat growth happens through Lv20, then progression continues mainly through HP gains, gear scaling, traits, and abilities.</p><div class="codex-level-rows">${codexLevelsHTML()}</div></section></div></div>
+        <div class="codex-tab-panel" data-panel="levels"><div class="codex-levels-content"><section class="codex-section"><h5 class="codex-section-title">Slot Unlocks</h5><p class="codex-levels-intro">Company level increases squad roster capacity and active deployment slots.</p><div class="codex-slot-table"><div class="codex-slot-row codex-slot-row-head"><span class="codex-slot-lv">Level</span><span class="codex-slot-value">Roster</span><span class="codex-slot-value">Active</span><span class="codex-slot-value">Rifle</span><span class="codex-slot-value">Gunner</span><span class="codex-slot-value">Medic</span></div>${codexSlotsHTML()}</div></section><section class="codex-section"><h5 class="codex-section-title">Level Benefits</h5><p class="codex-levels-intro">Soldiers can level up to Lv 999. Most base stat growth happens through Lv20, then progression continues mainly through HP gains, gear scaling, traits, and abilities.</p><div class="codex-level-rows">${codexLevelsHTML()}</div></section></div></div>
       </div>
     </div>
   </div>`;
@@ -244,6 +276,29 @@ export function settingsPopupTemplate(): string {
         <button type="button" class="game-btn game-btn-md game-btn-red codex-popup-close popup-close-btn" id="settings-popup-close" aria-label="Close">Close</button>
       </div>
       <div class="settings-popup-body">
+        <section class="settings-panel settings-panel-identity">
+          <div class="settings-panel-head">
+            <h5 class="settings-panel-title">Identity</h5>
+            <p class="settings-panel-copy">Update your squad/company name.</p>
+          </div>
+          <div class="settings-input-group">
+            <label class="settings-input-label" for="settings-squad-name-input">Squad Name</label>
+            <input
+              id="settings-squad-name-input"
+              class="settings-text-input"
+              type="text"
+              maxlength="15"
+              minlength="5"
+              placeholder="5-15 characters"
+              autocomplete="off"
+              spellcheck="false"
+            >
+          </div>
+          <div class="settings-identity-actions">
+            <button type="button" id="settings-squad-name-save" class="game-btn game-btn-md game-btn-blue settings-name-save-btn">Save Name</button>
+          </div>
+          <p id="settings-squad-name-status" class="settings-input-status" aria-live="polite"></p>
+        </section>
         <section class="settings-panel settings-panel-audio">
           <div class="settings-panel-head">
             <h5 class="settings-panel-title">Audio</h5>

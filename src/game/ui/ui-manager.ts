@@ -149,19 +149,25 @@ function UiManager() {
 
   function renderCompanyHomePage() {
     _setStep(GAME_STEPS.at_company_homepage_4);
+    usePlayerCompanyStore.getState().clearMarketFlareOffer();
     usePlayerCompanyStore.getState().bootstrapNewCompanyIfEmpty();
     _ScreenManager.generate.companyHomePage();
   }
 
   function renderRosterScreen() {
+    const st = usePlayerCompanyStore.getState();
+    st.clearMarketFlareOffer();
+    st.tryTriggerFlareEvent("roster");
     _ScreenManager.generate.createRosterPage();
   }
 
   function renderFormationScreen() {
+    usePlayerCompanyStore.getState().clearMarketFlareOffer();
     _ScreenManager.generate.createFormationPage();
   }
 
   function renderMarketScreen() {
+    usePlayerCompanyStore.getState().tryTriggerFlareEvent("market");
     _ScreenManager.generate.createMarketPage();
   }
 
@@ -201,6 +207,7 @@ function UiManager() {
   }
 
   function renderInventoryScreen() {
+    usePlayerCompanyStore.getState().clearMarketFlareOffer();
     _ScreenManager.generate.createInventoryPage();
   }
 
@@ -213,14 +220,17 @@ function UiManager() {
   }
 
   function renderAbilitiesScreen() {
+    usePlayerCompanyStore.getState().clearMarketFlareOffer();
     _ScreenManager.generate.createAbilitiesPage();
   }
 
   function renderTrainingScreen() {
+    usePlayerCompanyStore.getState().clearMarketFlareOffer();
     _ScreenManager.generate.createTrainingPage();
   }
 
   function renderMissionsScreen(mode?: "menu" | "normal" | "epic" | "career" | "dev") {
+    usePlayerCompanyStore.getState().clearMarketFlareOffer();
     const store = usePlayerCompanyStore.getState();
 
     if (mode == null) {
@@ -269,15 +279,18 @@ function UiManager() {
   }
 
   function renderReadyRoomScreen(mission?: Mission | null) {
+    usePlayerCompanyStore.getState().clearMarketFlareOffer();
     _AudioManager.Intro().fadeOutAll(240);
     _ScreenManager.generate.createReadyRoomPage(mission);
   }
 
   function renderCombatScreen(mission?: Mission | null) {
+    usePlayerCompanyStore.getState().clearMarketFlareOffer();
     _ScreenManager.generate.createCombatPage(mission);
   }
 
   function renderHeroesScreen() {
+    usePlayerCompanyStore.getState().clearMarketFlareOffer();
     _ScreenManager.generate.createMemorialPage();
   }
 
