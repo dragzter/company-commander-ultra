@@ -35,13 +35,11 @@ function UiManager() {
   function getGameProgressFromState(): Promise<string> {
     return new Promise((resolve) => {
       const store = usePlayerCompanyStore.getState();
-      console.log("check the step", store.gameStep);
       resolve(store.gameStep);
     });
   }
 
   function handleGameStep(gameStep: string) {
-    console.log("we are at ", gameStep);
     Styler.setCenterBG("bg_1.jpg", true);
     const loadGameAt = {
       [GAME_STEPS.at_intro_0]: () => initMainMenu(),
@@ -164,7 +162,6 @@ function UiManager() {
   }
 
   function renderMarketScreen() {
-    console.log("rendering market screen");
     _ScreenManager.generate.createMarketPage();
   }
 

@@ -182,9 +182,7 @@ export function rosterTemplate(): string {
   let equipPickerHtml = "";
   try {
     equipPickerHtml = equipPickerTemplate();
-  } catch (e) {
-    console.warn("[Roster] equipPickerTemplate failed:", e);
-  }
+  } catch {}
 
   return `
 <div id="roster-screen" class="roster-root troops-market-root">

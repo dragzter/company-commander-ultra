@@ -58,7 +58,6 @@ export function StatProfiler() {
           profile.logistics) /
         10;
     }
-    console.log({ profile }, unit.name);
     return profile;
   }
 

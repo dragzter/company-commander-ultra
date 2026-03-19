@@ -77,6 +77,8 @@ function AudioManager() {
   let gestureUnlockBound = false;
   let musicEnabled = true;
   let sfxEnabled = true;
+  let appInBackground = false;
+  let lifecycleBound = false;
   const urlReader = URLReader;
 
   function nextFromPool(
@@ -108,6 +110,7 @@ function AudioManager() {
     playbackRate = 1,
     startOffset = 0,
   ): void {
+    if (appInBackground) return;
     const sfx = nextFromPool(name, pool);
     sfx.playbackRate = playbackRate;
     sfx.volume = Math.max(0, Math.min(1, volume));
@@ -165,14 +168,62 @@ function AudioManager() {
     document.addEventListener("keydown", onUnlock, opts);
   }
 
+  function stopAllSfxNow(): void {
+    const allPools: HTMLAudioElement[] = [
+      ...buttonClickPool,
+      ...itemSwapPool,
+      ...itemSwapFallbackPool,
+      ...suppressPool,
+      ...fragImpactPool,
+      ...flashbangImpactPool,
+      ...smokeImpactPool,
+      ...medevacPool,
+      ...takeCoverPool,
+      ...reloadPool,
+      ...deathGruntPool,
+      ...bandagePool,
+      ...knifeImpactPool,
+      ...Array.from(weaponShotPools.values()).flat(),
+    ];
+    for (const a of allPools) {
+      a.pause();
+      a.currentTime = 0;
+    }
+  }
+
+  function setAppBackgroundState(inBackground: boolean): void {
+    if (appInBackground === inBackground) return;
+    appInBackground = inBackground;
+    if (appInBackground) {
+      stopAllSfxNow();
+      fadeOutAllThemes(90);
+    }
+  }
+
+  function bindLifecycleAudioGuards(): void {
+    if (lifecycleBound) return;
+    lifecycleBound = true;
+    const onVisibility = () => {
+      setAppBackgroundState(document.visibilityState !== "visible");
+    };
+    const onHide = () => setAppBackgroundState(true);
+    const onShow = () => setAppBackgroundState(false);
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("pagehide", onHide);
+    window.addEventListener("pageshow", onShow);
+    window.addEventListener("blur", onHide);
+    window.addEventListener("focus", onShow);
+    onVisibility();
+  }
+
   function isMusicDisabled(): boolean {
     const { audio } = urlReader(document.location.search);
-    return !musicEnabled || Boolean(audio && !JSON.parse(audio));
+    return appInBackground || !musicEnabled || Boolean(audio && !JSON.parse(audio));
   }
 
   function isSfxDisabled(): boolean {
     const { audio } = urlReader(document.location.search);
-    return !sfxEnabled || Boolean(audio && !JSON.parse(audio));
+    return appInBackground || !sfxEnabled || Boolean(audio && !JSON.parse(audio));
   }
 
   function playTrack(track: HTMLAudioElement) {
@@ -223,7 +274,6 @@ function AudioManager() {
   function stopIntro() {
     intro.pause();
     intro.currentTime = 0;
-    console.log("calling stop intro");
   }
 
   function stopSetup() {
@@ -639,9 +689,13 @@ function AudioManager() {
       isSoundEnabled: () => musicEnabled && sfxEnabled,
       primeAudio: () => primeAudioNow(),
       bindGestureUnlock: () => bindGestureUnlock(),
+      bindLifecycleGuards: () => bindLifecycleAudioGuards(),
     }),
   };
 }
 
 const singleton = AudioManager();
+singleton.Settings().bindGestureUnlock();
+singleton.Settings().bindLifecycleGuards();
+singleton.Settings().primeAudio();
 export { singleton as AudioManager };

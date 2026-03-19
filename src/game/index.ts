@@ -5,7 +5,7 @@ window.onload = () => {
     .then((gameStep) => {
       UiManager.handleGameStep(gameStep);
     })
-    .catch(() => console.log("Whoops"));
+    .catch(() => {});
 
   //UiManager.initMainMenu();
 

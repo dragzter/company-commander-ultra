@@ -9,7 +9,6 @@ function UiStepper(
 
   let step = 0;
   let currentElement = elementArray[step];
-  console.log("stepping through");
 
   function _stepUp() {
     if (step < totalSteps - 1) {

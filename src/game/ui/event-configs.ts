@@ -651,7 +651,6 @@ export function eventConfigs() {
           disableBtn(proceedButton);
         }
 
-        console.log("clicking patch", el.dataset.img);
       },
     },
   ];
@@ -669,9 +668,7 @@ export function eventConfigs() {
     {
       eventType: "click",
       selector: DOM.confirmScreen.goBack,
-      callback: () => {
-        console.log("go back!");
-      },
+      callback: () => {},
     },
   ];
 
@@ -681,30 +678,23 @@ export function eventConfigs() {
       selector: DOM.mainMenu.newGame,
       eventType: "click",
       callback: () => {
-        console.log("callback new game");
         UiManager.renderSetupScreen();
       },
     },
     {
       selector: DOM.mainMenu.continue,
       eventType: "click",
-      callback: () => {
-        console.log("continue campaign");
-      },
+      callback: () => {},
     },
     {
       selector: DOM.mainMenu.credits,
       eventType: "click",
-      callback: () => {
-        console.log("show Credits");
-      },
+      callback: () => {},
     },
     {
       selector: DOM.mainMenu.settings,
       eventType: "click",
-      callback: () => {
-        console.log("Show settings");
-      },
+      callback: () => {},
     },
   ];
 
@@ -714,7 +704,6 @@ export function eventConfigs() {
       selector: DOM.company.home,
       eventType: "click",
       callback: () => {
-        console.log("clicking home");
         UiManager.selectCompanyHomeButton(DOM.company.home);
         UiManager.renderCompanyHomePage();
       },
@@ -1535,7 +1524,6 @@ export function eventConfigs() {
         const json = card?.getAttribute("data-mission-json");
         if (!json) return;
         const mission = JSON.parse(json) as Mission;
-        console.log("Launch mission", mission);
         if (mission.id?.startsWith("onboarding_")) {
           usePlayerCompanyStore
             .getState()
@@ -1764,6 +1752,88 @@ export function eventConfigs() {
     ) as HTMLElement | null;
     let lastCompanyAbilityActivateAt = 0;
     let nextLowHpSampleAt = Date.now() + 1000;
+    type ScheduledCombatTask = { id: number; dueAt: number; fn: () => void };
+    type TimedCombatClass = {
+      id: number;
+      el: Element;
+      className: string;
+      removeAt: number;
+    };
+    type TimedCombatElement = {
+      id: number;
+      el: HTMLElement;
+      removeAt: number;
+    };
+    const scheduledCombatTasks: ScheduledCombatTask[] = [];
+    const timedCombatClasses: TimedCombatClass[] = [];
+    const timedCombatElements: TimedCombatElement[] = [];
+    let nextScheduledCombatTaskId = 1;
+
+    function scheduleCombatTask(delayMs: number, fn: () => void): number {
+      const id = nextScheduledCombatTaskId++;
+      scheduledCombatTasks.push({
+        id,
+        dueAt: Date.now() + Math.max(0, delayMs),
+        fn,
+      });
+      return id;
+    }
+
+    function processScheduledCombatTasks(now: number): void {
+      if (scheduledCombatTasks.length === 0) return;
+      for (let i = scheduledCombatTasks.length - 1; i >= 0; i--) {
+        const task = scheduledCombatTasks[i];
+        if (task.dueAt > now) continue;
+        scheduledCombatTasks.splice(i, 1);
+        try {
+          task.fn();
+        } catch {
+          // Keep combat loop resilient if a deferred visual task fails.
+        }
+      }
+    }
+
+    function scheduleCombatClassRemoval(
+      el: Element,
+      className: string,
+      durationMs: number,
+    ): void {
+      const id = nextScheduledCombatTaskId++;
+      timedCombatClasses.push({
+        id,
+        el,
+        className,
+        removeAt: Date.now() + Math.max(0, durationMs),
+      });
+    }
+
+    function scheduleCombatElementRemoval(
+      el: HTMLElement,
+      durationMs: number,
+    ): void {
+      const id = nextScheduledCombatTaskId++;
+      timedCombatElements.push({
+        id,
+        el,
+        removeAt: Date.now() + Math.max(0, durationMs),
+      });
+    }
+
+    function processTimedCombatVisuals(now: number): void {
+      for (let i = timedCombatClasses.length - 1; i >= 0; i--) {
+        const item = timedCombatClasses[i];
+        if (item.removeAt > now) continue;
+        timedCombatClasses.splice(i, 1);
+        if ((item.el as HTMLElement).isConnected)
+          item.el.classList.remove(item.className);
+      }
+      for (let i = timedCombatElements.length - 1; i >= 0; i--) {
+        const item = timedCombatElements[i];
+        if (item.removeAt > now) continue;
+        timedCombatElements.splice(i, 1);
+        if (item.el.isConnected) item.el.remove();
+      }
+    }
 
     type CombatantDomRefs = {
       card: HTMLElement;
@@ -3338,7 +3408,7 @@ export function eventConfigs() {
           popup.className = "combat-heal-popup";
           popup.textContent = "+50% SPD";
           card.appendChild(popup);
-          setTimeout(() => popup.remove(), 1500);
+          scheduleCombatElementRemoval(popup, 1500);
         }
         markCombatantDirty(target.id, { hp: false, status: true, speed: true });
       } else {
@@ -3431,25 +3501,19 @@ export function eventConfigs() {
 
     function applyAutoAttackHitFlash(targetCard: Element, target: Combatant) {
       targetCard.classList.add("combat-card-weapon-hit-flash");
-      setTimeout(
-        () => targetCard.classList.remove("combat-card-weapon-hit-flash"),
-        180,
-      );
+      scheduleCombatClassRemoval(targetCard, "combat-card-weapon-hit-flash", 180);
 
       const sideClass =
         target.side === "player"
           ? "combat-card-hit-flash-player"
           : "combat-card-hit-flash-enemy";
       targetCard.classList.add(sideClass);
-      setTimeout(() => targetCard.classList.remove(sideClass), 220);
+      scheduleCombatClassRemoval(targetCard, sideClass, 220);
     }
 
     function applyCriticalHitImpact(targetCard: HTMLElement): void {
       targetCard.classList.add("combat-card-crit-shake");
-      setTimeout(
-        () => targetCard.classList.remove("combat-card-crit-shake"),
-        260,
-      );
+      scheduleCombatClassRemoval(targetCard, "combat-card-crit-shake", 260);
     }
 
     function spawnCombatPopup(
@@ -3462,7 +3526,7 @@ export function eventConfigs() {
       popup.className = className;
       popup.textContent = text;
       card.appendChild(popup);
-      window.setTimeout(() => popup.remove(), durationMs);
+      scheduleCombatElementRemoval(popup, durationMs);
     }
 
     function spawnCriticalPopup(
@@ -3474,7 +3538,7 @@ export function eventConfigs() {
       popup.className = "combat-damage-popup combat-critical-popup";
       popup.innerHTML = `<span class="combat-critical-label">CRIT</span><span class="combat-critical-value">${damage}</span>`;
       card.appendChild(popup);
-      window.setTimeout(() => popup.remove(), durationMs);
+      scheduleCombatElementRemoval(popup, durationMs);
     }
 
     const SUPPRESS_DURATION_MS = 8000;
@@ -3559,16 +3623,13 @@ export function eventConfigs() {
             popup.className = "combat-damage-popup combat-suppress-damage-popup";
             popup.textContent = String(result.damage);
             targetCard.appendChild(popup);
-            setTimeout(() => popup.remove(), 1500);
+            scheduleCombatElementRemoval(popup, 1500);
           }
           if (result.critical) {
             applyCriticalHitImpact(targetCard);
           } else {
             targetCard.classList.add("combat-card-shake");
-            setTimeout(
-              () => targetCard.classList.remove("combat-card-shake"),
-              350,
-            );
+            scheduleCombatClassRemoval(targetCard, "combat-card-shake", 350);
           }
         } else if (
           result.hit &&
@@ -3579,13 +3640,13 @@ export function eventConfigs() {
           popup.className = "combat-evade-popup";
           popup.textContent = "Evade";
           targetCard.appendChild(popup);
-          setTimeout(() => popup.remove(), 1500);
+          scheduleCombatElementRemoval(popup, 1500);
         } else if (!result.hit && shouldShowCombatFeedback(target.id)) {
           const popup = document.createElement("span");
           popup.className = "combat-miss-popup";
           popup.textContent = "MISS";
           targetCard.appendChild(popup);
-          setTimeout(() => popup.remove(), 2200);
+          scheduleCombatElementRemoval(popup, 2200);
         }
         if (target.hp <= 0) {
           target.downState =
@@ -3601,11 +3662,11 @@ export function eventConfigs() {
       };
 
       doBurst();
-      setTimeout(() => {
+      scheduleCombatTask(SUPPRESS_BURST_INTERVAL_MS, () => {
         if (extractionInProgress) return;
         doBurst();
-      }, SUPPRESS_BURST_INTERVAL_MS);
-      setTimeout(() => {
+      });
+      scheduleCombatTask(SUPPRESS_BURST_INTERVAL_MS * 2, () => {
         if (extractionInProgress) return;
         doBurst();
         if (
@@ -3620,7 +3681,7 @@ export function eventConfigs() {
           popup.className = "combat-suppress-popup";
           popup.textContent = "Suppressed";
           targetCard.appendChild(popup);
-          setTimeout(() => popup.remove(), 1500);
+          scheduleCombatElementRemoval(popup, 1500);
           markCombatantDirty(target.id, {
             hp: false,
             status: true,
@@ -3634,7 +3695,7 @@ export function eventConfigs() {
           );
         }
         updateCombatUI();
-      }, SUPPRESS_BURST_INTERVAL_MS * 2);
+      });
     }
 
     const GRENADE_COOLDOWN_MS = 5000;
@@ -3691,9 +3752,9 @@ export function eventConfigs() {
             : "combat-damage-popup combat-grenade-damage-popup";
           popup.textContent = String(damage);
           card.appendChild(popup);
-          setTimeout(() => popup.remove(), 1500);
+          scheduleCombatElementRemoval(popup, 1500);
           card.classList.add("combat-card-shake");
-          setTimeout(() => card.classList.remove("combat-card-shake"), 350);
+          scheduleCombatClassRemoval(card, "combat-card-shake", 350);
         }
       };
 
@@ -3705,7 +3766,7 @@ export function eventConfigs() {
         popup.className = "combat-throw-evaded-popup";
         popup.textContent = isKnife ? "Knife evaded" : "Grenade evaded";
         card.appendChild(popup);
-        setTimeout(() => popup.remove(), 2200);
+        scheduleCombatElementRemoval(popup, 2200);
       };
 
       const showThrowMiss = (id: string, isKnife: boolean) => {
@@ -3716,7 +3777,7 @@ export function eventConfigs() {
         popup.className = "combat-throw-miss-popup";
         popup.textContent = isKnife ? "Knife missed" : "Grenade missed";
         card.appendChild(popup);
-        setTimeout(() => popup.remove(), 2200);
+        scheduleCombatElementRemoval(popup, 2200);
       };
 
       const showSmokeEffect = (id: string, pct: number) => {
@@ -3727,7 +3788,7 @@ export function eventConfigs() {
           popup.className = "combat-smoke-popup";
           popup.textContent = `-${pct}%`;
           card.appendChild(popup);
-          setTimeout(() => popup.remove(), 1500);
+          scheduleCombatElementRemoval(popup, 1500);
         }
       };
 
@@ -3749,10 +3810,10 @@ export function eventConfigs() {
         const el = document.createElement("div");
         el.className = classes[overlayType];
         targetCard.appendChild(el);
-        setTimeout(() => el.remove(), 350);
+        scheduleCombatElementRemoval(el, 350);
       };
 
-      setTimeout(() => {
+      scheduleCombatTask(grenadeImpactDelayMs, () => {
         if (extractionInProgress) return;
         const aliveTargetPool = (options?.targetPool ?? enemies).filter(
           (c) => c.hp > 0 && !c.downState,
@@ -3861,23 +3922,17 @@ export function eventConfigs() {
           if (!card) return;
           if (isThrowingKnife) {
             card.classList.add("combat-card-knife-hit-flash");
-            setTimeout(
-              () => card.classList.remove("combat-card-knife-hit-flash"),
-              500,
-            );
+            scheduleCombatClassRemoval(card, "combat-card-knife-hit-flash", 500);
           } else {
             card.classList.add("combat-card-grenade-hit-flash");
-            setTimeout(
-              () => card.classList.remove("combat-card-grenade-hit-flash"),
-              450,
-            );
+            scheduleCombatClassRemoval(card, "combat-card-grenade-hit-flash", 450);
           }
         };
         const shakeTargetCard = (id: string) => {
           const card = getCombatantCard(id);
           if (card) {
             card.classList.add("combat-card-shake");
-            setTimeout(() => card.classList.remove("combat-card-shake"), 400);
+            scheduleCombatClassRemoval(card, "combat-card-shake", 400);
           }
         };
         if (result.primary.hit && !result.primary.evaded) {
@@ -3901,10 +3956,7 @@ export function eventConfigs() {
           shouldShowCombatFeedback(result.primary.targetId)
         ) {
           impactTargetCard.classList.add("combat-card-frag-flash");
-          setTimeout(
-            () => impactTargetCard.classList.remove("combat-card-frag-flash"),
-            150,
-          );
+          scheduleCombatClassRemoval(impactTargetCard, "combat-card-frag-flash", 150);
         }
         if (!isThrowingKnife) {
           const affectedForJolt: string[] = [];
@@ -4006,7 +4058,7 @@ export function eventConfigs() {
             .getState()
             .setOnboardingCombatTutorialPending(false);
         }
-      }, grenadeImpactDelayMs);
+      });
     }
 
     const LINE_OFFSET_PX = 3; /* 2 × 3 = 6px between parallel lines for mutual fire */
@@ -4907,10 +4959,10 @@ export function eventConfigs() {
             if (spawnMissionReinforcement(spawnAt)) spawned += 1;
             continue;
           }
-          window.setTimeout(() => {
+          scheduleCombatTask(delay, () => {
             if (combatWinner || extractionInProgress) return;
             spawnMissionReinforcement(Date.now());
-          }, delay);
+          });
         }
         return spawned;
       }
@@ -4961,14 +5013,16 @@ export function eventConfigs() {
 
       function tick() {
         if (extractionInProgress) return;
+        const now = Date.now();
+        processScheduledCombatTasks(now);
+        processTimedCombatVisuals(now);
         if (onboardingCombatTutorialPaused) {
           updateCombatUI();
           if (!combatWinner) {
-            combatTickId = window.setTimeout(tick, 50);
+            combatTickId = window.setTimeout(tick, 34);
           }
           return;
         }
-        const now = Date.now();
         if (reloadCuesRemaining > 0 && now >= nextReloadCueAt && !combatWinner) {
           const alivePlayers = players.filter((p) => {
             if (p.hp <= 0 || p.downState) return false;
@@ -5774,15 +5828,12 @@ export function eventConfigs() {
                     applyCriticalHitImpact(targetCard);
                   } else {
                     targetCard.classList.add("combat-card-shake");
-                    setTimeout(
-                      () => targetCard.classList.remove("combat-card-shake"),
-                      350,
-                    );
+                    scheduleCombatClassRemoval(targetCard, "combat-card-shake", 350);
                   }
                   applyAutoAttackHitFlash(targetCard, target);
                 }
               };
-              setTimeout(showAttackResult, attackProjectileMs - 20);
+              scheduleCombatTask(attackProjectileMs - 20, showAttackResult);
               markCombatantsDirty([c.id, result.targetId]);
               didAttack = true;
             }
@@ -5807,6 +5858,9 @@ export function eventConfigs() {
       const extracted = options.extracted === true;
       const showSummary = options.showSummary === true;
       if (!combatStarted) return;
+      scheduledCombatTasks.length = 0;
+      timedCombatClasses.length = 0;
+      timedCombatElements.length = 0;
       _AudioManager.Intro().stopCombat();
       _AudioManager.Intro().stopVictory();
       _AudioManager.Intro().stopDefeat();
@@ -9139,7 +9193,6 @@ export function eventConfigs() {
             })),
           );
         }
-        console.log("Proceed to combat", mission);
         UiManager.renderCombatScreen(mission);
       },
     },

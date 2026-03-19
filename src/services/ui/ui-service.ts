@@ -85,7 +85,6 @@ function UiServiceManager() {
     ];
 
     if (!allowedTypes.includes(element)) {
-      console.warn(element + " is not an allowed element type.");
       return;
     }
 
@@ -97,7 +96,6 @@ function UiServiceManager() {
     }
 
     if (!options.src && element === "img") {
-      console.log("Img elements require a src option.");
       (el as HTMLImageElement).alt = "No Image src provided";
       return el;
     }

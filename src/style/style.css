@@ -9785,15 +9785,17 @@ button.missions-filter-chip {
 }
 
 .combat-players .combat-card-in-cover {
-	transform: translateY(14px);
+	transform: translate3d(0, 14px, 0);
 	border-color: #0a0a0a;
-	transition: transform 0.25s ease-out, border-color 0.2s;
+	transition: transform 0.22s cubic-bezier(0.2, 0.9, 0.25, 1), border-color 0.18s ease-out;
+	will-change: transform;
 }
 
 .combat-enemies .combat-card-in-cover {
-	transform: translateY(-14px);
+	transform: translate3d(0, -14px, 0);
 	border-color: #0a0a0a;
-	transition: transform 0.25s ease-out, border-color 0.2s;
+	transition: transform 0.22s cubic-bezier(0.2, 0.9, 0.25, 1), border-color 0.18s ease-out;
+	will-change: transform;
 }
 
 .combat-card-cover-shield {
@@ -17608,6 +17610,12 @@ input[type="text"] {
 
 .ios-mobile-perf #combat-screen .combat-card {
   transition: none !important;
+}
+
+.ios-mobile-perf .combat-players .combat-card-in-cover,
+.ios-mobile-perf .combat-enemies .combat-card-in-cover {
+  transition: transform 0.2s cubic-bezier(0.22, 0.88, 0.24, 1), border-color 0.16s ease-out !important;
+  will-change: transform;
 }
 
 .ios-mobile-perf .combat-card-suppressed,

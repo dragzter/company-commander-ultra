@@ -59,7 +59,6 @@ function DomEventManager() {
     const elements = document.querySelectorAll(selector);
 
     if (!elements?.length) {
-      console.warn(`No elements found for selector: ${selector}`);
       return;
     }
 
