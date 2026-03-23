@@ -99,6 +99,7 @@
 html,
 body {
 	touch-action: manipulation;
+	font-variant-emoji: text;
 }
 
 body {
@@ -2646,6 +2647,11 @@ button.mbtn {
 	--career-card-bg-a: rgba(11, 22, 38, 0.92);
 	--career-card-bg-b: rgba(11, 19, 31, 0.96);
 	--career-card-glow: rgba(64, 118, 190, 0.24);
+	--career-level-orb-a: rgba(24, 53, 86, 0.96);
+	--career-level-orb-b: rgba(10, 24, 42, 0.98);
+	--career-level-orb-ring: rgba(154, 205, 255, 0.88);
+	--career-level-orb-core: rgba(225, 241, 255, 0.95);
+	--career-level-orb-glow: rgba(118, 189, 247, 0.5);
 	--career-connector: rgba(153, 210, 255, 0.95);
 	--career-connector-core: rgba(214, 238, 255, 0.98);
 	--career-connector-glow: rgba(118, 189, 247, 0.55);
@@ -2662,7 +2668,7 @@ button.mbtn {
 	right: 8px;
 	width: auto;
 	max-width: 360px;
-	padding: 12px 12px 10px;
+	padding: 18px 12px 10px;
 	border-radius: 10px;
 	overflow: visible;
 	border: 1px solid var(--career-card-border);
@@ -2671,6 +2677,61 @@ button.mbtn {
 		linear-gradient(145deg, var(--career-card-bg-a) 0%, var(--career-card-bg-b) 100%);
 	box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45), 0 0 14px var(--career-card-glow);
 	min-height: 136px;
+}
+
+.career-mission-level-hero {
+	position: absolute;
+	left: 50%;
+	top: -64px;
+	transform: translateX(-50%);
+	width: 70px;
+	height: 70px;
+	border-radius: 999px;
+	border: 2px solid var(--career-level-orb-ring);
+	background:
+		radial-gradient(circle at 35% 28%, rgba(255, 255, 255, 0.2) 0%, transparent 40%),
+		linear-gradient(165deg, var(--career-level-orb-a) 0%, var(--career-level-orb-b) 100%);
+	box-shadow:
+		0 0 0 1px rgba(10, 20, 34, 0.66),
+		0 8px 18px rgba(0, 0, 0, 0.5),
+		0 0 20px var(--career-level-orb-glow);
+	display: inline-flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 1px;
+	z-index: 4;
+	pointer-events: none;
+	opacity: 1;
+}
+
+.career-mission-level-hero-prefix {
+	font-size: 0.46rem;
+	font-weight: 900;
+	letter-spacing: 0.12em;
+	color: rgba(219, 235, 252, 0.9);
+	text-transform: uppercase;
+	line-height: 1;
+	text-shadow: 0 0 8px rgba(133, 197, 255, 0.45);
+}
+
+.career-mission-level-hero-value {
+	font-size: 1.9rem;
+	font-weight: 900;
+	line-height: 0.88;
+	letter-spacing: 0.01em;
+	color: var(--career-level-orb-core);
+	text-shadow:
+		0 1px 0 rgba(0, 0, 0, 0.45),
+		0 0 8px rgba(152, 208, 255, 0.58);
+}
+
+.career-mission-head,
+.career-mission-title,
+.career-mission-brief,
+.career-mission-meta {
+	position: relative;
+	z-index: 2;
 }
 
 .career-mission-card::before {
@@ -2716,6 +2777,15 @@ button.mbtn {
 	opacity: 0.9;
 	z-index: 2;
 	filter: saturate(1.05) brightness(0.96);
+}
+
+.career-mission-card-upcoming {
+	top: -170px;
+	bottom: auto;
+	opacity: 0;
+	z-index: 1;
+	filter: saturate(1.02) brightness(0.94);
+	pointer-events: none;
 }
 
 .career-mission-head {
@@ -2779,12 +2849,12 @@ button.mbtn {
 
 .career-mission-state-badge {
 	position: absolute;
-	top: 0;
-	right: 0;
+	top: -1px;
+	right: -1px;
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	padding: 3px 7px 4px;
+	padding: 2px 7px 3px;
 	border-radius: 0 10px 0 10px;
 	border: 1px solid var(--career-card-state-border);
 	background: var(--career-card-state-bg);
@@ -2796,7 +2866,9 @@ button.mbtn {
 	line-height: 1;
 	pointer-events: none;
 	box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15);
-	z-index: 3;
+	margin: 0;
+	transform: none;
+	z-index: 6;
 }
 
 .career-mission-card-current .career-mission-state-badge {
@@ -2856,6 +2928,51 @@ button.mbtn {
 	text-overflow: ellipsis;
 }
 
+.career-mission-lock-overlay {
+	position: absolute;
+	inset: 0;
+	border-radius: 10px;
+	background: linear-gradient(180deg, rgba(5, 10, 18, 0.66) 0%, rgba(5, 10, 18, 0.76) 100%);
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	z-index: 5;
+	pointer-events: none;
+}
+
+.career-mission-lock-glyph {
+	position: relative;
+	display: inline-block;
+	width: 20px;
+	height: 14px;
+	border-radius: 4px;
+	border: 2px solid rgba(229, 241, 255, 0.96);
+	box-shadow: 0 0 10px rgba(118, 189, 247, 0.38);
+}
+
+.career-mission-lock-glyph::before {
+	content: "";
+	position: absolute;
+	left: 2px;
+	top: -11px;
+	width: 10px;
+	height: 9px;
+	border: 2px solid rgba(229, 241, 255, 0.96);
+	border-bottom: 0;
+	border-radius: 8px 8px 0 0;
+}
+
+.career-mission-lock-text {
+	font-size: 0.58rem;
+	font-weight: 900;
+	letter-spacing: 0.12em;
+	text-transform: uppercase;
+	color: rgba(222, 236, 250, 0.98);
+	text-shadow: 0 0 8px rgba(118, 189, 247, 0.35);
+}
+
 .career-credit-symbol {
 	color: #f0d27d;
 	margin-right: 4px;
@@ -2867,6 +2984,11 @@ button.mbtn {
 	--career-card-bg-a: rgba(12, 34, 64, 0.94);
 	--career-card-bg-b: rgba(8, 21, 42, 0.97);
 	--career-card-glow: rgba(58, 153, 255, 0.32);
+	--career-level-orb-a: rgba(20, 66, 118, 0.96);
+	--career-level-orb-b: rgba(9, 33, 69, 0.98);
+	--career-level-orb-ring: rgba(128, 202, 255, 0.92);
+	--career-level-orb-core: rgba(230, 245, 255, 0.98);
+	--career-level-orb-glow: rgba(84, 184, 255, 0.55);
 	--career-connector: rgba(121, 203, 255, 0.95);
 	--career-connector-core: rgba(224, 245, 255, 1);
 	--career-connector-glow: rgba(91, 193, 255, 0.62);
@@ -2884,6 +3006,11 @@ button.mbtn {
 	--career-card-bg-a: rgba(35, 39, 48, 0.94);
 	--career-card-bg-b: rgba(17, 21, 29, 0.97);
 	--career-card-glow: rgba(130, 145, 170, 0.25);
+	--career-level-orb-a: rgba(70, 78, 92, 0.96);
+	--career-level-orb-b: rgba(31, 38, 49, 0.98);
+	--career-level-orb-ring: rgba(180, 197, 220, 0.9);
+	--career-level-orb-core: rgba(236, 242, 249, 0.98);
+	--career-level-orb-glow: rgba(166, 182, 203, 0.5);
 	--career-connector: rgba(176, 188, 208, 0.92);
 	--career-connector-core: rgba(232, 238, 246, 0.98);
 	--career-connector-glow: rgba(148, 164, 186, 0.55);
@@ -2901,6 +3028,11 @@ button.mbtn {
 	--career-card-bg-a: rgba(55, 39, 18, 0.93);
 	--career-card-bg-b: rgba(33, 24, 12, 0.97);
 	--career-card-glow: rgba(232, 176, 81, 0.28);
+	--career-level-orb-a: rgba(104, 69, 24, 0.95);
+	--career-level-orb-b: rgba(58, 39, 14, 0.98);
+	--career-level-orb-ring: rgba(244, 205, 138, 0.9);
+	--career-level-orb-core: rgba(255, 239, 208, 0.98);
+	--career-level-orb-glow: rgba(237, 185, 95, 0.55);
 	--career-connector: rgba(245, 200, 118, 0.95);
 	--career-connector-core: rgba(255, 242, 212, 0.98);
 	--career-connector-glow: rgba(236, 183, 95, 0.58);
@@ -2937,7 +3069,19 @@ button.mbtn {
 }
 
 .career-ladder-advance .career-mission-card-next {
-	animation: career-next-down 700ms cubic-bezier(0.2, 0.9, 0.2, 1);
+	animation: career-next-down 760ms cubic-bezier(0.2, 0.9, 0.2, 1) 380ms forwards;
+}
+
+.career-ladder-advance .career-mission-card-current {
+	animation: career-current-fall 520ms cubic-bezier(0.45, 0.02, 0.85, 0.2) forwards;
+}
+
+.career-ladder-advance .career-mission-card-upcoming {
+	animation: career-upcoming-in 640ms cubic-bezier(0.2, 0.9, 0.2, 1) 980ms forwards;
+}
+
+.career-ladder-advance .career-mission-card-next .career-mission-lock-overlay-promote {
+	animation: career-lock-fade 360ms ease-out 760ms forwards;
 }
 
 .career-ladder-advance .career-company-logo {
@@ -2946,12 +3090,43 @@ button.mbtn {
 
 @keyframes career-next-down {
 	0% {
-		transform: translateY(-46px);
+		transform: translateY(0);
+		opacity: 0.9;
+	}
+	100% {
+		transform: translateY(var(--career-promote-dy, 206px));
+		opacity: 1;
+	}
+}
+
+@keyframes career-current-fall {
+	0% {
+		transform: translateY(0);
+		opacity: 1;
+	}
+	100% {
+		transform: translateY(180px);
+		opacity: 0;
+	}
+}
+
+@keyframes career-upcoming-in {
+	0% {
+		transform: translateY(0);
 		opacity: 0;
 	}
 	100% {
-		transform: translateY(0);
-		opacity: 0.86;
+		transform: translateY(216px);
+		opacity: 0.9;
+	}
+}
+
+@keyframes career-lock-fade {
+	0% {
+		opacity: 1;
+	}
+	100% {
+		opacity: 0;
 	}
 }
 
@@ -2972,6 +3147,18 @@ button.mbtn {
 	}
 	100% {
 		box-shadow: 0 0 18px rgba(90, 145, 220, 0.45), inset 0 0 10px rgba(255, 255, 255, 0.2);
+	}
+}
+
+@media (max-width: 420px) {
+	.career-mission-level-hero {
+		top: -56px;
+		width: 64px;
+		height: 64px;
+	}
+
+	.career-mission-level-hero-value {
+		font-size: 1.72rem;
 	}
 }
 
@@ -4897,7 +5084,7 @@ button.missions-filter-chip {
 }
 
 #ready-room-screen .ready-room-footer .ready-room-proceed-btn::after {
-	content: "➜";
+	content: "→";
 	position: absolute;
 	right: 10px;
 	top: 50%;
@@ -6077,6 +6264,29 @@ button.missions-filter-chip {
 	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45), 0 0 10px rgba(70, 55, 90, 0.25), inset 0 1px 0 rgba(130, 110, 150, 0.12);
 }
 
+.stratagems-market-item-locked {
+	opacity: 0.62;
+	filter: grayscale(0.6);
+	border-color: rgba(120, 120, 120, 0.55) !important;
+	background: linear-gradient(145deg, rgba(32, 32, 34, 0.76) 0%, rgba(18, 18, 20, 0.86) 100%) !important;
+}
+
+.stratagems-market-item-locked::after {
+	content: "Unlocks at Lv " attr(data-stratagem-unlock-level);
+	position: absolute;
+	top: 4px;
+	right: 6px;
+	font-size: 0.58rem;
+	font-weight: 900;
+	letter-spacing: 0.04em;
+	color: #ffd68a;
+	background: rgba(22, 16, 10, 0.8);
+	border: 1px solid rgba(255, 193, 102, 0.6);
+	border-radius: 3px;
+	padding: 1px 4px;
+	pointer-events: none;
+}
+
 .market-item-inner {
 	display: flex;
 	align-items: center;
@@ -6222,6 +6432,57 @@ button.missions-filter-chip {
 	padding: 1px 3px;
 	border-radius: 2px;
 	line-height: 1;
+}
+
+.stratagem-equipped-badge {
+	position: absolute;
+	top: -6px;
+	right: -8px;
+	display: inline-flex;
+	align-items: center;
+	gap: 3px;
+	padding: 1px 4px 1px 3px;
+	border-radius: 3px;
+	border: 1px solid rgba(170, 255, 196, 0.95);
+	background: linear-gradient(180deg, rgba(33, 126, 72, 0.98) 0%, rgba(18, 84, 47, 0.98) 100%);
+	box-shadow:
+		0 0 0 1px rgba(5, 30, 16, 0.85),
+		0 0 10px rgba(110, 255, 168, 0.42);
+	z-index: 4;
+	white-space: nowrap;
+	pointer-events: none;
+}
+
+.stratagem-equipped-check {
+	width: 11px;
+	height: 11px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 999px;
+	background: rgba(223, 255, 233, 0.98);
+	color: #0d5d33;
+	font-size: 0.56rem;
+	font-weight: 1000;
+	line-height: 1;
+	box-shadow: 0 0 4px rgba(220, 255, 235, 0.7);
+}
+
+.stratagem-equipped-text {
+	font-size: 0.48rem;
+	font-weight: 900;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	color: #f5fff8;
+	text-shadow: 0 0 3px rgba(0, 0, 0, 0.7);
+}
+
+.inventory-item-card-stratagem-equipped {
+	border-color: rgba(112, 230, 159, 0.78) !important;
+	box-shadow:
+		0 0 0 1px rgba(112, 230, 159, 0.34),
+		0 0 13px rgba(84, 212, 139, 0.24),
+		inset 0 1px 0 rgba(196, 255, 219, 0.12);
 }
 
 /* Supplies: uses badge on icon, bigger */
@@ -9175,10 +9436,21 @@ button.missions-filter-chip {
 }
 
 .combat-begin-glyph {
-	font-size: 1.1em;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 1.05em;
+	height: 1.05em;
 	color: #eaffea;
 	filter: drop-shadow(0 0 6px rgba(190, 255, 190, 0.55));
 	line-height: 1;
+}
+
+.combat-begin-glyph-svg {
+	width: 100%;
+	height: 100%;
+	display: block;
+	fill: currentColor;
 }
 
 .combat-begin-label {
@@ -9244,12 +9516,12 @@ button.missions-filter-chip {
 	flex-wrap: nowrap;
 	justify-content: center;
 	align-items: center;
-	gap: 8px;
-	padding: 8px 16px 10px;
+	gap: 4px;
+	padding: 4px 12px 6px;
 	height: auto;
 	min-height: unset;
 	max-height: none;
-	padding-bottom: 8px;
+	padding-bottom: 6px;
 }
 
 .combat-footer.combat-footer-layout .game-btn-sm {
@@ -9271,12 +9543,30 @@ button.missions-filter-chip {
 	min-height: 28px;
 }
 
+.combat-header-objective-row {
+	position: absolute;
+	left: 0;
+	right: 0;
+	top: 100%;
+	transform: translateY(-50%);
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	z-index: 48;
+	pointer-events: none;
+}
+
+.combat-header-anchor {
+	position: relative;
+	z-index: 20;
+}
+
 .combat-footer-bottom {
 	width: 100%;
 	display: flex;
 	justify-content: center;
 	align-items: center;
-	gap: 12px;
+	gap: 10px;
 }
 
 .combat-outcome-banner {
@@ -9405,7 +9695,7 @@ button.missions-filter-chip {
 }
 
 .combat-players .combat-formation {
-	transform: translateY(-50px);
+	transform: translateY(-60px);
 }
 
 .combat-enemies .combat-formation {
@@ -10374,6 +10664,16 @@ button.missions-filter-chip {
 	z-index: 2;
 }
 
+.combat-card-surge-timer {
+	padding: 2px 6px;
+	background: rgba(20, 90, 110, 0.86);
+	border-radius: 4px;
+	font-size: calc(0.65rem + 2px);
+	font-weight: 700;
+	color: #d5f5ff;
+	z-index: 2;
+}
+
 .combat-card-burn-timer {
 	padding: 2px 6px;
 	background: rgba(120, 40, 20, 0.7);
@@ -10734,6 +11034,10 @@ button.missions-filter-chip {
 	animation: combat-card-grenade-jolt 0.24s cubic-bezier(0.2, 0.86, 0.32, 1);
 }
 
+.combat-card-grenade-rock-violent {
+	animation: combat-card-grenade-rock-violent 0.3s cubic-bezier(0.14, 0.86, 0.2, 1);
+}
+
 .combat-artillery-tracer {
 	position: absolute;
 	width: 4px;
@@ -10852,6 +11156,30 @@ button.missions-filter-chip {
 	}
 	70% {
 		transform: translate(-2px, 1px) scale(0.997);
+	}
+	100% {
+		transform: translate(0, 0) scale(1);
+	}
+}
+
+@keyframes combat-card-grenade-rock-violent {
+	0% {
+		transform: translate(0, 0) scale(1);
+	}
+	14% {
+		transform: translate(-10px, 7px) scale(0.975);
+	}
+	30% {
+		transform: translate(9px, -5px) scale(1.02);
+	}
+	48% {
+		transform: translate(-7px, 5px) scale(0.988);
+	}
+	66% {
+		transform: translate(6px, -4px) scale(1.01);
+	}
+	84% {
+		transform: translate(-3px, 2px) scale(0.996);
 	}
 	100% {
 		transform: translate(0, 0) scale(1);
@@ -11272,8 +11600,8 @@ button.missions-filter-chip {
 
 .combat-objective-timer {
 	position: relative;
-	padding: 4px 12px;
-	font-size: calc(0.8rem + 2px);
+	padding: 3px 10px;
+	font-size: calc(0.76rem + 2px);
 	font-weight: 900;
 	color: #fff2c5;
 	letter-spacing: 0.09em;
@@ -12215,7 +12543,10 @@ button.missions-filter-chip {
 }
 
 .combat-grenade-item.combat-grenade-cooldown {
-	opacity: 0.75;
+	opacity: 0.95;
+	filter: grayscale(0.12);
+	border: 1px solid rgba(255, 206, 122, 0.75);
+	box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.48), 0 0 10px rgba(255, 186, 90, 0.28);
 }
 
 .combat-grenade-cooldown-timer {
@@ -12223,11 +12554,23 @@ button.missions-filter-chip {
 	top: 50%;
 	left: 50%;
 	transform: translate(-50%, -50%);
-	font-size: calc(1rem + 2px);
-	font-weight: 700;
-	color: #fff8cc;
-	text-shadow: 0 0 4px rgba(0, 0, 0, 0.9);
+	min-width: 34px;
+	height: 24px;
+	padding: 0 6px;
+	border-radius: 6px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	font-size: calc(0.95rem + 2px);
+	font-weight: 900;
+	letter-spacing: 0.02em;
+	color: #fffce8;
+	background: rgba(14, 18, 25, 0.95);
+	border: 1px solid rgba(255, 218, 140, 0.85);
+	box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.45), 0 0 12px rgba(255, 192, 84, 0.34);
+	text-shadow: 0 0 3px rgba(0, 0, 0, 0.95), 0 1px 6px rgba(0, 0, 0, 0.92);
 	pointer-events: none;
+	z-index: 2;
 }
 
 .combat-med-item {
@@ -12595,6 +12938,20 @@ button.missions-filter-chip {
 	letter-spacing: 0.03em;
 }
 
+.combat-critical-popup-grenade .combat-critical-label {
+	font-size: 0.92rem;
+}
+
+.combat-critical-popup-grenade .combat-critical-value {
+	font-size: 2.25rem;
+	text-shadow:
+		0 0 8px #000,
+		0 0 14px #000,
+		0 2px 8px rgba(0, 0, 0, 1),
+		0 0 24px rgba(255, 200, 60, 0.96),
+		0 0 46px rgba(255, 96, 42, 0.92);
+}
+
 @keyframes combat-damage-popup-anim {
 	0% {
 		opacity: 1;
@@ -12639,6 +12996,42 @@ button.missions-filter-chip {
 		0 0 18px rgba(255, 64, 64, 0.55),
 		0 0 34px rgba(255, 46, 46, 0.35);
 	animation: combat-battle-fervor-pulse 0.95s ease-in-out infinite;
+}
+
+.combat-card-stratagem-surge {
+	box-shadow:
+		0 0 0 2px rgba(88, 216, 255, 0.84),
+		0 0 18px rgba(72, 196, 245, 0.5),
+		0 0 30px rgba(56, 168, 230, 0.32);
+	animation: combat-stratagem-surge-pulse 0.74s ease-in-out infinite;
+}
+
+.combat-card-stratagem-surge .combat-card-avatar-wrap {
+	box-shadow:
+		0 0 12px rgba(98, 220, 255, 0.72),
+		inset 0 0 10px rgba(62, 170, 214, 0.34);
+}
+
+.combat-card-surge-burst {
+	animation: combat-surge-burst-pop 0.76s cubic-bezier(0.14, 0.86, 0.24, 1);
+}
+
+.combat-card-surge-burst::after {
+	content: "";
+	position: absolute;
+	inset: -11px;
+	border-radius: 13px;
+	border: 2px solid rgba(126, 236, 255, 0.92);
+	background: radial-gradient(circle at 50% 45%, rgba(145, 236, 255, 0.24) 0%, rgba(145, 236, 255, 0) 64%);
+	box-shadow:
+		0 0 28px rgba(118, 231, 255, 0.72),
+		0 0 50px rgba(78, 198, 246, 0.46);
+	pointer-events: none;
+	animation: combat-surge-burst-ring 0.76s ease-out;
+}
+
+.combat-card-surge-burst .combat-card-avatar-wrap {
+	animation: combat-surge-avatar-pop 0.58s cubic-bezier(0.12, 0.88, 0.22, 1);
 }
 
 .combat-card-battle-fervor .combat-card-avatar-wrap {
@@ -12697,6 +13090,23 @@ button.missions-filter-chip {
 	animation: combat-fervor-avatar-pop 0.44s cubic-bezier(0.15, 0.9, 0.2, 1);
 }
 
+.combat-card-fortify-burst {
+	animation: combat-fortify-burst-pop 0.9s cubic-bezier(0.15, 0.86, 0.22, 1);
+}
+
+.combat-card-fortify-burst::before {
+	content: "";
+	position: absolute;
+	inset: -8px;
+	border-radius: 12px;
+	border: 2px solid rgba(178, 236, 255, 0.9);
+	box-shadow:
+		0 0 26px rgba(134, 214, 255, 0.78),
+		0 0 44px rgba(86, 180, 255, 0.42);
+	pointer-events: none;
+	animation: combat-fortify-burst-ring 0.9s ease-out;
+}
+
 @keyframes combat-battle-fervor-pulse {
 	0%,
 	100% {
@@ -12715,6 +13125,69 @@ button.missions-filter-chip {
 	}
 }
 
+@keyframes combat-stratagem-surge-pulse {
+	0%,
+	100% {
+		box-shadow:
+			0 0 0 2px rgba(88, 216, 255, 0.78),
+			0 0 14px rgba(72, 196, 245, 0.42),
+			0 0 22px rgba(56, 168, 230, 0.25);
+		filter: saturate(1) brightness(1);
+	}
+	50% {
+		box-shadow:
+			0 0 0 4px rgba(146, 239, 255, 0.98),
+			0 0 30px rgba(112, 228, 255, 0.78),
+			0 0 46px rgba(78, 204, 255, 0.56);
+		filter: saturate(1.14) brightness(1.1);
+	}
+}
+
+@keyframes combat-surge-burst-pop {
+	0% {
+		transform: scale(1);
+		filter: saturate(1) brightness(1);
+	}
+	34% {
+		transform: scale(1.1);
+		filter: saturate(1.34) brightness(1.25);
+	}
+	100% {
+		transform: scale(1);
+		filter: saturate(1) brightness(1);
+	}
+}
+
+@keyframes combat-surge-avatar-pop {
+	0% {
+		transform: scale(1);
+		filter: brightness(1);
+	}
+	28% {
+		transform: scale(1.14);
+		filter: brightness(1.28);
+	}
+	100% {
+		transform: scale(1);
+		filter: brightness(1);
+	}
+}
+
+@keyframes combat-surge-burst-ring {
+	0% {
+		opacity: 0.05;
+		transform: scale(0.82);
+	}
+	30% {
+		opacity: 1;
+		transform: scale(1.04);
+	}
+	100% {
+		opacity: 0;
+		transform: scale(1.18);
+	}
+}
+
 @keyframes combat-fervor-burst-pop {
 	0% {
 		transform: scale(1);
@@ -12723,6 +13196,21 @@ button.missions-filter-chip {
 	35% {
 		transform: scale(1.07);
 		filter: saturate(1.2) brightness(1.18);
+	}
+	100% {
+		transform: scale(1);
+		filter: saturate(1) brightness(1);
+	}
+}
+
+@keyframes combat-fortify-burst-pop {
+	0% {
+		transform: scale(1);
+		filter: saturate(1) brightness(1);
+	}
+	32% {
+		transform: scale(1.08);
+		filter: saturate(1.26) brightness(1.25);
 	}
 	100% {
 		transform: scale(1);
@@ -12753,6 +13241,21 @@ button.missions-filter-chip {
 	100% {
 		opacity: 0;
 		transform: scale(1.14);
+	}
+}
+
+@keyframes combat-fortify-burst-ring {
+	0% {
+		opacity: 0;
+		transform: scale(0.86);
+	}
+	28% {
+		opacity: 1;
+		transform: scale(1.03);
+	}
+	100% {
+		opacity: 0;
+		transform: scale(1.16);
 	}
 }
 
@@ -13959,6 +14462,35 @@ button.missions-filter-chip {
 #cc-market .text-center .mbtn.blue:hover {
 	border-color: rgba(160, 200, 255, 1);
 	box-shadow: 0 6px 22px rgba(59, 130, 246, 0.45), inset -2px -2px 4px rgba(0, 0, 0, 0.35), inset 2px 2px 4px rgba(255, 255, 255, 0.15), 0 0 18px rgba(100, 160, 255, 0.45);
+}
+
+#cc-market .text-center .mbtn.black {
+	background: radial-gradient(ellipse 80% 60% at 25% 25%, rgba(255, 255, 255, 0.08) 0%, transparent 50%),
+	radial-gradient(ellipse 60% 80% at 75% 75%, rgba(0, 0, 0, 0.34) 0%, transparent 50%),
+	linear-gradient(145deg, #4b535e 0%, #313842 42%, #242c35 100%);
+	color: #f3f6ff;
+	border: 2px solid rgba(168, 182, 202, 0.78);
+	box-shadow: 0 4px 16px rgba(20, 28, 40, 0.42), inset -2px -2px 4px rgba(0, 0, 0, 0.42), inset 2px 2px 3px rgba(255, 255, 255, 0.08), 0 0 12px rgba(132, 156, 194, 0.24);
+}
+
+#cc-market .text-center .mbtn.black:hover {
+	border-color: rgba(192, 208, 230, 0.95);
+	box-shadow: 0 6px 22px rgba(20, 28, 40, 0.52), inset -2px -2px 4px rgba(0, 0, 0, 0.36), inset 2px 2px 4px rgba(255, 255, 255, 0.12), 0 0 18px rgba(152, 180, 220, 0.34);
+}
+
+#cc-market .text-center .mbtn.market-supplies-btn {
+	background: radial-gradient(ellipse 80% 60% at 30% 30%, rgba(255, 255, 255, 0.14) 0%, transparent 50%),
+	radial-gradient(ellipse 60% 80% at 70% 70%, rgba(0, 0, 0, 0.2) 0%, transparent 50%),
+	linear-gradient(145deg, #f6df71 0%, #e9c54a 45%, #d8a82f 100%);
+	color: #111111;
+	text-shadow: none;
+	border: 2px solid rgba(252, 224, 128, 0.92);
+	box-shadow: 0 4px 16px rgba(207, 161, 48, 0.4), inset -2px -2px 4px rgba(0, 0, 0, 0.25), inset 2px 2px 3px rgba(255, 255, 255, 0.18), 0 0 12px rgba(247, 207, 92, 0.32);
+}
+
+#cc-market .text-center .mbtn.market-supplies-btn:hover {
+	border-color: rgba(255, 237, 164, 1);
+	box-shadow: 0 6px 22px rgba(207, 161, 48, 0.5), inset -2px -2px 4px rgba(0, 0, 0, 0.2), inset 2px 2px 4px rgba(255, 255, 255, 0.24), 0 0 18px rgba(247, 207, 92, 0.42);
 }
 
 #cc-market .text-center .mbtn.red {
@@ -15340,6 +15872,7 @@ button.missions-filter-chip {
 .settings-popup-inner {
 	width: min(96%, 520px);
 	min-height: min(70vh, 540px);
+	overflow-x: hidden;
 	background:
 		radial-gradient(120% 90% at 14% -18%, rgba(92, 173, 255, 0.2) 0%, rgba(92, 173, 255, 0) 58%),
 		radial-gradient(120% 70% at 100% 0%, rgba(66, 224, 154, 0.1) 0%, rgba(66, 224, 154, 0) 52%),
@@ -15409,6 +15942,7 @@ button.missions-filter-chip {
 	display: flex;
 	flex-direction: column;
 	gap: 6px;
+	min-width: 0;
 }
 
 .settings-input-label {
@@ -15420,7 +15954,11 @@ button.missions-filter-chip {
 }
 
 .settings-text-input {
+	display: block;
 	width: 100%;
+	max-width: 100%;
+	min-width: 0;
+	box-sizing: border-box;
 	height: 36px;
 	border-radius: 6px;
 	border: 1px solid rgba(122, 171, 223, 0.55);
@@ -17488,7 +18026,7 @@ input[type="text"] {
   justify-content: center;
   gap: 8px;
   width: 100%;
-  padding: 6px 10px;
+  padding: 3px 8px;
   box-sizing: border-box;
   border-top: 1px solid rgba(166, 194, 226, 0.28);
   border-bottom: 1px solid rgba(166, 194, 226, 0.28);
@@ -17503,8 +18041,38 @@ input[type="text"] {
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-right: 22px;
+  margin-right: 0;
   flex-shrink: 0;
+}
+
+.combat-company-section {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.combat-company-section-stratagem {
+  padding: 2px 6px 3px;
+  border: 1px solid rgba(245, 195, 112, 0.72);
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(78, 50, 18, 0.5) 0%, rgba(44, 29, 10, 0.62) 100%);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35), 0 0 12px rgba(238, 172, 72, 0.24);
+  margin-right: 12px;
+}
+
+.combat-company-section-label {
+  font-size: 0.55rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  color: #ffdfa8;
+  text-shadow: 0 0 5px rgba(0, 0, 0, 0.9);
+  line-height: 1;
+  text-transform: uppercase;
+  user-select: none;
+  pointer-events: none;
 }
 
 .combat-company-abilities-group {
@@ -17539,10 +18107,10 @@ input[type="text"] {
 
 .combat-company-ability-btn {
   position: relative;
-  width: 60px;
-  min-width: 60px;
-  height: 60px;
-  border-radius: 10px;
+  width: 52px;
+  min-width: 52px;
+  height: 52px;
+  border-radius: 8px;
   border: 2px solid rgba(126, 158, 191, 0.72);
   background: linear-gradient(180deg, rgba(44, 63, 84, 0.94) 0%, rgba(25, 38, 52, 0.94) 100%);
   display: flex;
@@ -17564,9 +18132,9 @@ input[type="text"] {
 }
 
 .combat-company-ability-btn img {
-  width: 60px;
-  height: 60px;
-  border-radius: 8px;
+  width: 52px;
+  height: 52px;
+  border-radius: 6px;
 }
 
 .combat-company-ability-btn:disabled {
@@ -17662,6 +18230,69 @@ input[type="text"] {
     inset 0 0 12px rgba(70, 155, 255, 0.34);
 }
 
+.combat-card-fortified {
+  box-shadow:
+    0 0 0 2px rgba(122, 214, 255, 0.95),
+    0 0 24px rgba(80, 182, 255, 0.62),
+    0 0 38px rgba(52, 144, 236, 0.42);
+  animation: combat-fortify-pulse 0.68s ease-in-out infinite;
+}
+
+.combat-card-fortified .combat-card-avatar-wrap {
+  box-shadow:
+    0 0 18px rgba(122, 214, 255, 0.82),
+    inset 0 0 14px rgba(78, 164, 255, 0.36);
+}
+
+.combat-card-fortified::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 8px;
+  pointer-events: none;
+  background: linear-gradient(
+    112deg,
+    rgba(255, 255, 255, 0) 12%,
+    rgba(178, 236, 255, 0.08) 32%,
+    rgba(225, 247, 255, 0.78) 49%,
+    rgba(172, 230, 255, 0.1) 68%,
+    rgba(255, 255, 255, 0) 88%
+  );
+  background-size: 220% 100%;
+  animation: combat-fortify-sheen 0.82s linear infinite;
+}
+
+.combat-card-fortify-shield {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 44px;
+  height: 44px;
+  transform: translate(-50%, -50%);
+  z-index: 10;
+  pointer-events: none;
+  border-radius: 50%;
+  animation: combat-fortify-shield-drop 0.52s cubic-bezier(0.2, 0.88, 0.24, 1) 1,
+    combat-fortify-shield-pulse 0.9s ease-in-out 0.52s infinite;
+}
+
+.combat-card-fortify-shield img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 0 10px rgba(124, 214, 255, 0.88));
+}
+
+.combat-card-fortify-timer {
+  font-size: calc(0.58rem + 2px);
+  color: #ecf8ff;
+  background: rgba(18, 50, 86, 0.92);
+  border: 1px solid rgba(132, 205, 255, 0.82);
+  border-radius: 6px;
+  padding: 1px 5px;
+  z-index: 10;
+}
+
 .combat-card-infantry-armor-shield {
   position: absolute;
   top: 50%;
@@ -17747,9 +18378,11 @@ input[type="text"] {
 .combat-card-panic-timer,
 .combat-card-stim-timer,
 .combat-card-fervor-timer,
+.combat-card-surge-timer,
 .combat-card-burn-timer,
 .combat-card-post-cover-timer,
-.combat-card-infantry-armor-timer {
+.combat-card-infantry-armor-timer,
+.combat-card-fortify-timer {
 	position: static;
 	left: auto;
 	right: auto;
@@ -17809,6 +18442,63 @@ input[type="text"] {
   100% { transform: translate(-50%, -50%) scale(0.96); opacity: 0.88; }
 }
 
+@keyframes combat-fortify-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 2px rgba(108, 204, 255, 0.86),
+      0 0 16px rgba(76, 172, 255, 0.5),
+      0 0 28px rgba(52, 144, 236, 0.32);
+  }
+  50% {
+    box-shadow:
+      0 0 0 3px rgba(160, 230, 255, 0.98),
+      0 0 30px rgba(116, 202, 255, 0.78),
+      0 0 52px rgba(80, 178, 255, 0.5);
+  }
+}
+
+@keyframes combat-fortify-sheen {
+  0% {
+    background-position: 130% 0;
+    opacity: 0.15;
+  }
+  24% {
+    opacity: 0.85;
+  }
+  100% {
+    background-position: -120% 0;
+    opacity: 0.1;
+  }
+}
+
+@keyframes combat-fortify-shield-drop {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -185%) scale(0.64);
+  }
+  62% {
+    opacity: 1;
+    transform: translate(-50%, -56%) scale(1.08);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+@keyframes combat-fortify-shield-pulse {
+  0%,
+  100% {
+    opacity: 0.9;
+    transform: translate(-50%, -50%) scale(0.96);
+  }
+  50% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.08);
+  }
+}
+
 /* iOS mobile perf profile: tone down high-frequency combat effects to reduce frame/audio contention. */
 .ios-mobile-perf .combat-card:hover {
   transform: none !important;
@@ -17829,11 +18519,14 @@ input[type="text"] {
 .ios-mobile-perf .combat-card-suppress-arrow,
 .ios-mobile-perf .combat-card-dot-flame,
 .ios-mobile-perf .combat-card-battle-fervor,
+.ios-mobile-perf .combat-card-stratagem-surge,
 .ios-mobile-perf .combat-card-spd-badge.combat-card-spd-buffed,
 .ios-mobile-perf .combat-card-spd-badge.combat-card-spd-fervor,
 .ios-mobile-perf .combat-card-infantry-armor,
+.ios-mobile-perf .combat-card-fortified,
 .ios-mobile-perf .combat-card-infantry-armor-shield,
-.ios-mobile-perf .combat-card-post-cover-shield {
+.ios-mobile-perf .combat-card-post-cover-shield,
+.ios-mobile-perf .combat-card-fortify-shield {
   animation-duration: 1.35s !important;
 }
 
@@ -17844,9 +18537,7 @@ input[type="text"] {
 .ios-mobile-perf .combat-card-reinforce-arrival::after,
 .ios-mobile-perf .combat-card-grenade-target,
 .ios-mobile-perf .combat-card-grenade-target::before,
-.ios-mobile-perf .combat-card-grenade-target::after,
-.ios-mobile-perf .combat-card-crit-shake,
-.ios-mobile-perf .combat-card-shake {
+.ios-mobile-perf .combat-card-grenade-target::after {
   animation: none !important;
 }
 
@@ -17858,13 +18549,15 @@ input[type="text"] {
 .ios-mobile-perf .combat-card-dot-flame,
 .ios-mobile-perf .combat-card-cover-shield,
 .ios-mobile-perf .combat-card-infantry-armor-shield,
-.ios-mobile-perf .combat-card-post-cover-shield {
+.ios-mobile-perf .combat-card-post-cover-shield,
+.ios-mobile-perf .combat-card-fortify-shield {
   filter: none !important;
 }
 
 .ios-mobile-perf .combat-card-cover-shield,
 .ios-mobile-perf .combat-card-infantry-armor-shield,
-.ios-mobile-perf .combat-card-post-cover-shield {
+.ios-mobile-perf .combat-card-post-cover-shield,
+.ios-mobile-perf .combat-card-fortify-shield {
   box-shadow: none !important;
 }
 

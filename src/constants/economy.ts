@@ -122,6 +122,40 @@ export const SOLDIER_XP_PER_HEAL = 0.1;
 /** Multiplier applied to company XP derived from total soldier combat XP. */
 export const COMPANY_XP_FROM_COMBAT_MULTIPLIER = 1.21;
 
+/** Base company XP per successful mission by difficulty (easy->extreme). */
+export const COMPANY_XP_BASE_BY_DIFFICULTY: Record<1 | 2 | 3 | 4, number> = {
+  1: 116,
+  2: 160,
+  3: 216,
+  4: 288,
+};
+
+/** Extra company XP per enemy killed during a successful mission. */
+export const COMPANY_XP_PER_ENEMY_KILL = 4;
+
+function clampMissionDifficulty(difficulty: number): 1 | 2 | 3 | 4 {
+  const d = Math.floor(Number(difficulty) || 1);
+  if (d <= 1) return 1;
+  if (d >= 4) return 4;
+  return d as 1 | 2 | 3 | 4;
+}
+
+export function getCompanyXpBaseByDifficulty(difficulty: number): number {
+  return COMPANY_XP_BASE_BY_DIFFICULTY[clampMissionDifficulty(difficulty)];
+}
+
+export function getCompanyXpForMissionVictory(input: {
+  difficulty: number;
+  isEliteMission?: boolean;
+  enemiesKilled?: number;
+}): number {
+  const base = getCompanyXpBaseByDifficulty(input.difficulty);
+  const missionMult = input.isEliteMission ? 1.5 : 1;
+  const kills = Math.max(0, Math.floor(input.enemiesKilled ?? 0));
+  const killBonus = kills * COMPANY_XP_PER_ENEMY_KILL;
+  return Math.max(1, Math.floor(base * missionMult + killBonus));
+}
+
 /** Soldier energy (0–100, fixed). Depleted by missions; rested soldiers recover. */
 export const ENERGY_MAX = 100;
 /** Base energy cost per mission (each participating soldier) */

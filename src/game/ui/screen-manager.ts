@@ -344,8 +344,18 @@ function ScreenManager() {
       !!store.onboardingFirstMissionPending,
     );
     const level = Math.max(1, Math.floor(store.careerCurrentLevel ?? 1));
-    const mission = createCareerMission(company, level);
-    const nextMission = createCareerMission(company, level + 1);
+    const animateAdvance = !!store.careerAdvanceAnimationPending && level > 1;
+    const mission = createCareerMission(
+      company,
+      animateAdvance ? level - 1 : level,
+    );
+    const nextMission = createCareerMission(
+      company,
+      animateAdvance ? level : level + 1,
+    );
+    const upcomingMission = animateAdvance
+      ? createCareerMission(company, level + 1)
+      : null;
     const activeSoldiers = getCareerActiveSoldiers(company);
     const companyName = (store.companyName || company?.name || "Unnamed Company").trim();
     const companyLvl = company?.level ?? store.companyLevel ?? 1;
@@ -354,6 +364,7 @@ function ScreenManager() {
       careerTemplate({
         mission,
         nextMission,
+        upcomingMission,
         unlocked,
         activeSoldierCount: activeSoldiers.length,
         companyName,
@@ -362,11 +373,33 @@ function ScreenManager() {
         careerLevel: level,
         bestLevel: Math.max(store.careerBestLevel ?? 1, level),
         totalCareerWins: store.totalCareerMissionsCompleted ?? 0,
-        animateAdvance: !!store.careerAdvanceAnimationPending,
+        animateAdvance,
         companyPatchUrl: store.companyUnitPatchURL,
       }),
     );
     center.appendChild(content as Element);
+    const ladderEl = center.querySelector(".career-ladder") as HTMLElement | null;
+    if (animateAdvance && ladderEl) {
+      // Compute exact travel so promoted "next" card lands precisely in current-card slot.
+      ladderEl.classList.remove("career-ladder-advance");
+      const currentCard = ladderEl.querySelector(
+        ".career-mission-card-current",
+      ) as HTMLElement | null;
+      const nextCard = ladderEl.querySelector(
+        ".career-mission-card-next",
+      ) as HTMLElement | null;
+      if (currentCard && nextCard) {
+        const currentTop = currentCard.getBoundingClientRect().top;
+        const nextTop = nextCard.getBoundingClientRect().top;
+        const promoteDy = Math.max(0, Math.round(currentTop - nextTop));
+        ladderEl.style.setProperty("--career-promote-dy", `${promoteDy}px`);
+      } else {
+        ladderEl.style.removeProperty("--career-promote-dy");
+      }
+      window.requestAnimationFrame(() => {
+        ladderEl.classList.add("career-ladder-advance");
+      });
+    }
     DomEventManager.initEventArray(
       ec().companyHome().concat(ec().careerScreen()),
     );
@@ -377,10 +410,19 @@ function ScreenManager() {
     UiManager.selectCompanyHomeButton(DOM.company.missions);
     Styler.setCenterBG("bg_81.jpg", true);
     show.center();
-    if (store.careerAdvanceAnimationPending) {
+    if (animateAdvance) {
       window.setTimeout(
-        () => usePlayerCompanyStore.getState().setCareerAdvanceAnimationPending(false),
-        760,
+        () => {
+          const st = usePlayerCompanyStore.getState();
+          st.setCareerAdvanceAnimationPending(false);
+          if (
+            document.getElementById("career-screen") &&
+            (st.missionsViewMode ?? "menu") === "career"
+          ) {
+            createCareerPage();
+          }
+        },
+        1700,
       );
     }
   }
@@ -402,13 +444,7 @@ function ScreenManager() {
         .getState()
         .setMissionsResumeState("ready_room", resolvedMission);
     }
-    const isRefresh = document.getElementById("ready-room-screen") != null;
     UiManager.clear.center();
-    // Only auto-normalize zero-energy soldiers on first entry from missions.
-    // Do not run on in-screen re-renders (swap/move), or it can undo user moves.
-    if (!isRefresh) {
-      usePlayerCompanyStore.getState().moveZeroEnergySoldiersToReserve();
-    }
     const content = parseHTML(readyRoomTemplate(resolvedMission ?? null));
     center.appendChild(content as Element);
     setTimeout(clearLastEquipMoveSoldierIds, 450);

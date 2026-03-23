@@ -1,8 +1,16 @@
 import "./style/style.css";
 import "./style/animate.css";
 import "./utils/name-utils.ts";
-
 import "./game";
+import "@fontsource/roboto-mono/100.css";
+import "@fontsource/roboto-mono/200.css";
+import "@fontsource/roboto-mono/300.css";
+import "@fontsource/roboto-mono/400.css";
+import "@fontsource/roboto-mono/500.css";
+import "@fontsource/roboto-mono/600.css";
+import "@fontsource/roboto-mono/700.css";
+import { Capacitor } from "@capacitor/core";
+import { SplashScreen } from "@capacitor/splash-screen";
 
 type ScreenOrientationWithLock = ScreenOrientation & {
   lock?: (
@@ -49,3 +57,31 @@ document.addEventListener(
   },
   { passive: false },
 );
+
+const hideNativeSplashWhenReady = async (): Promise<void> => {
+  try {
+    const platform = Capacitor.getPlatform();
+    if (platform !== "ios" && platform !== "android") return;
+    // Let the first app frame commit before dismissing native splash.
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    await SplashScreen.hide();
+  } catch {
+    // Ignore if plugin is unavailable in web/dev contexts.
+  }
+};
+
+if (document.readyState === "complete") {
+  window.setTimeout(() => {
+    void hideNativeSplashWhenReady();
+  }, 40);
+} else {
+  window.addEventListener(
+    "load",
+    () => {
+      window.setTimeout(() => {
+        void hideNativeSplashWhenReady();
+      }, 40);
+    },
+    { once: true },
+  );
+}

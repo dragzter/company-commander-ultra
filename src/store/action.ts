@@ -366,10 +366,19 @@ function chooseRandomTrait(
   return eligible[Math.floor(Math.random() * eligible.length)] ?? null;
 }
 
+function normalizeEarnedTraitIds(ids: string[] | undefined): string[] {
+  if (!Array.isArray(ids) || ids.length === 0) return [];
+  return Array.from(
+    new Set(
+      ids.filter((id): id is string => typeof id === "string" && id.length > 0),
+    ),
+  );
+}
+
 function applyEarnedTraitToSoldier(soldier: Soldier, trait: EarnedTraitDefinition): Soldier {
   const next = {
     ...soldier,
-    earnedTraitIds: [...(soldier.earnedTraitIds ?? [])],
+    earnedTraitIds: normalizeEarnedTraitIds(soldier.earnedTraitIds),
     veterancy: { ...getSoldierVeterancyDefaults(), ...(soldier.veterancy ?? {}) },
   };
   if (next.earnedTraitIds!.includes(trait.id)) return next;
@@ -2169,7 +2178,7 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
           ...s,
           totalKills: Math.max(0, Math.floor(s.totalKills ?? 0)) + missionKills,
           missionsCompleted: Math.max(0, Math.floor(s.missionsCompleted ?? 0)) + (missionCompleted ? 1 : 0),
-          earnedTraitIds: [...(s.earnedTraitIds ?? [])],
+          earnedTraitIds: normalizeEarnedTraitIds(s.earnedTraitIds),
           veterancy: { ...getSoldierVeterancyDefaults(), ...(s.veterancy ?? {}) },
         };
       });
@@ -2198,7 +2207,7 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
         if (!participantSet.has(s.id)) return s;
         let soldier: Soldier = {
           ...s,
-          earnedTraitIds: [...(s.earnedTraitIds ?? [])],
+          earnedTraitIds: normalizeEarnedTraitIds(s.earnedTraitIds),
           veterancy: { ...getSoldierVeterancyDefaults(), ...(s.veterancy ?? {}) },
         };
         const v = soldier.veterancy!;

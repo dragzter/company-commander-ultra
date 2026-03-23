@@ -91,7 +91,12 @@ export function combatTemplate(
 
   return `
 <div id="combat-screen" class="combat-root" data-mission-json="${missionData}" data-players-json="${playersData}" data-enemies-json="${enemiesData}">
-  ${companyHeaderPartial(missionName)}
+  <div class="combat-header-anchor">
+    ${companyHeaderPartial(missionName)}
+    <div class="combat-header-objective-row">
+      <div id="combat-objective-timer" class="combat-objective-timer" hidden>Hold: 2:00</div>
+    </div>
+  </div>
   <div class="combat-main combat-main-with-drawer">
     <div id="combat-targeting-hint" class="combat-targeting-hint" aria-hidden="true"></div>
     <div id="combat-battle-area" class="combat-battle-area">
@@ -123,15 +128,16 @@ export function combatTemplate(
     </div>
     <div id="combat-begin-overlay" class="combat-begin-overlay" aria-hidden="true"></div>
     <button type="button" id="combat-begin" class="combat-begin-floating combat-begin-poppy">
-      <span class="combat-begin-glyph" aria-hidden="true">▶</span>
+      <span class="combat-begin-glyph" aria-hidden="true">
+        <svg class="combat-begin-glyph-svg" viewBox="0 0 16 16" focusable="false" aria-hidden="true">
+          <path d="M3 2.4c0-.6.6-1 1.2-.7l8.3 4.8c.6.3.6 1.1 0 1.4l-8.3 4.8A.9.9 0 0 1 3 12V2.4z"></path>
+        </svg>
+      </span>
       <span class="combat-begin-label">GO!</span>
     </button>
   </div>
   <div id="combat-company-abilities-bar" class="combat-company-abilities-bar" hidden></div>
   <div class="combat-footer troops-market-footer combat-footer-layout">
-    <div class="combat-footer-top">
-      <div id="combat-objective-timer" class="combat-objective-timer" hidden>Hold: 2:00</div>
-    </div>
     <div class="combat-footer-bottom">
       <button type="button" id="combat-back-ready-room" class="game-btn game-btn-sm game-btn-blue combat-back-ready-room-btn">Back</button>
       <button type="button" id="combat-quit" class="game-btn game-btn-sm game-btn-red">Quit</button>

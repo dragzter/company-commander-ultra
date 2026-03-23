@@ -335,6 +335,12 @@ export function clearExpiredEffects(combatants: Combatant[], now: number): void 
       delete c.allowMitigationOvercapUntil;
     }
     if (c.stratagemToughnessUntil != null && now >= c.stratagemToughnessUntil) {
+      if ((c.stratagemMitigationBonusPct ?? 0) > 0) {
+        c.mitigationBonusPct = Math.max(
+          0,
+          (c.mitigationBonusPct ?? 0) - (c.stratagemMitigationBonusPct ?? 0),
+        );
+      }
       if ((c.stratagemToughnessBonus ?? 0) > 0) {
         c.toughness = Math.max(
           0,
@@ -343,6 +349,20 @@ export function clearExpiredEffects(combatants: Combatant[], now: number): void 
       }
       delete c.stratagemToughnessUntil;
       delete c.stratagemToughnessBonus;
+      delete c.stratagemMitigationBonusPct;
+    }
+    if (
+      c.stratagemAttackSpeedUntil != null &&
+      now >= c.stratagemAttackSpeedUntil
+    ) {
+      delete c.stratagemAttackSpeedUntil;
+      delete c.stratagemAttackSpeedMultiplier;
+    }
+    if (
+      c.stratagemArmorPiercingUntil != null &&
+      now >= c.stratagemArmorPiercingUntil
+    ) {
+      delete c.stratagemArmorPiercingUntil;
     }
   }
 }
@@ -406,8 +426,18 @@ export function clearCombatantEffectsOnDeath(c: Combatant): void {
       (c.toughness ?? 0) - (c.stratagemToughnessBonus ?? 0),
     );
   }
+  if ((c.stratagemMitigationBonusPct ?? 0) > 0) {
+    c.mitigationBonusPct = Math.max(
+      0,
+      (c.mitigationBonusPct ?? 0) - (c.stratagemMitigationBonusPct ?? 0),
+    );
+  }
   delete c.stratagemToughnessUntil;
   delete c.stratagemToughnessBonus;
+  delete c.stratagemMitigationBonusPct;
+  delete c.stratagemAttackSpeedUntil;
+  delete c.stratagemAttackSpeedMultiplier;
+  delete c.stratagemArmorPiercingUntil;
 }
 
 /** Remove attackers whose target went into cover; they will be reassigned next tick */
@@ -443,7 +473,12 @@ export function resolveAttack(
   attacker: Combatant,
   target: Combatant,
   now: number = Date.now(),
-  opts?: { damageMultiplier?: number; ignoreEvade?: boolean },
+  opts?: {
+    damageMultiplier?: number;
+    ignoreEvade?: boolean;
+    ignoreToughness?: boolean;
+    ignoreMitigation?: boolean;
+  },
 ): AttackResult {
   let baseCth = attacker.chanceToHit ?? 0.6;
   if (
@@ -499,7 +534,20 @@ export function resolveAttack(
   const critRaw = critRoll
     ? Math.ceil(rawDmg * AUTO_CRIT_DAMAGE_MULTIPLIER)
     : rawDmg;
-  const mitigated = computeFinalDamage(critRaw, target);
+  const mitigationTarget = opts?.ignoreMitigation
+    ? {
+        ...target,
+        toughness: 0,
+        mitigationBonusPct: 0,
+        mitigateDamage: 0,
+      }
+    : opts?.ignoreToughness
+      ? { ...target, toughness: 0 }
+      : target;
+  const mitigated = computeFinalDamage(
+    critRaw,
+    mitigationTarget,
+  );
   let totalDamage = mitigated;
   target.hp = Math.max(0, Math.floor(target.hp - mitigated));
 

@@ -202,7 +202,7 @@ function companyXpBarHtml(
   if (!victory) return "";
   const companyLvl = companyLevel ?? 1;
   const expTotal = companyExperience ?? 0;
-  const xpFloor = companyLvl <= 1 ? 0 : getXpRequiredForLevel(companyLvl - 1);
+  const xpFloor = getXpRequiredForLevel(companyLvl);
   const xpCeiling = getXpRequiredForLevel(companyLvl + 1);
   const xpInLevel = Math.max(1, xpCeiling - xpFloor);
   const progressInLevel = Math.max(0, expTotal - xpFloor);
@@ -216,7 +216,7 @@ function companyXpBarHtml(
   const progressLabel =
     companyLvl >= MAX_COMPANY_LEVEL
       ? "MAX"
-      : `${Math.round(progressInLevel)} / ${xpInLevel}`;
+      : `${Math.floor(progressInLevel).toLocaleString()} / ${Math.floor(xpInLevel).toLocaleString()}`;
   return `
     <div class="combat-summary-section combat-summary-company-xp-section">
       <h4>Company XP</h4>

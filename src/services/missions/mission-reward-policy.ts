@@ -31,10 +31,10 @@ const BASE_CREDITS_BY_DIFFICULTY: Record<number, number> = {
 };
 
 const BASE_XP_BY_DIFFICULTY: Record<number, number> = {
-  1: 30,
-  2: 60,
-  3: 95,
-  4: 140,
+  1: 36,
+  2: 72,
+  3: 114,
+  4: 168,
 };
 
 function clampDifficulty(difficulty: number): 1 | 2 | 3 | 4 {

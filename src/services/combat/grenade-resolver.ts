@@ -16,6 +16,8 @@ const MORALE_REDUCTION_CAP_PCT = 80;
 const MIN_EFFECT_DURATION_MS = 500;
 const GRENADE_HIT_CHANCE = 0.9;
 const GRENADE_EVADE_CHANCE = 0.05;
+const GRENADE_CRIT_CHANCE = 0.1;
+const GRENADE_CRIT_DAMAGE_MULTIPLIER = 1.5;
 const SMOKE_DURATION_MS = 5000;
 const SMOKE_PRIMARY_ACCURACY_DEBUFF = 0.4;
 const SMOKE_ADJACENT_ACCURACY_DEBUFF = 0.1;
@@ -47,6 +49,7 @@ export interface GrenadeHitResult {
   targetId: string;
   hit: boolean;
   evaded: boolean;
+  critical: boolean;
   damageDealt: number;
   targetNewHp: number;
   targetDown: boolean;
@@ -100,12 +103,10 @@ export function resolveGrenadeThrow(
 
   const isKnife = isThrowingKnife(grenade);
   const grenadeBonus = Math.max(0, thrower.grenadeHitBonusPct ?? 0);
-  const hitChance = isKnife ? (thrower.chanceToHit ?? 0.6) : Math.min(0.98, GRENADE_HIT_CHANCE + grenadeBonus);
-  const evadeChance = isKnife
-    ? (primaryTarget.panicUntil != null && now < primaryTarget.panicUntil
-        ? 0
-        : (primaryTarget.chanceToEvade ?? 0.05))
-    : GRENADE_EVADE_CHANCE;
+  // Throwing knives use a fixed, non-scalable accuracy profile: 90% flat hit chance.
+  // They do not gain accuracy from soldier CTH or grenade hit bonuses, and are not evaded.
+  const hitChance = isKnife ? GRENADE_HIT_CHANCE : Math.min(0.98, GRENADE_HIT_CHANCE + grenadeBonus);
+  const evadeChance = isKnife ? 0 : GRENADE_EVADE_CHANCE;
 
   const rollHit = options?.forceHit ? true : Math.random() < hitChance;
   if (!rollHit) {
@@ -117,6 +118,7 @@ export function resolveGrenadeThrow(
         targetId: primaryTarget.id,
         hit: false,
         evaded: false,
+        critical: false,
         damageDealt: 0,
         targetNewHp: primaryTarget.hp,
         targetDown: false,
@@ -136,6 +138,7 @@ export function resolveGrenadeThrow(
         targetId: primaryTarget.id,
         hit: true,
         evaded: true,
+        critical: false,
         damageDealt: 0,
         targetNewHp: primaryTarget.hp,
         targetDown: false,
@@ -154,6 +157,7 @@ export function resolveGrenadeThrow(
       targetId: primaryTarget.id,
       hit: true,
       evaded: false,
+      critical: false,
       damageDealt: 0,
       targetNewHp: primaryTarget.hp,
       targetDown: false,
@@ -169,13 +173,13 @@ export function resolveGrenadeThrow(
       if (!isAdjacent) continue;
       const rollEvadeSplash = Math.random() < GRENADE_EVADE_CHANCE;
       if (rollEvadeSplash) {
-        splash.push({ targetId: enemy.id, hit: true, evaded: true, damageDealt: 0, targetNewHp: enemy.hp, targetDown: false, targetIncapacitated: null });
+        splash.push({ targetId: enemy.id, hit: true, evaded: true, critical: false, damageDealt: 0, targetNewHp: enemy.hp, targetDown: false, targetIncapacitated: null });
         continue;
       }
       enemy.smokedUntil = now + SMOKE_DURATION_MS;
       enemy.chanceToHit = Math.max(0.05, (enemy.chanceToHit ?? 0.6) * (1 - SMOKE_ADJACENT_ACCURACY_DEBUFF));
       enemy.chanceToEvade = Math.min(1, (enemy.chanceToEvade ?? 0) + SMOKE_EVASION_BONUS);
-      splash.push({ targetId: enemy.id, hit: true, evaded: false, damageDealt: 0, targetNewHp: enemy.hp, targetDown: false, targetIncapacitated: null });
+      splash.push({ targetId: enemy.id, hit: true, evaded: false, critical: false, damageDealt: 0, targetNewHp: enemy.hp, targetDown: false, targetIncapacitated: null });
     }
 
     return { throwerId: thrower.id, primaryTargetId: primaryTarget.id, grenadeDamage: 0, primary, splash };
@@ -199,6 +203,7 @@ export function resolveGrenadeThrow(
         targetId: primaryTarget.id,
         hit: true,
         evaded: false,
+        critical: false,
         damageDealt,
         targetNewHp: newHp,
         targetDown: newHp === 0,
@@ -223,6 +228,7 @@ export function resolveGrenadeThrow(
       targetId: primaryTarget.id,
       hit: true,
       evaded: false,
+      critical: false,
       damageDealt: 0,
       targetNewHp: primaryTarget.hp,
       targetDown: false,
@@ -240,7 +246,7 @@ export function resolveGrenadeThrow(
     for (const { enemy } of adjacent) {
       const rollEvadeSplash = Math.random() < GRENADE_EVADE_CHANCE;
       if (rollEvadeSplash) {
-        splash.push({ targetId: enemy.id, hit: true, evaded: true, damageDealt: 0, targetNewHp: enemy.hp, targetDown: false, targetIncapacitated: null });
+        splash.push({ targetId: enemy.id, hit: true, evaded: true, critical: false, damageDealt: 0, targetNewHp: enemy.hp, targetDown: false, targetIncapacitated: null });
         continue;
       }
       if (!enemy.immuneToBurning) {
@@ -250,7 +256,7 @@ export function resolveGrenadeThrow(
           ignoresMitigation: true,
         });
       }
-      splash.push({ targetId: enemy.id, hit: true, evaded: false, damageDealt: 0, targetNewHp: enemy.hp, targetDown: false, targetIncapacitated: null });
+      splash.push({ targetId: enemy.id, hit: true, evaded: false, critical: false, damageDealt: 0, targetNewHp: enemy.hp, targetDown: false, targetIncapacitated: null });
     }
     return { throwerId: thrower.id, primaryTargetId: primaryTarget.id, grenadeDamage: 0, primary, splash };
   }
@@ -263,7 +269,11 @@ export function resolveGrenadeThrow(
     primaryTarget.toughnessReductionPct = pct;
   }
 
-  const damageDealt = computeFinalDamage(baseDamage, primaryTarget);
+  const primaryCritical = Math.random() < GRENADE_CRIT_CHANCE;
+  const primaryRawDamage = primaryCritical
+    ? Math.ceil(baseDamage * GRENADE_CRIT_DAMAGE_MULTIPLIER)
+    : baseDamage;
+  const damageDealt = computeFinalDamage(primaryRawDamage, primaryTarget);
   const newHp = Math.max(0, Math.floor(primaryTarget.hp - damageDealt));
   primaryTarget.hp = newHp;
   const grenadeKiller = primaryTarget.side === "player" ? thrower.name : undefined;
@@ -299,6 +309,7 @@ export function resolveGrenadeThrow(
     targetId: primaryTarget.id,
     hit: true,
     evaded: false,
+    critical: primaryCritical,
     damageDealt,
     targetNewHp: newHp,
     targetDown: newHp === 0,
@@ -320,6 +331,7 @@ export function resolveGrenadeThrow(
         targetId: enemy.id,
         hit: true,
         evaded: true,
+        critical: false,
         damageDealt: 0,
         targetNewHp: enemy.hp,
         targetDown: false,
@@ -334,6 +346,7 @@ export function resolveGrenadeThrow(
         targetId: enemy.id,
         hit: true,
         evaded: false,
+        critical: false,
         damageDealt: 0,
         targetNewHp: enemy.hp,
         targetDown: false,
@@ -348,7 +361,11 @@ export function resolveGrenadeThrow(
       enemy.toughnessReducedUntil = now + adjDurMs;
       enemy.toughnessReductionPct = pct;
     }
-    const splashDmg = computeFinalDamage(splashBase, enemy);
+    const splashCritical = Math.random() < GRENADE_CRIT_CHANCE;
+    const splashRawDamage = splashCritical
+      ? Math.ceil(splashBase * GRENADE_CRIT_DAMAGE_MULTIPLIER)
+      : splashBase;
+    const splashDmg = computeFinalDamage(splashRawDamage, enemy);
     const splashNewHp = Math.max(0, Math.floor(enemy.hp - splashDmg));
     enemy.hp = splashNewHp;
     const splashKiller = enemy.side === "player" ? thrower.name : undefined;
@@ -384,6 +401,7 @@ export function resolveGrenadeThrow(
       targetId: enemy.id,
       hit: true,
       evaded: false,
+      critical: splashCritical,
       damageDealt: splashDmg,
       targetNewHp: splashNewHp,
       targetDown: splashNewHp === 0,

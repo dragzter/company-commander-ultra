@@ -30,7 +30,6 @@ import { getItemSellPrice } from "../../utils/sell-pricing.ts";
 import { CREDIT_SYMBOL } from "../../constants/currency.ts";
 import {
   STRATAGEM_DEFS,
-  getUnlockedStratagemDefs,
 } from "../../constants/stratagem-market.ts";
 
 export const marketTemplate = () => {
@@ -45,14 +44,14 @@ export const marketTemplate = () => {
   const troopsBtnClass = recruitOnboardingMarketOnly ? " blue mbtn mb-3 onboarding-focus-btn" : "blue mbtn mb-3";
   const suppliesBtnClass =
     store.onboardingSuppliesStep === "supplies_focus"
-      ? "blue mbtn mb-3 onboarding-focus-btn"
-      : "blue mbtn mb-3";
+      ? "market-supplies-btn mbtn mb-3 onboarding-focus-btn"
+      : "market-supplies-btn mbtn mb-3";
   const companyLevel = store.company?.level ?? store.companyLevel ?? 1;
-  const stratagemsUnlocked = companyLevel >= 3;
+  const stratagemsUnlocked = companyLevel >= 2;
   const stratagemsBtnClass = stratagemsUnlocked
     ? "blue mbtn mb-3"
     : "gray mbtn mb-3 market-locked-btn";
-  const stratagemsLabel = stratagemsUnlocked ? "Stratagems" : "Stratagems (Lv3)";
+  const stratagemsLabel = stratagemsUnlocked ? "Stratagems" : "Stratagems (Lv2)";
   const marketTutorialPopup =
     store.onboardingSuppliesStep === "supplies_focus"
       ? `
@@ -84,10 +83,10 @@ export const marketTemplate = () => {
 				<div class="flex column align-center justify-between">
 					<button id="${c(market.marketTroopsLink)}" class="${troopsBtnClass}">Troops</button>
 					${showTroopsOnlyMarket ? "" : `
-					<button id="${c(market.marketArmorLink)}" class="blue mbtn mb-3">Body Armor</button>
-					<button id="${c(market.marketWeaponsLink)}" class="blue mbtn mb-3">Weapons</button>
+					<button id="${c(market.marketArmorLink)}" class="black mbtn mb-3">Body Armor</button>
+					<button id="${c(market.marketWeaponsLink)}" class="black mbtn mb-3">Weapons</button>
 					<button id="${c(market.marketSuppliesLink)}" class="${suppliesBtnClass}">Supplies</button>
-				<button id="${c(market.marketStratagemsLink)}" class="${stratagemsBtnClass}" ${stratagemsUnlocked ? "" : "disabled"} title="${stratagemsUnlocked ? "Squad-wide tactical support items" : "Unlocks at company level 3"}">${stratagemsLabel}</button>
+				<button id="${c(market.marketStratagemsLink)}" class="${stratagemsBtnClass}" ${stratagemsUnlocked ? "" : "disabled"} title="${stratagemsUnlocked ? "Squad-wide tactical support items" : "Unlocks at company level 2"}">${stratagemsLabel}</button>
 				<button id="${c(market.marketDevCatalogLink)}" class="gray mbtn market-dev-btn" title="Developer: view all weapons and armor">Dev Catalog</button>`}
 			</div>
 			<div class="market-credits-inline">${marketCreditsPartial(usePlayerCompanyStore.getState().creditBalance)}</div>
@@ -344,21 +343,24 @@ export const stratagemsMarketTemplate = () => {
   const store = usePlayerCompanyStore.getState();
   const companyLevel = store.company?.level ?? store.companyLevel ?? 1;
   const creditBalance = store.creditBalance;
-  const defs = getUnlockedStratagemDefs(companyLevel);
+  const defs = STRATAGEM_DEFS;
   const cards =
     defs.length > 0
       ? defs
           .map((def, idx) => {
             const item = def.item;
             const price = item.price ?? 0;
+            const locked = companyLevel < def.unlockLevel;
             const dataAttrs =
               `data-stratagem-index="${idx}" ` +
               `data-stratagem-price="${price}" ` +
-              `data-stratagem-item="${escapeAttr(JSON.stringify(item))}"`;
+              `data-stratagem-item="${escapeAttr(JSON.stringify(item))}" ` +
+              `data-stratagem-unlock-level="${def.unlockLevel}" ` +
+              `data-stratagem-locked="${locked ? "1" : "0"}"`;
             return marketItemCard(
               { item, price },
               dataAttrs,
-              "supplies-market-item stratagems-market-item",
+              `supplies-market-item stratagems-market-item${locked ? " stratagems-market-item-locked" : ""}`,
               abbreviateItemName(item.name),
             );
           })

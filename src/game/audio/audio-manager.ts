@@ -269,12 +269,31 @@ function AudioManager() {
     }
   }
 
+  function stopAllThemesNow(): void {
+    stopIntro();
+    stopSetup();
+    stopCombatTheme();
+    stopVictoryTheme();
+    stopDefeatTheme();
+  }
+
   function setAppBackgroundState(inBackground: boolean): void {
     if (appInBackground === inBackground) return;
     appInBackground = inBackground;
     if (appInBackground) {
       stopAllSfxNow();
-      fadeOutAllThemes(90);
+      stopAllThemesNow();
+      if (webAudioContext && webAudioContext.state === "running") {
+        void webAudioContext.suspend().catch(() => {
+          // no-op
+        });
+      }
+      return;
+    }
+    if (webAudioContext && webAudioContext.state === "suspended") {
+      void webAudioContext.resume().catch(() => {
+        // no-op
+      });
     }
   }
 
@@ -291,6 +310,24 @@ function AudioManager() {
     window.addEventListener("pageshow", onShow);
     window.addEventListener("blur", onHide);
     window.addEventListener("focus", onShow);
+    document.addEventListener("pause", onHide as EventListener);
+    document.addEventListener("resume", onShow as EventListener);
+    // Capacitor native app lifecycle (iOS/Android) can bypass document visibility events.
+    const capApp = (window as unknown as {
+      Capacitor?: {
+        Plugins?: {
+          App?: {
+            addListener?: (
+              eventName: string,
+              listener: (state: { isActive: boolean }) => void,
+            ) => void;
+          };
+        };
+      };
+    }).Capacitor?.Plugins?.App;
+    capApp?.addListener?.("appStateChange", (state) => {
+      setAppBackgroundState(!state.isActive);
+    });
     onVisibility();
   }
 

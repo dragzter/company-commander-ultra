@@ -13,6 +13,7 @@ import {
   SOLDIER_XP_PER_KILL,
   SOLDIER_XP_PER_ABILITY_USE,
   SOLDIER_XP_PER_HEAL,
+  getCompanyXpForMissionVictory,
 } from "../../constants/economy.ts";
 import {
   getItemArmoryCategory,
@@ -100,6 +101,7 @@ import { createEnemyCombatant } from "../combat/combatant-utils.ts";
 import { formatDisplayName } from "../../utils/name-utils.ts";
 import { MAX_GEAR_LEVEL } from "../../constants/items/types.ts";
 import type { Item } from "../../constants/items/types.ts";
+import { MAX_EQUIPMENT_SLOTS } from "../../constants/inventory-slots.ts";
 import {
   getItemMarketBuyPrice,
   getItemSellPrice,
@@ -133,12 +135,6 @@ import { AudioManager } from "../audio/audio-manager.ts";
 export function eventConfigs() {
   const store = usePlayerCompanyStore.getState();
   const _AudioManager = AudioManager;
-  const COMPANY_XP_BY_DIFFICULTY: Record<number, number> = {
-    1: 80,
-    2: 110,
-    3: 150,
-    4: 200,
-  };
 
   function parseSlotItemFromData(slotEl: HTMLElement): Item | null {
     const raw = slotEl.dataset.slotItem;
@@ -1242,7 +1238,7 @@ export function eventConfigs() {
       callback: () => {
         const st = usePlayerCompanyStore.getState();
         const companyLevel = st.company?.level ?? st.companyLevel ?? 1;
-        if (companyLevel < 3) return;
+        if (companyLevel < 2) return;
         UiManager.renderStratagemsMarketScreen();
       },
     },
@@ -1683,6 +1679,7 @@ export function eventConfigs() {
     let medTargetingMode: { user: Combatant; medItem: SoldierMedItem } | null =
       null;
     let suppressTargetingMode: { user: Combatant } | null = null;
+    let stratagemResuscitateTargetingMode = false;
     let combatStarted = false;
     let combatWinner: "player" | "enemy" | null = null;
     let popupCombatantId: string | null = null;
@@ -1807,6 +1804,7 @@ export function eventConfigs() {
     let traumaResponseTicksRemaining = 0;
     let traumaResponseNextTickAt = 0;
     let extractionInProgress = false;
+    let quitConfirmOpen = false;
     let companyAbilityTargetingMode: {
       abilityId: CompanyAbilityId;
     } | null = null;
@@ -1925,6 +1923,8 @@ export function eventConfigs() {
       settingUp: boolean;
       postCoverBuff: boolean;
       infantryArmor: boolean;
+      fortified: boolean;
+      stratagemSurge: boolean;
       focusedFire: boolean;
       effectiveIntervalMs: number;
     };
@@ -1948,6 +1948,8 @@ export function eventConfigs() {
 
     const formatSecondsTimer = (milliseconds: number): string =>
       (Math.max(0, milliseconds) / 1000).toFixed(1);
+    const formatWholeSecondsTimer = (milliseconds: number): string =>
+      `${Math.max(1, Math.ceil(Math.max(0, milliseconds) / 1000))}s`;
 
     const formatCombatTimer = (untilMs: number, nowMs: number): string => {
       const remaining = Math.max(0, untilMs - nowMs);
@@ -2154,10 +2156,23 @@ export function eventConfigs() {
         .querySelectorAll("#combat-enemies-grid .combat-card-grenade-target")
         .forEach((el) => el.classList.remove("combat-card-grenade-target"));
       const hintEl = document.getElementById("combat-targeting-hint");
-      if (hintEl && !grenadeTargetingMode && !medTargetingMode && !suppressTargetingMode) {
+      if (
+        hintEl &&
+        !grenadeTargetingMode &&
+        !medTargetingMode &&
+        !suppressTargetingMode &&
+        !stratagemResuscitateTargetingMode
+      ) {
         hintEl.textContent = "";
         hintEl.setAttribute("aria-hidden", "true");
       }
+    }
+
+    function showResuscitateTargetingHint(): void {
+      const hintEl = document.getElementById("combat-targeting-hint");
+      if (!hintEl) return;
+      hintEl.textContent = "Select a fallen ally to resuscitate";
+      hintEl.setAttribute("aria-hidden", "false");
     }
 
     function renderCompanyAbilityBar(force = false): void {
@@ -2205,7 +2220,12 @@ export function eventConfigs() {
             </button>`;
           })()
         : "";
-      const html = `${stratagemHtml ? `<div class="combat-company-stratagem-group">${stratagemHtml}</div>` : ""}${companyHtml ? `<div class="combat-company-abilities-group">${companyHtml}</div>` : ""}`;
+      const html = `${stratagemHtml
+        ? `<div class="combat-company-section combat-company-section-stratagem">
+            <span class="combat-company-section-label">STRATAGEM</span>
+            <div class="combat-company-stratagem-group">${stratagemHtml}</div>
+          </div>`
+        : ""}${companyHtml ? `<div class="combat-company-abilities-group">${companyHtml}</div>` : ""}`;
       if (force || companyAbilityBarEl.innerHTML !== html) {
         companyAbilityBarEl.innerHTML = html;
       }
@@ -2482,6 +2502,7 @@ export function eventConfigs() {
       grenadeTargetingMode = null;
       medTargetingMode = null;
       suppressTargetingMode = null;
+      stratagemResuscitateTargetingMode = false;
       document
         .querySelectorAll(".combat-card-grenade-target")
         .forEach((el) => el.classList.remove("combat-card-grenade-target"));
@@ -2510,26 +2531,15 @@ export function eventConfigs() {
 
       const canUseCombatant = (c: Combatant) =>
         combatStarted && !combatWinner && !isStunned(c, Date.now());
-      const soldier = getSoldierFromStore(combatant.id);
-      let grenades: SoldierGrenade[] = [];
-      let medItems: SoldierMedItem[] = [];
-      if (soldier?.inventory) {
-        grenades = getSoldierGrenades(soldier.inventory);
-        medItems = getSoldierMedItems(soldier.inventory);
-      }
-      const equipmentSlots = [
-        ...grenades.map((g) => ({ type: "grenade" as const, data: g })),
-        ...medItems.map((m) => ({ type: "med" as const, data: m })),
-      ].slice(0, 2);
 
       const now = Date.now();
       const takeCoverOnCooldown = (combatant.takeCoverCooldownUntil ?? 0) > now;
       const takeCoverRemainingSec = takeCoverOnCooldown
-        ? formatSecondsTimer(combatant.takeCoverCooldownUntil! - now)
+        ? formatWholeSecondsTimer(combatant.takeCoverCooldownUntil! - now)
         : "";
       const suppressOnCooldown = (combatant.suppressCooldownUntil ?? 0) > now;
       const suppressRemainingSec = suppressOnCooldown
-        ? formatSecondsTimer(combatant.suppressCooldownUntil! - now)
+        ? formatWholeSecondsTimer(combatant.suppressCooldownUntil! - now)
         : "";
       const designation = (combatant.designation ?? "").toLowerCase();
       const abilities = getSoldierAbilities().filter((a) => {
@@ -2572,9 +2582,20 @@ export function eventConfigs() {
       function buildEquipmentHtml(c: Combatant) {
         const canUse = canUseCombatant(c);
         const eqNow = Date.now();
+        const soldierNow = getSoldierFromStore(c.id);
+        let grenadesNow: SoldierGrenade[] = [];
+        let medItemsNow: SoldierMedItem[] = [];
+        if (soldierNow?.inventory) {
+          grenadesNow = getSoldierGrenades(soldierNow.inventory);
+          medItemsNow = getSoldierMedItems(soldierNow.inventory);
+        }
+        const equipmentSlots = [
+          ...grenadesNow.map((g) => ({ type: "grenade" as const, data: g })),
+          ...medItemsNow.map((m) => ({ type: "med" as const, data: m })),
+        ].slice(0, 2);
         const grenadeOnCooldown = (c.grenadeCooldownUntil ?? 0) > eqNow;
         const grenadeRemainingSec = grenadeOnCooldown
-          ? formatSecondsTimer(c.grenadeCooldownUntil! - eqNow)
+          ? formatWholeSecondsTimer(c.grenadeCooldownUntil! - eqNow)
           : "";
         return equipmentSlots
           .map((slot) => {
@@ -2646,11 +2667,11 @@ export function eventConfigs() {
         const now = Date.now();
         const takeCoverOnCooldown = (c.takeCoverCooldownUntil ?? 0) > now;
         const takeCoverRemainingSec = takeCoverOnCooldown
-          ? formatSecondsTimer(c.takeCoverCooldownUntil! - now)
+          ? formatWholeSecondsTimer(c.takeCoverCooldownUntil! - now)
           : "";
         const suppressOnCooldown = (c.suppressCooldownUntil ?? 0) > now;
         const suppressRemainingSec = suppressOnCooldown
-          ? formatSecondsTimer(c.suppressCooldownUntil! - now)
+          ? formatWholeSecondsTimer(c.suppressCooldownUntil! - now)
           : "";
         const des = (c.designation ?? "").toLowerCase();
         const abils = getSoldierAbilities().filter((a) => {
@@ -2819,6 +2840,7 @@ export function eventConfigs() {
       grenadeTargetingMode = null;
       medTargetingMode = null;
       suppressTargetingMode = null;
+      stratagemResuscitateTargetingMode = false;
       popupCombatantId = null;
       document
         .querySelectorAll(".combat-card-grenade-target")
@@ -3159,15 +3181,42 @@ export function eventConfigs() {
       const impactCard = getCombatantCard(impactTargetId) as HTMLElement | null;
       if (!battleArea || !impactCard) return;
 
+      const joltCard = (
+        card: HTMLElement,
+        targetId?: string,
+        durationMs = 280,
+      ): void => {
+        const targetSide = targetId
+          ? getCombatantById(targetId)?.side
+          : undefined;
+        const cls =
+          targetSide === "enemy"
+            ? "combat-card-grenade-rock-violent"
+            : "combat-card-grenade-jolt";
+        card.classList.remove("combat-card-grenade-jolt");
+        card.classList.remove("combat-card-grenade-rock-violent");
+        void card.offsetWidth;
+        card.classList.add(cls);
+        scheduleCombatClassRemoval(card, cls, durationMs);
+      };
+
       if (isIosMobilePerfMode) {
-        // iOS low-latency path: single lightweight impact pulse, no shard fan-out.
-        impactCard.classList.remove("combat-card-grenade-jolt");
-        void impactCard.offsetWidth;
-        impactCard.classList.add("combat-card-grenade-jolt");
-        window.setTimeout(
-          () => impactCard.classList.remove("combat-card-grenade-jolt"),
-          180,
-        );
+        // iOS low-latency path: keep impact punchy while still avoiding heavy FX.
+        const uniqueTargets = Array.from(new Set(affectedTargetIds));
+        if (uniqueTargets.length === 0) uniqueTargets.push(impactTargetId);
+        uniqueTargets.forEach((id, idx) => {
+          const card = getCombatantCard(id) as HTMLElement | null;
+          if (!card) return;
+          scheduleCombatTask(idx * 22, () => {
+            if (!card.isConnected) return;
+            joltCard(card, id, 320);
+            // Follow-up snap adds perceived impact without expensive particle load.
+            scheduleCombatTask(70, () => {
+              if (!card.isConnected) return;
+              joltCard(card, id, 220);
+            });
+          });
+        });
         const fx = document.createElement("div");
         fx.className = `combat-grenade-impact-fx combat-grenade-impact-${variant}`;
         const ring = document.createElement("span");
@@ -3178,7 +3227,7 @@ export function eventConfigs() {
         fx.style.left = `${impactRect.left - areaRect.left + impactRect.width / 2}px`;
         fx.style.top = `${impactRect.top - areaRect.top + impactRect.height / 2}px`;
         battleArea.appendChild(fx);
-        window.setTimeout(() => fx.remove(), 260);
+        window.setTimeout(() => fx.remove(), 320);
         return;
       }
 
@@ -3239,17 +3288,11 @@ export function eventConfigs() {
 
       const uniqueTargets = Array.from(new Set(affectedTargetIds));
       uniqueTargets.forEach((id, idx) => {
-        if (!shouldShowCombatFeedback(id)) return;
         const card = getCombatantCard(id) as HTMLElement | null;
         if (!card) return;
         window.setTimeout(() => {
-          card.classList.remove("combat-card-grenade-jolt");
-          void card.offsetWidth;
-          card.classList.add("combat-card-grenade-jolt");
-          window.setTimeout(
-            () => card.classList.remove("combat-card-grenade-jolt"),
-            250,
-          );
+          if (!card.isConnected) return;
+          joltCard(card, id, 300);
         }, 22 * idx);
       });
     }
@@ -3600,9 +3643,10 @@ export function eventConfigs() {
       card: HTMLElement,
       damage: number,
       durationMs = 1300,
+      extraClass?: string,
     ): void {
       const popup = document.createElement("span");
-      popup.className = "combat-damage-popup combat-critical-popup";
+      popup.className = `combat-damage-popup combat-critical-popup${extraClass ? ` ${extraClass}` : ""}`;
       popup.innerHTML = `<span class="combat-critical-label">CRIT</span><span class="combat-critical-value">${damage}</span>`;
       card.appendChild(popup);
       scheduleCombatElementRemoval(popup, durationMs);
@@ -3687,6 +3731,13 @@ export function eventConfigs() {
           false,
           true,
         );
+        if (result.hit && !result.evaded && shouldShowCombatFeedback(target.id)) {
+          applyAutoAttackHitFlash(targetCard, target);
+          targetCard.classList.remove("combat-card-grenade-jolt");
+          void targetCard.offsetWidth;
+          targetCard.classList.add("combat-card-grenade-jolt");
+          scheduleCombatClassRemoval(targetCard, "combat-card-grenade-jolt", 280);
+        }
         if (result.damage > 0 && shouldShowCombatFeedback(target.id)) {
           if (result.critical) {
             spawnCriticalPopup(targetCard, result.damage, 1300);
@@ -3699,9 +3750,6 @@ export function eventConfigs() {
           }
           if (result.critical) {
             applyCriticalHitImpact(targetCard);
-          } else {
-            targetCard.classList.add("combat-card-shake");
-            scheduleCombatClassRemoval(targetCard, "combat-card-shake", 350);
           }
         } else if (
           result.hit &&
@@ -3814,19 +3862,29 @@ export function eventConfigs() {
       }
       const grenadeImpactDelayMs = grenadeTravelMs + (isIosMobilePerfMode ? 12 : 28);
 
-      const showDamage = (id: string, damage: number) => {
+      const showDamage = (id: string, damage: number, critical = false) => {
         if (!shouldShowCombatFeedback(id)) return;
-        const card = getCombatantCard(id);
+        const card = getCombatantCard(id) as HTMLElement | null;
         if (card && damage > 0) {
-          const popup = document.createElement("span");
-          popup.className = isThrowingKnife
-            ? "combat-damage-popup combat-knife-damage-popup"
-            : "combat-damage-popup combat-grenade-damage-popup";
-          popup.textContent = String(damage);
-          card.appendChild(popup);
-          scheduleCombatElementRemoval(popup, 1500);
-          card.classList.add("combat-card-shake");
-          scheduleCombatClassRemoval(card, "combat-card-shake", 350);
+          if (critical && !isThrowingKnife) {
+            spawnCriticalPopup(
+              card,
+              damage,
+              1600,
+              "combat-critical-popup-grenade",
+            );
+            applyCriticalHitImpact(card);
+          } else {
+            const popup = document.createElement("span");
+            popup.className = isThrowingKnife
+              ? "combat-damage-popup combat-knife-damage-popup"
+              : "combat-damage-popup combat-grenade-damage-popup";
+            popup.textContent = String(damage);
+            card.appendChild(popup);
+            scheduleCombatElementRemoval(popup, 1500);
+            card.classList.add("combat-card-shake");
+            scheduleCombatClassRemoval(card, "combat-card-shake", 350);
+          }
         }
       };
 
@@ -4001,12 +4059,18 @@ export function eventConfigs() {
           }
         };
         const shakeTargetCard = (id: string) => {
-          const card = getCombatantCard(id);
+          const card = getCombatantCard(id) as HTMLElement | null;
           if (card) {
+            const target = getCombatantById(id);
+            const cls =
+              target?.side === "enemy"
+                ? "combat-card-grenade-rock-violent"
+                : "combat-card-grenade-jolt";
             card.classList.remove("combat-card-grenade-jolt");
+            card.classList.remove("combat-card-grenade-rock-violent");
             void card.offsetWidth;
-            card.classList.add("combat-card-grenade-jolt");
-            scheduleCombatClassRemoval(card, "combat-card-grenade-jolt", 280);
+            card.classList.add(cls);
+            scheduleCombatClassRemoval(card, cls, 300);
           }
         };
         if (result.primary.hit && !result.primary.evaded) {
@@ -4063,11 +4127,16 @@ export function eventConfigs() {
         else if (isSmoke && result.primary.hit)
           showSmokeEffect(result.primary.targetId, 40);
         else if (result.primary.damageDealt > 0)
-          showDamage(result.primary.targetId, result.primary.damageDealt);
+          showDamage(
+            result.primary.targetId,
+            result.primary.damageDealt,
+            result.primary.critical,
+          );
         for (const s of result.splash) {
           if (s.evaded) showEvaded(s.targetId, isThrowingKnife);
           else if (isSmoke && s.hit) showSmokeEffect(s.targetId, 10);
-          else if (s.damageDealt > 0) showDamage(s.targetId, s.damageDealt);
+          else if (s.damageDealt > 0)
+            showDamage(s.targetId, s.damageDealt, s.critical);
         }
         if (consumeThrowable) {
           consumeCombatantItem(thrower.id, grenade.inventoryIndex, "throwable");
@@ -4146,13 +4215,8 @@ export function eventConfigs() {
         (count, c) => count + (c.hp > 0 && !c.downState ? 1 : 0),
         0,
       );
-      // In crowded mobile battles, attack-line SVG updates are a top source of jank.
-      // Drop them when many units are alive; restores responsiveness for core combat actions.
-      if (isIosMobilePerfMode && aliveCount >= 10) {
-        ctx.clearRect(0, 0, canvas.clientWidth, canvas.clientHeight);
-        lastAttackLineSignature = "";
-        return;
-      }
+      const cappedLineBudget =
+        isIosMobilePerfMode && aliveCount >= 10 ? 12 : Number.POSITIVE_INFINITY;
       const areaRect = battleArea.getBoundingClientRect();
       const toArea = (r: DOMRect) => ({
         left: r.left - areaRect.left,
@@ -4205,7 +4269,11 @@ export function eventConfigs() {
           attackerSide: attacker.side,
         });
       }
-      const signature = segments
+      const renderSegments =
+        Number.isFinite(cappedLineBudget) && segments.length > cappedLineBudget
+          ? segments.slice(0, cappedLineBudget)
+          : segments;
+      const signature = renderSegments
         .map((s) => `${s.attackerId}>${s.targetId}`)
         .sort()
         .join("|");
@@ -4221,7 +4289,7 @@ export function eventConfigs() {
         pairCounts.set(key, (pairCounts.get(key) ?? 0) + 1);
       }
       const pairIndices = new Map<string, number>();
-      for (const s of segments) {
+      for (const s of renderSegments) {
         const key = pairKey(s.attackerId, s.targetId);
         const idx = pairIndices.get(key) ?? 0;
         pairIndices.set(key, idx + 1);
@@ -4371,6 +4439,11 @@ export function eventConfigs() {
           c.postCoverToughnessUntil != null && now < c.postCoverToughnessUntil;
         const infantryArmor =
           c.infantryArmorUntil != null && now < c.infantryArmorUntil;
+        const fortified =
+          c.stratagemToughnessUntil != null && now < c.stratagemToughnessUntil;
+        const stratagemSurge =
+          c.stratagemAttackSpeedUntil != null &&
+          now < c.stratagemAttackSpeedUntil;
         const focusedFire =
           c.side === "enemy" &&
           focusedFireTargetId === c.id &&
@@ -4381,6 +4454,8 @@ export function eventConfigs() {
           speedMult *= c.attackSpeedBuffMultiplier;
         if (battleFervor && c.companyAttackSpeedBuffMultiplier != null)
           speedMult *= c.companyAttackSpeedBuffMultiplier;
+        if (stratagemSurge && c.stratagemAttackSpeedMultiplier != null)
+          speedMult *= c.stratagemAttackSpeedMultiplier;
         if (panicked) speedMult *= 2;
         const effectiveInterval = baseInterval * speedMult;
         const nextSnapshot: CombatantUiSnapshot = {
@@ -4400,6 +4475,8 @@ export function eventConfigs() {
           settingUp,
           postCoverBuff,
           infantryArmor,
+          fortified,
+          stratagemSurge,
           focusedFire,
           effectiveIntervalMs: effectiveInterval,
         };
@@ -4418,6 +4495,8 @@ export function eventConfigs() {
           prevSnapshot.settingUp !== nextSnapshot.settingUp ||
           prevSnapshot.postCoverBuff !== nextSnapshot.postCoverBuff ||
           prevSnapshot.infantryArmor !== nextSnapshot.infantryArmor ||
+          prevSnapshot.fortified !== nextSnapshot.fortified ||
+          prevSnapshot.stratagemSurge !== nextSnapshot.stratagemSurge ||
           prevSnapshot.focusedFire !== nextSnapshot.focusedFire;
         const speedChanged =
           !prevSnapshot ||
@@ -4442,6 +4521,8 @@ export function eventConfigs() {
             card.classList.toggle("combat-card-setting-up", settingUp);
             card.classList.toggle("combat-card-post-cover-buff", postCoverBuff);
             card.classList.toggle("combat-card-infantry-armor", infantryArmor);
+            card.classList.toggle("combat-card-fortified", fortified);
+            card.classList.toggle("combat-card-stratagem-surge", stratagemSurge);
             card.classList.toggle("combat-card-focused-fire", focusedFire);
             const ensureTimer = (
               selector: string,
@@ -4487,7 +4568,6 @@ export function eventConfigs() {
               card.querySelector(".combat-card-focused-fire-timer")?.remove();
               card.querySelector(".combat-card-blind-timer")?.remove();
               card.querySelector(".combat-card-suppress-timer")?.remove();
-              card.querySelector(".combat-card-smoke-timer")?.remove();
               card.querySelector(".combat-card-stun-timer")?.remove();
               card.querySelector(".combat-card-panic-timer")?.remove();
               card.querySelector(".combat-card-stim-timer")?.remove();
@@ -4495,18 +4575,18 @@ export function eventConfigs() {
               card.querySelector(".combat-card-burn-timer")?.remove();
               card.querySelector(".combat-card-post-cover-timer")?.remove();
               card.querySelector(".combat-card-infantry-armor-timer")?.remove();
+              card.querySelector(".combat-card-fortify-timer")?.remove();
+              card.querySelector(".combat-card-surge-timer")?.remove();
             }
             if (smoked) {
-              if (!omitStatusTimers) {
-                const timerEl = ensureTimer(
-                  ".combat-card-smoke-timer",
-                  "smoke-timer",
-                  "combat-card-smoke-timer",
-                  timerRail,
-                );
-                if (refreshTimerText)
-                  timerEl.textContent = formatCombatTimer(c.smokedUntil ?? 0, now);
-              }
+              const timerEl = ensureTimer(
+                ".combat-card-smoke-timer",
+                "smoke-timer",
+                "combat-card-smoke-timer",
+                timerRail,
+              );
+              if (refreshTimerText)
+                timerEl.textContent = formatCombatTimer(c.smokedUntil ?? 0, now);
             } else {
               card.querySelector(".combat-card-smoke-timer")?.remove();
               refs.statusNodeCache.delete("smoke-timer");
@@ -4600,6 +4680,22 @@ export function eventConfigs() {
             } else {
               card.querySelector(".combat-card-fervor-timer")?.remove();
               refs.statusNodeCache.delete("fervor-timer");
+            }
+            if (stratagemSurge) {
+              const timerEl = ensureTimer(
+                ".combat-card-surge-timer",
+                "surge-timer",
+                "combat-card-surge-timer",
+                timerRail,
+              );
+              if (refreshTimerText)
+                timerEl.textContent = formatCombatTimer(
+                  c.stratagemAttackSpeedUntil ?? 0,
+                  now,
+                );
+            } else {
+              card.querySelector(".combat-card-surge-timer")?.remove();
+              refs.statusNodeCache.delete("surge-timer");
             }
             if (blinded) {
               const timerEl = ensureTimer(
@@ -4730,6 +4826,35 @@ export function eventConfigs() {
               card.querySelector(".combat-card-infantry-armor-shield")?.remove();
               refs.statusNodeCache.delete("infantry-armor-timer");
             }
+            if (fortified) {
+              const timerEl = ensureTimer(
+                ".combat-card-fortify-timer",
+                "fortify-timer",
+                "combat-card-fortify-timer",
+                timerRail,
+              );
+              if (refreshTimerText)
+                timerEl.textContent = formatCombatTimer(
+                  c.stratagemToughnessUntil ?? 0,
+                  now,
+                );
+              let buffShield = card.querySelector(
+                ".combat-card-fortify-shield",
+              ) as HTMLElement | null;
+              if (!buffShield && refs.avatarWrap) {
+                buffShield = document.createElement("div");
+                buffShield.className = "combat-card-fortify-shield";
+                const img = document.createElement("img");
+                img.src = SILVER_SHIELD_ICON;
+                img.alt = "";
+                buffShield.appendChild(img);
+                refs.avatarWrap.appendChild(buffShield);
+              }
+            } else {
+              card.querySelector(".combat-card-fortify-timer")?.remove();
+              card.querySelector(".combat-card-fortify-shield")?.remove();
+              refs.statusNodeCache.delete("fortify-timer");
+            }
             let shieldWrap = card.querySelector(
               ".combat-card-cover-shield",
             ) as HTMLElement | null;
@@ -4781,7 +4906,8 @@ export function eventConfigs() {
           domWrites.push(() => {
             const parts = [`SPD: ${(effectiveInterval / 1000).toFixed(1)}s`];
             if (battleFervor) parts.push("FVR");
-            else if (stimmed) parts.push("STIM");
+            if (stimmed) parts.push("STIM");
+            if (stratagemSurge) parts.push("SRG");
             refs.spdBadge!.textContent = parts.join(" ");
             refs.spdBadge!.classList.toggle("combat-card-spd-buffed", stimmed);
             refs.spdBadge!.classList.toggle(
@@ -5085,11 +5211,18 @@ export function eventConfigs() {
         }
       }
 
-      function tick() {
-        if (extractionInProgress) return;
-        const now = Date.now();
-        processScheduledCombatTasks(now);
-        processTimedCombatVisuals(now);
+    function tick() {
+      if (extractionInProgress) return;
+      if (quitConfirmOpen) {
+        updateCombatUI();
+        if (!combatWinner) {
+          combatTickId = window.setTimeout(tick, 34);
+        }
+        return;
+      }
+      const now = Date.now();
+      processScheduledCombatTasks(now);
+      processTimedCombatVisuals(now);
         if (onboardingCombatTutorialPaused) {
           updateCombatUI();
           if (!combatWinner) {
@@ -5457,23 +5590,18 @@ export function eventConfigs() {
             }
             let companyXpEarned = 0;
             if (!isDevTest && victory && mission) {
-              const difficultyKey = Math.max(
-                1,
-                Math.min(4, Math.floor(mission.difficulty ?? 1)),
-              );
-              const baseCompanyXp =
-                COMPANY_XP_BY_DIFFICULTY[difficultyKey] ??
-                COMPANY_XP_BY_DIFFICULTY[1];
+              let totalEnemyKills = 0;
+              playerKills.forEach((kills) => {
+                totalEnemyKills += Math.max(0, Math.floor(kills || 0));
+              });
               const isEliteMission = !!(
                 mission.isEpic || mission.rarity === "epic"
               );
-              const companyMissionMult = isEliteMission ? 1.5 : 1;
-              companyXpEarned = Math.max(
-                1,
-                Math.floor(
-                  baseCompanyXp * companyMissionMult,
-                ),
-              );
+              companyXpEarned = getCompanyXpForMissionVictory({
+                difficulty: mission.difficulty ?? 1,
+                isEliteMission,
+                enemiesKilled: totalEnemyKills,
+              });
             }
             const { rewardItems, lootItems } =
               !isDevTest && victory && mission
@@ -5829,9 +5957,14 @@ export function eventConfigs() {
                 now < c.companyAttackSpeedBuffUntil
                   ? 2
                   : 1;
+              const armorPiercingActive =
+                c.side === "player" &&
+                c.stratagemArmorPiercingUntil != null &&
+                now < c.stratagemArmorPiercingUntil;
               const result = resolveAttack(c, target, now, {
                 damageMultiplier:
                   focusedFireDamageMultiplier * battleFervorDamageMultiplier,
+                ignoreMitigation: armorPiercingActive,
               });
               _AudioManager
                 .Weapon()
@@ -6375,34 +6508,159 @@ export function eventConfigs() {
       if (!equippedStratagemItem) return;
       if (stratagemUsesLeft <= 0) return;
       const now = Date.now();
-      const durationMs = 10_000;
-      stratagemUsesLeft = 0;
-      for (const p of players) {
-        if (p.hp <= 0 || p.downState) continue;
-        if ((p.stratagemToughnessBonus ?? 0) > 0) {
-          p.toughness = Math.max(
-            0,
-            (p.toughness ?? 0) - (p.stratagemToughnessBonus ?? 0),
+      const stratagemId = equippedStratagemItem.id;
+      const makeFragGrenadeForLevel = (level: number): Item => {
+        const grenadeLevel = Math.max(1, Math.min(999, Math.floor(level || 1)));
+        const base = ThrowableItems.common.m3_frag_grenade;
+        return {
+          ...base,
+          level: grenadeLevel,
+          uses: 5,
+          damage:
+            base.damage != null
+              ? getScaledThrowableDamage(base.damage, grenadeLevel)
+              : base.damage,
+        };
+      };
+      let consumeStratagemNow = true;
+      if (stratagemId === "grenades_first_stratagem") {
+        for (const p of players) {
+          if (p.hp <= 0 || p.downState) continue;
+          const soldier = getSoldierFromStore(p.id) ?? p.soldierRef;
+          if (!soldier) continue;
+          const slotted: Array<Item | undefined> = Array.from(
+            { length: MAX_EQUIPMENT_SLOTS },
+            (_, i) =>
+              Array.isArray(soldier.inventory) &&
+              i < soldier.inventory.length
+                ? soldier.inventory[i]
+                : undefined,
           );
+          const effectiveLevel = Math.max(
+            1,
+            Math.min(999, soldier.level ?? p.level ?? 1),
+          );
+          let added = 0;
+          for (let i = 0; i < MAX_EQUIPMENT_SLOTS; i++) {
+            if (slotted[i]) continue;
+            slotted[i] = makeFragGrenadeForLevel(effectiveLevel);
+            added += 1;
+          }
+          if (added <= 0) continue;
+          soldier.inventory = slotted.filter((it): it is Item => !!it);
+          const card = getCombatantCard(p.id);
+          if (card)
+            spawnCombatPopup(
+              card,
+              "combat-heal-popup",
+              `Grenades +${added}`,
+              1050,
+            );
         }
-        const fortifyBonus = Math.max(
-          1,
-          Math.ceil((p.toughness ?? 0) * 0.05),
-        );
-        p.toughness = Math.max(0, (p.toughness ?? 0) + fortifyBonus);
-        p.stratagemToughnessBonus = fortifyBonus;
-        p.stratagemToughnessUntil = now + durationMs;
-        markCombatantDirty(p.id, { hp: false, status: true, speed: true });
-        const card = getCombatantCard(p.id);
-        if (card) spawnCombatPopup(card, "combat-heal-popup", "Fortify", 1000);
+      } else if (stratagemId === "adrenal_surge_stratagem") {
+        const durationMs = 8_000;
+        const speedMultiplier = 0.8;
+        for (const p of players) {
+          if (p.hp <= 0 || p.downState) continue;
+          p.stratagemAttackSpeedUntil = now + durationMs;
+          p.stratagemAttackSpeedMultiplier = speedMultiplier;
+          markCombatantDirty(p.id, { hp: false, status: true, speed: true });
+          const card = getCombatantCard(p.id);
+          if (card) {
+            card.classList.remove("combat-card-surge-burst");
+            // Reflow to guarantee one-shot burst animation replays on activation.
+            void card.offsetWidth;
+            card.classList.add("combat-card-surge-burst");
+            scheduleCombatClassRemoval(card, "combat-card-surge-burst", 760);
+            spawnCombatPopup(card, "combat-heal-popup", "Adrenal Surge", 1000);
+          }
+        }
+      } else if (stratagemId === "armor_piercing_ammo_stratagem") {
+        const durationMs = 10_000;
+        for (const p of players) {
+          if (p.hp <= 0 || p.downState) continue;
+          p.stratagemArmorPiercingUntil = now + durationMs;
+          markCombatantDirty(p.id, { hp: false, status: true, speed: true });
+          const card = getCombatantCard(p.id);
+          if (card)
+            spawnCombatPopup(
+              card,
+              "combat-heal-popup",
+              "Armor Piercing",
+              1000,
+            );
+        }
+      } else if (stratagemId === "resuscitate_stratagem") {
+        const hasFallen = players.some((p) => p.hp <= 0 || !!p.downState);
+        if (!hasFallen) {
+          const aliveCard = players
+            .map((p) => getCombatantCard(p.id))
+            .find((el) => !!el) as HTMLElement | undefined;
+          if (aliveCard) {
+            spawnCombatPopup(
+              aliveCard,
+              "combat-miss-popup",
+              "No fallen allies",
+              1300,
+            );
+          }
+          consumeStratagemNow = false;
+        } else {
+          consumeStratagemNow = false;
+          stratagemResuscitateTargetingMode = true;
+          showResuscitateTargetingHint();
+          document
+            .querySelectorAll(
+              "#combat-players-grid .combat-card.combat-card-down",
+            )
+            .forEach((card) => card.classList.add("combat-card-grenade-target"));
+        }
+      } else {
+        // Default stratagem behavior: Fortify.
+        const durationMs = 10_000;
+        const fortifyMitigationBonusPct = 0.2;
+        for (const p of players) {
+          if (p.hp <= 0 || p.downState) continue;
+          if ((p.stratagemMitigationBonusPct ?? 0) > 0) {
+            p.mitigationBonusPct = Math.max(
+              0,
+              (p.mitigationBonusPct ?? 0) - (p.stratagemMitigationBonusPct ?? 0),
+            );
+          }
+          if ((p.stratagemToughnessBonus ?? 0) > 0) {
+            p.toughness = Math.max(
+              0,
+              (p.toughness ?? 0) - (p.stratagemToughnessBonus ?? 0),
+            );
+          }
+          p.stratagemToughnessBonus = 0;
+          p.mitigationBonusPct =
+            (p.mitigationBonusPct ?? 0) + fortifyMitigationBonusPct;
+          p.stratagemMitigationBonusPct = fortifyMitigationBonusPct;
+          p.stratagemToughnessUntil = now + durationMs;
+          markCombatantDirty(p.id, { hp: false, status: true, speed: true });
+          const card = getCombatantCard(p.id);
+          if (card) {
+            card.classList.remove("combat-card-fortify-burst");
+            // Reflow to guarantee one-shot burst animation replays on activation.
+            void card.offsetWidth;
+            card.classList.add("combat-card-fortify-burst");
+            scheduleCombatClassRemoval(card, "combat-card-fortify-burst", 900);
+            spawnCombatPopup(card, "combat-heal-popup", "Fortify", 1000);
+          }
+        }
       }
-      usePlayerCompanyStore.getState().consumeEquippedStratagemUse();
+      if (consumeStratagemNow) {
+        stratagemUsesLeft = 0;
+        usePlayerCompanyStore.getState().consumeEquippedStratagemUse();
+      }
       renderCompanyAbilityBar(true);
       updateCombatUI(true);
     }
 
     function startCompanyAbilityTargeting(abilityId: CompanyAbilityId): void {
       if (extractionInProgress) return;
+      if (quitConfirmOpen) return;
       if (!combatStarted) return;
       if (combatWinner) return;
       const usesLeft = companyAbilityUsesLeft.get(abilityId);
@@ -6420,6 +6678,7 @@ export function eventConfigs() {
 
     function handleCompanyAbilityBarActivate(e: Event): void {
       if (extractionInProgress) return;
+      if (quitConfirmOpen) return;
       if (!combatStarted) return;
       const btn = (e.target as HTMLElement).closest(
         ".combat-company-ability-btn",
@@ -6464,6 +6723,7 @@ export function eventConfigs() {
       abilityId: CompanyAbilityId,
       target: Combatant,
     ): void {
+      if (quitConfirmOpen) return;
       const now = Date.now();
       if (target.hp <= 0 || target.downState) return;
 
@@ -6596,6 +6856,7 @@ export function eventConfigs() {
 
     function executeAbilityAction(abilityId: string, soldierId: string): void {
       if (extractionInProgress) return;
+      if (quitConfirmOpen) return;
       const ability = getSoldierAbilityById(abilityId);
       if (!ability) return;
       const combatant = players.find((p) => p.id === soldierId);
@@ -6610,6 +6871,7 @@ export function eventConfigs() {
 
     function handleCombatCardClick(e: Event, card: HTMLElement | null): void {
       if (extractionInProgress) return;
+      if (quitConfirmOpen) return;
       e.stopPropagation();
       if (companyAbilityTargetingMode) {
         if (
@@ -6677,6 +6939,53 @@ export function eventConfigs() {
         const target = enemies.find((c) => c.id === targetId);
         if (!target || target.hp <= 0 || target.downState) return;
         executeSuppress(suppressTargetingMode.user, target);
+        return;
+      }
+      if (stratagemResuscitateTargetingMode) {
+        if (!card || card.dataset.side !== "player") return;
+        const targetId = card.dataset.combatantId;
+        if (!targetId) return;
+        const target = players.find((c) => c.id === targetId);
+        if (!target) return;
+        if (!(target.hp <= 0 || !!target.downState)) return;
+
+        const rollSuccess = Math.random() < 0.5;
+        const now = Date.now();
+        stratagemUsesLeft = 0;
+        usePlayerCompanyStore.getState().consumeEquippedStratagemUse();
+        stratagemResuscitateTargetingMode = false;
+        document
+          .querySelectorAll(".combat-card-grenade-target")
+          .forEach((el) => el.classList.remove("combat-card-grenade-target"));
+        if (rollSuccess) {
+          target.hp = Math.max(1, Math.ceil(target.maxHp * 0.8));
+          delete target.downState;
+          delete target.killedBy;
+          target.setupUntil = now + 5_000;
+          if ((target.stratagemMitigationBonusPct ?? 0) > 0) {
+            target.mitigationBonusPct = Math.max(
+              0,
+              (target.mitigationBonusPct ?? 0) -
+                (target.stratagemMitigationBonusPct ?? 0),
+            );
+          }
+          target.stratagemMitigationBonusPct = 0.2;
+          target.mitigationBonusPct =
+            (target.mitigationBonusPct ?? 0) + target.stratagemMitigationBonusPct;
+          target.stratagemToughnessUntil = now + 5_000;
+          const targetCard = getCombatantCard(target.id);
+          if (targetCard) {
+            spawnCombatPopup(targetCard, "combat-heal-popup", "Resuscitated", 1400);
+          }
+        } else {
+          const targetCard = getCombatantCard(target.id);
+          if (targetCard) {
+            spawnCombatPopup(targetCard, "combat-miss-popup", "Resuscitate failed", 1400);
+          }
+        }
+        markCombatantDirty(target.id, { hp: true, status: true, speed: true });
+        renderCompanyAbilityBar(true);
+        updateCombatUI(true);
         return;
       }
       if (grenadeTargetingMode) {
@@ -6815,6 +7124,7 @@ export function eventConfigs() {
         eventType: "pointerdown",
         callback: (e: Event) => {
           if (extractionInProgress) return;
+          if (quitConfirmOpen) return;
           const ev = e as PointerEvent;
           if (ev.pointerType === "mouse" && ev.button !== 0) return;
           const t = e.target as HTMLElement;
@@ -6916,6 +7226,7 @@ export function eventConfigs() {
         eventType: "pointerdown",
         callback: (e: Event) => {
           if (extractionInProgress) return;
+          if (quitConfirmOpen) return;
           const ev = e as PointerEvent;
           if (ev.pointerType === "mouse" && ev.button !== 0) return;
           handleCompanyAbilityBarActivate(e);
@@ -6926,6 +7237,7 @@ export function eventConfigs() {
         eventType: "click",
         callback: (e: Event) => {
           if (extractionInProgress) return;
+          if (quitConfirmOpen) return;
           handleCompanyAbilityBarActivate(e);
         },
       },
@@ -6933,6 +7245,7 @@ export function eventConfigs() {
         selector: DOM.combat.battleArea,
         eventType: "click",
         callback: (e: Event) => {
+          if (quitConfirmOpen) return;
           const target = e.target as HTMLElement;
           if (target.closest("#combat-onboarding-popup")) return;
           if (target.closest("#combat-company-abilities-bar")) return;
@@ -6947,6 +7260,7 @@ export function eventConfigs() {
             grenadeTargetingMode ||
             medTargetingMode ||
             suppressTargetingMode ||
+            stratagemResuscitateTargetingMode ||
             companyAbilityTargetingMode
           ) {
             closeAbilitiesPopup();
@@ -6959,6 +7273,7 @@ export function eventConfigs() {
         selector: "#combat-screen",
         eventType: "click",
         callback: (e: Event) => {
+          if (quitConfirmOpen) return;
           const target = e.target as HTMLElement;
           if (target.closest("#combat-onboarding-popup")) return;
           if (target.closest("#combat-company-abilities-bar")) return;
@@ -6974,6 +7289,7 @@ export function eventConfigs() {
             grenadeTargetingMode ||
             medTargetingMode ||
             suppressTargetingMode ||
+            stratagemResuscitateTargetingMode ||
             companyAbilityTargetingMode
           ) {
             closeAbilitiesPopup();
@@ -7139,13 +7455,17 @@ export function eventConfigs() {
         eventType: "click",
         callback: () => {
           const popup = document.getElementById("combat-quit-confirm-popup");
-          if (popup) popup.removeAttribute("hidden");
+          if (popup) {
+            quitConfirmOpen = true;
+            popup.removeAttribute("hidden");
+          }
         },
       },
       {
         selector: DOM.combat.quitConfirmYes,
         eventType: "click",
         callback: () => {
+          quitConfirmOpen = false;
           if (combatTickId != null) {
             clearTimeout(combatTickId);
             combatTickId = null;
@@ -7168,6 +7488,7 @@ export function eventConfigs() {
         callback: () => {
           const popup = document.getElementById("combat-quit-confirm-popup");
           if (popup) popup.setAttribute("hidden", "");
+          quitConfirmOpen = false;
         },
       },
       {
@@ -8156,7 +8477,7 @@ export function eventConfigs() {
               document.getElementById("equip-slot-tooltip-content");
             if (tooltip && tooltipContent) {
               const eqIdx = slotType === "equipment" ? eqIndex : 0;
-              const unequipHtml = `<div class="item-popup-unequip-wrap"><button type="button" class="item-stats-popup-unequip-btn" data-unequip-soldier-id="${soldierId}" data-unequip-slot-type="${slotType}" data-unequip-eq-index="${eqIdx}"><span class="item-stats-popup-unequip-label">Unequip</span> <span aria-hidden="true">⏏</span></button></div>`;
+              const unequipHtml = `<div class="item-popup-unequip-wrap"><button type="button" class="item-stats-popup-unequip-btn" data-unequip-soldier-id="${soldierId}" data-unequip-slot-type="${slotType}" data-unequip-eq-index="${eqIdx}"><span class="item-stats-popup-unequip-label">Unequip</span> <span aria-hidden="true">⏏︎</span></button></div>`;
               tooltipContent.innerHTML =
                 getItemPopupBodyHtmlCompact(slotItem) + unequipHtml;
               (tooltip as HTMLElement).dataset.rarity =
@@ -9140,11 +9461,13 @@ export function eventConfigs() {
           if (targetFilled && legalMove) {
             setFormationSwapIndices([selected, slotIndex]);
             store.swapSoldierPositions(selected, slotIndex);
+            _AudioManager.UI().playItemSwap();
             UiManager.renderFormationScreen();
             setTimeout(() => setFormationSwapIndices(null), 450);
           } else if (!targetFilled && legalMove) {
             setFormationSwapIndices([selected, slotIndex]);
             store.moveSoldierToPosition(selected, slotIndex);
+            _AudioManager.UI().playItemSwap();
             UiManager.renderFormationScreen();
             setTimeout(() => setFormationSwapIndices(null), 450);
           }
@@ -9445,11 +9768,13 @@ export function eventConfigs() {
           if (hasSoldier && legalMove) {
             setLastReadyRoomMoveSlotIndices([selected, slotIndex]);
             store.swapSoldierPositions(selected, slotIndex);
+            _AudioManager.UI().playItemSwap();
             UiManager.renderReadyRoomScreen(mission);
             setTimeout(() => setLastReadyRoomMoveSlotIndices([]), 450);
           } else if (!hasSoldier && legalMove) {
             setLastReadyRoomMoveSlotIndices([selected, slotIndex]);
             store.moveSoldierToPosition(selected, slotIndex);
+            _AudioManager.UI().playItemSwap();
             UiManager.renderReadyRoomScreen(mission);
             setTimeout(() => setLastReadyRoomMoveSlotIndices([]), 450);
           }
@@ -10141,6 +10466,15 @@ export function eventConfigs() {
         const priceStr =
           (el as HTMLElement).dataset.finalPrice ??
           (el as HTMLElement).dataset.stratagemPrice;
+        const unlockLevel = Math.max(
+          1,
+          parseInt(
+            (el as HTMLElement).dataset.stratagemUnlockLevel ?? "1",
+            10,
+          ) || 1,
+        );
+        const lockedByLevel =
+          ((el as HTMLElement).dataset.stratagemLocked ?? "0") === "1";
         if (!itemJson || !priceStr) return;
         let item: Item;
         try {
@@ -10170,6 +10504,8 @@ export function eventConfigs() {
 
         const st = usePlayerCompanyStore.getState();
         const inv = st.company?.inventory ?? [];
+        const companyLevel = st.company?.level ?? st.companyLevel ?? 1;
+        const locked = lockedByLevel || companyLevel < unlockLevel;
         const ownedCount = inv.reduce((acc, it) => {
           if (it.id !== item.id) return acc;
           return acc + Math.max(1, it.uses ?? it.quantity ?? 1);
@@ -10178,6 +10514,8 @@ export function eventConfigs() {
 
         (popup as HTMLElement).dataset.stratagemItem = itemJson;
         (popup as HTMLElement).dataset.stratagemPrice = priceStr;
+        (popup as HTMLElement).dataset.stratagemUnlockLevel = String(unlockLevel);
+        (popup as HTMLElement).dataset.stratagemLocked = locked ? "1" : "0";
         titleEl.textContent = "";
         bodyEl.innerHTML =
           getItemPopupBodyHtml(item) +
@@ -10185,10 +10523,21 @@ export function eventConfigs() {
           `<p class="item-popup-price" style="margin-top:6px">Owned: <strong>${ownedCount}</strong></p>`;
         qtyInput.value = "1";
         qtyInput.max = "10";
+        qtyInput.disabled = locked;
+        const minusBtn = document.getElementById(
+          "stratagems-qty-minus",
+        ) as HTMLButtonElement | null;
+        const plusBtn = document.getElementById(
+          "stratagems-qty-plus",
+        ) as HTMLButtonElement | null;
+        if (minusBtn) minusBtn.disabled = locked;
+        if (plusBtn) plusBtn.disabled = locked;
         errorEl.textContent = "";
         errorEl.classList.remove("visible");
-        buyBtn.innerHTML = `Buy <span class="buy-btn-price">$${price.toLocaleString()}</span>`;
-        buyBtn.disabled = false;
+        buyBtn.innerHTML = locked
+          ? `Unlocks at Lv ${unlockLevel}`
+          : `Buy <span class="buy-btn-price">$${price.toLocaleString()}</span>`;
+        buyBtn.disabled = locked;
         popup.removeAttribute("hidden");
       },
     },
@@ -10202,6 +10551,7 @@ export function eventConfigs() {
         const popup = document.getElementById("stratagems-buy-popup");
         const buyBtn = document.getElementById("stratagems-buy-btn");
         if (!input || !popup || !buyBtn) return;
+        if ((popup as HTMLElement).dataset.stratagemLocked === "1") return;
         const v = Math.max(1, parseInt(input.value || "1", 10) - 1);
         input.value = String(v);
         const price = parseInt(
@@ -10222,6 +10572,7 @@ export function eventConfigs() {
         const popup = document.getElementById("stratagems-buy-popup");
         const buyBtn = document.getElementById("stratagems-buy-btn");
         if (!input || !popup || !buyBtn) return;
+        if ((popup as HTMLElement).dataset.stratagemLocked === "1") return;
         const max = Math.max(1, parseInt(input.max || "1", 10));
         const v = Math.min(max, parseInt(input.value || "1", 10) + 1);
         input.value = String(v);
@@ -10243,6 +10594,7 @@ export function eventConfigs() {
         ) as HTMLInputElement | null;
         const errorEl = document.getElementById("stratagems-buy-error");
         if (!popup || !qtyInput || !errorEl) return;
+        if ((popup as HTMLElement).dataset.stratagemLocked === "1") return;
         const itemJson = (popup as HTMLElement).dataset.stratagemItem;
         const priceStr = (popup as HTMLElement).dataset.stratagemPrice;
         if (!itemJson || !priceStr) return;

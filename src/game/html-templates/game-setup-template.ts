@@ -535,14 +535,15 @@ export const companyHomePageTemplate = () => {
   } = store;
   const totalMenInCompany = company?.soldiers?.length ?? storeMen ?? 0;
   const companyLvl = company?.level ?? companyLevel ?? 1;
+  const companyExpTotal = company?.experience ?? companyExperience ?? 0;
   const totalInventoryCapacity = getTotalArmorySlots(companyLvl);
   const totalItemsInInventory = company?.inventory?.length ?? storeItems ?? 0;
   const levelSnap = getCompanyLevelSnapshot(companyLvl);
 
-  const xpFloor = companyLvl <= 1 ? 0 : getXpRequiredForLevel(companyLvl - 1);
+  const xpFloor = getXpRequiredForLevel(companyLvl);
   const xpCeiling = getXpRequiredForLevel(companyLvl + 1);
   const xpInLevel = Math.max(1, xpCeiling - xpFloor);
-  const progressInLevel = Math.max(0, companyExperience - xpFloor);
+  const progressInLevel = Math.max(0, companyExpTotal - xpFloor);
   const xpFillPct =
     companyLvl >= MAX_COMPANY_LEVEL
       ? 100
@@ -578,7 +579,7 @@ export const companyHomePageTemplate = () => {
             <h2 class="company-home-hero-title">Command Center</h2>
             <span class="company-home-hero-subtitle">${heroSubtitle}</span>
           </div>
-          <button id="company-go-settings" class="game-btn game-btn-md game-btn-blue codex-memorial-btn company-home-settings-btn" aria-label="Settings"><span class="company-home-settings-gear" aria-hidden="true">⚙</span> Settings</button>
+          <button id="company-go-settings" class="game-btn game-btn-md game-btn-blue codex-memorial-btn company-home-settings-btn" aria-label="Settings"><span class="company-home-settings-gear" aria-hidden="true">⚙︎</span> Settings</button>
         </div>
       </div>
       <div class="company-home-kpi-strip">
@@ -755,7 +756,7 @@ export const companyHomePageTemplate = () => {
 	      <div class="company-xp-header">
 	        <span class="company-level-badge${companyLvl === 2 ? " company-level-badge-lv2" : ""}">Lv ${companyLvl}</span>
 	        ${companyLvl < MAX_COMPANY_LEVEL
-	          ? `<span class="company-xp-text"><span class="company-xp-current">${Math.round(progressInLevel)}</span> / <span class="company-xp-required">${xpInLevel}</span> XP</span>`
+	          ? `<span class="company-xp-text"><span class="company-xp-current">${Math.floor(progressInLevel).toLocaleString()}</span> / <span class="company-xp-required">${Math.floor(xpInLevel).toLocaleString()}</span> XP</span>`
 	          : '<span class="company-xp-max">MAX LEVEL</span>'}
           ${companyLvl < MAX_COMPANY_LEVEL
             ? `<span class="company-level-badge company-level-badge-target${nextLevel === 2 ? " company-level-badge-lv2" : ""}">Lv ${nextLevel}</span>`

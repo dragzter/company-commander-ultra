@@ -125,8 +125,16 @@ export interface Combatant {
   allowMitigationOvercapUntil?: number;
   /** Timestamp (ms) when stratagem toughness buff ends. */
   stratagemToughnessUntil?: number;
-  /** Flat toughness bonus applied by stratagem buff. */
+  /** Legacy flat toughness bonus applied by stratagem buff (deprecated). */
   stratagemToughnessBonus?: number;
+  /** Additive mitigation bonus from Fortify while active (e.g. 0.2 = +20%). */
+  stratagemMitigationBonusPct?: number;
+  /** Timestamp (ms) when stratagem attack speed buff ends. */
+  stratagemAttackSpeedUntil?: number;
+  /** Attack interval multiplier from stratagem speed buff (e.g. 0.8 = 20% faster). */
+  stratagemAttackSpeedMultiplier?: number;
+  /** Timestamp (ms) when armor-piercing auto attacks expire (ignores toughness). */
+  stratagemArmorPiercingUntil?: number;
   /** Epic mission elite: no HP handicap, gold frame */
   isEpicElite?: boolean;
   /** Manhunt high-value target: no HP handicap, gold frame */

@@ -85,7 +85,7 @@ export const COMPANY_ABILITY_DEFS: Record<CompanyAbilityId, CompanyAbilityDef> =
       name: "Infantry Armor",
       short: "All allies gain +50% mitigation for 15s (can overcap).",
       description:
-        "For 15 seconds, all living soldiers in the squad gain +50% mitigation. This bonus can exceed normal mitigation cap.",
+        "For 15 seconds, all soldiers in the squad gain +50% mitigation. This bonus can exceed normal mitigation cap.",
       icon: "/images/inf_armor.png",
       cooldownSeconds: 1_800,
     },
@@ -103,15 +103,15 @@ export const COMPANY_ABILITY_DEFS: Record<CompanyAbilityId, CompanyAbilityDef> =
       kind: "passive",
       name: "Targeting Optics",
       short: "+1% hit chance for all current and future soldiers.",
-      description:
-        "+1% chance to hit for all current and future soldiers.",
+      description: "+1% chance to hit for all current and future soldiers.",
       icon: "/images/optics.png",
     },
     gunnery: {
       id: "gunnery",
       kind: "passive",
       name: "Gunnery",
-      short: "Support suppression cooldown reduced by 20s; suppress fire cannot be evaded.",
+      short:
+        "Support suppression cooldown reduced by 20s; suppress fire cannot be evaded.",
       description:
         "Support soldiers suppress more often. Suppression cooldown is reduced by 20s (now 40s), and suppress attacks cannot be evaded.",
       icon: "/images/gunnery.png",
@@ -128,7 +128,8 @@ export const COMPANY_ABILITY_DEFS: Record<CompanyAbilityId, CompanyAbilityDef> =
       id: "fire_and_maneuver",
       kind: "passive",
       name: "Fire and Maneuver",
-      short: "Take Cover cooldown -15s. After cover ends: +30% toughness for 5s.",
+      short:
+        "Take Cover cooldown -15s. After cover ends: +30% toughness for 5s.",
       description:
         "Take Cover cooldown reduced by 15s (60s -> 45s). After Take Cover expires, gain +30% toughness for 5s.",
       icon: "/images/fire_m.png",
@@ -138,8 +139,7 @@ export const COMPANY_ABILITY_DEFS: Record<CompanyAbilityId, CompanyAbilityDef> =
       kind: "passive",
       name: "Grenadier Training",
       short: "+15% frag/incendiary damage from player throws.",
-      description:
-        "Frag and incendiary grenade damage increased by 15%.",
+      description: "Frag and incendiary grenade damage increased by 15%.",
       icon: "/images/grenadiers.png",
     },
     artillery_barrage: {
@@ -148,7 +148,8 @@ export const COMPANY_ABILITY_DEFS: Record<CompanyAbilityId, CompanyAbilityDef> =
       name: "Artillery Barrage",
       short: "Once per battle: all enemies, 90% hit, deals 36-60% max HP.",
       description:
-        "Activate once per battle. Affects all enemies with a flat 90% hit roll (no evade). On hit, deals 36-60% of max HP as raw damage (then mitigation applies).",
+        "Activate once per battle. Affects all enemies on the battlefield, cannot be avoided. On" +
+        " hit, deals 36-60% of max HP as raw damage (then mitigation applies).",
       icon: "/images/arty.png",
     },
     napalm_barrage: {
@@ -157,7 +158,8 @@ export const COMPANY_ABILITY_DEFS: Record<CompanyAbilityId, CompanyAbilityDef> =
       name: "Napalm Barrage",
       short: "Once per battle: all enemies, 4 ticks, 8-13% max HP each.",
       description:
-        "Once per battle. Affects all enemies with a flat 90% hit roll (no evade). On hit, applies 4 burn ticks (1s each), each tick for 8-13% of max HP, ignoring mitigation.",
+        "Once per battle. Affects all enemies on the map, cannot be avoided. On hit, applies 4" +
+        " burn ticks (1s each), each tick for 8-13% of max HP, ignoring mitigation.",
       icon: "/images/napalm.png",
     },
     advanced_field_medicine: {
@@ -183,9 +185,10 @@ export const COMPANY_ABILITY_DEFS: Record<CompanyAbilityId, CompanyAbilityDef> =
       id: "battle_fervor",
       kind: "active",
       name: "Battle Fervor",
-      short: "All allies gain +70% attack speed, +30% crit chance, +15% hit chance, +100% damage for 15s.",
+      short:
+        "All allies gain +70% attack speed, +30% crit chance, +15% hit chance, +100% damage for 15s.",
       description:
-        "For 15 seconds, all living soldiers in the squad gain +70% attack speed, +30% critical hit chance, +15% chance to hit, and +100% damage.",
+        "For 15 seconds, all soldiers in the squad gain +70% attack speed, +30% critical hit chance, +15% chance to hit, and +100% damage.",
       icon: "/images/battle_fervor.png",
       cooldownSeconds: 1_800,
     },

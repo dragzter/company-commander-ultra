@@ -24,6 +24,7 @@ function toFactionClass(factionId: string | undefined): string {
 export function careerTemplate(input: {
   mission: Mission;
   nextMission: Mission;
+  upcomingMission?: Mission | null;
   unlocked: boolean;
   activeSoldierCount: number;
   companyName: string;
@@ -38,6 +39,7 @@ export function careerTemplate(input: {
   const {
     mission,
     nextMission,
+    upcomingMission,
     unlocked,
     activeSoldierCount,
     companyName,
@@ -57,8 +59,16 @@ export function careerTemplate(input: {
   const nextFactionClass = toFactionClass(nextMission.factionId);
   const enemyCount = getDisplayEnemyCount(mission);
   const nextEnemyCount = getDisplayEnemyCount(nextMission);
-  const canLaunch = unlocked && activeSoldierCount > 0;
-  const launchLevel = Math.max(1, mission.careerLevel ?? careerLevel);
+  const currentMissionLevel = Math.max(1, Math.floor(mission.careerLevel ?? mission.difficulty ?? 1));
+  const upcomingMissionLevel = Math.max(1, Math.floor(nextMission.careerLevel ?? (careerLevel + 1)));
+  const queuedMissionLevel = Math.max(1, Math.floor(upcomingMission?.careerLevel ?? (careerLevel + 1)));
+  const queuedFactionMeta =
+    (upcomingMission?.factionId && MISSION_FACTION_META[upcomingMission.factionId]) || null;
+  const queuedFactionClass = toFactionClass(upcomingMission?.factionId);
+  const queuedEnemyCount = upcomingMission ? getDisplayEnemyCount(upcomingMission) : 0;
+  const canLaunch = unlocked && activeSoldierCount > 0 && !animateAdvance;
+  const launchLevel = Math.max(1, Math.floor(careerLevel));
+  const promoteCardClass = animateAdvance ? " career-mission-card-promote" : "";
   const resolvedPatchUrl = (() => {
     const raw = (companyPatchUrl ?? "").trim();
     if (!raw) return "";
@@ -109,15 +119,19 @@ export function careerTemplate(input: {
         </div>
       </article>
       <article class="career-mission-card career-mission-card-current ${currentFactionClass}" data-mission-id="${esc(mission.id)}" data-mission-json="${esc(JSON.stringify(mission))}">
+        <div class="career-mission-level-hero" aria-hidden="true">
+          <span class="career-mission-level-hero-prefix">Lv</span>
+          <span class="career-mission-level-hero-value">${currentMissionLevel}</span>
+        </div>
+        <span class="career-mission-state-badge">Current</span>
         <header class="career-mission-head">
           <span class="career-mission-brand">
             ${factionMeta?.emblem ? `<img class="career-mission-faction-emblem" src="${esc(factionMeta.emblem)}" alt="${esc(factionMeta.name)} emblem" width="24" height="24">` : ""}
             <span class="career-mission-brand-copy">
               <span class="career-mission-faction">${esc(factionMeta?.name ?? "Hostile Force")}</span>
-              <span class="career-mission-level-badge">Mission Lv ${mission.careerLevel ?? mission.difficulty}</span>
+              <span class="career-mission-level-badge">Mission Lv ${currentMissionLevel}</span>
             </span>
           </span>
-          <span class="career-mission-state-badge">Current</span>
         </header>
         <h4 class="career-mission-title">Current Mission</h4>
         <p class="career-mission-brief">Eliminate all hostile targets.</p>
@@ -126,22 +140,58 @@ export function careerTemplate(input: {
           <span class="career-mission-meta-tag"><span class="career-credit-symbol">${CREDIT_SYMBOL}</span>${mission.creditReward}</span>
         </div>
       </article>
-      <article class="career-mission-card career-mission-card-next ${nextFactionClass}" data-preview-level="${nextMission.careerLevel ?? (careerLevel + 1)}">
+      ${animateAdvance && upcomingMission ? `
+      <article class="career-mission-card career-mission-card-upcoming ${queuedFactionClass}" data-preview-level="${queuedMissionLevel}">
+        <div class="career-mission-level-hero" aria-hidden="true">
+          <span class="career-mission-level-hero-prefix">Lv</span>
+          <span class="career-mission-level-hero-value">${queuedMissionLevel}</span>
+        </div>
+        <span class="career-mission-state-badge">Next</span>
+        <header class="career-mission-head">
+          <span class="career-mission-brand">
+            ${queuedFactionMeta?.emblem ? `<img class="career-mission-faction-emblem" src="${esc(queuedFactionMeta.emblem)}" alt="${esc(queuedFactionMeta.name)} emblem" width="24" height="24">` : ""}
+            <span class="career-mission-brand-copy">
+              <span class="career-mission-faction">${esc(queuedFactionMeta?.name ?? "Hostile Force")}</span>
+              <span class="career-mission-level-badge">Mission Lv ${queuedMissionLevel}</span>
+            </span>
+          </span>
+        </header>
+        <h4 class="career-mission-title">Next Up</h4>
+        <p class="career-mission-brief">Advance the ladder by winning current mission.</p>
+        <div class="career-mission-meta">
+          <span class="career-mission-meta-tag">Enemies ${queuedEnemyCount}</span>
+          <span class="career-mission-meta-tag"><span class="career-credit-symbol">${CREDIT_SYMBOL}</span>${upcomingMission.creditReward}</span>
+        </div>
+        <div class="career-mission-lock-overlay" aria-hidden="true">
+          <span class="career-mission-lock-glyph"></span>
+          <span class="career-mission-lock-text">Locked</span>
+        </div>
+      </article>
+      ` : ""}
+      <article class="career-mission-card career-mission-card-next${promoteCardClass} ${nextFactionClass}" data-preview-level="${nextMission.careerLevel ?? (careerLevel + 1)}">
+        <div class="career-mission-level-hero" aria-hidden="true">
+          <span class="career-mission-level-hero-prefix">Lv</span>
+          <span class="career-mission-level-hero-value">${upcomingMissionLevel}</span>
+        </div>
+        <span class="career-mission-state-badge">Next</span>
         <header class="career-mission-head">
           <span class="career-mission-brand">
             ${nextFactionMeta?.emblem ? `<img class="career-mission-faction-emblem" src="${esc(nextFactionMeta.emblem)}" alt="${esc(nextFactionMeta.name)} emblem" width="24" height="24">` : ""}
             <span class="career-mission-brand-copy">
               <span class="career-mission-faction">${esc(nextFactionMeta?.name ?? "Hostile Force")}</span>
-              <span class="career-mission-level-badge">Mission Lv ${nextMission.careerLevel ?? (careerLevel + 1)}</span>
+              <span class="career-mission-level-badge">Mission Lv ${upcomingMissionLevel}</span>
             </span>
           </span>
-          <span class="career-mission-state-badge">Next</span>
         </header>
         <h4 class="career-mission-title">Next Up</h4>
         <p class="career-mission-brief">Advance the ladder by winning current mission.</p>
         <div class="career-mission-meta">
           <span class="career-mission-meta-tag">Enemies ${nextEnemyCount}</span>
           <span class="career-mission-meta-tag"><span class="career-credit-symbol">${CREDIT_SYMBOL}</span>${nextMission.creditReward}</span>
+        </div>
+        <div class="career-mission-lock-overlay${animateAdvance ? " career-mission-lock-overlay-promote" : ""}" aria-hidden="true">
+          <span class="career-mission-lock-glyph"></span>
+          <span class="career-mission-lock-text">Locked</span>
         </div>
       </article>
     </div>

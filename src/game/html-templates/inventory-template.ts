@@ -342,7 +342,11 @@ const WEAPON_ROLE_LABELS: Record<string, string> = {
   any: "Any",
 };
 
-function inventoryItemCard(item: Item, index: number): string {
+function inventoryItemCard(
+  item: Item,
+  index: number,
+  equippedStratagemItemId: string | null = null,
+): string {
   const iconUrl = getItemIconUrl(item);
   const uses = item.uses;
   const rarity = item.rarity ?? "common";
@@ -358,12 +362,22 @@ function inventoryItemCard(item: Item, index: number): string {
   const roleBadgeHtml = weaponRole ? `<span class="market-weapon-role-badge role-${weaponRole}">${WEAPON_ROLE_LABELS[weaponRole] ?? weaponRole}</span>` : "";
   const usesBadgeHtml = isSupplies && badgeN != null && badgeN >= 1 ? `<span class="market-item-uses-badge">×${badgeN}</span>` : "";
   const levelBadgeHtml = renderItemLevelBadge(item);
+  const isEquippedStratagem =
+    isStratagemItem(item) &&
+    !!equippedStratagemItemId &&
+    item.id === equippedStratagemItemId;
+  const stratagemEquippedBadgeHtml = isEquippedStratagem
+    ? '<span class="stratagem-equipped-badge" aria-label="Stratagem equipped"><span class="stratagem-equipped-check">✓</span><span class="stratagem-equipped-text">Equipped</span></span>'
+    : "";
   const iconHtml = iconUrl
-    ? `<div class="market-item-icon-wrap"><img class="market-item-icon" src="${iconUrl}" alt="${item.name}" width="42" height="42">${levelBadgeHtml}${usesBadgeHtml}${roleBadgeHtml}</div>`
+    ? `<div class="market-item-icon-wrap"><img class="market-item-icon" src="${iconUrl}" alt="${item.name}" width="42" height="42">${levelBadgeHtml}${usesBadgeHtml}${roleBadgeHtml}${stratagemEquippedBadgeHtml}</div>`
     : "";
   const cardRarity = rarity !== "common" ? ` market-item-rarity-${rarity} rarity-${rarity}` : "";
+  const equippedClass = isEquippedStratagem
+    ? " inventory-item-card-stratagem-equipped"
+    : "";
   return `
-<div class="inventory-item-card market-item-slot gear-market-item${cardRarity}" data-item-index="${index}" data-item-id="${item.id}" data-item-json="${escapeAttr(JSON.stringify(item))}" role="button" tabindex="0">
+<div class="inventory-item-card market-item-slot gear-market-item${cardRarity}${equippedClass}" data-item-index="${index}" data-item-id="${item.id}" data-item-json="${escapeAttr(JSON.stringify(item))}" role="button" tabindex="0">
   <div class="market-item-inner">
     ${iconHtml}
     <div class="market-item-details">
@@ -414,6 +428,7 @@ function holdingItemCard(item: Item): string {
 export function inventoryTemplate(): string {
   const store = usePlayerCompanyStore.getState();
   const company = store.company;
+  const equippedStratagemItemId = store.equippedStratagemItemId ?? null;
   const items = company?.inventory ?? [];
   const holding = company?.holding_inventory ?? [];
   const companyLevel = store.company?.level ?? store.companyLevel ?? 1;
@@ -460,7 +475,7 @@ export function inventoryTemplate(): string {
     const gridItems = slots
       .map((item, i) =>
         item
-          ? inventoryItemCard(item, slotIndices[i]!)
+          ? inventoryItemCard(item, slotIndices[i]!, equippedStratagemItemId)
           : '<div class="inventory-empty-slot" aria-label="Empty slot"><span class="inventory-empty-slot-text">Empty</span></div>',
       )
       .join("");

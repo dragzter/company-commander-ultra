@@ -2,5 +2,15 @@
 	"appId": "com.companycommander.ultra",
 	"appName": "Fireteam Leader",
 	"webDir": "dist",
-	"packageClassList": []
+	"plugins": {
+		"SplashScreen": {
+			"launchAutoHide": false,
+			"showSpinner": false,
+			"backgroundColor": "#000000",
+			"launchFadeOutDuration": 220
+		}
+	},
+	"packageClassList": [
+		"SplashScreenPlugin"
+	]
 }
