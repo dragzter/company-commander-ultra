@@ -26,19 +26,15 @@ export function setFormationSwapIndices(indices: [number, number] | null) {
 
 function formationEquipSlot(
   item: Item | undefined,
-  soldierId: string,
-  slotType: "weapon" | "armor" | "equipment",
-  eqIndex: number,
 ): string {
-  const dataAttrs = `data-soldier-id="${soldierId}" data-slot-type="${slotType}" data-eq-index="${eqIndex}" data-slot-item="${item ? escapeAttr(JSON.stringify(item)) : ""}" role="button" tabindex="0"`;
-  if (!item) return `<div class="formation-equip-slot formation-equip-empty formation-equip-droppable" title="Empty" ${dataAttrs}><span class="formation-equip-placeholder">—</span></div>`;
+  if (!item) return `<div class="formation-equip-slot formation-equip-empty" title="Empty"><span class="formation-equip-placeholder">—</span></div>`;
   const iconUrl = getItemIconUrl(item);
   const name = item.name ?? "?";
   const uses = item.uses ?? item.quantity;
   const usesBadge = uses != null ? `<span class="equip-slot-uses-badge">×${uses}</span>` : "";
-  if (!iconUrl) return `<div class="formation-equip-slot formation-equip-empty formation-equip-droppable" title="${name}" ${dataAttrs}><span class="formation-equip-placeholder">—</span></div>`;
+  if (!iconUrl) return `<div class="formation-equip-slot formation-equip-empty" title="${name}"><span class="formation-equip-placeholder">—</span></div>`;
   return `
-<div class="formation-equip-slot item-icon-wrap formation-equip-droppable" title="${name}" ${dataAttrs}>
+<div class="formation-equip-slot item-icon-wrap" title="${name}">
   <img class="formation-equip-icon" src="${iconUrl}" alt="" width="32" height="32">
   ${renderItemLevelBadge(item, "formation-equip-level")}
   ${usesBadge}
@@ -75,12 +71,12 @@ function formationSoldierCard(
         <span class="formation-name">${formatDisplayName(s.name)}</span>
       </div>
       <div class="formation-equip-row">
-        ${formationEquipSlot(s.weapon as Item | undefined, s.id, "weapon", 0)}
-        ${formationEquipSlot(s.armor as Item | undefined, s.id, "armor", 0)}
+        ${formationEquipSlot(s.weapon as Item | undefined)}
+        ${formationEquipSlot(s.armor as Item | undefined)}
       </div>
       <div class="formation-equip-row">
-        ${formationEquipSlot((s.inventory ?? [])[0] as Item | undefined, s.id, "equipment", 0)}
-        ${formationEquipSlot((s.inventory ?? [])[1] as Item | undefined, s.id, "equipment", 1)}
+        ${formationEquipSlot((s.inventory ?? [])[0] as Item | undefined)}
+        ${formationEquipSlot((s.inventory ?? [])[1] as Item | undefined)}
       </div>
     </div>
   </div>
@@ -137,6 +133,25 @@ export function formationTemplate(): string {
     }
   }
 
+  const tutorialFormationMarketPopup =
+    store.tutorialDirector?.enabled &&
+    !store.tutorialDirector?.completed &&
+    store.tutorialDirector?.step === "formation_market_prompt"
+      ? `
+  <div id="formation-market-onboarding-popup" class="home-onboarding-popup helper-onboarding-popup" role="dialog" aria-modal="true">
+    <div class="home-onboarding-dialog helper-onboarding-dialog">
+      <div class="home-onboarding-copy helper-onboarding-copy">
+        <h4 class="home-onboarding-title helper-onboarding-title">Nice Formation</h4>
+        <p class="home-onboarding-text helper-onboarding-text helper-onboarding-typed-text" id="formation-market-onboarding-typed-text" data-full-text="Great. Next, let's look at Market again."></p>
+        <button id="formation-market-onboarding-continue" type="button" class="game-btn game-btn-md game-btn-green home-onboarding-continue helper-onboarding-continue">Continue</button>
+      </div>
+      <div class="home-onboarding-image-wrap helper-onboarding-image-wrap">
+        <img src="/images/green-portrait/portrait_0.png" alt="Squad soldier" class="home-onboarding-image helper-onboarding-image">
+      </div>
+    </div>
+  </div>`
+      : "";
+
   return `
 <div id="formation-screen" class="formation-root troops-market-root" data-selected-index="-1">
   ${companyHeaderPartial("Formation")}
@@ -166,5 +181,6 @@ export function formationTemplate(): string {
     </div>
     ${companyActionsTemplate()}
   </div>
+  ${tutorialFormationMarketPopup}
 </div>`;
 }

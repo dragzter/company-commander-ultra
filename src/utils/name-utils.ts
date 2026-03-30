@@ -1,4 +1,3 @@
-import { faker } from "@faker-js/faker";
 import json from "./json/names-1.json";
 import json2 from "./json/last-names-1.json";
 
@@ -7,6 +6,46 @@ import {
   getRandomValueFromStringArray as grv,
 } from "./math.ts";
 import "../game/entities/types.ts";
+
+function generateSyntheticLastName(): string {
+  const starts = [
+    "Black",
+    "Stone",
+    "Iron",
+    "Wolf",
+    "Storm",
+    "Ash",
+    "Frost",
+    "Hawk",
+    "Steel",
+    "Raven",
+    "Thorn",
+    "West",
+    "North",
+    "Vale",
+    "Grim",
+    "High",
+  ];
+  const ends = [
+    "wood",
+    "field",
+    "son",
+    "man",
+    "ford",
+    "well",
+    "crest",
+    "hart",
+    "brook",
+    "ridge",
+    "burn",
+    "holm",
+    "gate",
+    "mark",
+    "ward",
+    "stone",
+  ];
+  return `${grv(starts)}${grv(ends)}`;
+}
 
 function generateName() {
   const letters = [
@@ -44,7 +83,7 @@ function generateName() {
   const alternateLastName = Math.floor(Math.random() * 10);
   const lastName =
     alternateLastName > 6
-      ? faker.person.lastName()
+      ? generateSyntheticLastName()
       : json2.names[lastNameIndex];
 
   if (Math.floor(Math.random() * 10) > 3) {

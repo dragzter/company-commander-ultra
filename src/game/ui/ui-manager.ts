@@ -49,7 +49,10 @@ function UiManager() {
       [GAME_STEPS.at_company_homepage_4]: () => renderCompanyHomePage(),
     };
 
-    loadGameAt[gameStep]();
+    const load =
+      loadGameAt[gameStep as keyof typeof loadGameAt] ??
+      loadGameAt[GAME_STEPS.at_intro_0];
+    load();
   }
 
   function _setStep(step: GameStep) {
@@ -58,14 +61,18 @@ function UiManager() {
   }
 
   function enterGame() {
-    if (!s_(DOM.enterGame)) {
+    const gameEnter = s_(DOM.enterGame) as HTMLButtonElement | null;
+    if (!gameEnter) {
       throw new Error("Element '#game-enter' is undefined, does it exist?");
     }
+    if (gameEnter.dataset.bound === "1") return;
+    gameEnter.dataset.bound = "1";
 
     const state = usePlayerCompanyStore.getState();
 
     state.initializeCompany();
     _DomEventManager.initGlobalButtonClickAudio();
+    _DomEventManager.initTutorialInteractionLock();
     _AudioManager.Settings().bindGestureUnlock();
     const ua = navigator.userAgent || "";
     const iosTouchMac =
@@ -76,37 +83,54 @@ function UiManager() {
       document.body?.classList.add("ios-mobile-perf");
     }
 
-    const gameEnter = s_(DOM.enterGame);
-
-    gameEnter.addEventListener("click", () => {
-      _AudioManager
-        .Settings()
-        .setMusicEnabled(
-          usePlayerCompanyStore.getState().musicEnabled !== false,
-        );
-      _AudioManager
-        .Settings()
-        .setSfxEnabled(usePlayerCompanyStore.getState().sfxEnabled !== false);
-      _AudioManager
-        .Intro()
-        .play()
-        .catch((e) => {
-          console.error("Failed to play intro:", e);
-        });
-
+    let launched = false;
+    const launch = () => {
+      if (launched) return;
+      launched = true;
       startScreenLoading();
       gameEnter.setAttribute("disabled", "true");
-
-      _UiAnim.animate(gameEnter, Animations.pulse[1]);
+      try {
+        _AudioManager
+          .Settings()
+          .setMusicEnabled(
+            usePlayerCompanyStore.getState().musicEnabled !== false,
+          );
+        _AudioManager
+          .Settings()
+          .setSfxEnabled(usePlayerCompanyStore.getState().sfxEnabled !== false);
+        _AudioManager
+          .Intro()
+          .play()
+          .catch((e) => {
+            console.error("Failed to play intro:", e);
+          });
+        _UiAnim.animate(gameEnter, Animations.pulse[1]);
+      } catch (e) {
+        console.error("Enter game pre-launch hook failed:", e);
+      }
 
       setTimeout(() => {
-        s_(DOM.enterGameWrapper).remove();
+        const wrapper = s_(DOM.enterGameWrapper);
+        wrapper?.remove();
       }, 1000);
+    };
+
+    gameEnter.addEventListener("click", () => launch());
+    gameEnter.addEventListener("pointerup", () => launch());
+    gameEnter.addEventListener("touchend", (e) => {
+      e.preventDefault();
+      launch();
+    });
+    gameEnter.addEventListener("keydown", (e: KeyboardEvent) => {
+      if (e.key !== "Enter" && e.key !== " ") return;
+      e.preventDefault();
+      launch();
     });
   }
 
   function startScreenLoading() {
-    s_("#game-enter").textContent = "...Loading";
+    const button = s_("#game-enter");
+    if (button) button.textContent = "...Loading";
   }
 
   function unselectCompanyHomeButtons() {
@@ -224,11 +248,6 @@ function UiManager() {
     _ScreenManager.generate.createAbilitiesPage();
   }
 
-  function renderTrainingScreen() {
-    usePlayerCompanyStore.getState().clearMarketFlareOffer();
-    _ScreenManager.generate.createTrainingPage();
-  }
-
   function renderMissionsScreen(mode?: "menu" | "normal" | "epic" | "career" | "dev") {
     usePlayerCompanyStore.getState().clearMarketFlareOffer();
     const store = usePlayerCompanyStore.getState();
@@ -311,7 +330,6 @@ function UiManager() {
     renderInventoryScreen,
     refreshEquipPickerContent,
     renderAbilitiesScreen,
-    renderTrainingScreen,
     renderMissionsScreen,
     renderReadyRoomScreen,
     renderCombatScreen,

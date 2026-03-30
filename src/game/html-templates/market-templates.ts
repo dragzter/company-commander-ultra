@@ -37,10 +37,16 @@ export const marketTemplate = () => {
   const c = (d: string) => clrHash(d);
   const store = usePlayerCompanyStore.getState();
   const recruitOnboardingMarketOnly = store.onboardingRecruitStep === "market";
-  const onboardingMarketSectionsLocked =
-    store.onboardingMarketSectionsLocked === true;
-  const showTroopsOnlyMarket =
-    recruitOnboardingMarketOnly || onboardingMarketSectionsLocked;
+  const tutorialStep = store.tutorialDirector?.step;
+  const tutorialRecruitMarketGateActive =
+    store.tutorialDirector?.enabled &&
+    !store.tutorialDirector?.completed &&
+    (tutorialStep === "recruit_market_credits" ||
+      tutorialStep === "recruit_open_troops");
+  // Only gate market sections during the initial recruit tutorial path.
+  // Ignore legacy/stale onboardingMarketSectionsLocked state so medic reminders
+  // never hide Supplies/Armor/Weapons again.
+  const showTroopsOnlyMarket = tutorialRecruitMarketGateActive;
   const troopsBtnClass = recruitOnboardingMarketOnly ? " blue mbtn mb-3 onboarding-focus-btn" : "blue mbtn mb-3";
   const suppliesBtnClass =
     store.onboardingSuppliesStep === "supplies_focus"
@@ -73,6 +79,42 @@ export const marketTemplate = () => {
     </div>
   </div>`
       : "";
+  const tutorialCreditsPopup =
+    store.tutorialDirector?.enabled &&
+    !store.tutorialDirector?.completed &&
+    store.tutorialDirector?.step === "recruit_market_credits"
+      ? `
+  <div id="market-credits-onboarding-popup" class="market-credits-onboarding-callout" role="dialog" aria-modal="true">
+    <div class="market-credits-onboarding-dialog">
+      <div class="market-credits-onboarding-copy">
+        <h4 class="home-onboarding-title helper-onboarding-title">Credits</h4>
+        <p class="home-onboarding-text helper-onboarding-text helper-onboarding-typed-text" id="market-credits-onboarding-typed-text" data-full-text="These are your credits. Earn them by completing missions, then spend them to recruit soldiers and buy equipment."></p>
+        <button id="market-credits-onboarding-continue" type="button" class="game-btn game-btn-md game-btn-green home-onboarding-continue helper-onboarding-continue">Continue</button>
+      </div>
+      <div class="market-credits-onboarding-image-wrap">
+        <img src="/images/green-portrait/portrait_0.png" alt="Quartermaster" class="market-credits-onboarding-image">
+      </div>
+    </div>
+  </div>`
+      : "";
+  const armoryEquipPromptPopup =
+    store.tutorialDirector?.enabled &&
+    !store.tutorialDirector?.completed &&
+    store.tutorialDirector?.step === "armory_equip_prompt"
+      ? `
+  <div id="armory-equip-onboarding-popup" class="home-onboarding-popup helper-onboarding-popup" role="dialog" aria-modal="true">
+    <div class="home-onboarding-dialog helper-onboarding-dialog">
+      <div class="home-onboarding-copy helper-onboarding-copy">
+        <h4 class="home-onboarding-title helper-onboarding-title">Armory Setup</h4>
+        <p class="home-onboarding-text helper-onboarding-text helper-onboarding-typed-text" id="armory-equip-onboarding-typed-text" data-full-text="Now let's equip this bad boy."></p>
+        <button id="armory-equip-onboarding-continue" type="button" class="game-btn game-btn-md game-btn-green home-onboarding-continue helper-onboarding-continue">Continue</button>
+      </div>
+      <div class="home-onboarding-image-wrap helper-onboarding-image-wrap">
+        <img src="/images/green-portrait/portrait_0.png" alt="Quartermaster" class="home-onboarding-image helper-onboarding-image">
+      </div>
+    </div>
+  </div>`
+      : "";
 
   return `
 	<div id="cc-market" class="flex h-100 column">
@@ -89,10 +131,14 @@ export const marketTemplate = () => {
 				<button id="${c(market.marketStratagemsLink)}" class="${stratagemsBtnClass}" ${stratagemsUnlocked ? "" : "disabled"} title="${stratagemsUnlocked ? "Squad-wide tactical support items" : "Unlocks at company level 2"}">${stratagemsLabel}</button>
 				<button id="${c(market.marketDevCatalogLink)}" class="gray mbtn market-dev-btn" title="Developer: view all weapons and armor">Dev Catalog</button>`}
 			</div>
-			<div class="market-credits-inline">${marketCreditsPartial(usePlayerCompanyStore.getState().creditBalance)}</div>
+			<div class="market-credits-inline${tutorialCreditsPopup ? " market-credits-inline-tutorial" : ""}">
+        ${marketCreditsPartial(usePlayerCompanyStore.getState().creditBalance)}
+        ${tutorialCreditsPopup}
+      </div>
 		</div>
 
 		${companyActionsTemplate()}
+    ${armoryEquipPromptPopup}
     ${marketTutorialPopup}
     ${marketFlarePopupHtml()}
 	</div>
@@ -791,7 +837,13 @@ export const troopsMarketTemplate = (
   });
   const stagedIds = new Set(recruitStaging.map((s) => s.id));
   const availableTroops = orderedTroops.filter((t) => !stagedIds.has(t.id));
-  const displayedTroops = guidedRecruit ? availableTroops.slice(0, 1) : availableTroops;
+  const guidedRecruitCandidate = store.onboardingRecruitSoldier
+    ?? availableTroops.find((t) => (t.designation ?? "").toLowerCase() === "medic")
+    ?? availableTroops[0]
+    ?? null;
+  const displayedTroops = guidedRecruit
+    ? (guidedRecruitCandidate ? [guidedRecruitCandidate] : [])
+    : availableTroops;
   const guidedRecruitButtonGlow = guidedRecruit && onboardingStep === "troops_recruit" && recruitStaging.length === 0;
   const guidedConfirmGlow = guidedRecruit && onboardingStep === "troops_confirm" && recruitStaging.length > 0;
 

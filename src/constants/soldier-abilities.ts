@@ -50,7 +50,7 @@ export const SOLDIER_ABILITIES: SoldierAbility[] = [
     description: "Fire 3 quick bursts with machine gun suppressing enemies.",
     icon: SUPPRESS_ICON,
     designationRestrict: "support",
-    cooldown: 60,
+    cooldown: 45,
     actionId: "suppress",
     slotClassName: "combat-ability-suppress-wrap",
   },

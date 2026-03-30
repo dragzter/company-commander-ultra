@@ -5,6 +5,8 @@ import { DomEventManager } from "../game/ui/event-handlers/dom-event-manager.ts"
 import { eventConfigs } from "../game/ui/event-configs.ts";
 import {
   type CompanyStore,
+  DEFAULT_ARMORY_SECTIONS_OPEN,
+  type ArmorySectionId,
   GAME_STEPS,
   type GameStep,
   type MarketFlareOffer,
@@ -61,7 +63,12 @@ import {
   isStratagemItem,
   STRATAGEM_ARMORY_SLOTS,
 } from "../constants/stratagem-market.ts";
-import { getRewardItemById, pickRandomCommonSupply } from "../utils/reward-utils.ts";
+import {
+  getRewardItemById,
+  pickRandomCommonSupply,
+  pickRandomEpicSupply,
+  pickRandomRareSupply,
+} from "../utils/reward-utils.ts";
 import {
   createWeaponByBaseId,
   createArmorByBaseId,
@@ -73,9 +80,8 @@ import {
 } from "../constants/gear-catalog.ts";
 import type { Mission } from "../constants/missions.ts";
 import {
-  LOOT_EPIC_CHANCE,
-  LOOT_RARE_CHANCE,
-  LOOT_COMMON_SUPPLY_CHANCE,
+  EPIC_MODE_LOOT_BY_DIFFICULTY,
+  NORMAL_MODE_LOOT_BY_DIFFICULTY,
 } from "../constants/missions.ts";
 import type { MemorialEntry } from "../game/entities/memorial-types.ts";
 import { getStarterArmoryItems } from "../constants/starter-armory.ts";
@@ -105,6 +111,13 @@ import {
   getCompanyProgressionEntry,
   type CompanyProgressionEntry,
 } from "../constants/company-progression.ts";
+import {
+  DEFAULT_TUTORIAL_DIRECTOR,
+  DEFAULT_TUTORIAL_MILESTONES,
+  getNextTutorialStep,
+  type TutorialMilestones,
+  type TutorialStepId,
+} from "../services/tutorial/tutorial-director.ts";
 
 function pickReplacementMission(
   completed: Mission,
@@ -217,6 +230,49 @@ function resolveRecruitLevel(company: Company | null | undefined, highestAchieve
 
 function countStratagemArmoryItems(items: Item[]): number {
   return items.reduce((sum, item) => sum + (isStratagemItem(item) ? 1 : 0), 0);
+}
+
+function createDefaultTutorialDirector(): CompanyStore["tutorialDirector"] {
+  return {
+    ...DEFAULT_TUTORIAL_DIRECTOR,
+    milestones: { ...DEFAULT_TUTORIAL_MILESTONES },
+  };
+}
+
+function advanceTutorialStep(
+  director: CompanyStore["tutorialDirector"] | undefined,
+): CompanyStore["tutorialDirector"] {
+  const current = director ?? createDefaultTutorialDirector();
+  if (current.completed || current.step === "completed") {
+    return {
+      ...current,
+      completed: true,
+      step: "completed",
+      resumeRequested: false,
+    };
+  }
+  const next = getNextTutorialStep(current.step);
+  return {
+    ...current,
+    step: next,
+    completed: next === "completed",
+    resumeRequested: false,
+  };
+}
+
+function setTutorialMilestone(
+  director: CompanyStore["tutorialDirector"] | undefined,
+  key: keyof TutorialMilestones,
+  value: boolean,
+): CompanyStore["tutorialDirector"] {
+  const current = director ?? createDefaultTutorialDirector();
+  return {
+    ...current,
+    milestones: {
+      ...current.milestones,
+      [key]: value,
+    },
+  };
 }
 
 const VETERANCY_CHECKPOINTS = [25, 55, 90, 130, 175, 225, 280, 340, 410];
@@ -548,6 +604,8 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
   onboardingMarketSectionsLocked: false,
   onboardingRecruitStep: "none" as RecruitOnboardingStep,
   onboardingRecruitSoldier: null,
+  armorySectionsOpen: { ...DEFAULT_ARMORY_SECTIONS_OPEN },
+  tutorialDirector: createDefaultTutorialDirector(),
   companyAbilityChoices: defaultCompanyAbilityChoices(),
   companyAbilityUnlockedIds: ["focused_fire"] as CompanyAbilityId[],
   companyAbilityPendingChoiceLevels: [],
@@ -682,6 +740,8 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
         onboardingMarketSectionsLocked: false,
         onboardingRecruitStep: "none",
         onboardingRecruitSoldier: null,
+        armorySectionsOpen: { ...DEFAULT_ARMORY_SECTIONS_OPEN },
+        tutorialDirector: createDefaultTutorialDirector(),
         companyAbilityChoices: defaultCompanyAbilityChoices(),
         companyAbilityUnlockedIds: ["focused_fire"] as CompanyAbilityId[],
         companyAbilityPendingChoiceLevels: [],
@@ -756,27 +816,85 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
   setOnboardingCombatTutorialPending: (pending: boolean) => set({ onboardingCombatTutorialPending: !!pending }),
   setOnboardingMedicRecruitNoticePending: (pending: boolean) => set({ onboardingMedicRecruitNoticePending: !!pending }),
   setOnboardingMedicRecruitNoticeSeen: (seen: boolean) =>
-    set((state: CompanyStore) => {
-      const nextSeen = !!seen;
-      const hasGrenadeThreshold =
-        (state.totalGrenadesThrownAllTime ?? 0) >= 4;
-      const suppliesIdle = (state.onboardingSuppliesStep ?? "none") === "none";
-      const medicPending = state.onboardingMedicRecruitNoticePending ?? false;
-      return {
-        onboardingMedicRecruitNoticeSeen: nextSeen,
-        onboardingSuppliesStep:
-          nextSeen && !medicPending && hasGrenadeThreshold && suppliesIdle
-            ? "market_popup"
-            : state.onboardingSuppliesStep,
-      };
-    }),
+    set({ onboardingMedicRecruitNoticeSeen: !!seen }),
   setOnboardingMissionTypesIntroPending: (pending: boolean) => set({ onboardingMissionTypesIntroPending: !!pending }),
   setOnboardingTacticsIntroPending: (pending: boolean) => set({ onboardingTacticsIntroPending: !!pending }),
-  setOnboardingSuppliesStep: (step: SuppliesOnboardingStep) => set({ onboardingSuppliesStep: step }),
+  setOnboardingSuppliesStep: (step: SuppliesOnboardingStep) =>
+    set((state: CompanyStore) => {
+      // Once completed, never regress this flow unless a full game reset occurs.
+      if (state.onboardingSuppliesStep === "done" && step !== "done") {
+        return {};
+      }
+      return { onboardingSuppliesStep: step };
+    }),
   setOnboardingMarketSectionsLocked: (locked: boolean) =>
     set({ onboardingMarketSectionsLocked: !!locked }),
   setOnboardingRecruitStep: (step: RecruitOnboardingStep) => set({ onboardingRecruitStep: step }),
   setOnboardingRecruitSoldier: (soldier: Soldier | null) => set({ onboardingRecruitSoldier: soldier }),
+  setArmorySectionOpen: (section: ArmorySectionId, open: boolean) =>
+    set((state: CompanyStore) => ({
+      armorySectionsOpen: {
+        ...(state.armorySectionsOpen ?? DEFAULT_ARMORY_SECTIONS_OPEN),
+        [section]: !!open,
+      },
+    })),
+  setTutorialStep: (step: TutorialStepId) =>
+    set((state: CompanyStore) => ({
+      tutorialDirector: {
+        ...(state.tutorialDirector ?? createDefaultTutorialDirector()),
+        step,
+        completed: step === "completed",
+        resumeRequested: false,
+      },
+    })),
+  setTutorialEnabled: (enabled: boolean) =>
+    set((state: CompanyStore) => ({
+      tutorialDirector: {
+        ...(state.tutorialDirector ?? createDefaultTutorialDirector()),
+        enabled: !!enabled,
+        resumeRequested: false,
+      },
+    })),
+  setTutorialCompleted: (completed: boolean) =>
+    set((state: CompanyStore) => ({
+      tutorialDirector: {
+        ...(state.tutorialDirector ?? createDefaultTutorialDirector()),
+        completed: !!completed,
+        step: completed
+          ? "completed"
+          : (state.tutorialDirector?.step ?? "home_open_missions"),
+        resumeRequested: false,
+      },
+    })),
+  setTutorialLockEnabled: (enabled: boolean) =>
+    set((state: CompanyStore) => ({
+      tutorialDirector: {
+        ...(state.tutorialDirector ?? createDefaultTutorialDirector()),
+        enforceLock: !!enabled,
+      },
+    })),
+  requestTutorialResume: () =>
+    set((state: CompanyStore) => ({
+      tutorialDirector: {
+        ...(state.tutorialDirector ?? createDefaultTutorialDirector()),
+        resumeRequested: true,
+      },
+    })),
+  clearTutorialResumeRequest: () =>
+    set((state: CompanyStore) => ({
+      tutorialDirector: {
+        ...(state.tutorialDirector ?? createDefaultTutorialDirector()),
+        resumeRequested: false,
+      },
+    })),
+  markTutorialMilestone: (key: keyof TutorialMilestones, value = true) =>
+    set((state: CompanyStore) => ({
+      tutorialDirector: setTutorialMilestone(
+        state.tutorialDirector,
+        key,
+        !!value,
+      ),
+    })),
   dismissCompanyAbilityNotification: () => set({ companyAbilityNotificationText: "" }),
   setCompanyAbilityCooldownUntil: (
     abilityId: CompanyAbilityId,
@@ -805,7 +923,10 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
       ((state.onboardingSuppliesStep ?? "none") !== "none" &&
         (state.onboardingSuppliesStep ?? "none") !== "done") ||
       (state.onboardingMedicRecruitNoticePending ?? false) ||
-      (state.onboardingMissionTypesIntroPending ?? false);
+      (state.onboardingMissionTypesIntroPending ?? false) ||
+      (state.tutorialDirector?.enabled &&
+        !state.tutorialDirector.completed &&
+        state.tutorialDirector.step !== "completed");
     if (onboardingBusy) return;
     if (state.pendingFlareNotice) {
       set({ randomEventRollArmed: false });
@@ -1120,8 +1241,21 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
       const newMarketIds = new Set(added.map((s) => s.id));
       const returned = staging.filter((s) => !newMarketIds.has(s.id));
       const currentSlots = getFormationSlots(state.company);
+      const activeCount = getActiveSlots(state.company);
       const idsToPlace = [...added.map((s) => s.id)];
-      const newFormationSlots = currentSlots.map((slot) => (slot != null ? slot : idsToPlace.shift() ?? null));
+      const newFormationSlots = currentSlots.slice();
+      const reserveEmptyIndices: number[] = [];
+      for (let i = activeCount; i < newFormationSlots.length; i++) {
+        if (newFormationSlots[i] == null) reserveEmptyIndices.push(i);
+      }
+      while (idsToPlace.length > 0) {
+        let placeIndex = reserveEmptyIndices.shift();
+        if (placeIndex == null) {
+          placeIndex = newFormationSlots.findIndex((slot) => slot == null);
+        }
+        if (placeIndex < 0) break;
+        newFormationSlots[placeIndex] = idsToPlace.shift() ?? null;
+      }
       const nextCompany = {
         ...state.company,
         soldiers: newSoldiers,
@@ -1184,8 +1318,31 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
   },
   addInitialTroopsIfEmpty: () =>
     set((state: CompanyStore) => {
-      const soldiers = state.company?.soldiers ?? [];
-      if (soldiers.length > 0) return {};
+      const rawSoldiers = state.company?.soldiers;
+      const validSoldiers = Array.isArray(rawSoldiers)
+        ? rawSoldiers.filter(
+            (s): s is Soldier =>
+              !!s &&
+              typeof s === "object" &&
+              typeof s.id === "string" &&
+              s.id.length > 0,
+          )
+        : [];
+      if (validSoldiers.length > 0) {
+        if (validSoldiers.length === (rawSoldiers?.length ?? 0)) return {};
+        const companyWithValidSoldiers = {
+          ...state.company,
+          soldiers: validSoldiers,
+        };
+        const formationSlots = getFormationSlots(companyWithValidSoldiers);
+        return {
+          company: {
+            ...companyWithValidSoldiers,
+            formationSlots,
+          },
+          totalMenInCompany: validSoldiers.length,
+        };
+      }
       const modelTrait = SoldierManager.getSoldierTraitProfileByName("model_soldier");
       const nimbleTrait = SoldierManager.getSoldierTraitProfileByName("nimble");
       const veteranTrait = SoldierManager.getSoldierTraitProfileByName("veteran");
@@ -1242,6 +1399,13 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
         onboardingMarketSectionsLocked: true,
         onboardingRecruitStep: "none",
         onboardingRecruitSoldier: null,
+        tutorialDirector: {
+          ...createDefaultTutorialDirector(),
+          step: "home_open_missions",
+          completed: false,
+          resumeRequested: false,
+          milestones: { ...DEFAULT_TUTORIAL_MILESTONES },
+        },
         companyAbilityUnlockedIds: resolvedAbilities.unlocked,
         companyAbilityPendingChoiceLevels: resolvedAbilities.pendingChoiceLevels,
         companyAbilityChoices: state.companyAbilityChoices ?? defaultCompanyAbilityChoices(),
@@ -1356,11 +1520,13 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
 
   canProceedToLaunch: () => {
     const state = get();
+    const companyName = (state.companyName ?? "").trim();
+    const commanderName = (state.commanderName ?? "").trim();
     return (
-      state.companyName.length > 4 &&
-      state.companyName.length < 16 &&
-      state.commanderName.length > 2 &&
-      state.commanderName.length < 16 &&
+      companyName.length >= 1 &&
+      companyName.length <= 15 &&
+      commanderName.length >= 1 &&
+      commanderName.length <= 15 &&
       state.companyUnitPatchURL !== ""
     );
   },
@@ -1403,10 +1569,25 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
         inv = [...inv, item];
       }
     }
-    set((s: CompanyStore) => ({
-      creditBalance: s.creditBalance - totalCost,
-      company: { ...s.company, inventory: inv },
-    }));
+    const purchasedArmor = items.some((it) => it.type === "armor");
+    set((s: CompanyStore) => {
+      let tutorialDirector = s.tutorialDirector;
+      if (
+        purchasedArmor &&
+        tutorialDirector?.enabled &&
+        !tutorialDirector.completed &&
+        tutorialDirector.step === "armory_buy_armor"
+      ) {
+        tutorialDirector = advanceTutorialStep(
+          setTutorialMilestone(tutorialDirector, "armorBought", true),
+        );
+      }
+      return {
+        creditBalance: s.creditBalance - totalCost,
+        company: { ...s.company, inventory: inv },
+        tutorialDirector,
+      };
+    });
     return { success: true };
   },
   consumeSoldierMedical: (soldierId: string, inventoryIndex: number) => {
@@ -1488,6 +1669,7 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
     if (soldierIdx < 0) return { success: false, reason: "soldier not found" };
 
     const soldier = soldiers[soldierIdx];
+    const equippingArmor = slotType === "armor";
     let toAddToArmory: import("../constants/items/types.ts").Item[] = [];
     let newArmory = armory.slice();
 
@@ -1570,12 +1752,24 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
         SoldierManager.refreshCombatProfile(updated);
         return updated;
       }) ?? [];
+      let tutorialDirector = s.tutorialDirector;
+      if (
+        equippingArmor &&
+        tutorialDirector?.enabled &&
+        !tutorialDirector.completed &&
+        tutorialDirector.step === "armory_equip_armor"
+      ) {
+        tutorialDirector = advanceTutorialStep(
+          setTutorialMilestone(tutorialDirector, "armorEquipped", true),
+        );
+      }
       return {
         company: {
           ...s.company,
           soldiers: newSoldiers,
           inventory: armoryAfter,
         },
+        tutorialDirector,
       };
     });
     return { success: true };
@@ -1661,6 +1855,24 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
     destSlotType: "weapon" | "armor" | "equipment";
     destEqIndex?: number;
   }) => {
+    const formationOrReadyRoomActive =
+      typeof document !== "undefined" &&
+      (() => {
+        const formationScreen = document.getElementById("formation-screen");
+        const readyRoomScreen = document.getElementById("ready-room-screen");
+        const formationVisible =
+          !!formationScreen && !formationScreen.hasAttribute("hidden");
+        const readyRoomVisible =
+          !!readyRoomScreen && !readyRoomScreen.hasAttribute("hidden");
+        return formationVisible || readyRoomVisible;
+      })();
+    if (formationOrReadyRoomActive) {
+      return {
+        success: false,
+        reason: "equipment changes are disabled in formation and ready room",
+      };
+    }
+
     const state = get();
     const soldiers = state.company?.soldiers ?? [];
     const src = soldiers.find((s) => s.id === op.sourceSoldierId);
@@ -1816,7 +2028,25 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
       if (slotA < 0 || slotA >= slots.length || slotB < 0 || slotB >= slots.length) return {};
       const copy = slots.slice();
       [copy[slotA], copy[slotB]] = [copy[slotB], copy[slotA]];
-      return { company: { ...s.company, formationSlots: copy } };
+      const activeCount = getActiveSlots(s.company);
+      const promotedFromReserveToActive =
+        (slotA >= activeCount && slotB < activeCount) ||
+        (slotB >= activeCount && slotA < activeCount);
+      let tutorialDirector = s.tutorialDirector;
+      if (
+        tutorialDirector?.enabled &&
+        !tutorialDirector.completed &&
+        tutorialDirector.step === "formation_move" &&
+        promotedFromReserveToActive
+      ) {
+        tutorialDirector = advanceTutorialStep(
+          setTutorialMilestone(tutorialDirector, "formationMoved", true),
+        );
+      }
+      return {
+        company: { ...s.company, formationSlots: copy },
+        tutorialDirector,
+      };
     });
   },
 
@@ -1829,7 +2059,24 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
       const copy = slots.slice();
       copy[toSlot] = copy[fromSlot];
       copy[fromSlot] = null;
-      return { company: { ...s.company, formationSlots: copy } };
+      const activeCount = getActiveSlots(s.company);
+      const promotedFromReserveToActive =
+        fromSlot >= activeCount && toSlot < activeCount;
+      let tutorialDirector = s.tutorialDirector;
+      if (
+        tutorialDirector?.enabled &&
+        !tutorialDirector.completed &&
+        tutorialDirector.step === "formation_move" &&
+        promotedFromReserveToActive
+      ) {
+        tutorialDirector = advanceTutorialStep(
+          setTutorialMilestone(tutorialDirector, "formationMoved", true),
+        );
+      }
+      return {
+        company: { ...s.company, formationSlots: copy },
+        tutorialDirector,
+      };
     });
   },
 
@@ -1991,32 +2238,27 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
       /* Loot rolls: each rolled independently on successful missions */
       const tier = Math.max(1, Math.min(999, itemLevel)) as import("../constants/items/types.ts").GearLevel;
       const missionRarity = mission.rarity ?? (mission.isEpic ? "epic" : "normal");
-      const difficulty = Math.max(1, Math.min(4, Math.floor(mission.difficulty ?? 1)));
-      const normalLootByDifficulty: Record<number, { rare: number; common: number }> = {
-        1: { rare: 0, common: 0 },
-        2: { rare: 0.01, common: 0.03 },
-        3: { rare: 0.02, common: 0.05 },
-        4: { rare: 0.05, common: 0.1 },
-      };
+      const difficulty = Math.max(1, Math.min(4, Math.floor(mission.difficulty ?? 1))) as 1 | 2 | 3 | 4;
+      const modeLoot =
+        missionRarity === "epic"
+          ? EPIC_MODE_LOOT_BY_DIFFICULTY[difficulty]
+          : NORMAL_MODE_LOOT_BY_DIFFICULTY[difficulty];
 
-      if (missionRarity === "epic" && Math.random() < LOOT_EPIC_CHANCE) {
-          const isWeapon = Math.random() < 0.5;
-          const epicArmorIds = getEpicArmorBaseIdsForLevel(itemLevel);
-          const baseId = isWeapon
-            ? pickRandomFrom(EPIC_WEAPON_BASE_IDS)
-            : pickRandomFrom(epicArmorIds);
-          if (baseId) {
-            const drop = isWeapon
-              ? createWeaponByBaseId(baseId, tier)
-              : createArmorByBaseId(baseId, tier);
-            if (drop) addItemToInventory(drop, true);
-          }
+      if (modeLoot.epicGear > 0 && Math.random() < modeLoot.epicGear) {
+        const isWeapon = Math.random() < 0.5;
+        const epicArmorIds = getEpicArmorBaseIdsForLevel(itemLevel);
+        const baseId = isWeapon
+          ? pickRandomFrom(EPIC_WEAPON_BASE_IDS)
+          : pickRandomFrom(epicArmorIds);
+        if (baseId) {
+          const drop = isWeapon
+            ? createWeaponByBaseId(baseId, tier)
+            : createArmorByBaseId(baseId, tier);
+          if (drop) addItemToInventory(drop, true);
         }
-      const rareChance =
-        missionRarity === "normal"
-          ? (normalLootByDifficulty[difficulty]?.rare ?? 0)
-          : LOOT_RARE_CHANCE;
-      if (Math.random() < rareChance) {
+      }
+
+      if (Math.random() < modeLoot.rareGear) {
         const isWeapon = Math.random() < 0.5;
         const rareArmorIds = getRareArmorBaseIdsForLevel(itemLevel);
         const baseId = isWeapon
@@ -2029,12 +2271,17 @@ export const StoreActions = (set: any, get: () => CompanyStore) => ({
           if (drop) addItemToInventory(drop, true);
         }
       }
-      const commonSupplyChance =
-        missionRarity === "normal"
-          ? (normalLootByDifficulty[difficulty]?.common ?? 0)
-          : LOOT_COMMON_SUPPLY_CHANCE;
-      if (Math.random() < commonSupplyChance) {
-        const supply = pickRandomCommonSupply();
+
+      if (Math.random() < modeLoot.supplyDrop) {
+        const epicWeight = Math.max(0, Math.min(1, modeLoot.epicSupplyWeight));
+        const rareWeight = Math.max(0, Math.min(1 - epicWeight, modeLoot.rareSupplyWeight));
+        const roll = Math.random();
+        const supply =
+          roll < epicWeight
+            ? pickRandomEpicSupply()
+            : roll < epicWeight + rareWeight
+              ? pickRandomRareSupply()
+              : pickRandomCommonSupply();
         if (supply) addItemToInventory(withMissionItemLevel(supply), true);
       }
     }

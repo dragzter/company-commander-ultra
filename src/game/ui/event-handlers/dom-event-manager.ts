@@ -1,5 +1,7 @@
 import type { HandlerInitConfig } from "../../../constants/types.ts";
 import { AudioManager } from "../../audio/audio-manager.ts";
+import { usePlayerCompanyStore } from "../../../store/ui-store.ts";
+import { shouldBlockTutorialInteraction } from "../../../services/tutorial/tutorial-director.ts";
 
 function DomEventManager() {
   const handlerMap: Map<
@@ -109,6 +111,7 @@ function DomEventManager() {
   const delegatedIds = new Set<string>();
   let _tooltipCaptureAttached = false;
   let _buttonAudioCaptureAttached = false;
+  let _tutorialLockCaptureAttached = false;
 
   /** Hide equip slot tooltip on any click (capture phase). Slot handlers re-show if needed. */
   function initEquipSlotTooltipHideOnClick() {
@@ -133,8 +136,8 @@ function DomEventManager() {
     if (_buttonAudioCaptureAttached) return;
     _buttonAudioCaptureAttached = true;
     const fn = (e: Event) => {
-      const target = e.target as HTMLElement | null;
-      if (!target) return;
+      const target = e.target;
+      if (!(target instanceof HTMLElement)) return;
       const buttonLike = target.closest(
         "button, [role='button'], .game-btn, .tab-btn, .market-btn",
       ) as HTMLElement | null;
@@ -158,6 +161,37 @@ function DomEventManager() {
     });
   }
 
+  function initTutorialInteractionLock() {
+    if (_tutorialLockCaptureAttached) return;
+    _tutorialLockCaptureAttached = true;
+    const blocker = (e: Event) => {
+      const target = e.target;
+      if (!(target instanceof HTMLElement)) return;
+      const state = usePlayerCompanyStore.getState();
+      if (!shouldBlockTutorialInteraction(state, target)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      (e as Event & { stopImmediatePropagation?: () => void })
+        .stopImmediatePropagation?.();
+    };
+    document.addEventListener("pointerdown", blocker, true);
+    document.addEventListener("click", blocker, true);
+    handlerMap.set("tutorial-lock-pointerdown", {
+      callback: blocker as EventListener,
+      selector: "(capture)",
+      elements: [document],
+      eventType: "pointerdown",
+      capture: true,
+    });
+    handlerMap.set("tutorial-lock-click", {
+      callback: blocker as EventListener,
+      selector: "(capture)",
+      elements: [document],
+      eventType: "click",
+      capture: true,
+    });
+  }
+
   /**
    * Event delegation: attach to a persistent parent; handlers work for dynamically added content.
    * Use for nav buttons (Home, Market, Roster, etc.) that get recreated on each screen.
@@ -173,7 +207,8 @@ function DomEventManager() {
     if (delegatedIds.has(cacheKey)) return;
 
     const delegatedListener = (e: Event) => {
-      const target = e.target as HTMLElement;
+      const target = e.target;
+      if (!(target instanceof HTMLElement)) return;
       for (const config of eventConfig) {
         let match = target.closest(config.selector);
         // Clicks on label (span) miss the button - also match wrapper via data-nav-target
@@ -206,6 +241,7 @@ function DomEventManager() {
     initDelegatedEventArray,
     initEquipSlotTooltipHideOnClick,
     initGlobalButtonClickAudio,
+    initTutorialInteractionLock,
     removeHandlers,
     getMap: () => new Map(handlerMap),
   };

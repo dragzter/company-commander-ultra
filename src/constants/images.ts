@@ -53,7 +53,6 @@ const btn = {
   sq_heroes: "heroes_button.png",
   sq_mission: "missions_button.png",
   sq_star: "star_button.png",
-  sq_training: "training_button.png",
 };
 
 const logo = {

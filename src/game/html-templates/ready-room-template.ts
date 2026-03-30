@@ -39,19 +39,15 @@ function escapeAttr(s: string): string {
 
 function readyRoomEquipSlot(
   item: Item | undefined,
-  soldierId: string,
-  slotType: "weapon" | "armor" | "equipment",
-  eqIndex: number,
 ): string {
-  const dataAttrs = `data-soldier-id="${soldierId}" data-slot-type="${slotType}" data-eq-index="${eqIndex}" data-slot-item="${item ? escapeAttr(JSON.stringify(item)) : ""}" role="button" tabindex="0"`;
-  if (!item) return `<div class="ready-room-equip-slot ready-room-equip-empty ready-room-equip-droppable" title="Empty" ${dataAttrs}><span class="ready-room-equip-placeholder">—</span></div>`;
+  if (!item) return `<div class="ready-room-equip-slot ready-room-equip-empty" title="Empty"><span class="ready-room-equip-placeholder">—</span></div>`;
   const iconUrl = getItemIconUrl(item);
   const name = item.name ?? "?";
   const uses = item.uses ?? item.quantity;
   const usesBadge = uses != null ? `<span class="equip-slot-uses-badge">×${uses}</span>` : "";
-  if (!iconUrl) return `<div class="ready-room-equip-slot ready-room-equip-empty ready-room-equip-droppable" title="${name}" ${dataAttrs}><span class="ready-room-equip-placeholder">—</span></div>`;
+  if (!iconUrl) return `<div class="ready-room-equip-slot ready-room-equip-empty" title="${name}"><span class="ready-room-equip-placeholder">—</span></div>`;
   return `
-<div class="ready-room-equip-slot item-icon-wrap ready-room-equip-droppable" title="${name}" ${dataAttrs}>
+<div class="ready-room-equip-slot item-icon-wrap" title="${name}">
   <img class="ready-room-equip-icon" src="${iconUrl}" alt="" width="38" height="38">
   ${renderItemLevelBadge(item, "ready-room-equip-level")}
   ${usesBadge}
@@ -86,12 +82,12 @@ function readyRoomSoldierCard(s: Soldier, slotIndex: number, isActive: boolean):
         <span class="ready-room-name">${formatDisplayName(s.name)}</span>
       </div>
       <div class="ready-room-equip-row">
-        ${readyRoomEquipSlot(s.weapon as Item | undefined, s.id, "weapon", 0)}
-        ${readyRoomEquipSlot(s.armor as Item | undefined, s.id, "armor", 0)}
+        ${readyRoomEquipSlot(s.weapon as Item | undefined)}
+        ${readyRoomEquipSlot(s.armor as Item | undefined)}
       </div>
       <div class="ready-room-equip-row">
-        ${readyRoomEquipSlot((s.inventory ?? [])[0] as Item | undefined, s.id, "equipment", 0)}
-        ${readyRoomEquipSlot((s.inventory ?? [])[1] as Item | undefined, s.id, "equipment", 1)}
+        ${readyRoomEquipSlot((s.inventory ?? [])[0] as Item | undefined)}
+        ${readyRoomEquipSlot((s.inventory ?? [])[1] as Item | undefined)}
       </div>
     </div>
   </div>
@@ -174,7 +170,7 @@ export function readyRoomTemplate(mission: Mission | null): string {
     <div class="ready-room-onboarding-dialog helper-onboarding-dialog">
       <div class="ready-room-onboarding-copy helper-onboarding-copy">
         <h4 class="ready-room-onboarding-title helper-onboarding-title">Ready Room Briefing</h4>
-        <p class="ready-room-onboarding-text helper-onboarding-text helper-onboarding-typed-text" id="ready-room-onboarding-typed-text" data-full-text="Set your squad here: tap Active and Reserve soldiers to swap positions, and tap matching gear slots to transfer equipment."></p>
+        <p class="ready-room-onboarding-text helper-onboarding-text helper-onboarding-typed-text" id="ready-room-onboarding-typed-text" data-full-text="Set your squad here: tap Active and Reserve soldiers to swap positions."></p>
         <p class="ready-room-onboarding-text helper-onboarding-text">Tap <span class="helper-onboarding-inline-btn">Proceed to Mission</span> when ready.</p>
         <button id="ready-room-onboarding-continue" type="button" class="game-btn game-btn-md game-btn-green ready-room-onboarding-continue helper-onboarding-continue">Continue</button>
       </div>

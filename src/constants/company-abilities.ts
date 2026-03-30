@@ -7,7 +7,6 @@ export type CompanyAbilityId =
   | "emergency_medevac"
   | "trauma_response"
   | "infantry_armor"
-  | "advanced_field_medicine"
   | "advanced_tactical_training"
   | "targeting_optics"
   | "gunnery"
@@ -15,7 +14,6 @@ export type CompanyAbilityId =
   | "fire_and_maneuver"
   | "grenadier_training"
   | "artillery_barrage"
-  | "dig_in"
   | "napalm_barrage"
   | "battle_fervor";
 
@@ -47,7 +45,7 @@ export const COMPANY_ABILITY_DEFS: Record<CompanyAbilityId, CompanyAbilityDef> =
       description:
         "Select one enemy. All player soldiers retarget that unit for 8s (even if it enters cover).",
       icon: "/images/scan.png",
-      cooldownSeconds: 75,
+      cooldownSeconds: 45,
     },
     improved_focused_fire: {
       id: "improved_focused_fire",
@@ -111,9 +109,9 @@ export const COMPANY_ABILITY_DEFS: Record<CompanyAbilityId, CompanyAbilityDef> =
       kind: "passive",
       name: "Gunnery",
       short:
-        "Support suppression cooldown reduced by 20s; suppress fire cannot be evaded.",
+        "Support suppression cooldown reduced by 15s; suppress fire cannot be evaded.",
       description:
-        "Support soldiers suppress more often. Suppression cooldown is reduced by 20s (now 40s), and suppress attacks cannot be evaded.",
+        "Support soldiers suppress more often. Suppression cooldown is reduced by 15s (now 30s), and suppress attacks cannot be evaded.",
       icon: "/images/gunnery.png",
     },
     entrenchment_techniques: {
@@ -161,25 +159,6 @@ export const COMPANY_ABILITY_DEFS: Record<CompanyAbilityId, CompanyAbilityDef> =
         "Once per battle. Affects all enemies on the map, cannot be avoided. On hit, applies 4" +
         " burn ticks (1s each), each tick for 8-13% of max HP, ignoring mitigation.",
       icon: "/images/napalm.png",
-    },
-    advanced_field_medicine: {
-      id: "advanced_field_medicine",
-      kind: "passive",
-      name: "Advanced Field Medicine",
-      short: "Effectiveness of Med kits increased by 15%",
-      description:
-        "Effectiveness of all Med kits increased b 15%, this applies to non-Medic use.",
-      icon: "/images/advanced_medical.png",
-    },
-    dig_in: {
-      id: "dig_in",
-      kind: "active",
-      name: "Dig In",
-      short: "Order your men to dig in and hang on!",
-      description:
-        "Your entire squad is ordered to dig in for a period of 10 seconds receiving a 10% flat" +
-        " mitigation benefit.",
-      icon: "/images/dig_in.png",
     },
     battle_fervor: {
       id: "battle_fervor",
@@ -275,7 +254,7 @@ export function getCompanyPassiveEffects(
   }
   if (owned.has("targeting_optics")) chanceToHitBonusPct += 0.01;
   if (owned.has("gunnery")) {
-    supportSuppressCooldownReductionMs += 20_000;
+    supportSuppressCooldownReductionMs += 15_000;
     suppressIgnoresEvade = true;
   }
   if (owned.has("fire_and_maneuver")) takeCoverCooldownReductionMs += 15_000;
@@ -306,7 +285,7 @@ export function getCompanyActiveAbilities(
 ): CompanyAbilityDef[] {
   return Array.from(owned)
     .map((id) => COMPANY_ABILITY_DEFS[id])
-    .filter((def) => def.kind === "active");
+    .filter((def): def is CompanyAbilityDef => Boolean(def) && def.kind === "active");
 }
 
 export function getCompanyPassiveTraitEntries(
@@ -352,7 +331,7 @@ export function getCompanyPassiveTraitEntries(
     out.push({
       title: "Gunnery",
       type: "Company",
-      desc: "Support suppression cooldown reduced by 20s. Suppress attacks cannot be evaded.",
+      desc: "Support suppression cooldown reduced by 15s. Suppress attacks cannot be evaded.",
     });
   }
   if (owned.has("improved_focused_fire")) {

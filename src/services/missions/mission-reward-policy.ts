@@ -11,8 +11,6 @@ export interface MissionRewardInput {
 
 const KIND_REWARD_MODIFIERS: Record<MissionKind, number> = {
   defend_objective: 1.0,
-  ambush: 1.05,
-  attack_objective: 1.1,
   skirmish: 1.1,
   manhunt: 1.15,
 };
@@ -29,6 +27,9 @@ const BASE_CREDITS_BY_DIFFICULTY: Record<number, number> = {
   3: 560,
   4: 820,
 };
+
+// Global economy lever for mission cash payouts.
+const CREDIT_REWARD_GLOBAL_MULTIPLIER = 1.2;
 
 const BASE_XP_BY_DIFFICULTY: Record<number, number> = {
   1: 36,
@@ -62,7 +63,9 @@ export function computeMissionRewards(input: MissionRewardInput): {
   const levelCreditMod = computeLevelCreditMultiplier(input.missionLevel);
   const totalMod = kindMod * rarityMod;
   return {
-    creditReward: Math.round(baseCredits * totalMod * levelCreditMod),
+    creditReward: Math.round(
+      baseCredits * totalMod * levelCreditMod * CREDIT_REWARD_GLOBAL_MULTIPLIER,
+    ),
     xpReward: Math.round(baseXp * totalMod),
   };
 }

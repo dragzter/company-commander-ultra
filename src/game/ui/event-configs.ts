@@ -29,7 +29,6 @@ import {
 } from "../../constants/company-slots.ts";
 import { setFormationSwapIndices } from "../html-templates/formation-template.ts";
 import {
-  setLastEquipMoveSoldierIds,
   setLastReadyRoomMoveSlotIndices,
 } from "../html-templates/ready-room-template.ts";
 import {
@@ -127,6 +126,13 @@ import {
 } from "../../constants/company-abilities.ts";
 import { getMissionBehaviorForDifficulty } from "../../constants/mission-difficulty-tuning.ts";
 import { AudioManager } from "../audio/audio-manager.ts";
+import {
+  getTutorialAllowedSelectors,
+  getTutorialExpectedScreen,
+  getTutorialSpotlightSelectors,
+  isTutorialActive,
+} from "../../services/tutorial/tutorial-director.ts";
+import { SoldierManager } from "../entities/soldier/soldier-manager.ts";
 
 /**
  * Contains definitions for the events of all html templates.
@@ -135,6 +141,8 @@ import { AudioManager } from "../audio/audio-manager.ts";
 export function eventConfigs() {
   const store = usePlayerCompanyStore.getState();
   const _AudioManager = AudioManager;
+  const NAME_MIN_LEN = 1;
+  const NAME_MAX_LEN = 15;
 
   function parseSlotItemFromData(slotEl: HTMLElement): Item | null {
     const raw = slotEl.dataset.slotItem;
@@ -184,17 +192,247 @@ export function eventConfigs() {
 
   function setSettingsSquadNameStatus(
     text: string,
-    kind: "error" | "success" | "neutral" = "neutral",
+    kind: "error" | "success" | "warn" | "neutral" = "neutral",
   ) {
     const status = s_(DOM.company.settingsSquadNameStatus) as HTMLElement | null;
     if (!status) return;
     status.textContent = text;
-    status.classList.remove("is-error", "is-success");
+    status.classList.remove("is-error", "is-success", "is-warn");
     if (kind === "error") status.classList.add("is-error");
     if (kind === "success") status.classList.add("is-success");
+    if (kind === "warn") status.classList.add("is-warn");
   }
 
-  function formatAbilityTermsInTooltip(text: string): string {
+  function clampNameInputValue(input: HTMLInputElement | null): string {
+    if (!input) return "";
+    const next = String(input.value ?? "").slice(0, NAME_MAX_LEN);
+    if (next !== input.value) input.value = next;
+    return next;
+  }
+
+  function setNameCounterUi(
+    counterEl: HTMLElement | null,
+    length: number,
+  ): void {
+    if (!counterEl) return;
+    counterEl.textContent = `${length}/${NAME_MAX_LEN}`;
+    counterEl.classList.toggle("is-near-limit", length >= NAME_MAX_LEN - 2);
+    counterEl.classList.toggle("is-max", length >= NAME_MAX_LEN);
+  }
+
+  function setSetupNameStatus(
+    statusEl: HTMLElement | null,
+    text: string,
+    kind: "error" | "warn" | "neutral",
+  ): void {
+    if (!statusEl) return;
+    statusEl.textContent = text;
+    statusEl.classList.remove("is-error", "is-warn");
+    if (kind === "error") statusEl.classList.add("is-error");
+    if (kind === "warn") statusEl.classList.add("is-warn");
+  }
+
+  function refreshSetupInputUx(): void {
+    const commanderInput = s_(DOM.setupScreen.commanderInput) as
+      | HTMLInputElement
+      | null;
+    const companyInput = s_(DOM.setupScreen.companyInput) as
+      | HTMLInputElement
+      | null;
+    const commanderStatus = s_(DOM.setupScreen.commanderStatus) as
+      | HTMLElement
+      | null;
+    const companyStatus = s_(DOM.setupScreen.companyStatus) as
+      | HTMLElement
+      | null;
+    const commanderCounter = s_(DOM.setupScreen.commanderCounter) as
+      | HTMLElement
+      | null;
+    const companyCounter = s_(DOM.setupScreen.companyCounter) as
+      | HTMLElement
+      | null;
+    const proceedButton = s_(DOM.setupScreen.finish) as HTMLButtonElement | null;
+
+    const commanderValue = clampNameInputValue(commanderInput);
+    const companyValue = clampNameInputValue(companyInput);
+    const commanderTrimmed = commanderValue.trim();
+    const companyTrimmed = companyValue.trim();
+    const commanderTouched = commanderInput?.dataset.touched === "1";
+    const companyTouched = companyInput?.dataset.touched === "1";
+
+    setNameCounterUi(commanderCounter, commanderValue.length);
+    setNameCounterUi(companyCounter, companyValue.length);
+
+    const commanderValid = commanderTrimmed.length >= NAME_MIN_LEN;
+    const companyValid = companyTrimmed.length >= NAME_MIN_LEN;
+    const commanderEmpty = commanderValue.length <= 0;
+    const companyEmpty = companyValue.length <= 0;
+
+    commanderInput?.classList.toggle(
+      "is-invalid",
+      commanderTouched && !commanderValid && !commanderEmpty,
+    );
+    companyInput?.classList.toggle(
+      "is-invalid",
+      companyTouched && !companyValid && !companyEmpty,
+    );
+    commanderInput?.classList.toggle("is-empty", commanderEmpty);
+    companyInput?.classList.toggle("is-empty", companyEmpty);
+    commanderInput?.classList.toggle(
+      "is-near-limit",
+      commanderValue.length >= NAME_MAX_LEN - 2,
+    );
+    companyInput?.classList.toggle(
+      "is-near-limit",
+      companyValue.length >= NAME_MAX_LEN - 2,
+    );
+
+    if (!commanderTouched && commanderEmpty) {
+      setSetupNameStatus(
+        commanderStatus,
+        "Type your name to continue.",
+        "neutral",
+      );
+    } else if (!commanderValid) {
+      setSetupNameStatus(
+        commanderStatus,
+        "Your Name cannot be blank.",
+        "warn",
+      );
+    } else if (commanderValue.length >= NAME_MAX_LEN) {
+      setSetupNameStatus(
+        commanderStatus,
+        `Max ${NAME_MAX_LEN} characters reached.`,
+        "warn",
+      );
+    } else {
+      setSetupNameStatus(
+        commanderStatus,
+        `${commanderValue.length}/${NAME_MAX_LEN} characters.`,
+        "neutral",
+      );
+    }
+
+    if (!companyTouched && companyEmpty) {
+      setSetupNameStatus(
+        companyStatus,
+        "Type your company name to continue.",
+        "neutral",
+      );
+    } else if (!companyValid) {
+      setSetupNameStatus(
+        companyStatus,
+        "Company Name cannot be blank.",
+        "warn",
+      );
+    } else if (companyValue.length >= NAME_MAX_LEN) {
+      setSetupNameStatus(
+        companyStatus,
+        `Max ${NAME_MAX_LEN} characters reached.`,
+        "warn",
+      );
+    } else {
+      setSetupNameStatus(
+        companyStatus,
+        `${companyValue.length}/${NAME_MAX_LEN} characters.`,
+        "neutral",
+      );
+    }
+
+    if (!proceedButton) return;
+    if (usePlayerCompanyStore.getState().canProceedToLaunch()) {
+      enableBtn(proceedButton);
+    } else {
+      disableBtn(proceedButton);
+    }
+  }
+
+  function refreshSettingsNameUx(opts: { skipStatus?: boolean } = {}): {
+    valid: boolean;
+    changed: boolean;
+    nextName: string;
+  } {
+    const input = s_(DOM.company.settingsSquadNameInput) as HTMLInputElement | null;
+    const counter = s_(DOM.company.settingsSquadNameCounter) as HTMLElement | null;
+    const saveBtn = s_(DOM.company.settingsSquadNameSave) as
+      | HTMLButtonElement
+      | null;
+    if (!input) return { valid: false, changed: false, nextName: "" };
+
+    const value = clampNameInputValue(input);
+    const nextName = value.trim();
+    const currentName = (
+      usePlayerCompanyStore.getState().companyName ?? ""
+    ).trim();
+    const valid =
+      nextName.length >= NAME_MIN_LEN && nextName.length <= NAME_MAX_LEN;
+    const changed = valid && nextName !== currentName;
+
+    setNameCounterUi(counter, value.length);
+    input.classList.toggle("is-invalid", !valid);
+    input.classList.toggle("is-near-limit", value.length >= NAME_MAX_LEN - 2);
+
+    if (saveBtn) {
+      if (changed) enableBtn(saveBtn);
+      else disableBtn(saveBtn);
+    }
+
+    if (opts.skipStatus) return { valid, changed, nextName };
+
+    if (!valid) {
+      setSettingsSquadNameStatus(
+        `Name must be ${NAME_MIN_LEN}-${NAME_MAX_LEN} characters.`,
+        "error",
+      );
+    } else if (!changed) {
+      setSettingsSquadNameStatus("No changes to save.");
+    } else if (value.length >= NAME_MAX_LEN) {
+      setSettingsSquadNameStatus(`Max ${NAME_MAX_LEN} characters reached.`, "warn");
+    } else {
+      setSettingsSquadNameStatus("Ready to save.");
+    }
+    return { valid, changed, nextName };
+  }
+
+  function refreshSettingsTutorialUx(): void {
+    const st = usePlayerCompanyStore.getState();
+    const tutorial = st.tutorialDirector;
+    const resumeBtn = s_(DOM.company.resumeTutorial) as HTMLButtonElement | null;
+    const status = document.getElementById("settings-tutorial-status") as
+      | HTMLElement
+      | null;
+    const tutorialPaused =
+      !tutorial?.enabled &&
+      !tutorial?.completed &&
+      tutorial?.step !== "completed";
+    const tutorialActiveNow =
+      !!tutorial?.enabled &&
+      !tutorial?.completed &&
+      tutorial?.step !== "completed";
+
+    if (resumeBtn) {
+      resumeBtn.hidden = !tutorialPaused;
+    }
+    if (!status) return;
+    if (tutorial?.completed) {
+      status.textContent = "Tutorial completed for this company.";
+      return;
+    }
+    if (tutorialPaused) {
+      status.textContent = "Tutorial paused. You can continue it any time.";
+      return;
+    }
+    if (tutorialActiveNow) {
+      status.textContent = "Tutorial guidance is currently active.";
+      return;
+    }
+    status.textContent = "Tutorial is not active for this company.";
+  }
+
+  function formatAbilityTerms(
+    text: string,
+    highlightClass = "company-ability-term",
+  ): string {
     const terms = [
       "Take Cover",
       "Suppress",
@@ -212,10 +450,14 @@ export function eventConfigs() {
       const escapedTerm = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
       html = html.replace(
         new RegExp(`\\b${escapedTerm}\\b`, "gi"),
-        (m) => `<span class="company-ability-term">${m}</span>`,
+        (m) => `<span class="${highlightClass}">${m}</span>`,
       );
     }
     return html;
+  }
+
+  function formatAbilityTermsInTooltip(text: string): string {
+    return formatAbilityTerms(text, "company-ability-term");
   }
 
   function fmtSigned(n: number): string {
@@ -317,7 +559,7 @@ export function eventConfigs() {
       entries.push({
         title: "Gunnery",
         type: "Company",
-        desc: "Support suppress cooldown reduced by 20s. Suppress attacks cannot be evaded.",
+        desc: "Support suppress cooldown reduced by 15s. Suppress attacks cannot be evaded.",
       });
     }
     if (companyOwned.has("fire_and_maneuver")) {
@@ -468,6 +710,244 @@ export function eventConfigs() {
     }
   };
 
+  const clearTutorialSpotlights = () => {
+    document
+      .querySelectorAll(
+        ".tutorial-target-focus, .tutorial-target-pointer, .tutorial-target-ripple",
+      )
+      .forEach((el) => {
+        el.classList.remove("tutorial-target-focus");
+        el.classList.remove("tutorial-target-pointer");
+        el.classList.remove("tutorial-target-ripple");
+      });
+  };
+
+  const shouldApplyTutorialRipple = (el: HTMLElement): boolean =>
+    el.matches(
+      [
+        "button",
+        ".game-btn",
+        ".company-action-btn",
+        ".missions-mode-menu-btn",
+        ".mission-launch-btn",
+        ".recruit-soldier",
+        "#confirm-recruitment",
+        "#market-sections-onboarding-continue",
+        "#roster-formation-btn",
+        "#market-troops",
+        "#market-armor",
+        "#armor-buy-btn",
+        "#equip-troops-btn",
+        ".combat-ability-icon-slot",
+        ".combat-company-ability-btn",
+        ".combat-grenade-item",
+        ".combat-med-item",
+        ".inventory-item-card",
+      ].join(","),
+    );
+
+  const markTutorialTarget = (el: HTMLElement): void => {
+    el.classList.add("tutorial-target-focus", "tutorial-target-pointer");
+    if (shouldApplyTutorialRipple(el)) {
+      el.classList.add("tutorial-target-ripple");
+    }
+  };
+
+  const applyTutorialDirectorUi = () => {
+    const st = usePlayerCompanyStore.getState();
+    const gameRoot = s_(DOM.game) as HTMLElement | null;
+    const active = isTutorialActive(st);
+    if (gameRoot) {
+      gameRoot.classList.toggle(
+        "tutorial-lock-active",
+        active && !!st.tutorialDirector?.enforceLock,
+      );
+    }
+    clearTutorialSpotlights();
+    if (!active) return;
+
+    if (st.tutorialDirector?.step === "armory_buy_armor") {
+      const armorCards = Array.from(
+        document.querySelectorAll(
+          ".gear-market-item[data-gear-context=\"armor\"]",
+        ),
+      ).filter((el) => (el as HTMLElement).getClientRects().length > 0) as
+        | HTMLElement[]
+        | [];
+      const buyBtn = document.getElementById("armor-buy-btn") as
+        | HTMLElement
+        | null;
+      for (const card of armorCards) markTutorialTarget(card);
+      if (buyBtn && buyBtn.getClientRects().length > 0) {
+        markTutorialTarget(buyBtn);
+      }
+      if (armorCards.length > 0 || !!buyBtn) return;
+    }
+
+    if (st.tutorialDirector?.step === "armory_equip_prompt") {
+      const armoryBtn = document.getElementById("company-go-inventory") as
+        | HTMLElement
+        | null;
+      if (armoryBtn && armoryBtn.getClientRects().length > 0) {
+        markTutorialTarget(armoryBtn);
+        return;
+      }
+    }
+
+    if (st.tutorialDirector?.step === "armory_equip_armor") {
+      const picker = document.getElementById("equip-picker-popup");
+      const pickerVisible = picker?.getAttribute("hidden") == null;
+      if (pickerVisible) {
+        const slots = Array.from(
+          document.querySelectorAll(
+            ".equip-picker-soldier .equip-slot[data-slot-type=\"armor\"]",
+          ),
+        ) as HTMLElement[];
+        for (const slot of slots) {
+          if (slot.getClientRects().length > 0) markTutorialTarget(slot);
+        }
+        if (slots.length > 0) return;
+      }
+      const equipBtn = document.getElementById(
+        "item-stats-popup-equip",
+      ) as HTMLElement | null;
+      const itemPopup = document.getElementById("item-stats-popup");
+      const itemPopupVisible =
+        itemPopup?.getAttribute("hidden") == null &&
+        itemPopup?.getClientRects().length &&
+        (equipBtn?.getClientRects().length ?? 0) > 0;
+      if (itemPopupVisible && equipBtn) {
+        markTutorialTarget(equipBtn);
+        return;
+      }
+      const lastArmorId = gameRoot?.getAttribute("data-tutorial-last-armor-id");
+      const armorSelector = lastArmorId
+        ? `.inventory-item-card[data-item-type="armor"][data-item-id="${lastArmorId}"]`
+        : `.inventory-item-card[data-item-type="armor"]`;
+      const armorCards = Array.from(document.querySelectorAll(armorSelector)).filter(
+        (el) => (el as HTMLElement).getClientRects().length > 0,
+      ) as HTMLElement[];
+      for (const card of armorCards) markTutorialTarget(card);
+      if (armorCards.length > 0) return;
+      const armoryBtn = document.getElementById("company-go-inventory") as
+        | HTMLElement
+        | null;
+      if (armoryBtn && armoryBtn.getClientRects().length > 0) {
+        markTutorialTarget(armoryBtn);
+        return;
+      }
+    }
+
+    const selectors = getTutorialSpotlightSelectors(st);
+    if (selectors.length <= 0) {
+      const fallback = getTutorialAllowedSelectors(st)[0];
+      if (!fallback) return;
+      const el = document.querySelector(fallback) as HTMLElement | null;
+      if (el) markTutorialTarget(el);
+      return;
+    }
+    let focusedTarget: HTMLElement | null = null;
+    for (const selector of selectors) {
+      const candidate = Array.from(document.querySelectorAll(selector)).find(
+        (el) => (el as HTMLElement).getClientRects().length > 0,
+      ) as HTMLElement | undefined;
+      if (!candidate) continue;
+      focusedTarget = candidate;
+      break;
+    }
+    if (focusedTarget) {
+      markTutorialTarget(focusedTarget);
+    } else {
+      const fallback = getTutorialAllowedSelectors(st)[0];
+      if (fallback) {
+        const el = document.querySelector(fallback) as HTMLElement | null;
+        if (el) markTutorialTarget(el);
+      }
+    }
+  };
+
+  const routeToTutorialStep = () => {
+    const st = usePlayerCompanyStore.getState();
+    const expected = getTutorialExpectedScreen(st);
+    if (!expected) return;
+    if (expected === "home") {
+      UiManager.renderCompanyHomePage();
+      return;
+    }
+    if (expected === "missions") {
+      UiManager.renderMissionsScreen();
+      return;
+    }
+    if (expected === "market") {
+      UiManager.renderMarketScreen();
+      return;
+    }
+    if (expected === "troops") {
+      UiManager.renderMarketTroopsScreen();
+      return;
+    }
+    if (expected === "roster") {
+      UiManager.renderRosterScreen();
+      return;
+    }
+    if (expected === "formation") {
+      UiManager.renderFormationScreen();
+      return;
+    }
+    if (expected === "inventory") {
+      UiManager.renderInventoryScreen();
+      return;
+    }
+    if (expected === "abilities") {
+      UiManager.renderAbilitiesScreen();
+      return;
+    }
+  };
+
+  const reconcileTutorialProgress = () => {
+    const st = usePlayerCompanyStore.getState();
+    const step = st.tutorialDirector?.step;
+    if (!step) return;
+    const inCombatStep =
+      step === "ready_room_proceed" ||
+      step === "combat_tap_soldier" ||
+      step === "combat_tap_grenade" ||
+      step === "combat_tap_enemy" ||
+      step === "combat_tap_company_ability" ||
+      step === "combat_tap_company_target";
+    if (inCombatStep && !st.onboardingCombatTutorialPending) {
+      st.setTutorialStep("recruit_open_market");
+    }
+  };
+
+  const terminateTutorialFlow = () => {
+    const st = usePlayerCompanyStore.getState();
+    st.setTutorialEnabled(false);
+    st.setTutorialLockEnabled(false);
+    st.clearTutorialResumeRequest();
+    st.setOnboardingHomeIntroPending(false);
+    st.setOnboardingFirstMissionPending(false);
+    st.setOnboardingReadyRoomIntroPending(false);
+    st.setOnboardingCombatTutorialPending(false);
+    st.setOnboardingMedicRecruitNoticePending(false);
+    st.setOnboardingMissionTypesIntroPending(false);
+    st.setOnboardingTacticsIntroPending(false);
+    st.setOnboardingSuppliesStep("done");
+    st.setOnboardingMarketSectionsLocked(false);
+    st.setOnboardingRecruitStep("none");
+    st.setOnboardingRecruitSoldier(null);
+
+    document
+      .querySelectorAll(
+        "#home-onboarding-popup, #home-recruit-onboarding-popup, #home-medic-onboarding-popup, #missions-types-onboarding-popup, #home-supplies-onboarding-popup, #supplies-market-onboarding-popup, #market-credits-onboarding-popup, #armory-equip-onboarding-popup, #armory-equip-picker-onboarding-popup, #armory-tutorial-complete-popup, #market-sections-onboarding-popup, #formation-market-onboarding-popup, #ready-room-onboarding-popup, #combat-onboarding-popup, #tactics-onboarding-popup",
+      )
+      .forEach((el) => el.remove());
+    document.getElementById("tutorial-progress-banner")?.remove();
+    refreshSettingsTutorialUx();
+    applyTutorialDirectorUi();
+    window.alert("Tutorial paused. You may continue the tutorial from the Settings screen.");
+  };
+
   const marketLevelNavHandlers = (
     containerId: string,
     render: () => void,
@@ -611,14 +1091,19 @@ export function eventConfigs() {
       selector: DOM.setupScreen.commanderInput,
       callback: (e: Event) => {
         const el = e.target as HTMLInputElement;
-        const proceedButton = s_(DOM.setupScreen.finish) as HTMLButtonElement;
-        store.setCommanderName(el.value);
-
-        if (store.canProceedToLaunch()) {
-          enableBtn(proceedButton);
-        } else {
-          disableBtn(proceedButton);
-        }
+        el.dataset.touched = "1";
+        const next = clampNameInputValue(el);
+        store.setCommanderName(next);
+        refreshSetupInputUx();
+      },
+    },
+    {
+      eventType: "blur",
+      selector: DOM.setupScreen.commanderInput,
+      callback: (e: Event) => {
+        const el = e.target as HTMLInputElement;
+        el.dataset.touched = "1";
+        refreshSetupInputUx();
       },
     },
     {
@@ -626,14 +1111,19 @@ export function eventConfigs() {
       selector: DOM.setupScreen.companyInput,
       callback: (e: Event) => {
         const el = e.target as HTMLInputElement;
-        store.setCompanyName(el.value);
-        const proceedButton = s_(DOM.setupScreen.finish) as HTMLButtonElement;
-
-        if (store.canProceedToLaunch()) {
-          enableBtn(proceedButton);
-        } else {
-          disableBtn(proceedButton);
-        }
+        el.dataset.touched = "1";
+        const next = clampNameInputValue(el);
+        store.setCompanyName(next);
+        refreshSetupInputUx();
+      },
+    },
+    {
+      eventType: "blur",
+      selector: DOM.setupScreen.companyInput,
+      callback: (e: Event) => {
+        const el = e.target as HTMLInputElement;
+        el.dataset.touched = "1";
+        refreshSetupInputUx();
       },
     },
     {
@@ -653,12 +1143,7 @@ export function eventConfigs() {
 
         Styler.selectedWhite5(el);
         store.setCompanyUnitPatch(el.dataset.img as string);
-
-        if (store.canProceedToLaunch()) {
-          enableBtn(proceedButton);
-        } else {
-          disableBtn(proceedButton);
-        }
+        if (proceedButton) refreshSetupInputUx();
 
       },
     },
@@ -745,6 +1230,10 @@ export function eventConfigs() {
       selector: DOM.company.missions,
       eventType: "click",
       callback: () => {
+        const st = usePlayerCompanyStore.getState();
+        if (st.tutorialDirector?.step === "home_open_missions") {
+          st.setTutorialStep("missions_launch_intro");
+        }
         UiManager.selectCompanyHomeButton(DOM.company.missions);
         if (isInMissionUiContext()) {
           UiManager.renderMissionsScreen("menu");
@@ -759,6 +1248,11 @@ export function eventConfigs() {
       callback: () => {
         const st = usePlayerCompanyStore.getState();
         if (st.onboardingFirstMissionPending) return;
+        if (st.tutorialDirector?.step === "recruit_open_market") {
+          st.setTutorialStep("recruit_market_credits");
+        } else if (st.tutorialDirector?.step === "formation_open_market") {
+          st.setTutorialStep("market_briefing");
+        }
         if (st.onboardingSuppliesStep === "market_focus") {
           st.setOnboardingSuppliesStep("supplies_focus");
         }
@@ -776,17 +1270,13 @@ export function eventConfigs() {
       },
     },
     {
-      selector: DOM.company.training,
-      eventType: "click",
-      callback: () => {
-        UiManager.selectCompanyHomeButton(DOM.company.training);
-        UiManager.renderTrainingScreen();
-      },
-    },
-    {
       selector: DOM.company.inventory,
       eventType: "click",
       callback: () => {
+        const st = usePlayerCompanyStore.getState();
+        if (st.tutorialDirector?.step === "armory_equip_prompt") {
+          st.setTutorialStep("armory_equip_armor");
+        }
         UiManager.selectCompanyHomeButton(DOM.company.inventory);
         UiManager.renderInventoryScreen();
       },
@@ -813,7 +1303,7 @@ export function eventConfigs() {
         if (squadNameInput) {
           squadNameInput.value = usePlayerCompanyStore.getState().companyName ?? "";
         }
-        setSettingsSquadNameStatus("");
+        refreshSettingsNameUx();
         const musicToggle = s_(DOM.company.settingsMusicToggle) as
           | HTMLInputElement
           | null;
@@ -828,6 +1318,7 @@ export function eventConfigs() {
         if (sfxToggle) sfxToggle.checked = sfxEnabled;
         _AudioManager.Settings().setMusicEnabled(musicEnabled);
         _AudioManager.Settings().setSfxEnabled(sfxEnabled);
+        refreshSettingsTutorialUx();
       },
     },
     {
@@ -836,15 +1327,33 @@ export function eventConfigs() {
       callback: () => {
         const input = s_(DOM.company.settingsSquadNameInput) as HTMLInputElement | null;
         if (!input) return;
-        const nextName = (input.value ?? "").trim();
-        if (nextName.length < 5 || nextName.length > 15) {
-          setSettingsSquadNameStatus("Name must be 5-15 characters.", "error");
+        const { valid, changed, nextName } = refreshSettingsNameUx({
+          skipStatus: true,
+        });
+        if (!valid) {
+          setSettingsSquadNameStatus(
+            `Name must be ${NAME_MIN_LEN}-${NAME_MAX_LEN} characters.`,
+            "error",
+          );
+          return;
+        }
+        if (!changed) {
+          setSettingsSquadNameStatus("No changes to save.");
           return;
         }
         usePlayerCompanyStore.getState().setCompanyName(nextName);
+        input.value = nextName;
         const headerName = document.querySelector(".company-header-name") as HTMLElement | null;
         if (headerName) headerName.textContent = nextName;
+        refreshSettingsNameUx({ skipStatus: true });
         setSettingsSquadNameStatus("Squad name updated.", "success");
+      },
+    },
+    {
+      selector: DOM.company.settingsSquadNameInput,
+      eventType: "input",
+      callback: () => {
+        refreshSettingsNameUx();
       },
     },
     {
@@ -895,6 +1404,39 @@ export function eventConfigs() {
         if ((e.target as HTMLElement).id === "settings-popup") {
           (e.target as HTMLElement).hidden = true;
         }
+      },
+    },
+    {
+      selector: DOM.company.resumeTutorial,
+      eventType: "click",
+      callback: () => {
+        const st = usePlayerCompanyStore.getState();
+        const tutorial = st.tutorialDirector;
+        const canResumePausedTutorial =
+          !tutorial?.enabled &&
+          !tutorial?.completed &&
+          tutorial?.step !== "completed";
+        if (canResumePausedTutorial) {
+          st.setTutorialEnabled(true);
+          st.setTutorialLockEnabled(true);
+        }
+        st.requestTutorialResume();
+        const popup = s_(DOM.company.settingsPopup) as HTMLElement | null;
+        if (popup) popup.hidden = true;
+        routeToTutorialStep();
+      },
+    },
+    {
+      selector: DOM.company.tutorialDismiss,
+      eventType: "click",
+      callback: () => {
+        const st = usePlayerCompanyStore.getState();
+        if (!isTutorialActive(st)) return;
+        const confirmed = window.confirm(
+          "Pause tutorial now? You can continue anytime from the Settings screen.",
+        );
+        if (!confirmed) return;
+        terminateTutorialFlow();
       },
     },
     {
@@ -975,6 +1517,7 @@ export function eventConfigs() {
         if (missionBtn) {
           missionBtn.classList.add("onboarding-mission-focus");
         }
+        applyTutorialDirectorUi();
       },
     },
     {
@@ -983,6 +1526,7 @@ export function eventConfigs() {
       callback: () => {
         const st = usePlayerCompanyStore.getState();
         st.setOnboardingRecruitStep("market");
+        st.setTutorialStep("recruit_open_market");
         const popup = s_(
           DOM.company.onboardingRecruitPopup,
         ) as HTMLElement | null;
@@ -996,6 +1540,7 @@ export function eventConfigs() {
         if (marketBtn) {
           marketBtn.classList.add("onboarding-market-focus");
         }
+        applyTutorialDirectorUi();
       },
     },
     {
@@ -1003,8 +1548,37 @@ export function eventConfigs() {
       eventType: "click",
       callback: () => {
         const st = usePlayerCompanyStore.getState();
+        const recruitLevel = Math.max(
+          1,
+          Math.floor(st.highestRecruitLevelAchieved ?? 1),
+        );
+        const usedAvatars = new Set(
+          (st.marketAvailableTroops ?? [])
+            .map((trooper) => trooper.avatar ?? "")
+            .filter((avatar) => avatar.length > 0),
+        );
+        let guidedMedic: Soldier;
+        try {
+          const warHeroTrait =
+            SoldierManager.getSoldierTraitProfileByName("war_hero");
+          guidedMedic = SoldierManager.getNewMedic(
+            recruitLevel,
+            warHeroTrait,
+            usedAvatars,
+          );
+        } catch {
+          guidedMedic = SoldierManager.getNewMedic(recruitLevel);
+        }
+        for (const staged of st.recruitStaging ?? []) {
+          st.removeFromRecruitStaging(staged.id);
+        }
+        st.setOnboardingRecruitSoldier(guidedMedic);
+        st.setOnboardingRecruitStep("market");
         st.setOnboardingMedicRecruitNoticePending(false);
         st.setOnboardingMedicRecruitNoticeSeen(true);
+        // Medic reminder must never re-gate market sections or replay supplies flow.
+        st.setOnboardingMarketSectionsLocked(false);
+        st.setOnboardingSuppliesStep("done");
         const popup = s_(DOM.company.onboardingMedicPopup) as HTMLElement | null;
         if (popup) {
           popup.classList.add("home-onboarding-popup-hide");
@@ -1012,6 +1586,11 @@ export function eventConfigs() {
             popup.remove();
           }, 260);
         }
+        const marketBtn = s_(DOM.company.market) as HTMLElement | null;
+        if (marketBtn) {
+          marketBtn.classList.add("onboarding-market-focus");
+        }
+        applyTutorialDirectorUi();
       },
     },
     {
@@ -1020,14 +1599,10 @@ export function eventConfigs() {
       callback: (e: Event) => {
         if ((e.target as HTMLElement).id !== "home-medic-onboarding-popup")
           return;
-        const st = usePlayerCompanyStore.getState();
-        st.setOnboardingMedicRecruitNoticePending(false);
-        st.setOnboardingMedicRecruitNoticeSeen(true);
-        const popup = e.currentTarget as HTMLElement;
-        popup.classList.add("home-onboarding-popup-hide");
-        window.setTimeout(() => {
-          popup.remove();
-        }, 240);
+        const continueBtn = s_(
+          DOM.company.onboardingMedicContinue,
+        ) as HTMLButtonElement | null;
+        continueBtn?.click();
       },
     },
     {
@@ -1172,7 +1747,16 @@ export function eventConfigs() {
     },
   ];
   initHelperDialogTypewriter();
+  reconcileTutorialProgress();
   applyHomeOnboardingFocus();
+  applyTutorialDirectorUi();
+  {
+    const st = usePlayerCompanyStore.getState();
+    if (st.tutorialDirector?.resumeRequested) {
+      st.clearTutorialResumeRequest();
+      window.setTimeout(() => routeToTutorialStep(), 0);
+    }
+  }
 
   const marketEventConfig: HandlerInitConfig[] = [
     {
@@ -1201,12 +1785,46 @@ export function eventConfigs() {
       },
     },
     {
+      selector: "#market-credits-onboarding-continue",
+      eventType: "click",
+      callback: () => {
+        const st = usePlayerCompanyStore.getState();
+        if (st.tutorialDirector?.step === "recruit_market_credits") {
+          st.setTutorialStep("recruit_open_troops");
+          applyTutorialDirectorUi();
+        }
+        const popup = document.getElementById("market-credits-onboarding-popup");
+        if (!popup) return;
+        popup.classList.add("home-onboarding-popup-hide");
+        window.setTimeout(() => popup.remove(), 220);
+      },
+    },
+    {
+      selector: "#armory-equip-onboarding-continue",
+      eventType: "click",
+      callback: () => {
+        const st = usePlayerCompanyStore.getState();
+        if (st.tutorialDirector?.step === "armory_equip_prompt") {
+          st.setTutorialStep("armory_equip_armor");
+        }
+        const popup = document.getElementById("armory-equip-onboarding-popup");
+        if (popup) {
+          popup.classList.add("home-onboarding-popup-hide");
+          window.setTimeout(() => popup.remove(), 220);
+        }
+        applyTutorialDirectorUi();
+      },
+    },
+    {
       selector: DOM.market.marketTroopsLink,
       eventType: "click",
       callback: () => {
         const st = usePlayerCompanyStore.getState();
         if (st.onboardingRecruitStep === "market") {
           st.setOnboardingRecruitStep("troops_recruit");
+        }
+        if (st.tutorialDirector?.step === "recruit_open_troops") {
+          st.setTutorialStep("recruit_select");
         }
         UiManager.renderMarketTroopsScreen();
       },
@@ -1335,6 +1953,9 @@ export function eventConfigs() {
         const st = usePlayerCompanyStore.getState();
         st.setOnboardingSuppliesStep("done");
         st.setOnboardingMarketSectionsLocked(false);
+        if (st.tutorialDirector?.step === "market_briefing") {
+          st.setTutorialStep("armory_buy_armor");
+        }
         popup.classList.add("home-onboarding-popup-hide");
         window.setTimeout(() => {
           popup.remove();
@@ -1351,6 +1972,9 @@ export function eventConfigs() {
         const st = usePlayerCompanyStore.getState();
         st.setOnboardingSuppliesStep("done");
         st.setOnboardingMarketSectionsLocked(false);
+        if (st.tutorialDirector?.step === "market_briefing") {
+          st.setTutorialStep("armory_buy_armor");
+        }
         const popup = e.currentTarget as HTMLElement;
         popup.classList.add("home-onboarding-popup-hide");
         window.setTimeout(() => {
@@ -1589,6 +2213,7 @@ export function eventConfigs() {
           usePlayerCompanyStore
             .getState()
             .setOnboardingFirstMissionPending(false);
+          usePlayerCompanyStore.getState().setTutorialStep("ready_room_proceed");
         }
         if (mission.isDevTest) {
           UiManager.renderCombatScreen(mission);
@@ -1734,6 +2359,9 @@ export function eventConfigs() {
       | "await_soldier_tap"
       | "step_2"
       | "await_grenade"
+      | "step_3"
+      | "await_company_ability"
+      | "await_company_target"
       | "done";
     let onboardingCombatTutorialStep: OnboardingCombatTutorialStep =
       onboardingCombatTutorialEnabled ? "step_1" : "none";
@@ -1788,7 +2416,7 @@ export function eventConfigs() {
     );
     const SUPPRESS_COOLDOWN_MS = Math.max(
       10_000,
-      60_000 - companyPassives.supportSuppressCooldownReductionMs,
+      45_000 - companyPassives.supportSuppressCooldownReductionMs,
     );
     const DEFEND_WAVE_STAGGER_MIN_MS = 450;
     const DEFEND_WAVE_STAGGER_MAX_MS = 750;
@@ -2061,6 +2689,10 @@ export function eventConfigs() {
     function showCombatOnboardingPopup(text: string): void {
       if (!combatRoot) return;
       removeCombatOnboardingPopup();
+      const onboardingText = formatAbilityTerms(
+        text,
+        "helper-onboarding-ability-name",
+      );
       const popup = document.createElement("div");
       popup.id = "combat-onboarding-popup";
       popup.className = "combat-onboarding-popup helper-onboarding-popup";
@@ -2068,7 +2700,7 @@ export function eventConfigs() {
       <div class="home-onboarding-dialog helper-onboarding-dialog combat-onboarding-dialog">
         <div class="home-onboarding-copy helper-onboarding-copy">
           <h4 class="home-onboarding-title helper-onboarding-title">Combat Briefing</h4>
-          <p class="home-onboarding-text helper-onboarding-text">${text}</p>
+          <p class="home-onboarding-text helper-onboarding-text">${onboardingText}</p>
           <button id="combat-onboarding-continue" type="button" class="game-btn game-btn-md game-btn-green home-onboarding-continue helper-onboarding-continue">Continue</button>
         </div>
         <div class="home-onboarding-image-wrap helper-onboarding-image-wrap">
@@ -2099,6 +2731,17 @@ export function eventConfigs() {
 
     const companyCombatAbilities = getCompanyActiveAbilities(companyAbilityOwned)
       .map((def) => def.id);
+    const onboardingFocusedFireAvailable =
+      companyCombatAbilities.includes("focused_fire");
+    const onboardingTutorialCompanyAbilityId =
+      (onboardingFocusedFireAvailable
+        ? "focused_fire"
+        : (companyCombatAbilities[0] ?? null)) as CompanyAbilityId | null;
+    const onboardingTutorialCompanyAbilityName =
+      onboardingTutorialCompanyAbilityId != null
+        ? (COMPANY_ABILITY_DEFS[onboardingTutorialCompanyAbilityId]?.name ??
+          "squad ability")
+        : "squad ability";
 
     let stratagemUsesLeft =
       equippedStratagemItem != null ? 1 : 0;
@@ -2187,8 +2830,17 @@ export function eventConfigs() {
         .map((id) => {
           const def = COMPANY_ABILITY_DEFS[id];
           if (!def) return "";
-          const onCooldownUntil = companyAbilityCooldownUntil.get(id) ?? 0;
-          const onCooldown = onCooldownUntil > now;
+          const onboardingAbilityMustBeReady =
+            onboardingCombatTutorialEnabled &&
+            (onboardingCombatTutorialStep === "step_3" ||
+              onboardingCombatTutorialStep === "await_company_ability" ||
+              onboardingCombatTutorialStep === "await_company_target") &&
+            onboardingTutorialCompanyAbilityId != null &&
+            id === onboardingTutorialCompanyAbilityId;
+          const onCooldownUntil = onboardingAbilityMustBeReady
+            ? 0
+            : (companyAbilityCooldownUntil.get(id) ?? 0);
+          const onCooldown = !onboardingAbilityMustBeReady && onCooldownUntil > now;
           const remaining = onCooldown
             ? Math.ceil((onCooldownUntil - now) / 1000)
             : 0;
@@ -2228,6 +2880,10 @@ export function eventConfigs() {
         : ""}${companyHtml ? `<div class="combat-company-abilities-group">${companyHtml}</div>` : ""}`;
       if (force || companyAbilityBarEl.innerHTML !== html) {
         companyAbilityBarEl.innerHTML = html;
+        // Reapply tutorial spotlight after any bar rerender; DOM replacement drops target classes.
+        if (onboardingCombatTutorialEnabled) {
+          window.requestAnimationFrame(() => applyTutorialDirectorUi());
+        }
       }
     }
 
@@ -2528,6 +3184,13 @@ export function eventConfigs() {
       const popupEl = popup;
       const listElNode = listEl;
       let lastAbilitiesMarkup = "";
+      const onboardingInventoryLocked =
+        onboardingCombatTutorialEnabled &&
+        onboardingCombatTutorialStep === "step_2";
+      popupEl.classList.toggle(
+        "combat-abilities-popup-onboarding-locked",
+        onboardingInventoryLocked,
+      );
 
       const canUseCombatant = (c: Combatant) =>
         combatStarted && !combatWinner && !isStunned(c, Date.now());
@@ -2614,8 +3277,7 @@ export function eventConfigs() {
               const cooldownClass =
                 !isKnife && grenadeOnCooldown ? " combat-grenade-cooldown" : "";
               const onboardingGuideClass =
-                (onboardingCombatTutorialStep === "step_2" ||
-                  onboardingCombatTutorialStep === "await_grenade") &&
+                onboardingCombatTutorialStep === "await_grenade" &&
                 c.id === popupCombatantId
                   ? " combat-grenade-onboarding-focus"
                   : "";
@@ -4194,12 +4856,23 @@ export function eventConfigs() {
           onboardingCombatTutorialStep === "await_grenade" &&
           thrower.side === "player"
         ) {
-          onboardingCombatTutorialStep = "done";
-          onboardingCombatTutorialPaused = false;
+          onboardingCombatTutorialStep = "step_3";
+          onboardingCombatTutorialPaused = true;
           setOnboardingCombatPlayerCardFocus(false);
-          usePlayerCompanyStore
-            .getState()
-            .setOnboardingCombatTutorialPending(false);
+          const st = usePlayerCompanyStore.getState();
+          if (st.tutorialDirector?.step === "combat_tap_enemy") {
+            st.setTutorialStep("combat_tap_company_ability");
+          }
+          renderCompanyAbilityBar(true);
+          showCombatOnboardingPopup(
+            `Great throw. Next, use your squad ability: tap ${onboardingTutorialCompanyAbilityName} in the company abilities bar, then tap an enemy target. More company abilities unlock here as you level.`,
+          );
+          if (
+            st.tutorialDirector?.step === "combat_tap_company_ability" ||
+            st.tutorialDirector?.step === "combat_tap_enemy"
+          ) {
+            applyTutorialDirectorUi();
+          }
         }
       });
     }
@@ -5173,6 +5846,28 @@ export function eventConfigs() {
         ).length;
       }
 
+      function computeCombatWinner(now: number): "player" | "enemy" | null {
+        if (players.every((p) => p.hp <= 0 || p.downState)) return "enemy";
+        const defeatedEnemies = getEnemyDefeatedCount();
+        if (isDefendObjectiveMission) {
+          return defeatedEnemies >= MISSION_TOTAL_ENEMY_BUDGET ||
+            now >= defendEndAt
+            ? "player"
+            : null;
+        }
+        if (HAS_MISSION_REINFORCEMENTS) {
+          return defeatedEnemies >= MISSION_TOTAL_ENEMY_BUDGET
+            ? "player"
+            : null;
+        }
+        // Safety: treat removed combatants as defeated in non-reinforcement modes too.
+        return enemies.every(
+          (e) => e.hp <= 0 || e.downState || e.removedFromCombat,
+        )
+          ? "player"
+          : null;
+      }
+
       const getRetargetJitterMs = (): number =>
         40 + Math.floor(Math.random() * 181); // 40..220ms
 
@@ -5224,11 +5919,12 @@ export function eventConfigs() {
       processScheduledCombatTasks(now);
       processTimedCombatVisuals(now);
         if (onboardingCombatTutorialPaused) {
+          combatWinner = computeCombatWinner(now);
           updateCombatUI();
           if (!combatWinner) {
             combatTickId = window.setTimeout(tick, 34);
           }
-          return;
+          if (!combatWinner) return;
         }
         if (reloadCuesRemaining > 0 && now >= nextReloadCueAt && !combatWinner) {
           const alivePlayers = players.filter((p) => {
@@ -5404,27 +6100,7 @@ export function eventConfigs() {
         assignTargets(players, enemies, targets, now);
         applyFocusedFireTargeting(now);
         applyRetargetCadenceJitter(prevTargets, now);
-        const defeatedEnemies = getEnemyDefeatedCount();
-        if (isDefendObjectiveMission) {
-          combatWinner = players.every((p) => p.hp <= 0 || p.downState)
-            ? "enemy"
-            : defeatedEnemies >= MISSION_TOTAL_ENEMY_BUDGET ||
-                now >= defendEndAt
-              ? "player"
-              : null;
-        } else if (HAS_MISSION_REINFORCEMENTS) {
-          combatWinner = players.every((p) => p.hp <= 0 || p.downState)
-            ? "enemy"
-            : defeatedEnemies >= MISSION_TOTAL_ENEMY_BUDGET
-              ? "player"
-              : null;
-        } else {
-          combatWinner = players.every((p) => p.hp <= 0 || p.downState)
-            ? "enemy"
-            : enemies.every((e) => e.hp <= 0 || e.downState)
-              ? "player"
-              : null;
-        }
+        combatWinner = computeCombatWinner(now);
         if (combatWinner) {
           const outcomeMusicDelayMs = 220;
           _AudioManager.Intro().fadeOutCombat(outcomeMusicDelayMs);
@@ -6515,7 +7191,7 @@ export function eventConfigs() {
         return {
           ...base,
           level: grenadeLevel,
-          uses: 5,
+          uses: 6,
           damage:
             base.damage != null
               ? getScaledThrowableDamage(base.damage, grenadeLevel)
@@ -6686,6 +7362,26 @@ export function eventConfigs() {
       if (!btn || btn.disabled) return;
       const now = Date.now();
       if (now - lastCompanyAbilityActivateAt < 220) return;
+      const tutorialAbilityId = (btn.dataset.companyAbilityId ?? "") as
+        | CompanyAbilityId
+        | "";
+      if (onboardingCombatTutorialEnabled) {
+        if (onboardingCombatTutorialStep === "step_3") {
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
+        if (
+          (onboardingCombatTutorialStep === "await_company_ability" ||
+            onboardingCombatTutorialStep === "await_company_target") &&
+          onboardingTutorialCompanyAbilityId != null &&
+          tutorialAbilityId !== onboardingTutorialCompanyAbilityId
+        ) {
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
+      }
       triggerAbilityTapFeedback(btn);
       const stratagemId = btn.dataset.stratagemItemId;
       if (stratagemId) {
@@ -6700,23 +7396,68 @@ export function eventConfigs() {
       lastCompanyAbilityActivateAt = now;
       e.preventDefault();
       e.stopPropagation();
+      if (
+        onboardingCombatTutorialEnabled &&
+        onboardingCombatTutorialStep === "await_company_ability" &&
+        (onboardingTutorialCompanyAbilityId == null ||
+          abilityId === onboardingTutorialCompanyAbilityId)
+      ) {
+        onboardingCombatTutorialStep = "await_company_target";
+        const st = usePlayerCompanyStore.getState();
+        if (st.tutorialDirector?.step === "combat_tap_company_ability") {
+          st.setTutorialStep("combat_tap_company_target");
+          applyTutorialDirectorUi();
+        }
+      }
       if (abilityId === "battle_fervor") {
         activateBattleFervor();
+        const st = usePlayerCompanyStore.getState();
+        if (st.tutorialDirector?.step === "tactics_use_in_combat") {
+          st.markTutorialMilestone("abilityUsedInCombat", true);
+          st.setTutorialCompleted(true);
+          applyTutorialDirectorUi();
+        }
         return;
       }
       if (abilityId === "trauma_response") {
         activateTraumaResponse();
+        const st = usePlayerCompanyStore.getState();
+        if (st.tutorialDirector?.step === "tactics_use_in_combat") {
+          st.markTutorialMilestone("abilityUsedInCombat", true);
+          st.setTutorialCompleted(true);
+          applyTutorialDirectorUi();
+        }
         return;
       }
       if (abilityId === "infantry_armor") {
         activateInfantryArmor();
+        const st = usePlayerCompanyStore.getState();
+        if (st.tutorialDirector?.step === "tactics_use_in_combat") {
+          st.markTutorialMilestone("abilityUsedInCombat", true);
+          st.setTutorialCompleted(true);
+          applyTutorialDirectorUi();
+        }
         return;
       }
       if (abilityId === "emergency_medevac") {
         activateEmergencyMedevac();
+        const st = usePlayerCompanyStore.getState();
+        if (st.tutorialDirector?.step === "tactics_use_in_combat") {
+          st.markTutorialMilestone("abilityUsedInCombat", true);
+          st.setTutorialCompleted(true);
+          applyTutorialDirectorUi();
+        }
         return;
       }
       startCompanyAbilityTargeting(abilityId);
+    }
+
+    function completeAbilityUsageTutorialStep(): void {
+      const st = usePlayerCompanyStore.getState();
+      if (st.tutorialDirector?.step !== "tactics_use_in_combat") return;
+      st.markTutorialMilestone("abilityUsedInCombat", true);
+      st.setTutorialCompleted(true);
+      applyTutorialDirectorUi();
     }
 
     function applyCompanyAbilityOnTarget(
@@ -6743,6 +7484,25 @@ export function eventConfigs() {
           spawnCombatPopup(card, "combat-suppress-popup", "Focused!", 1300);
         }
         applyFocusedFireTargeting(now);
+        if (
+          onboardingCombatTutorialEnabled &&
+          onboardingCombatTutorialStep === "await_company_target" &&
+          (onboardingTutorialCompanyAbilityId == null ||
+            abilityId === onboardingTutorialCompanyAbilityId)
+        ) {
+          onboardingCombatTutorialStep = "done";
+          onboardingCombatTutorialPaused = false;
+          const st = usePlayerCompanyStore.getState();
+          st.setOnboardingCombatTutorialPending(false);
+          if (
+            st.tutorialDirector?.step === "combat_tap_company_target" ||
+            st.tutorialDirector?.step === "combat_tap_company_ability"
+          ) {
+            st.setTutorialStep("recruit_open_market");
+            applyTutorialDirectorUi();
+          }
+        }
+        completeAbilityUsageTutorialStep();
       } else if (abilityId === "artillery_barrage") {
         const aliveEnemyIds = enemies
           .filter((c) => c.hp > 0 && !c.downState)
@@ -6801,6 +7561,7 @@ export function eventConfigs() {
         clearCompanyAbilityTargeting();
         renderCompanyAbilityBar(true);
         updateCombatUI(true);
+        completeAbilityUsageTutorialStep();
         return;
       } else if (abilityId === "napalm_barrage") {
         const aliveEnemyIds = enemies
@@ -6845,6 +7606,7 @@ export function eventConfigs() {
         clearCompanyAbilityTargeting();
         renderCompanyAbilityBar(true);
         updateCombatUI(true);
+        completeAbilityUsageTutorialStep();
         return;
       }
 
@@ -6852,6 +7614,7 @@ export function eventConfigs() {
       clearCompanyAbilityTargeting();
       renderCompanyAbilityBar(true);
       updateCombatUI(true);
+      completeAbilityUsageTutorialStep();
     }
 
     function executeAbilityAction(abilityId: string, soldierId: string): void {
@@ -6866,6 +7629,12 @@ export function eventConfigs() {
         handleTakeCoverAbility(combatant);
       } else if (ability.actionId === "suppress") {
         handleSuppressAbility(combatant);
+      }
+      const st = usePlayerCompanyStore.getState();
+      if (st.tutorialDirector?.step === "tactics_use_in_combat") {
+        st.markTutorialMilestone("abilityUsedInCombat", true);
+        st.setTutorialCompleted(true);
+        applyTutorialDirectorUi();
       }
     }
 
@@ -7044,9 +7813,11 @@ export function eventConfigs() {
       ) {
         onboardingCombatTutorialStep = "step_2";
         setOnboardingCombatPlayerCardFocus(false);
+        openAbilitiesPopup(combatant, card);
         showCombatOnboardingPopup(
           "Tap the grenade and tap an enemy soldier to use it.",
         );
+        applyTutorialDirectorUi();
       }
     }
 
@@ -7199,6 +7970,14 @@ export function eventConfigs() {
               !isKnife && (thrower.grenadeCooldownUntil ?? 0) > Date.now();
             if (grenadeOnCooldown) return;
             grenadeTargetingMode = { thrower, grenade: g };
+            if (
+              onboardingCombatTutorialEnabled &&
+              onboardingCombatTutorialStep === "await_grenade"
+            ) {
+              usePlayerCompanyStore
+                .getState()
+                .setTutorialStep("combat_tap_enemy");
+            }
             showGrenadeTargetingHint(thrower, g);
             document
               .querySelectorAll(
@@ -7369,22 +8148,50 @@ export function eventConfigs() {
             setBeginOverlayVisible(false);
             combatRoot?.classList.remove("combat-prestart");
             setOnboardingCombatPlayerCardFocus(true);
+            usePlayerCompanyStore.getState().setTutorialStep("combat_tap_soldier");
+            applyTutorialDirectorUi();
             return;
           }
           if (onboardingCombatTutorialStep === "step_2") {
             onboardingCombatTutorialStep = "await_grenade";
+            usePlayerCompanyStore.getState().setTutorialStep("combat_tap_grenade");
             removeCombatOnboardingPopup();
             setOnboardingCombatPlayerCardFocus(false);
             const abilitiesPopup = document.getElementById(
               "combat-abilities-popup",
+            );
+            abilitiesPopup?.classList.remove(
+              "combat-abilities-popup-onboarding-locked",
             );
             const popupVisible =
               abilitiesPopup?.getAttribute("aria-hidden") !== "true";
             if (!popupVisible) {
               primeOnboardingGrenadeSelection();
             } else {
-              updateCombatUI(true);
+              const selectedCombatant = popupCombatantId
+                ? players.find((p) => p.id === popupCombatantId) ?? null
+                : null;
+              const selectedCard = popupCombatantId
+                ? getCombatantCard(popupCombatantId)
+                : null;
+              if (selectedCombatant && selectedCard) {
+                openAbilitiesPopup(selectedCombatant, selectedCard);
+              } else {
+                updateCombatUI(true);
+              }
             }
+            applyTutorialDirectorUi();
+            return;
+          }
+          if (onboardingCombatTutorialStep === "step_3") {
+            onboardingCombatTutorialStep = "await_company_ability";
+            removeCombatOnboardingPopup();
+            setOnboardingCombatPlayerCardFocus(false);
+            usePlayerCompanyStore
+              .getState()
+              .setTutorialStep("combat_tap_company_ability");
+            renderCompanyAbilityBar(true);
+            applyTutorialDirectorUi();
           }
         },
       },
@@ -7610,6 +8417,7 @@ export function eventConfigs() {
           if (onboardingMission) {
             const st = usePlayerCompanyStore.getState();
             st.setOnboardingRecruitStep("home_popup");
+            st.setTutorialStep("recruit_open_market");
             UiManager.renderCompanyHomePage();
             return;
           }
@@ -7641,6 +8449,67 @@ export function eventConfigs() {
       picker.dataset.suppliesTargetSlotType = "";
       picker.dataset.suppliesTargetEqIndex = "";
     }
+  }
+
+  function removeArmoryEquipPickerOnboardingPopup() {
+    document.getElementById("armory-equip-picker-onboarding-popup")?.remove();
+  }
+
+  function removeArmoryTutorialCompletePopup() {
+    document.getElementById("armory-tutorial-complete-popup")?.remove();
+  }
+
+  function showArmoryTutorialCompletePopup() {
+    const gameRoot = document.querySelector(DOM.game) as HTMLElement | null;
+    if (!gameRoot) return;
+    if (document.getElementById("armory-tutorial-complete-popup")) return;
+    const popup = document.createElement("div");
+    popup.id = "armory-tutorial-complete-popup";
+    popup.className = "home-onboarding-popup helper-onboarding-popup";
+    popup.setAttribute("role", "dialog");
+    popup.setAttribute("aria-modal", "true");
+    popup.innerHTML = `
+      <div class="home-onboarding-dialog helper-onboarding-dialog">
+        <div class="home-onboarding-copy helper-onboarding-copy">
+          <h4 class="home-onboarding-title helper-onboarding-title">You Are Ready</h4>
+          <p class="home-onboarding-text helper-onboarding-text">That is it, Commander. Your squad is ready for deployment.</p>
+          <p class="home-onboarding-text helper-onboarding-text">Open Missions to launch your next operation.</p>
+          <div class="home-onboarding-actions">
+            <button id="armory-tutorial-complete-missions" type="button" class="game-btn game-btn-md game-btn-green home-onboarding-continue helper-onboarding-continue">Go to Missions</button>
+            <button id="armory-tutorial-complete-close" type="button" class="game-btn game-btn-md game-btn-blue">Stay Here</button>
+          </div>
+        </div>
+        <div class="home-onboarding-image-wrap helper-onboarding-image-wrap">
+          <img src="/images/green-portrait/portrait_0.png" alt="Quartermaster" class="home-onboarding-image helper-onboarding-image">
+        </div>
+      </div>`;
+    gameRoot.appendChild(popup);
+  }
+
+  function showArmoryEquipPickerOnboardingPopup() {
+    const gameRoot = document.querySelector(DOM.game) as HTMLElement | null;
+    if (!gameRoot) return;
+    if (gameRoot.getAttribute("data-armory-equip-picker-briefing-seen") === "1")
+      return;
+    if (document.getElementById("armory-equip-picker-onboarding-popup")) return;
+    const popup = document.createElement("div");
+    popup.id = "armory-equip-picker-onboarding-popup";
+    popup.className = "home-onboarding-popup helper-onboarding-popup";
+    popup.setAttribute("role", "dialog");
+    popup.setAttribute("aria-modal", "true");
+    popup.innerHTML = `
+      <div class="home-onboarding-dialog helper-onboarding-dialog">
+        <div class="home-onboarding-copy helper-onboarding-copy">
+          <h4 class="home-onboarding-title helper-onboarding-title">Equip Picker</h4>
+          <p class="home-onboarding-text helper-onboarding-text">Pick one of the highlighted armor slots to equip this item.</p>
+          <button id="armory-equip-picker-onboarding-continue" type="button" class="game-btn game-btn-md game-btn-green home-onboarding-continue helper-onboarding-continue">Continue</button>
+        </div>
+        <div class="home-onboarding-image-wrap helper-onboarding-image-wrap">
+          <img src="/images/green-portrait/portrait_0.png" alt="Quartermaster" class="home-onboarding-image helper-onboarding-image">
+        </div>
+      </div>`;
+    gameRoot.appendChild(popup);
+    gameRoot.setAttribute("data-armory-equip-picker-briefing-seen", "1");
   }
 
   function openAvailableSuppliesPopup(
@@ -7728,6 +8597,49 @@ export function eventConfigs() {
 
   const equipPickerEventConfig: HandlerInitConfig[] = [
     {
+      selector: "#armory-tutorial-complete-missions",
+      eventType: "click",
+      callback: () => {
+        removeArmoryTutorialCompletePopup();
+        UiManager.selectCompanyHomeButton(DOM.company.missions);
+        UiManager.renderMissionsScreen();
+      },
+    },
+    {
+      selector: "#armory-tutorial-complete-close",
+      eventType: "click",
+      callback: () => {
+        removeArmoryTutorialCompletePopup();
+      },
+    },
+    {
+      selector: "#armory-tutorial-complete-popup",
+      eventType: "click",
+      callback: (e: Event) => {
+        if ((e.target as HTMLElement).id !== "armory-tutorial-complete-popup")
+          return;
+        removeArmoryTutorialCompletePopup();
+      },
+    },
+    {
+      selector: "#armory-equip-picker-onboarding-continue",
+      eventType: "click",
+      callback: () => {
+        removeArmoryEquipPickerOnboardingPopup();
+        applyTutorialDirectorUi();
+      },
+    },
+    {
+      selector: "#armory-equip-picker-onboarding-popup",
+      eventType: "click",
+      callback: (e: Event) => {
+        if ((e.target as HTMLElement).id !== "armory-equip-picker-onboarding-popup")
+          return;
+        removeArmoryEquipPickerOnboardingPopup();
+        applyTutorialDirectorUi();
+      },
+    },
+    {
       selector: ".item-stats-popup-unequip-btn",
       eventType: "click",
       callback: (e: Event) => {
@@ -7810,6 +8722,7 @@ export function eventConfigs() {
           .forEach((el) => el.remove());
         const openedFrom = (picker as HTMLElement).dataset.openedFrom;
         picker.setAttribute("hidden", "");
+        removeArmoryEquipPickerOnboardingPopup();
         if (openedFrom === "roster") UiManager.renderRosterScreen();
         else if (openedFrom === "inventory") UiManager.renderInventoryScreen();
       },
@@ -8308,6 +9221,8 @@ export function eventConfigs() {
                 const slotSelector = `.equip-slot[data-soldier-id="${soldierId}"][data-slot-type="${slotType}"]${slotType === "equipment" ? `[data-eq-index="${eqIdx ?? 0}"]` : ""}`;
 
                 const runEquipAndRefresh = () => {
+                  const tutorialStepBeforeEquip =
+                    usePlayerCompanyStore.getState().tutorialDirector?.step;
                   const result = usePlayerCompanyStore
                     .getState()
                     .equipItemToSoldier(soldierId, slot, item, {
@@ -8357,6 +9272,27 @@ export function eventConfigs() {
                         );
                       }
                     });
+                    if (tutorialStepBeforeEquip === "armory_equip_armor") {
+                      const st = usePlayerCompanyStore.getState();
+                      st.setTutorialCompleted(true);
+                      st.setTutorialEnabled(false);
+                      st.setTutorialLockEnabled(false);
+                      const itemPopup = document.getElementById("item-stats-popup");
+                      if (itemPopup) itemPopup.setAttribute("hidden", "");
+                      const equipPicker = document.getElementById("equip-picker-popup");
+                      if (equipPicker) equipPicker.setAttribute("hidden", "");
+                      const suppliesPopup =
+                        document.getElementById("equip-supplies-popup");
+                      if (suppliesPopup) suppliesPopup.setAttribute("hidden", "");
+                      const tt = document.getElementById("equip-slot-tooltip");
+                      if (tt) {
+                        tt.hidden = true;
+                        tt.classList.remove("equip-slot-tooltip-visible");
+                      }
+                      removeArmoryEquipPickerOnboardingPopup();
+                      applyTutorialDirectorUi();
+                      showArmoryTutorialCompletePopup();
+                    }
                   }
                 };
 
@@ -8868,6 +9804,10 @@ export function eventConfigs() {
       selector: "#roster-formation-btn",
       eventType: "click",
       callback: () => {
+        const st = usePlayerCompanyStore.getState();
+        if (st.tutorialDirector?.step === "formation_open") {
+          st.setTutorialStep("formation_move");
+        }
         UiManager.renderFormationScreen();
       },
     },
@@ -8923,6 +9863,28 @@ export function eventConfigs() {
       eventType: "pointerdown",
       callback: () => {
         usePlayerCompanyStore.getState().claimHoldingInventory();
+        UiManager.renderInventoryScreen();
+      },
+    },
+    {
+      selector: "[data-armory-section-toggle]",
+      eventType: "click",
+      callback: (e: Event) => {
+        const btn = (e.currentTarget as HTMLElement | null) ??
+          ((e.target as HTMLElement | null)?.closest(
+            "[data-armory-section-toggle]",
+          ) as HTMLElement | null);
+        if (!btn) return;
+        const sectionId = btn.dataset.armorySectionId as
+          | "weapons"
+          | "armor"
+          | "stratagems"
+          | "equipment"
+          | undefined;
+        if (!sectionId) return;
+        const st = usePlayerCompanyStore.getState();
+        const currentlyOpen = st.armorySectionsOpen?.[sectionId] !== false;
+        st.setArmorySectionOpen(sectionId, !currentlyOpen);
         UiManager.renderInventoryScreen();
       },
     },
@@ -9032,6 +9994,7 @@ export function eventConfigs() {
             gameEl.appendChild(popup as HTMLElement);
           }
           popup.hidden = false;
+          applyTutorialDirectorUi();
         }
       },
     },
@@ -9068,6 +10031,10 @@ export function eventConfigs() {
         ).textContent = `Equip: ${item.name}`;
         picker.removeAttribute("hidden");
         popup.hidden = true;
+        const st = usePlayerCompanyStore.getState();
+        if (st.tutorialDirector?.step === "armory_equip_armor") {
+          showArmoryEquipPickerOnboardingPopup();
+        }
         UiManager.refreshEquipPickerContent?.();
         /* Highlight slots that can receive this item (same as item-first armory click) */
         document
@@ -9135,6 +10102,7 @@ export function eventConfigs() {
           );
           (picker as HTMLElement).dataset.suppliesTargetSoldierId = "";
         }
+        applyTutorialDirectorUi();
       },
     },
     {
@@ -9286,51 +10254,6 @@ export function eventConfigs() {
       .forEach((el) => el.classList.remove("formation-drop-zone"));
   }
 
-  function clearFormationEquipSelection() {
-    const screen = document.getElementById("formation-screen");
-    screen
-      ?.querySelectorAll(".formation-equip-slot-selected")
-      .forEach((el) => el.classList.remove("formation-equip-slot-selected"));
-    screen
-      ?.querySelectorAll(".formation-equip-slot-highlight")
-      .forEach((el) => el.classList.remove("formation-equip-slot-highlight"));
-  }
-
-  function applyFormationEquipDropZones(selectedSlot: HTMLElement) {
-    const slotType = selectedSlot.dataset.slotType as
-      | "weapon"
-      | "armor"
-      | "equipment";
-    const screen = document.getElementById("formation-screen");
-    if (!screen || !slotType) return;
-    if (slotType !== "weapon") {
-      screen
-        .querySelectorAll(`.formation-equip-slot[data-slot-type="${slotType}"]`)
-        .forEach((el) => {
-          if (el !== selectedSlot)
-            (el as HTMLElement).classList.add("formation-equip-slot-highlight");
-        });
-      return;
-    }
-    const sourceSoldierId = selectedSlot.dataset.soldierId;
-    const sourceWeapon = parseSlotItemFromData(selectedSlot);
-    if (!sourceSoldierId || !isWeaponItem(sourceWeapon)) return;
-    screen
-      .querySelectorAll(`.formation-equip-slot[data-slot-type="${slotType}"]`)
-      .forEach((el) => {
-        if (el === selectedSlot) return;
-        if (
-          isStrictWeaponSwapAllowed(
-            sourceSoldierId,
-            sourceWeapon,
-            el as HTMLElement,
-          )
-        ) {
-          (el as HTMLElement).classList.add("formation-equip-slot-highlight");
-        }
-      });
-  }
-
   function applyFormationDropZones(selectedIndex: number) {
     const screen = document.getElementById("formation-screen");
     if (!screen) return;
@@ -9354,87 +10277,24 @@ export function eventConfigs() {
       callback: () => UiManager.renderRosterScreen(),
     },
     {
+      selector: "#formation-market-onboarding-continue",
+      eventType: "click",
+      callback: () => {
+        const st = usePlayerCompanyStore.getState();
+        if (st.tutorialDirector?.step === "formation_market_prompt") {
+          st.setTutorialStep("formation_open_market");
+        }
+        UiManager.renderFormationScreen();
+      },
+    },
+    {
       selector: "#formation-screen",
       eventType: "click",
       callback: (e: Event) => {
-        const equipSlot = (e.target as HTMLElement).closest(
-          ".formation-equip-slot",
-        ) as HTMLElement | null;
-        if (equipSlot) {
-          e.stopPropagation();
-          clearFormationSelection();
-          const screen = document.getElementById("formation-screen");
-          const selectedSlot = screen?.querySelector(
-            ".formation-equip-slot-selected",
-          ) as HTMLElement | null;
-          const soldierId = equipSlot.dataset.soldierId;
-          const slotType = equipSlot.dataset.slotType as
-            | "weapon"
-            | "armor"
-            | "equipment";
-          const eqIndexStr = equipSlot.dataset.eqIndex;
-
-          if (selectedSlot) {
-            if (selectedSlot === equipSlot) {
-              clearFormationEquipSelection();
-              return;
-            }
-            const srcSoldierId = selectedSlot.dataset.soldierId!;
-            const srcSlotType = selectedSlot.dataset.slotType as
-              | "weapon"
-              | "armor"
-              | "equipment";
-            const srcEqIdx =
-              selectedSlot.dataset.eqIndex != null
-                ? parseInt(selectedSlot.dataset.eqIndex, 10)
-                : undefined;
-            if (
-              equipSlot.classList.contains("formation-equip-slot-highlight") &&
-              soldierId &&
-              slotType
-            ) {
-              const destEqIdx =
-                slotType === "equipment"
-                  ? eqIndexStr != null
-                    ? parseInt(eqIndexStr, 10)
-                    : undefined
-                  : undefined;
-              const result = usePlayerCompanyStore
-                .getState()
-                .moveItemBetweenSlots({
-                  sourceSoldierId: srcSoldierId,
-                  sourceSlotType: srcSlotType,
-                  sourceEqIndex:
-                    srcSlotType === "equipment" ? srcEqIdx : undefined,
-                  destSoldierId: soldierId,
-                  destSlotType: slotType,
-                  destEqIndex: slotType === "equipment" ? destEqIdx : undefined,
-                });
-              if (result.success) {
-                _AudioManager.UI().playItemSwap();
-                UiManager.renderFormationScreen();
-              }
-            }
-            clearFormationEquipSelection();
-            return;
-          }
-
-          if (equipSlot.dataset.slotItem) {
-            clearFormationEquipSelection();
-            equipSlot.classList.add("formation-equip-slot-selected");
-            applyFormationEquipDropZones(equipSlot);
-          }
-          return;
-        }
-
         const card = (e.target as HTMLElement).closest(
           ".formation-soldier-card",
         ) as HTMLElement | null;
-        if (!card) {
-          clearFormationEquipSelection();
-          return;
-        }
-        clearFormationEquipSelection();
+        if (!card) return;
         const slotIndexStr = card.dataset.slotIndex;
         if (slotIndexStr == null) return;
         const slotIndex = parseInt(slotIndexStr, 10);
@@ -9500,55 +10360,6 @@ export function eventConfigs() {
     screen
       ?.querySelectorAll(".ready-room-drop-zone")
       .forEach((el) => el.classList.remove("ready-room-drop-zone"));
-  }
-
-  function clearReadyRoomEquipSelection() {
-    const screen = document.getElementById("ready-room-screen");
-    screen
-      ?.querySelectorAll(".ready-room-equip-slot-selected")
-      .forEach((el) => el.classList.remove("ready-room-equip-slot-selected"));
-    screen
-      ?.querySelectorAll(".ready-room-equip-slot-highlight")
-      .forEach((el) => el.classList.remove("ready-room-equip-slot-highlight"));
-  }
-
-  function applyReadyRoomEquipDropZones(selectedSlot: HTMLElement) {
-    const slotType = selectedSlot.dataset.slotType as
-      | "weapon"
-      | "armor"
-      | "equipment";
-    const screen = document.getElementById("ready-room-screen");
-    if (!screen || !slotType) return;
-    if (slotType !== "weapon") {
-      screen
-        .querySelectorAll(
-          `.ready-room-equip-slot[data-slot-type="${slotType}"]`,
-        )
-        .forEach((el) => {
-          if (el !== selectedSlot)
-            (el as HTMLElement).classList.add(
-              "ready-room-equip-slot-highlight",
-            );
-        });
-      return;
-    }
-    const sourceSoldierId = selectedSlot.dataset.soldierId;
-    const sourceWeapon = parseSlotItemFromData(selectedSlot);
-    if (!sourceSoldierId || !isWeaponItem(sourceWeapon)) return;
-    screen
-      .querySelectorAll(`.ready-room-equip-slot[data-slot-type="${slotType}"]`)
-      .forEach((el) => {
-        if (el === selectedSlot) return;
-        if (
-          isStrictWeaponSwapAllowed(
-            sourceSoldierId,
-            sourceWeapon,
-            el as HTMLElement,
-          )
-        ) {
-          (el as HTMLElement).classList.add("ready-room-equip-slot-highlight");
-        }
-      });
   }
 
   function applyReadyRoomDropZones(selectedIndex: number) {
@@ -9631,6 +10442,10 @@ export function eventConfigs() {
             })),
           );
         }
+        const st = usePlayerCompanyStore.getState();
+        if (st.tutorialDirector?.step === "ready_room_proceed") {
+          st.setTutorialStep("combat_tap_soldier");
+        }
         UiManager.renderCombatScreen(mission);
       },
     },
@@ -9660,90 +10475,10 @@ export function eventConfigs() {
       selector: "#ready-room-screen",
       eventType: "click",
       callback: (e: Event) => {
-        const equipSlot = (e.target as HTMLElement).closest(
-          ".ready-room-equip-slot",
-        ) as HTMLElement | null;
-        if (equipSlot) {
-          e.stopPropagation();
-          clearReadyRoomSelection();
-          const screen = document.getElementById("ready-room-screen");
-          const selectedSlot = screen?.querySelector(
-            ".ready-room-equip-slot-selected",
-          ) as HTMLElement | null;
-          const soldierId = equipSlot.dataset.soldierId;
-          const slotType = equipSlot.dataset.slotType as
-            | "weapon"
-            | "armor"
-            | "equipment";
-          const eqIndexStr = equipSlot.dataset.eqIndex;
-          if (selectedSlot) {
-            if (selectedSlot === equipSlot) {
-              clearReadyRoomEquipSelection();
-              return;
-            }
-            const srcSoldierId = selectedSlot.dataset.soldierId!;
-            const srcSlotType = selectedSlot.dataset.slotType as
-              | "weapon"
-              | "armor"
-              | "equipment";
-            const srcEqIdx =
-              selectedSlot.dataset.eqIndex != null
-                ? parseInt(selectedSlot.dataset.eqIndex, 10)
-                : undefined;
-            if (
-              equipSlot.classList.contains("ready-room-equip-slot-highlight") &&
-              soldierId &&
-              slotType
-            ) {
-              const destEqIdx =
-                slotType === "equipment"
-                  ? eqIndexStr != null
-                    ? parseInt(eqIndexStr, 10)
-                    : undefined
-                  : undefined;
-              const result = usePlayerCompanyStore
-                .getState()
-                .moveItemBetweenSlots({
-                  sourceSoldierId: srcSoldierId,
-                  sourceSlotType: srcSlotType,
-                  sourceEqIndex:
-                    srcSlotType === "equipment" ? srcEqIdx : undefined,
-                  destSoldierId: soldierId,
-                  destSlotType: slotType,
-                  destEqIndex: slotType === "equipment" ? destEqIdx : undefined,
-                });
-              if (result.success) {
-                _AudioManager.UI().playItemSwap();
-                setLastEquipMoveSoldierIds(
-                  [srcSoldierId, soldierId].filter(
-                    (v, i, a) => a.indexOf(v) === i,
-                  ),
-                );
-                const json = screen?.getAttribute("data-mission-json");
-                const mission = json && json !== "" ? JSON.parse(json) : null;
-                UiManager.renderReadyRoomScreen(mission);
-              }
-            }
-            clearReadyRoomEquipSelection();
-            return;
-          }
-
-          if (equipSlot.dataset.slotItem) {
-            clearReadyRoomEquipSelection();
-            equipSlot.classList.add("ready-room-equip-slot-selected");
-            applyReadyRoomEquipDropZones(equipSlot);
-          }
-          return;
-        }
-
         const card = (e.target as HTMLElement).closest(
           ".ready-room-soldier-card",
         ) as HTMLElement | null;
-        if (!card) {
-          clearReadyRoomEquipSelection();
-          return;
-        }
-        clearReadyRoomEquipSelection();
+        if (!card) return;
         const slotIndexStr = card.dataset.slotIndex;
         if (slotIndexStr == null) return;
         const slotIndex = parseInt(slotIndexStr, 10);
@@ -9823,6 +10558,9 @@ export function eventConfigs() {
           if (result.success) {
             if (st.onboardingRecruitStep === "troops_recruit")
               st.setOnboardingRecruitStep("troops_confirm");
+            if (st.tutorialDirector?.step === "recruit_select") {
+              st.setTutorialStep("recruit_confirm");
+            }
             UiManager.renderMarketTroopsScreen();
           } else {
             UiManager.showTroopsRecruitError(result.reason ?? "capacity");
@@ -9842,12 +10580,32 @@ export function eventConfigs() {
         }
         const confirmBtn = target.closest("#confirm-recruitment");
         if (confirmBtn && !(confirmBtn as HTMLButtonElement).disabled) {
+          const guidedRecruitDesignation = (
+            st.onboardingRecruitSoldier?.designation ?? ""
+          ).toLowerCase();
+          const isMedicGuidedRecruit = guidedRecruitDesignation === "medic";
           st.confirmRecruitment();
           if (guided) {
             st.setOnboardingRecruitStep("none");
             st.setOnboardingRecruitSoldier(null);
-            st.setOnboardingMarketSectionsLocked(true);
-            st.setOnboardingMissionTypesIntroPending(true);
+            st.setOnboardingMarketSectionsLocked(false);
+            // Mission types intro belongs to the first recruit flow only.
+            // Medic reminder recruit must not replay it.
+            if (!isMedicGuidedRecruit) {
+              st.setOnboardingMissionTypesIntroPending(true);
+            } else {
+              st.setOnboardingMissionTypesIntroPending(false);
+            }
+            // Supplies/market sections briefing should run only on the initial
+            // recruit path, never during the medic reminder recruit flow.
+            if (!isMedicGuidedRecruit) {
+              st.setOnboardingSuppliesStep("supplies_focus");
+            } else {
+              st.setOnboardingSuppliesStep("done");
+            }
+            if (st.tutorialDirector?.step === "recruit_confirm") {
+              st.setTutorialStep("formation_open");
+            }
             UiManager.renderRosterScreen();
           } else {
             UiManager.renderMarketTroopsScreen();
@@ -10161,7 +10919,7 @@ export function eventConfigs() {
     },
     // ids use element id (no #) for getElementById; selectors need # for querySelector
     itemSelector: string,
-    _onSuccess: () => void,
+    onSuccess: () => void,
   ): HandlerInitConfig[] {
     return [
       {
@@ -10210,8 +10968,10 @@ export function eventConfigs() {
           errorEl.textContent = "";
           errorEl.classList.remove("visible");
           popup.removeAttribute("hidden");
+          (buyBtn as HTMLButtonElement).disabled = slotsFree <= 0;
           (buyBtn as HTMLElement).innerHTML =
             `Buy <span class="buy-btn-price">$${price.toLocaleString()}</span>`;
+          applyTutorialDirectorUi();
         },
       },
       {
@@ -10306,8 +11066,20 @@ export function eventConfigs() {
           errorEl.classList.remove("visible");
           playMarketBuyToArmoryAnimation(ids.body, qty);
           updateMarketCreditsDisplay();
+          if (ids.popup === "armor-buy-popup") {
+            const gameEl = document.querySelector(DOM.game) as HTMLElement | null;
+            if (gameEl) gameEl.setAttribute("data-tutorial-last-armor-id", item.id);
+            popup.setAttribute("hidden", "");
+          }
 
           const nextStore = usePlayerCompanyStore.getState();
+          if (
+            ids.popup === "armor-buy-popup" &&
+            nextStore.tutorialDirector?.step === "armory_equip_prompt"
+          ) {
+            onSuccess();
+            return;
+          }
           const nextLevel =
             nextStore.company?.level ?? nextStore.companyLevel ?? 1;
           const nextInv = nextStore.company?.inventory ?? [];
@@ -10333,6 +11105,7 @@ export function eventConfigs() {
             errorEl.textContent = "Armory full";
             errorEl.classList.add("visible");
           }
+          applyTutorialDirectorUi();
         },
       },
       {
@@ -10903,6 +11676,12 @@ export function eventConfigs() {
         }
         actionsEl.hidden = false;
         tooltip.removeAttribute("hidden");
+        const st = usePlayerCompanyStore.getState();
+        if (st.tutorialDirector?.step === "tactics_inspect") {
+          st.markTutorialMilestone("abilityInspected", true);
+          st.setTutorialStep("tactics_use_in_combat");
+          applyTutorialDirectorUi();
+        }
       },
     },
     {
@@ -11036,6 +11815,13 @@ export function eventConfigs() {
     window.addEventListener("resize", handler);
   }
 
+  if (
+    document.querySelector(DOM.setupScreen.commanderInput) ||
+    document.querySelector(DOM.setupScreen.companyInput)
+  ) {
+    refreshSetupInputUx();
+  }
+
   return {
     gameSetup: () => gameSetupEventConfig,
     confirmationScreen: () => gameConfirmationEventConfig,
@@ -11054,7 +11840,6 @@ export function eventConfigs() {
     armorScreen: () => armorScreenEventConfig,
     devCatalogScreen: () => devCatalogScreenEventConfig,
     memorialScreen: () => [],
-    trainingScreen: () => [],
     abilitiesScreen: () => abilitiesScreenEventConfig,
     readyRoomScreen: () => readyRoomScreenEventConfig,
     formationScreen: () => formationScreenEventConfig,

@@ -58,15 +58,31 @@ document.addEventListener(
   { passive: false },
 );
 
+let splashHideInProgress = false;
+let splashHidden = false;
+
 const hideNativeSplashWhenReady = async (): Promise<void> => {
+  if (splashHideInProgress || splashHidden) return;
+  splashHideInProgress = true;
   try {
     const platform = Capacitor.getPlatform();
     if (platform !== "ios" && platform !== "android") return;
     // Let the first app frame commit before dismissing native splash.
     await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-    await SplashScreen.hide();
+    const maxAttempts = 30;
+    for (let i = 0; i < maxAttempts; i += 1) {
+      try {
+        await SplashScreen.hide();
+        splashHidden = true;
+        return;
+      } catch {
+        await new Promise<void>((resolve) => window.setTimeout(resolve, 150));
+      }
+    }
   } catch {
     // Ignore if plugin is unavailable in web/dev contexts.
+  } finally {
+    splashHideInProgress = false;
   }
 };
 

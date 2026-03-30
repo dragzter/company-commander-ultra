@@ -32,7 +32,6 @@ import { rosterTemplate } from "../html-templates/roster-template.ts";
 import { formationTemplate } from "../html-templates/formation-template.ts";
 import { inventoryTemplate } from "../html-templates/inventory-template.ts";
 import { memorialTemplate } from "../html-templates/memorial-template.ts";
-import { trainingTemplate } from "../html-templates/training-template.ts";
 import { abilitiesTemplate } from "../html-templates/abilities-template.ts";
 import { combatTemplate } from "../html-templates/combat-template.ts";
 import {
@@ -1035,18 +1034,6 @@ function ScreenManager() {
     show.center();
   }
 
-  function createTrainingPage() {
-    UiManager.clear.center();
-    const content = parseHTML(trainingTemplate());
-    center.appendChild(content as Element);
-    DomEventManager.initEventArray(
-      ec().companyHome().concat(ec().trainingScreen()),
-    );
-    UiManager.selectCompanyHomeButton(DOM.company.training);
-    Styler.setCenterBG("bg_81.jpg", true);
-    show.center();
-  }
-
   function createAbilitiesPage() {
     UiManager.clear.center();
     const content = parseHTML(abilitiesTemplate());
@@ -1080,7 +1067,6 @@ function ScreenManager() {
       createFormationPage,
       createInventoryPage,
       createMemorialPage,
-      createTrainingPage,
       createAbilitiesPage,
     },
   };

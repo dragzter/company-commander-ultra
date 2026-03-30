@@ -49,7 +49,34 @@ export const COMMON_SUPPLY_IDS = [
   "stim_pack",
 ] as const;
 
+/** Rare supply item ids for mission loot drops. */
+export const RARE_SUPPLY_IDS = [
+  "m3a_frag_grenade",
+  "m99_sticky_grenade",
+  "nerve_gas_detonator",
+  "m3a_repressor",
+  "rad_emitter",
+  "orange_stim_pack",
+  "adrenaline_injection",
+] as const;
+
+/** Epic supply item ids for mission loot drops. */
+export const EPIC_SUPPLY_IDS = [
+  "psychic_shredder",
+  "substance_m",
+] as const;
+
 export function pickRandomCommonSupply(): Item | null {
   const id = COMMON_SUPPLY_IDS[Math.floor(Math.random() * COMMON_SUPPLY_IDS.length)];
+  return getRewardItemById(id);
+}
+
+export function pickRandomRareSupply(): Item | null {
+  const id = RARE_SUPPLY_IDS[Math.floor(Math.random() * RARE_SUPPLY_IDS.length)];
+  return getRewardItemById(id);
+}
+
+export function pickRandomEpicSupply(): Item | null {
+  const id = EPIC_SUPPLY_IDS[Math.floor(Math.random() * EPIC_SUPPLY_IDS.length)];
   return getRewardItemById(id);
 }

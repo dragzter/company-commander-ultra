@@ -1,7 +1,5 @@
 export const MISSION_KINDS = {
   defend_objective: "defend_objective",
-  ambush: "ambush",
-  attack_objective: "attack_objective",
   skirmish: "skirmish",
   manhunt: "manhunt",
 } as const;
@@ -42,30 +40,6 @@ export const MISSION_KIND_DEFINITIONS: MissionKindDefinition[] = [
     epicWeight: 1,
   },
   {
-    kind: MISSION_KINDS.ambush,
-    name: "Ambush",
-    description: "Set up a surprise attack on enemy forces.",
-    flavorTemplates: [
-      "Set up an ambush at {LOC}. The enemy won't see it coming.",
-      "Lie in wait at {LOC}. Strike when they least expect it.",
-    ],
-    displayOrder: 2,
-    regularWeight: 0,
-    epicWeight: 0,
-  },
-  {
-    kind: MISSION_KINDS.attack_objective,
-    name: "Attack Objective",
-    description: "Assault and neutralize enemy positions.",
-    flavorTemplates: [
-      "Assault {LOC} and neutralize all resistance.",
-      "Take {LOC} by force. No quarter.",
-    ],
-    displayOrder: 3,
-    regularWeight: 0,
-    epicWeight: 0,
-  },
-  {
     kind: MISSION_KINDS.skirmish,
     name: "Skirmish",
     description: "Standard deathmatch against hostile forces.",
@@ -73,7 +47,7 @@ export const MISSION_KIND_DEFINITIONS: MissionKindDefinition[] = [
       "A high-value target is holed up at {LOC}. Eliminate them.",
       "Neutralize the target at {LOC}.",
     ],
-    displayOrder: 4,
+    displayOrder: 2,
     regularWeight: 1,
     epicWeight: 1,
   },
@@ -85,7 +59,7 @@ export const MISSION_KIND_DEFINITIONS: MissionKindDefinition[] = [
       "The target is fleeing through {LOC}. Don't let them escape.",
       "Track the priority target to {LOC} and eliminate them.",
     ],
-    displayOrder: 5,
+    displayOrder: 3,
     regularWeight: 1,
     epicWeight: 1,
   },
@@ -261,12 +235,83 @@ export interface MissionEncounterConfig {
   grenadeThrowers: number;
 }
 
-/** Any successful mission: chance to drop an epic weapon or armor (level-appropriate). */
-export const LOOT_EPIC_CHANCE = 0.005;
-/** Any successful mission: chance to drop a rare weapon or armor (level-appropriate). */
-export const LOOT_RARE_CHANCE = 0.01;
-/** Any successful mission: chance to drop a common supply item (throwable/medical). */
-export const LOOT_COMMON_SUPPLY_CHANCE = 0.03;
+export type ModeLootProfile = {
+  rareGear: number;
+  epicGear: number;
+  supplyDrop: number;
+  rareSupplyWeight: number;
+  epicSupplyWeight: number;
+};
+
+/** Loot profile by difficulty for normal missions. Each successful mission can roll rare gear and one supply roll. */
+export const NORMAL_MODE_LOOT_BY_DIFFICULTY: Record<
+  1 | 2 | 3 | 4,
+  ModeLootProfile
+> = {
+  1: {
+    rareGear: 0.01,
+    epicGear: 0,
+    supplyDrop: 0.05,
+    rareSupplyWeight: 0,
+    epicSupplyWeight: 0,
+  },
+  2: {
+    rareGear: 0.02,
+    epicGear: 0,
+    supplyDrop: 0.09,
+    rareSupplyWeight: 0.12,
+    epicSupplyWeight: 0,
+  },
+  3: {
+    rareGear: 0.04,
+    epicGear: 0,
+    supplyDrop: 0.14,
+    rareSupplyWeight: 0.2,
+    epicSupplyWeight: 0.02,
+  },
+  4: {
+    rareGear: 0.07,
+    epicGear: 0,
+    supplyDrop: 0.2,
+    rareSupplyWeight: 0.28,
+    epicSupplyWeight: 0.04,
+  },
+};
+
+/** Loot profile by difficulty for epic missions. Epic missions also grant one guaranteed reward item. */
+export const EPIC_MODE_LOOT_BY_DIFFICULTY: Record<
+  1 | 2 | 3 | 4,
+  ModeLootProfile
+> = {
+  1: {
+    rareGear: 0.08,
+    epicGear: 0.015,
+    supplyDrop: 0.2,
+    rareSupplyWeight: 0.2,
+    epicSupplyWeight: 0.03,
+  },
+  2: {
+    rareGear: 0.1,
+    epicGear: 0.025,
+    supplyDrop: 0.26,
+    rareSupplyWeight: 0.24,
+    epicSupplyWeight: 0.04,
+  },
+  3: {
+    rareGear: 0.12,
+    epicGear: 0.035,
+    supplyDrop: 0.32,
+    rareSupplyWeight: 0.28,
+    epicSupplyWeight: 0.05,
+  },
+  4: {
+    rareGear: 0.15,
+    epicGear: 0.05,
+    supplyDrop: 0.38,
+    rareSupplyWeight: 0.32,
+    epicSupplyWeight: 0.06,
+  },
+};
 
 export type Mission = {
   id: string;

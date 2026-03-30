@@ -18,6 +18,9 @@ import { getLevelBenefitsForCodex } from "../entities/levels.ts";
 import { APP_VERSION } from "../../constants/version.ts";
 import { CREDIT_SYMBOL } from "../../constants/currency.ts";
 import { getSoldierPortraitUrl } from "../../utils/name-utils.ts";
+import {
+  getTutorialProgressText,
+} from "../../services/tutorial/tutorial-director.ts";
 
 const TRAIT_STAT_ABBR: Record<string, string> = {
   hit_points: "HP",
@@ -268,6 +271,17 @@ export function memorialPopupTemplate(): string {
 
 /** Settings popup with destructive reset action. */
 export function settingsPopupTemplate(): string {
+  const store = usePlayerCompanyStore.getState();
+  const tutorialDirector = store.tutorialDirector;
+  const tutorialPaused =
+    !tutorialDirector?.enabled &&
+    !tutorialDirector?.completed &&
+    tutorialDirector?.step !== "completed";
+  const tutorialStatus = tutorialDirector?.completed
+    ? "Tutorial completed for this company."
+    : tutorialPaused
+      ? "Tutorial paused. You can continue it any time."
+      : "Tutorial guidance is currently active.";
   return `
   <div id="settings-popup" class="codex-popup settings-popup" role="dialog" aria-modal="true" hidden>
     <div class="codex-popup-inner settings-popup-inner">
@@ -288,11 +302,15 @@ export function settingsPopupTemplate(): string {
               class="settings-text-input"
               type="text"
               maxlength="15"
-              minlength="5"
-              placeholder="5-15 characters"
+              minlength="1"
+              placeholder="1-15 characters"
               autocomplete="off"
               spellcheck="false"
             >
+            <div class="settings-input-meta">
+              <p class="settings-input-hint">1-15 characters.</p>
+              <span id="settings-squad-name-counter" class="settings-input-counter">0/15</span>
+            </div>
           </div>
           <div class="settings-identity-actions">
             <button type="button" id="settings-squad-name-save" class="game-btn game-btn-md game-btn-blue settings-name-save-btn">Save Name</button>
@@ -318,6 +336,15 @@ export function settingsPopupTemplate(): string {
               <span class="settings-sound-thumb"></span>
             </span>
           </label>
+        </section>
+        <section class="settings-panel settings-panel-tutorial">
+          <div class="settings-panel-head">
+            <h5 class="settings-panel-title">Tutorial</h5>
+            <p id="settings-tutorial-status" class="settings-panel-copy">${tutorialStatus}</p>
+          </div>
+          <div class="settings-tutorial-actions">
+            <button type="button" id="company-resume-tutorial" class="game-btn game-btn-md game-btn-blue company-tutorial-resume-btn"${tutorialPaused ? "" : " hidden"}>Resume Tutorial</button>
+          </div>
         </section>
         <section class="settings-panel settings-panel-danger">
           <div class="settings-panel-head">
@@ -357,13 +384,21 @@ export const gameSetupTemplate = `<div class="setup-game-wrapper">
                         <h3 class="setup-title">Create Your Company</h3>
                         <div class="setup-input-wrapper">
                             <label for="commander-name">Your Name</label>
-                            <input id="commander-name" type="text" placeholder="Your Name" data-min="3">
-                            <p class="helper-text">3 - 15 characters.</p>
+                            <input id="commander-name" type="text" placeholder="Your Name" data-min="1" minlength="1" maxlength="15" autocomplete="off" spellcheck="false">
+                            <div class="setup-input-meta">
+                                <p class="helper-text">1 - 15 characters.</p>
+                                <span id="commander-name-counter" class="setup-input-counter">0/15</span>
+                            </div>
+                            <p id="commander-name-status" class="setup-input-status" aria-live="polite">Type your name to continue.</p>
                         </div>
                         <div class="setup-input-wrapper">
                             <label for="company-name">Company Name</label>
-                            <input id="company-name" type="text" placeholder="e.g. The Tiger Hawks" data-min="5">
-                            <p class="helper-text">5 - 15 characters.</p>
+                            <input id="company-name" type="text" placeholder="e.g. The Tiger Hawks" data-min="1" minlength="1" maxlength="15" autocomplete="off" spellcheck="false">
+                            <div class="setup-input-meta">
+                                <p class="helper-text">1 - 15 characters.</p>
+                                <span id="company-name-counter" class="setup-input-counter">0/15</span>
+                            </div>
+                            <p id="company-name-status" class="setup-input-status" aria-live="polite">Type your company name to continue.</p>
                         </div>
                         <div class="setup-patch-section">
                             <h3 class="setup-patch-title">Choose Your Unit Patch</h3>
@@ -490,6 +525,16 @@ export const marketCreditsPartial = (creditBalance: number) => {
 export const companyActionsTemplate = () => {
   const store = usePlayerCompanyStore.getState();
   const marketLocked = !!store.onboardingFirstMissionPending;
+  const tutorialInfo = getTutorialProgressText(store);
+  const tutorialBanner = tutorialInfo
+    ? `
+  <div id="tutorial-progress-banner" class="tutorial-progress-strip tutorial-progress-banner">
+    <span class="tutorial-progress-step">${tutorialInfo.step}</span>
+    <span class="tutorial-progress-title">${tutorialInfo.title}</span>
+    <span class="tutorial-progress-instruction">${tutorialInfo.instruction}</span>
+    <button id="tutorial-progress-dismiss" type="button" class="game-btn game-btn-sm game-btn-red tutorial-progress-dismiss-btn">End Tutorial</button>
+  </div>`
+    : "";
   const actions = [
     ["company-go-home", "Home", Images.btn.sq_home, "company-action-home"],
     ["company-go-missions", "Missions", Images.btn.sq_mission, "company-action-missions"],
@@ -500,6 +545,7 @@ export const companyActionsTemplate = () => {
     ["company-go-abilities", "Tactics", "list_2_button.png", "company-action-tactics"],
   ];
   return `
+  ${tutorialBanner}
   <div class="company-actions grid grid-6-col">
       ${actions
         .map(

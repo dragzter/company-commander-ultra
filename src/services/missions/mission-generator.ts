@@ -22,7 +22,7 @@ import {
 } from "./mission-scenarios.ts";
 
 /** Bump this when mission generation output changes and old boards should be regenerated. */
-export const MISSION_BOARD_SCHEMA_VERSION = 10;
+export const MISSION_BOARD_SCHEMA_VERSION = 12;
 
 const ENVIRONMENT_ORDER_ALL: MissionEnvironmentId[] = [
   "city",
@@ -86,18 +86,6 @@ const KIND_OBJECTIVES: Record<MissionKind, string[]> = {
     "the command post",
     "the fuel depot",
   ],
-  ambush: [
-    "an armored convoy",
-    "a patrol column",
-    "a logistics team",
-    "a radio truck",
-  ],
-  attack_objective: [
-    "the mortar nest",
-    "the comms bunker",
-    "the checkpoint",
-    "the weapons dump",
-  ],
   skirmish: [
     "a sabotage cell",
     "an HVT escort",
@@ -114,8 +102,6 @@ const KIND_OBJECTIVES: Record<MissionKind, string[]> = {
 
 const TITLE_TEMPLATES: Record<MissionKind, string[]> = {
   defend_objective: ["Hold the Line", "Defend Position", "Secure Perimeter"],
-  ambush: ["Set Ambush", "Silent Intercept", "Spring the Trap"],
-  attack_objective: ["Assault Position", "Break Defenses", "Shock Assault"],
   skirmish: ["Sweep and Destroy", "Target Elimination", "Clear Hostiles"],
   manhunt: ["Target Pursuit", "Track and Capture", "Live Target Hunt"],
 };
@@ -124,14 +110,6 @@ const DESCRIPTION_TEMPLATES: Record<MissionKind, string[]> = {
   defend_objective: [
     "Enemy units are converging on {OBJ} near {LOC}. Hold the perimeter and deny the breach.",
     "{OBJ} is under direct assault at {LOC}. Dig in and repel all attackers.",
-  ],
-  ambush: [
-    "{OBJ} is moving through {LOC}. Strike first, shatter cohesion, and disappear before reinforcements arrive.",
-    "Establish kill zones at {LOC}. Hit {OBJ} hard and withdraw before counterfire builds.",
-  ],
-  attack_objective: [
-    "Conduct a direct assault on {OBJ} in {LOC}. Break resistance and secure the site.",
-    "{OBJ} in {LOC} is lightly entrenched. Push aggressively and clear the objective.",
   ],
   skirmish: [
     "Intel places {OBJ} inside {LOC}. Sweep the area and eliminate hostiles on contact.",
@@ -142,6 +120,39 @@ const DESCRIPTION_TEMPLATES: Record<MissionKind, string[]> = {
     "A high-priority target, {OBJ}, was spotted near {LOC}. Track and eliminate before exfil.",
   ],
 };
+
+const EPIC_GUARANTEED_COMMON_SUPPLY_IDS = [
+  "m84_flashbang",
+  "incendiary_grenade",
+  "stim_pack",
+  "standard_medkit",
+  "tk21_throwing_knife",
+  "m3_frag_grenade",
+  "mk18_smoke",
+] as const;
+
+const EPIC_GUARANTEED_RARE_SUPPLY_IDS = [
+  "m3a_repressor",
+  "m3a_frag_grenade",
+  "m99_sticky_grenade",
+  "nerve_gas_detonator",
+  "rad_emitter",
+  "orange_stim_pack",
+  "adrenaline_injection",
+] as const;
+
+const EPIC_GUARANTEED_EPIC_SUPPLY_IDS = [
+  "psychic_shredder",
+  "substance_m",
+] as const;
+
+/** Epic guaranteed reward composition: 65% common, 30% rare, 5% epic. */
+function pickEpicGuaranteedRewardId(): string {
+  const roll = Math.random();
+  if (roll < 0.65) return pick([...EPIC_GUARANTEED_COMMON_SUPPLY_IDS]);
+  if (roll < 0.95) return pick([...EPIC_GUARANTEED_RARE_SUPPLY_IDS]);
+  return pick([...EPIC_GUARANTEED_EPIC_SUPPLY_IDS]);
+}
 
 const RISK_CLAUSES = {
   low: ["Expect light contact.", "Visibility is favorable."],
@@ -374,19 +385,7 @@ export function generateMissions(
       rarity,
       encounter,
       rewardItems: isEpic
-        ? [
-            pick([
-              "m84_flashbang",
-              "incendiary_grenade",
-              "stim_pack",
-              "standard_medkit",
-              "tk21_throwing_knife",
-              "m3a_repressor",
-              "m3_frag_grenade",
-              "mk18_smoke",
-              "orange_stim_pack",
-            ]),
-          ]
+        ? [pickEpicGuaranteedRewardId()]
         : undefined,
     });
   };

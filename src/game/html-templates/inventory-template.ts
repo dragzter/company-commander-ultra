@@ -377,7 +377,7 @@ function inventoryItemCard(
     ? " inventory-item-card-stratagem-equipped"
     : "";
   return `
-<div class="inventory-item-card market-item-slot gear-market-item${cardRarity}${equippedClass}" data-item-index="${index}" data-item-id="${item.id}" data-item-json="${escapeAttr(JSON.stringify(item))}" role="button" tabindex="0">
+<div class="inventory-item-card market-item-slot gear-market-item${cardRarity}${equippedClass}" data-item-index="${index}" data-item-id="${item.id}" data-item-type="${item.type}" data-item-json="${escapeAttr(JSON.stringify(item))}" role="button" tabindex="0">
   <div class="market-item-inner">
     ${iconHtml}
     <div class="market-item-details">
@@ -459,14 +459,22 @@ export function inventoryTemplate(): string {
   const stratagemSlots = STRATAGEM_ARMORY_SLOTS;
   const levelSnapshot = getCompanyLevelSnapshot(companyLevel);
   const nextLevel = levelSnapshot.next;
+  const sectionOpen = store.armorySectionsOpen ?? {
+    weapons: true,
+    armor: true,
+    stratagems: true,
+    equipment: true,
+  };
 
   function armorySectionSlots(
     itemsInCategory: Item[],
     indices: number[],
     capacity: number,
     sectionId: string,
+    sectionKey: "weapons" | "armor" | "stratagems" | "equipment",
     sectionTitle: string,
   ): string {
+    const isOpen = sectionOpen[sectionKey] !== false;
     const filled = itemsInCategory.map((item, i) => ({ item, index: indices[i] }));
     const slots: (Item | null)[] = Array.from({ length: capacity }, (_, i) => filled[i]?.item ?? null);
     const slotIndices: (number | null)[] = Array.from({ length: capacity }, (_, i) =>
@@ -480,9 +488,12 @@ export function inventoryTemplate(): string {
       )
       .join("");
     return `
-    <div class="inventory-section market-section">
-      <h4 class="inventory-section-title market-section-title">${sectionTitle} <span class="inventory-section-cap">${itemsInCategory.length} / ${capacity}</span></h4>
-      <div class="inventory-grid market-grid market-grid-2col" id="${sectionId}">
+    <div class="inventory-section market-section${isOpen ? "" : " inventory-section-collapsed"}" data-armory-section-id="${sectionKey}">
+      <button type="button" class="inventory-section-header-btn" data-armory-section-toggle data-armory-section-id="${sectionKey}" aria-expanded="${isOpen ? "true" : "false"}">
+        <h4 class="inventory-section-title market-section-title">${sectionTitle} <span class="inventory-section-cap">${itemsInCategory.length} / ${capacity}</span></h4>
+        <span class="inventory-section-toggle-arrow${isOpen ? " is-open" : ""}" aria-hidden="true">${isOpen ? "▼" : "▶"}</span>
+      </button>
+      <div class="inventory-grid market-grid market-grid-2col" id="${sectionId}" ${isOpen ? "" : "hidden"}>
         ${gridItems}
       </div>
     </div>`;
@@ -509,10 +520,10 @@ export function inventoryTemplate(): string {
   ${itemStatsPopupHtml()}
   ${companyHeaderPartial("Company Armory")}
   <div class="inventory-main market-main-2col">
-    ${armorySectionSlots(weapons, weaponIndices, weaponSlots, "inventory-weapons", "Weapons")}
-    ${armorySectionSlots(armor, armorIndices, armorSlots, "inventory-armor", "Armor")}
-    ${armorySectionSlots(stratagems, stratagemIndices, stratagemSlots, "inventory-stratagems", "Stratagems")}
-    ${armorySectionSlots(equipment, equipmentIndices, equipmentSlots, "inventory-equipment", "Equipment & Supplies")}
+    ${armorySectionSlots(weapons, weaponIndices, weaponSlots, "inventory-weapons", "weapons", "Weapons")}
+    ${armorySectionSlots(armor, armorIndices, armorSlots, "inventory-armor", "armor", "Armor")}
+    ${armorySectionSlots(stratagems, stratagemIndices, stratagemSlots, "inventory-stratagems", "stratagems", "Stratagems")}
+    ${armorySectionSlots(equipment, equipmentIndices, equipmentSlots, "inventory-equipment", "equipment", "Equipment & Supplies")}
     ${holdingSection}
   </div>
   <div class="inventory-footer troops-market-footer">

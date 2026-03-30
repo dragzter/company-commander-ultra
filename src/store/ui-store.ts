@@ -18,6 +18,15 @@ import type {
 } from "../constants/company-abilities.ts";
 import { resolveCompanyAbilityState } from "../constants/company-abilities.ts";
 import { getCompanyPassiveEffects } from "../constants/company-abilities.ts";
+import type {
+  TutorialDirectorState,
+  TutorialMilestones,
+  TutorialStepId,
+} from "../services/tutorial/tutorial-director.ts";
+import {
+  DEFAULT_TUTORIAL_DIRECTOR,
+  DEFAULT_TUTORIAL_MILESTONES,
+} from "../services/tutorial/tutorial-director.ts";
 
 const { nocache } = URLReader(document.location.search);
 const skipPersistence = nocache === "true";
@@ -51,6 +60,18 @@ export type MissionsResumeStep =
   | MissionKind
   | "career"
   | "ready_room";
+export type ArmorySectionId =
+  | "weapons"
+  | "armor"
+  | "stratagems"
+  | "equipment";
+export type ArmorySectionsOpen = Record<ArmorySectionId, boolean>;
+export const DEFAULT_ARMORY_SECTIONS_OPEN: ArmorySectionsOpen = {
+  weapons: true,
+  armor: true,
+  stratagems: true,
+  equipment: true,
+};
 
 export type MarketFlareOffer = {
   id: string;
@@ -125,6 +146,8 @@ export type CompanyStore = {
   onboardingMarketSectionsLocked: boolean;
   onboardingRecruitStep: RecruitOnboardingStep;
   onboardingRecruitSoldier: Soldier | null;
+  armorySectionsOpen: ArmorySectionsOpen;
+  tutorialDirector: TutorialDirectorState;
   companyAbilityChoices: CompanyAbilityChoiceMap;
   companyAbilityUnlockedIds: CompanyAbilityId[];
   companyAbilityPendingChoiceLevels: number[];
@@ -169,6 +192,17 @@ export type CompanyStore = {
   setOnboardingMarketSectionsLocked: (locked: boolean) => void;
   setOnboardingRecruitStep: (step: RecruitOnboardingStep) => void;
   setOnboardingRecruitSoldier: (soldier: Soldier | null) => void;
+  setArmorySectionOpen: (section: ArmorySectionId, open: boolean) => void;
+  setTutorialStep: (step: TutorialStepId) => void;
+  setTutorialEnabled: (enabled: boolean) => void;
+  setTutorialCompleted: (completed: boolean) => void;
+  setTutorialLockEnabled: (enabled: boolean) => void;
+  requestTutorialResume: () => void;
+  clearTutorialResumeRequest: () => void;
+  markTutorialMilestone: (
+    key: keyof TutorialMilestones,
+    value?: boolean,
+  ) => void;
   chooseCompanyAbilityAtLevel: (
     level: number,
     abilityId: CompanyAbilityId,
@@ -327,6 +361,11 @@ export const usePlayerCompanyStore = createStore<CompanyStore>()(
     ? persist((set, get) => StoreActions(set, get), {
         name: "cc-company-store",
         merge: (persisted, current) => {
+          const hasPersistedTutorialDirector =
+            typeof (persisted as { tutorialDirector?: unknown })
+              ?.tutorialDirector === "object" &&
+            (persisted as { tutorialDirector?: unknown })?.tutorialDirector !=
+              null;
           const merged = {
             ...current,
             ...(persisted as object),
@@ -535,6 +574,128 @@ export const usePlayerCompanyStore = createStore<CompanyStore>()(
             merged.onboardingRecruitSoldier !== null
           ) {
             merged.onboardingRecruitSoldier = null;
+          }
+          {
+            const raw = merged.armorySectionsOpen as
+              | Partial<Record<ArmorySectionId, unknown>>
+              | undefined;
+            merged.armorySectionsOpen = {
+              weapons:
+                typeof raw?.weapons === "boolean"
+                  ? raw.weapons
+                  : DEFAULT_ARMORY_SECTIONS_OPEN.weapons,
+              armor:
+                typeof raw?.armor === "boolean"
+                  ? raw.armor
+                  : DEFAULT_ARMORY_SECTIONS_OPEN.armor,
+              stratagems:
+                typeof raw?.stratagems === "boolean"
+                  ? raw.stratagems
+                  : DEFAULT_ARMORY_SECTIONS_OPEN.stratagems,
+              equipment:
+                typeof raw?.equipment === "boolean"
+                  ? raw.equipment
+                  : DEFAULT_ARMORY_SECTIONS_OPEN.equipment,
+            };
+          }
+          const legacyOnboardingActive =
+            !!merged.onboardingHomeIntroPending ||
+            !!merged.onboardingFirstMissionPending ||
+            !!merged.onboardingReadyRoomIntroPending ||
+            !!merged.onboardingCombatTutorialPending ||
+            !!merged.onboardingMedicRecruitNoticePending ||
+            !!merged.onboardingMissionTypesIntroPending ||
+            !!merged.onboardingTacticsIntroPending ||
+            (merged.onboardingRecruitStep ?? "none") !== "none" ||
+            ((merged.onboardingSuppliesStep ?? "none") !== "none" &&
+              (merged.onboardingSuppliesStep ?? "none") !== "done");
+          if (
+            !merged.tutorialDirector ||
+            typeof merged.tutorialDirector !== "object"
+          ) {
+            merged.tutorialDirector = {
+              ...DEFAULT_TUTORIAL_DIRECTOR,
+              milestones: { ...DEFAULT_TUTORIAL_MILESTONES },
+            };
+          } else {
+            const td = merged.tutorialDirector as TutorialDirectorState;
+            const validStep = [
+              "home_open_missions",
+              "missions_launch_intro",
+              "ready_room_proceed",
+              "combat_tap_soldier",
+              "combat_tap_grenade",
+              "combat_tap_enemy",
+              "combat_tap_company_ability",
+              "combat_tap_company_target",
+              "recruit_open_market",
+              "recruit_market_credits",
+              "recruit_open_troops",
+              "recruit_select",
+              "recruit_confirm",
+              "formation_open",
+              "formation_move",
+              "formation_market_prompt",
+              "formation_open_market",
+              "market_briefing",
+              "armory_buy_armor",
+              "armory_equip_prompt",
+              "armory_equip_armor",
+              "tactics_inspect",
+              "tactics_use_in_combat",
+              "completed",
+            ].includes(td.step);
+            merged.tutorialDirector = {
+              enabled:
+                typeof td.enabled === "boolean"
+                  ? td.enabled
+                  : DEFAULT_TUTORIAL_DIRECTOR.enabled,
+              completed:
+                typeof td.completed === "boolean"
+                  ? td.completed
+                  : DEFAULT_TUTORIAL_DIRECTOR.completed,
+              step: (validStep
+                ? td.step
+                : DEFAULT_TUTORIAL_DIRECTOR.step) as TutorialStepId,
+              enforceLock:
+                typeof td.enforceLock === "boolean"
+                  ? td.enforceLock
+                  : DEFAULT_TUTORIAL_DIRECTOR.enforceLock,
+              resumeRequested:
+                typeof td.resumeRequested === "boolean"
+                  ? td.resumeRequested
+                  : DEFAULT_TUTORIAL_DIRECTOR.resumeRequested,
+              milestones: {
+                formationMoved:
+                  typeof td.milestones?.formationMoved === "boolean"
+                    ? td.milestones.formationMoved
+                    : DEFAULT_TUTORIAL_MILESTONES.formationMoved,
+                armorBought:
+                  typeof td.milestones?.armorBought === "boolean"
+                    ? td.milestones.armorBought
+                    : DEFAULT_TUTORIAL_MILESTONES.armorBought,
+                armorEquipped:
+                  typeof td.milestones?.armorEquipped === "boolean"
+                    ? td.milestones.armorEquipped
+                    : DEFAULT_TUTORIAL_MILESTONES.armorEquipped,
+                abilityInspected:
+                  typeof td.milestones?.abilityInspected === "boolean"
+                    ? td.milestones.abilityInspected
+                    : DEFAULT_TUTORIAL_MILESTONES.abilityInspected,
+                abilityUsedInCombat:
+                  typeof td.milestones?.abilityUsedInCombat === "boolean"
+                    ? td.milestones.abilityUsedInCombat
+                    : DEFAULT_TUTORIAL_MILESTONES.abilityUsedInCombat,
+              },
+            };
+          }
+          if (!hasPersistedTutorialDirector && !legacyOnboardingActive) {
+            merged.tutorialDirector = {
+              ...merged.tutorialDirector,
+              step: "completed",
+              completed: true,
+              enforceLock: false,
+            };
           }
           if (
             !merged.companyAbilityChoices ||
