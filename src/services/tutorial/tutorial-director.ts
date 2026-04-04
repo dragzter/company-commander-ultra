@@ -12,6 +12,7 @@ export type TutorialStepId =
   | "recruit_open_market"
   | "recruit_market_credits"
   | "recruit_open_troops"
+  | "recruit_roles_intro"
   | "recruit_select"
   | "recruit_confirm"
   | "formation_open"
@@ -80,14 +81,14 @@ export const DEFAULT_TUTORIAL_DIRECTOR: TutorialDirectorState = {
   milestones: { ...DEFAULT_TUTORIAL_MILESTONES },
 };
 
-const STEP_TOTAL = 23;
+const STEP_TOTAL = 24;
 
 const STEP_SPECS: Record<TutorialStepId, TutorialStepSpec> = {
   home_open_missions: {
     index: 1,
     total: STEP_TOTAL,
     title: "First Deployment",
-    instruction: "Tap Missions to start your first operation.",
+    instruction: "Open Missions.",
     screen: "home",
     allowedSelectors: ["#home-onboarding-continue", "#company-go-missions"],
     spotlightSelectors: ["#company-go-missions"],
@@ -96,7 +97,7 @@ const STEP_SPECS: Record<TutorialStepId, TutorialStepSpec> = {
     index: 2,
     total: STEP_TOTAL,
     title: "Launch Intro Mission",
-    instruction: "Open the intro skirmish mission.",
+    instruction: "Launch the Intro Skirmish.",
     screen: "missions",
     allowedSelectors: [
       "#missions-mode-normal",
@@ -109,7 +110,7 @@ const STEP_SPECS: Record<TutorialStepId, TutorialStepSpec> = {
     index: 3,
     total: STEP_TOTAL,
     title: "Ready Room",
-    instruction: "Tap Proceed to mission.",
+    instruction: "Tap Proceed to Mission.",
     screen: "missions",
     allowedSelectors: [
       ".mission-launch-btn[data-mission-id^=\"onboarding_\"]",
@@ -127,7 +128,7 @@ const STEP_SPECS: Record<TutorialStepId, TutorialStepSpec> = {
     index: 4,
     total: STEP_TOTAL,
     title: "Combat Basics",
-    instruction: "Tap one of your soldiers to open their loadout.",
+    instruction: "Select a soldier.",
     screen: "missions",
     allowedSelectors: [
       "#combat-onboarding-continue",
@@ -144,7 +145,7 @@ const STEP_SPECS: Record<TutorialStepId, TutorialStepSpec> = {
     index: 5,
     total: STEP_TOTAL,
     title: "Use Grenades",
-    instruction: "Tap a grenade in the opened soldier inventory.",
+    instruction: "Tap a grenade.",
     screen: "missions",
     allowedSelectors: [
       "#combat-onboarding-continue",
@@ -162,7 +163,7 @@ const STEP_SPECS: Record<TutorialStepId, TutorialStepSpec> = {
     index: 6,
     total: STEP_TOTAL,
     title: "Select Target",
-    instruction: "Tap an enemy target to throw the grenade.",
+    instruction: "Tap any enemy target.",
     screen: "missions",
     allowedSelectors: [
       ".mission-launch-btn",
@@ -184,8 +185,7 @@ const STEP_SPECS: Record<TutorialStepId, TutorialStepSpec> = {
     index: 7,
     total: STEP_TOTAL,
     title: "Squad Ability",
-    instruction:
-      "Tap Focused Fire (or the highlighted squad ability) in the abilities bar. More company abilities unlock here as you level.",
+    instruction: "Tap Focused Fire.",
     screen: "missions",
     allowedSelectors: [
       "#combat-onboarding-continue",
@@ -205,7 +205,7 @@ const STEP_SPECS: Record<TutorialStepId, TutorialStepSpec> = {
     index: 8,
     total: STEP_TOTAL,
     title: "Focused Fire Target",
-    instruction: "Tap an enemy target to apply Focused Fire.",
+    instruction: "Pick an enemy target.",
     screen: "missions",
     allowedSelectors: [
       ".mission-launch-btn",
@@ -224,7 +224,7 @@ const STEP_SPECS: Record<TutorialStepId, TutorialStepSpec> = {
     index: 9,
     total: STEP_TOTAL,
     title: "Expand Squad",
-    instruction: "Open Market to recruit a Gunner.",
+    instruction: "Open Market.",
     screen: "home",
     allowedSelectors: ["#home-recruit-onboarding-continue", "#company-go-market"],
     spotlightSelectors: ["#company-go-market"],
@@ -233,8 +233,7 @@ const STEP_SPECS: Record<TutorialStepId, TutorialStepSpec> = {
     index: 10,
     total: STEP_TOTAL,
     title: "Credits",
-    instruction:
-      "These are your credits. Earn them from missions and spend them on recruits and equipment. Tap Continue.",
+    instruction: "These are Credits. Earn in missions. Spend in Market.",
     screen: "market",
     allowedSelectors: [
       "#market-credits-onboarding-continue",
@@ -251,39 +250,51 @@ const STEP_SPECS: Record<TutorialStepId, TutorialStepSpec> = {
     allowedSelectors: ["#market-troops"],
     spotlightSelectors: ["#market-troops"],
   },
-  recruit_select: {
+  recruit_roles_intro: {
     index: 12,
     total: STEP_TOTAL,
+    title: "Soldier Roles",
+    instruction: "Review roles, then tap Continue.",
+    screen: "troops",
+    allowedSelectors: [
+      "#troops-roles-onboarding-continue",
+      "#troops-roles-onboarding-popup",
+      "#troops-roles-onboarding-popup *",
+    ],
+    spotlightSelectors: ["#troops-roles-onboarding-continue"],
+  },
+  recruit_select: {
+    index: 13,
+    total: STEP_TOTAL,
     title: "Recruitment",
-    instruction: "Select the highlighted soldier to stage recruitment.",
+    instruction: "Select the highlighted recruit.",
     screen: "troops",
     allowedSelectors: [".recruit-soldier", ".remove-from-staging", "#confirm-recruitment"],
     spotlightSelectors: [".recruit-soldier"],
   },
   recruit_confirm: {
-    index: 13,
+    index: 14,
     total: STEP_TOTAL,
     title: "Recruitment",
-    instruction: "Confirm the staged recruit.",
+    instruction: "Tap Confirm.",
     screen: "troops",
     allowedSelectors: ["#confirm-recruitment", ".remove-from-staging"],
     spotlightSelectors: ["#confirm-recruitment"],
   },
   formation_open: {
-    index: 14,
+    index: 15,
     total: STEP_TOTAL,
     title: "Formation",
-    instruction: "Tap Formation to open squad positioning.",
+    instruction: "Open Formation.",
     screen: "roster",
     allowedSelectors: ["#company-go-roster", "#roster-formation-btn"],
     spotlightSelectors: ["#roster-formation-btn"],
   },
   formation_move: {
-    index: 15,
+    index: 16,
     total: STEP_TOTAL,
     title: "Formation",
-    instruction:
-      "Tap your Gunner in Reserve, then tap an Active slot to move them into the lineup.",
+    instruction: "Move your Gunner from Reserve to Active.",
     screen: "formation",
     allowedSelectors: [
       ".formation-soldier-card[data-has-soldier=\"true\"]",
@@ -296,37 +307,37 @@ const STEP_SPECS: Record<TutorialStepId, TutorialStepSpec> = {
     ],
   },
   formation_market_prompt: {
-    index: 16,
+    index: 17,
     total: STEP_TOTAL,
     title: "Next Objective",
-    instruction: "Continue, then open Market for the next walkthrough.",
+    instruction: "Tap Continue.",
     screen: "formation",
     allowedSelectors: ["#formation-market-onboarding-continue"],
     spotlightSelectors: ["#formation-market-onboarding-continue"],
   },
   formation_open_market: {
-    index: 17,
+    index: 18,
     total: STEP_TOTAL,
     title: "Market",
-    instruction: "Tap Market to continue.",
+    instruction: "Open Market.",
     screen: "formation",
     allowedSelectors: ["#company-go-market"],
     spotlightSelectors: ["#company-go-market"],
   },
   market_briefing: {
-    index: 18,
+    index: 19,
     total: STEP_TOTAL,
     title: "Market Briefing",
-    instruction: "Read through the market lanes and continue.",
+    instruction: "Continue to armor purchase.",
     screen: "market",
     allowedSelectors: ["#market-sections-onboarding-continue"],
     spotlightSelectors: ["#market-sections-onboarding-continue"],
   },
   armory_buy_armor: {
-    index: 19,
+    index: 20,
     total: STEP_TOTAL,
     title: "Armory Setup",
-    instruction: "Buy one armor item from the market.",
+    instruction: "Buy one armor item.",
     screen: "market",
     allowedSelectors: [
       "#company-go-market",
@@ -342,10 +353,10 @@ const STEP_SPECS: Record<TutorialStepId, TutorialStepSpec> = {
     ],
   },
   armory_equip_prompt: {
-    index: 20,
+    index: 21,
     total: STEP_TOTAL,
     title: "Armory Setup",
-    instruction: "Open Armory to equip your new armor.",
+    instruction: "Open Armory.",
     screen: "market",
     allowedSelectors: [
       "#company-go-inventory",
@@ -357,11 +368,10 @@ const STEP_SPECS: Record<TutorialStepId, TutorialStepSpec> = {
     ],
   },
   armory_equip_armor: {
-    index: 21,
+    index: 22,
     total: STEP_TOTAL,
     title: "Armory Setup",
-    instruction:
-      "Open Armory, select your new armor, tap Equip, then assign it in Equip Picker.",
+    instruction: "Select armor, tap Equip, then choose a soldier.",
     screen: "inventory",
     allowedSelectors: [
       "#company-go-inventory",
@@ -379,7 +389,7 @@ const STEP_SPECS: Record<TutorialStepId, TutorialStepSpec> = {
     ],
   },
   tactics_inspect: {
-    index: 22,
+    index: 23,
     total: STEP_TOTAL,
     title: "Tactics",
     instruction: "Open Tactics and inspect one ability.",
@@ -388,10 +398,10 @@ const STEP_SPECS: Record<TutorialStepId, TutorialStepSpec> = {
     spotlightSelectors: ["#company-go-abilities", ".company-talent-node[data-ability-id]"],
   },
   tactics_use_in_combat: {
-    index: 23,
+    index: 24,
     total: STEP_TOTAL,
     title: "Use Abilities",
-    instruction: "Enter combat and use one ability.",
+    instruction: "Start a mission and use one ability.",
     screen: "missions",
     allowedSelectors: [
       "#company-go-missions",
@@ -407,7 +417,7 @@ const STEP_SPECS: Record<TutorialStepId, TutorialStepSpec> = {
     index: STEP_TOTAL,
     total: STEP_TOTAL,
     title: "Tutorial Complete",
-    instruction: "All systems unlocked.",
+    instruction: "Tutorial complete. All systems unlocked.",
     screen: null,
     allowedSelectors: [],
     spotlightSelectors: [],
@@ -515,6 +525,7 @@ const STEP_ORDER: TutorialStepId[] = [
   "recruit_open_market",
   "recruit_market_credits",
   "recruit_open_troops",
+  "recruit_roles_intro",
   "recruit_select",
   "recruit_confirm",
   "formation_open",

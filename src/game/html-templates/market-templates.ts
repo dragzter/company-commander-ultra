@@ -70,7 +70,7 @@ export const marketTemplate = () => {
           <span class="missions-types-tutorial-tag" data-market-tag="weapons">Weapons</span>
           <span class="missions-types-tutorial-tag" data-market-tag="supplies">Supplies</span>
         </div>
-        <p class="home-onboarding-text helper-onboarding-text helper-onboarding-typed-text" id="market-sections-onboarding-typed-text" data-full-text="Market operations online. Let’s quickly review your three core purchasing lanes."></p>
+        <p class="home-onboarding-text helper-onboarding-text helper-onboarding-typed-text" id="market-sections-onboarding-typed-text" data-full-text="Market has three lanes: Armor, Weapons, Supplies."></p>
         <button id="market-sections-onboarding-continue" type="button" class="game-btn game-btn-md game-btn-green home-onboarding-continue helper-onboarding-continue">Continue</button>
       </div>
       <div class="home-onboarding-image-wrap helper-onboarding-image-wrap">
@@ -88,7 +88,7 @@ export const marketTemplate = () => {
     <div class="market-credits-onboarding-dialog">
       <div class="market-credits-onboarding-copy">
         <h4 class="home-onboarding-title helper-onboarding-title">Credits</h4>
-        <p class="home-onboarding-text helper-onboarding-text helper-onboarding-typed-text" id="market-credits-onboarding-typed-text" data-full-text="These are your credits. Earn them by completing missions, then spend them to recruit soldiers and buy equipment."></p>
+        <p class="home-onboarding-text helper-onboarding-text helper-onboarding-typed-text" id="market-credits-onboarding-typed-text" data-full-text="These are Credits. Earn them in missions. Spend them here."></p>
         <button id="market-credits-onboarding-continue" type="button" class="game-btn game-btn-md game-btn-green home-onboarding-continue helper-onboarding-continue">Continue</button>
       </div>
       <div class="market-credits-onboarding-image-wrap">
@@ -106,7 +106,7 @@ export const marketTemplate = () => {
     <div class="home-onboarding-dialog helper-onboarding-dialog">
       <div class="home-onboarding-copy helper-onboarding-copy">
         <h4 class="home-onboarding-title helper-onboarding-title">Armory Setup</h4>
-        <p class="home-onboarding-text helper-onboarding-text helper-onboarding-typed-text" id="armory-equip-onboarding-typed-text" data-full-text="Now let's equip this bad boy."></p>
+        <p class="home-onboarding-text helper-onboarding-text helper-onboarding-typed-text" id="armory-equip-onboarding-typed-text" data-full-text="Nice. Now equip that armor."></p>
         <button id="armory-equip-onboarding-continue" type="button" class="game-btn game-btn-md game-btn-green home-onboarding-continue helper-onboarding-continue">Continue</button>
       </div>
       <div class="home-onboarding-image-wrap helper-onboarding-image-wrap">
@@ -729,7 +729,7 @@ export const suppliesMarketTemplate = () => {
     <div class="home-onboarding-dialog helper-onboarding-dialog">
       <div class="home-onboarding-copy helper-onboarding-copy">
         <h4 class="home-onboarding-title helper-onboarding-title">Supply Lines</h4>
-        <p class="home-onboarding-text helper-onboarding-text helper-onboarding-typed-text" id="supplies-market-onboarding-typed-text" data-full-text="This is where you replenish consumables. Supply tiers track your squad’s top soldier level, so as your strongest soldier grows, stronger consumables become available in the market."></p>
+        <p class="home-onboarding-text helper-onboarding-text helper-onboarding-typed-text" id="supplies-market-onboarding-typed-text" data-full-text="Buy consumables here. Higher squad level unlocks stronger supplies."></p>
         <button id="supplies-market-onboarding-continue" type="button" class="game-btn game-btn-md game-btn-green home-onboarding-continue helper-onboarding-continue">Continue</button>
       </div>
       <div class="home-onboarding-image-wrap helper-onboarding-image-wrap">
@@ -846,6 +846,29 @@ export const troopsMarketTemplate = (
     : availableTroops;
   const guidedRecruitButtonGlow = guidedRecruit && onboardingStep === "troops_recruit" && recruitStaging.length === 0;
   const guidedConfirmGlow = guidedRecruit && onboardingStep === "troops_confirm" && recruitStaging.length > 0;
+  const tutorialRolesPopup =
+    store.tutorialDirector?.enabled &&
+    !store.tutorialDirector?.completed &&
+    store.tutorialDirector?.step === "recruit_roles_intro"
+      ? `
+  <div id="troops-roles-onboarding-popup" class="home-onboarding-popup helper-onboarding-popup" role="dialog" aria-modal="true" data-step="0">
+    <div class="home-onboarding-dialog helper-onboarding-dialog">
+      <div class="home-onboarding-copy helper-onboarding-copy">
+        <h4 class="home-onboarding-title helper-onboarding-title">Soldier Roles</h4>
+        <div class="missions-types-tutorial-tags" id="troops-roles-tutorial-tags">
+          <span class="missions-types-tutorial-tag" data-role-tag="rifleman">Rifleman</span>
+          <span class="missions-types-tutorial-tag" data-role-tag="support">Gunner</span>
+          <span class="missions-types-tutorial-tag" data-role-tag="medic">Medic</span>
+        </div>
+        <p class="home-onboarding-text helper-onboarding-text helper-onboarding-typed-text" id="troops-roles-onboarding-typed-text" data-full-text="Meet your core soldier roles. Each one has a clear combat job."></p>
+        <button id="troops-roles-onboarding-continue" type="button" class="game-btn game-btn-md game-btn-green home-onboarding-continue helper-onboarding-continue">Continue</button>
+      </div>
+      <div class="home-onboarding-image-wrap helper-onboarding-image-wrap">
+        <img src="/images/green-portrait/portrait_0.png" alt="Squad soldier" class="home-onboarding-image helper-onboarding-image">
+      </div>
+    </div>
+  </div>`
+      : "";
 
   return `
 <div id="troops-market" class="troops-market-root${guidedRecruit ? " onboarding-troops-guided" : ""}${guidedRecruitButtonGlow ? " onboarding-troops-recruit-focus" : ""}" data-troops-screen="v2">
@@ -874,6 +897,7 @@ export const troopsMarketTemplate = (
 		</div>
 		${companyActionsTemplate()}
 	</div>
+  ${tutorialRolesPopup}
 </div>
 	`;
 };

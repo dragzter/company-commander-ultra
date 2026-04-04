@@ -384,9 +384,9 @@ function inventoryItemCard(
       <span class="market-item-name">${item.name}</span>
     </div>
   </div>
-  <button type="button" class="inventory-destroy-btn" data-item-index="${index}" title="Destroy" aria-label="Destroy">
-    <svg class="inventory-destroy-icon" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="white" d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
-</button>
+  <button type="button" class="inventory-sell-btn" data-item-index="${index}" title="Sell" aria-label="Sell">
+    <span class="inventory-sell-glyph" aria-hidden="true">${CREDIT_SYMBOL}</span>
+  </button>
 </div>`;
 }
 

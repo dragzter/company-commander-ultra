@@ -190,6 +190,53 @@ export function eventConfigs() {
     return `${secs}s`;
   }
 
+  function parseItemJson(raw: string | null | undefined): Item | null {
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw.replace(/&quot;/g, '"')) as Item;
+    } catch {
+      return null;
+    }
+  }
+
+  function confirmSellItem(item: Item, companyLevel: number): boolean {
+    const rarity = (item.rarity ?? "common").toLowerCase();
+    if (rarity !== "rare" && rarity !== "epic") return true;
+    const marketPrice = getItemMarketBuyPrice(item, companyLevel);
+    const sellValue = getItemSellPrice(item, companyLevel);
+    const usesHint = item.uses != null ? ", prorated by uses" : "";
+    return window.confirm(
+      `Sell ${item.name} for ${CREDIT_SYMBOL}${sellValue.toLocaleString()}?\n(Market ${CREDIT_SYMBOL}${marketPrice.toLocaleString()} -> 50% sell value${usesHint})`,
+    );
+  }
+
+  function isArmoryTutorialSellLocked(
+    st: ReturnType<typeof usePlayerCompanyStore.getState> = usePlayerCompanyStore.getState(),
+  ): boolean {
+    if (!isTutorialActive(st)) return false;
+    const step = st.tutorialDirector?.step;
+    return (
+      step === "armory_buy_armor" ||
+      step === "armory_equip_prompt" ||
+      step === "armory_equip_armor"
+    );
+  }
+
+  function showSellCreditGainFx(
+    originEl: HTMLElement | null,
+    credits: number,
+  ): void {
+    if (!originEl || !Number.isFinite(credits) || credits <= 0) return;
+    const originRect = originEl.getBoundingClientRect();
+    const fx = document.createElement("div");
+    fx.className = "inventory-sell-gain-fx";
+    fx.textContent = `+${CREDIT_SYMBOL}${Math.round(credits).toLocaleString()}`;
+    fx.style.left = `${originRect.left + originRect.width / 2}px`;
+    fx.style.top = `${originRect.top + originRect.height * 0.45}px`;
+    document.body.appendChild(fx);
+    window.setTimeout(() => fx.remove(), 900);
+  }
+
   function setSettingsSquadNameStatus(
     text: string,
     kind: "error" | "success" | "warn" | "neutral" = "neutral",
@@ -753,18 +800,166 @@ export function eventConfigs() {
     }
   };
 
+  const ensureTutorialHandIndicator = (): HTMLElement | null => {
+    const gameRoot = s_(DOM.game) as HTMLElement | null;
+    if (!gameRoot) return null;
+    let hand = document.getElementById("tutorial-hand-indicator") as
+      | HTMLElement
+      | null;
+    if (hand) return hand;
+    hand = document.createElement("div");
+    hand.id = "tutorial-hand-indicator";
+    hand.hidden = true;
+    hand.setAttribute("aria-hidden", "true");
+    hand.innerHTML = `
+      <svg class="tutorial-hand-svg" viewBox="0 0 64 64" role="presentation" focusable="false">
+        <path class="tutorial-hand-shape" d="M18 30c0-2.2 1.8-4 4-4s4 1.8 4 4v14h1V18c0-2.2 1.8-4 4-4s4 1.8 4 4v20h1V24c0-2.2 1.8-4 4-4s4 1.8 4 4v16h1V30c0-2.2 1.8-4 4-4s4 1.8 4 4v15c0 8.3-6.7 15-15 15H32c-8.8 0-16-7.2-16-16V30z" />
+      </svg>
+    `;
+    gameRoot.appendChild(hand);
+    return hand;
+  };
+
+  const clearTutorialHandIndicator = (): void => {
+    const hand = document.getElementById("tutorial-hand-indicator") as
+      | HTMLElement
+      | null;
+    if (!hand) return;
+    hand.hidden = true;
+    hand.classList.remove("is-active");
+    hand.removeAttribute("data-phase");
+    const gameRoot = s_(DOM.game) as HTMLElement | null;
+    if (gameRoot) gameRoot.appendChild(hand);
+  };
+
+  const showTutorialHandIndicator = (
+    target: HTMLElement,
+    phase: "pick" | "drop" | "grenade" = "pick",
+  ): void => {
+    clearTutorialHandIndicator();
+    const hand = ensureTutorialHandIndicator();
+    if (!hand) return;
+    if (target.getClientRects().length <= 0) return;
+    target.appendChild(hand);
+    hand.dataset.phase = phase;
+    if (phase === "grenade") {
+      hand.style.left = "82%";
+      hand.style.top = "78%";
+    } else {
+      hand.style.left = "50%";
+      hand.style.top = phase === "pick" ? "58%" : "52%";
+    }
+    hand.hidden = false;
+    hand.classList.add("is-active");
+  };
+
   const applyTutorialDirectorUi = () => {
     const st = usePlayerCompanyStore.getState();
     const gameRoot = s_(DOM.game) as HTMLElement | null;
     const active = isTutorialActive(st);
+    const inCompanyRuntime = (st.gameStep ?? "") === "at_company_homepage_4";
     if (gameRoot) {
       gameRoot.classList.toggle(
+        "tutorial-armory-sell-locked",
+        isArmoryTutorialSellLocked(st),
+      );
+      gameRoot.classList.toggle(
         "tutorial-lock-active",
-        active && !!st.tutorialDirector?.enforceLock,
+        active && !!st.tutorialDirector?.enforceLock && inCompanyRuntime,
       );
     }
     clearTutorialSpotlights();
+    clearTutorialHandIndicator();
     if (!active) return;
+
+    const firstVisibleMatch = (selectors: string[]): HTMLElement | null => {
+      for (const selector of selectors) {
+        const candidate = Array.from(document.querySelectorAll(selector)).find(
+          (el) => (el as HTMLElement).getClientRects().length > 0,
+        ) as HTMLElement | undefined;
+        if (candidate) return candidate;
+      }
+      return null;
+    };
+
+    if (st.tutorialDirector?.step === "formation_move") {
+      const formationScreen = document.getElementById("formation-screen");
+      const selectedIndex = Number.parseInt(
+        formationScreen?.getAttribute("data-selected-index") ?? "-1",
+        10,
+      );
+      const guidedSoldierId = gameRoot?.getAttribute(
+        "data-tutorial-formation-source-id",
+      );
+      const firstVisibleWithin = (
+        root: ParentNode | null | undefined,
+        selectors: string[],
+      ): HTMLElement | null => {
+        if (!root) return null;
+        for (const selector of selectors) {
+          const candidate = Array.from(root.querySelectorAll(selector)).find(
+            (el) => (el as HTMLElement).getClientRects().length > 0,
+          ) as HTMLElement | undefined;
+          if (candidate) return candidate;
+        }
+        return null;
+      };
+      const activeGrid = document.getElementById("formation-active-grid");
+      const reserveGrid = document.getElementById("formation-reserve-grid");
+      if (Number.isFinite(selectedIndex) && selectedIndex >= 0) {
+        const dropTarget = firstVisibleWithin(activeGrid, [
+          ".formation-active-slot.formation-soldier-card.formation-drop-zone[data-has-soldier=\"false\"]",
+          ".formation-active-slot.formation-soldier-card[data-has-soldier=\"false\"]",
+        ]);
+        if (dropTarget) {
+          markTutorialTarget(dropTarget);
+          showTutorialHandIndicator(dropTarget, "drop");
+          return;
+        }
+      }
+      const sourceSelectors: string[] = [];
+      if (guidedSoldierId) {
+        sourceSelectors.push(
+          `.formation-reserve-slot.formation-soldier-card[data-has-soldier="true"][data-soldier-id="${guidedSoldierId}"]`,
+        );
+      }
+      sourceSelectors.push(
+        ".formation-reserve-slot.designation-support.formation-soldier-card[data-has-soldier=\"true\"]",
+      );
+      const sourceTarget = firstVisibleWithin(reserveGrid, sourceSelectors) ??
+        firstVisibleMatch(sourceSelectors);
+      if (sourceTarget) {
+        markTutorialTarget(sourceTarget);
+        showTutorialHandIndicator(sourceTarget, "pick");
+        return;
+      }
+    }
+
+    if (st.tutorialDirector?.step === "combat_tap_grenade") {
+      const abilitiesPopup = document.getElementById("combat-abilities-popup");
+      const popupVisible = !!abilitiesPopup &&
+        abilitiesPopup.getAttribute("aria-hidden") !== "true" &&
+        abilitiesPopup.getClientRects().length > 0;
+      if (popupVisible) {
+        const grenadeBtn = (
+          Array.from(
+            abilitiesPopup.querySelectorAll(".combat-grenade-item"),
+          ) as HTMLElement[]
+        ).find((el) =>
+          el.getClientRects().length > 0 &&
+          !el.hasAttribute("disabled")
+        ) ?? (
+          Array.from(
+            abilitiesPopup.querySelectorAll(".combat-grenade-item"),
+          ) as HTMLElement[]
+        ).find((el) => el.getClientRects().length > 0) ?? null;
+        if (grenadeBtn) {
+          markTutorialTarget(grenadeBtn);
+          showTutorialHandIndicator(grenadeBtn, "grenade");
+          return;
+        }
+      }
+    }
 
     if (st.tutorialDirector?.step === "armory_buy_armor") {
       const armorCards = Array.from(
@@ -939,7 +1134,7 @@ export function eventConfigs() {
 
     document
       .querySelectorAll(
-        "#home-onboarding-popup, #home-recruit-onboarding-popup, #home-medic-onboarding-popup, #missions-types-onboarding-popup, #home-supplies-onboarding-popup, #supplies-market-onboarding-popup, #market-credits-onboarding-popup, #armory-equip-onboarding-popup, #armory-equip-picker-onboarding-popup, #armory-tutorial-complete-popup, #market-sections-onboarding-popup, #formation-market-onboarding-popup, #ready-room-onboarding-popup, #combat-onboarding-popup, #tactics-onboarding-popup",
+        "#home-onboarding-popup, #home-recruit-onboarding-popup, #home-medic-onboarding-popup, #missions-types-onboarding-popup, #home-supplies-onboarding-popup, #supplies-market-onboarding-popup, #market-credits-onboarding-popup, #troops-roles-onboarding-popup, #armory-equip-onboarding-popup, #armory-equip-picker-onboarding-popup, #armory-tutorial-complete-popup, #market-sections-onboarding-popup, #formation-market-onboarding-popup, #ready-room-onboarding-popup, #combat-onboarding-popup, #tactics-onboarding-popup",
       )
       .forEach((el) => el.remove());
     document.getElementById("tutorial-progress-banner")?.remove();
@@ -1758,6 +1953,98 @@ export function eventConfigs() {
     }
   }
 
+  const advanceTroopsRolesOnboarding = () => {
+    const popup = document.getElementById(
+      "troops-roles-onboarding-popup",
+    ) as HTMLElement | null;
+    if (!popup) return;
+    const textEl = popup.querySelector(
+      "#troops-roles-onboarding-typed-text",
+    ) as HTMLElement | null;
+    const tagsWrap = popup.querySelector(
+      "#troops-roles-tutorial-tags",
+    ) as HTMLElement | null;
+    const step = Number(popup.dataset.step ?? "0") || 0;
+    const steps = [
+      {
+        text: "Meet your core soldier roles. Each one has a clear combat job.",
+        tag: "",
+      },
+      {
+        text: "Rifleman: balanced front-line damage dealer. Reliable in most encounters.",
+        tag: "rifleman",
+      },
+      {
+        text: "Gunner: suppressive fire specialist. Great at pressure and control.",
+        tag: "support",
+      },
+      {
+        text: "Medic: sustain specialist. Keeps your squad alive in longer fights.",
+        tag: "medic",
+      },
+    ] as const;
+
+    const setActiveTag = (tagId: string) => {
+      if (!tagsWrap) return;
+      tagsWrap.querySelectorAll("[data-role-tag]").forEach((el) => {
+        const isActive =
+          (el as HTMLElement).dataset.roleTag === tagId && !!tagId;
+        el.classList.toggle("is-active", isActive);
+      });
+    };
+
+    const runTypewriter = (el: HTMLElement, fullText: string) => {
+      el.dataset.fullText = fullText;
+      delete el.dataset.typed;
+      el.textContent = fullText;
+      const reserveHeight = Math.ceil(el.getBoundingClientRect().height);
+      if (reserveHeight > 0) el.style.minHeight = `${reserveHeight}px`;
+      el.textContent = "";
+      el.classList.add("helper-onboarding-text-typing");
+      const durationMs = 1200;
+      const start = performance.now();
+      const renderTyped = (typedText: string) => {
+        el.innerHTML = "";
+        const typedSpan = document.createElement("span");
+        typedSpan.textContent = typedText;
+        el.appendChild(typedSpan);
+        const caret = document.createElement("span");
+        caret.className = "helper-onboarding-caret";
+        caret.setAttribute("aria-hidden", "true");
+        el.appendChild(caret);
+      };
+      const tick = (now: number) => {
+        const elapsed = Math.max(0, now - start);
+        const progress = Math.min(1, elapsed / durationMs);
+        const count = Math.max(1, Math.floor(fullText.length * progress));
+        renderTyped(fullText.slice(0, count));
+        if (progress < 1) window.requestAnimationFrame(tick);
+        else {
+          el.dataset.typed = "true";
+          el.textContent = fullText;
+          el.classList.remove("helper-onboarding-text-typing");
+        }
+      };
+      window.requestAnimationFrame(tick);
+    };
+
+    if (step < steps.length - 1) {
+      const next = step + 1;
+      popup.dataset.step = String(next);
+      if (textEl) runTypewriter(textEl, steps[next].text);
+      setActiveTag(steps[next].tag);
+      return;
+    }
+
+    const st = usePlayerCompanyStore.getState();
+    if (st.tutorialDirector?.step === "recruit_roles_intro") {
+      st.setTutorialStep("recruit_select");
+      applyTutorialDirectorUi();
+    }
+    popup.classList.add("home-onboarding-popup-hide");
+    window.setTimeout(() => popup.remove(), 240);
+  };
+
   const marketEventConfig: HandlerInitConfig[] = [
     {
       selector: "#market-flare-continue",
@@ -1824,9 +2111,23 @@ export function eventConfigs() {
           st.setOnboardingRecruitStep("troops_recruit");
         }
         if (st.tutorialDirector?.step === "recruit_open_troops") {
-          st.setTutorialStep("recruit_select");
+          st.setTutorialStep("recruit_roles_intro");
         }
         UiManager.renderMarketTroopsScreen();
+      },
+    },
+    {
+      selector: "#troops-roles-onboarding-continue",
+      eventType: "click",
+      callback: () => {
+        advanceTroopsRolesOnboarding();
+      },
+    },
+    {
+      selector: "#troops-roles-onboarding-popup",
+      eventType: "click",
+      callback: () => {
+        // Keep tutorial progression explicit via Continue.
       },
     },
     {
@@ -3184,9 +3485,7 @@ export function eventConfigs() {
       const popupEl = popup;
       const listElNode = listEl;
       let lastAbilitiesMarkup = "";
-      const onboardingInventoryLocked =
-        onboardingCombatTutorialEnabled &&
-        onboardingCombatTutorialStep === "step_2";
+      const onboardingInventoryLocked = false;
       popupEl.classList.toggle(
         "combat-abilities-popup-onboarding-locked",
         onboardingInventoryLocked,
@@ -3272,8 +3571,7 @@ export function eventConfigs() {
               const btnRarity = rarity !== "common" ? ` rarity-${rarity}` : "";
               const grenadeDisabled =
                 !canUse ||
-                (!isKnife && grenadeOnCooldown) ||
-                onboardingCombatTutorialStep === "step_2";
+                (!isKnife && grenadeOnCooldown);
               const cooldownClass =
                 !isKnife && grenadeOnCooldown ? " combat-grenade-cooldown" : "";
               const onboardingGuideClass =
@@ -7811,12 +8109,11 @@ export function eventConfigs() {
         onboardingCombatTutorialEnabled &&
         onboardingCombatTutorialStep === "await_soldier_tap"
       ) {
-        onboardingCombatTutorialStep = "step_2";
+        onboardingCombatTutorialStep = "await_grenade";
         setOnboardingCombatPlayerCardFocus(false);
         openAbilitiesPopup(combatant, card);
-        showCombatOnboardingPopup(
-          "Tap the grenade and tap an enemy soldier to use it.",
-        );
+        usePlayerCompanyStore.getState().setTutorialStep("combat_tap_grenade");
+        removeCombatOnboardingPopup();
         applyTutorialDirectorUi();
       }
     }
@@ -7939,14 +8236,6 @@ export function eventConfigs() {
             return;
           }
           if (grenadeBtn && !(grenadeBtn as HTMLButtonElement).disabled) {
-            if (
-              onboardingCombatTutorialEnabled &&
-              onboardingCombatTutorialStep === "step_2"
-            ) {
-              e.preventDefault();
-              e.stopPropagation();
-              return;
-            }
             triggerAbilityTapFeedback(grenadeBtn as HTMLElement);
             e.preventDefault();
             e.stopPropagation();
@@ -9910,15 +10199,24 @@ export function eventConfigs() {
       },
     },
     {
-      selector: DOM.inventory.destroyBtn,
+      selector: DOM.inventory.sellBtn,
       eventType: "click",
       callback: (e: Event) => {
         e.stopPropagation();
+        if (isArmoryTutorialSellLocked()) return;
         const btn = e.currentTarget as HTMLButtonElement;
         const indexStr = btn.dataset.itemIndex;
         if (indexStr == null) return;
         const index = parseInt(indexStr, 10);
-        usePlayerCompanyStore.getState().destroyCompanyItem(index);
+        if (!Number.isFinite(index) || index < 0) return;
+        const st = usePlayerCompanyStore.getState();
+        const item = st.company?.inventory?.[index];
+        if (!item) return;
+        const companyLevel = st.company?.level ?? st.companyLevel ?? 1;
+        if (!confirmSellItem(item, companyLevel)) return;
+        const result = st.sellCompanyItem(index);
+        if (!result.success) return;
+        showSellCreditGainFx(btn, result.credits);
         UiManager.renderInventoryScreen();
       },
     },
@@ -9929,7 +10227,7 @@ export function eventConfigs() {
         const card = (e.target as HTMLElement).closest(".inventory-item-card");
         if (
           !card ||
-          (e.target as HTMLElement).closest(".inventory-destroy-btn")
+          (e.target as HTMLElement).closest(".inventory-sell-btn")
         )
           return;
         const json = (card as HTMLElement).getAttribute("data-item-json");
@@ -9980,8 +10278,20 @@ export function eventConfigs() {
               const sellValue = getItemSellPrice(item, companyLevel);
               sellBtn.innerHTML = `<span class="sell-btn-coin">${CREDIT_SYMBOL}</span><span class="sell-btn-text">Sell</span><span class="sell-btn-amount">${sellValue.toLocaleString()}</span>`;
               (sellBtn as HTMLElement).style.display = "";
+              const sellLocked = isArmoryTutorialSellLocked();
+              (sellBtn as HTMLButtonElement).disabled = sellLocked;
+              if (sellLocked) {
+                sellBtn.setAttribute(
+                  "title",
+                  "Selling is disabled during this tutorial step.",
+                );
+              } else {
+                sellBtn.removeAttribute("title");
+              }
             } else {
               (sellBtn as HTMLElement).style.display = "none";
+              (sellBtn as HTMLButtonElement).disabled = false;
+              sellBtn.removeAttribute("title");
             }
           }
           const actionsWrap = popup.querySelector(".item-popup-actions");
@@ -10108,9 +10418,11 @@ export function eventConfigs() {
     {
       selector: "#item-stats-popup-sell",
       eventType: "click",
-      callback: () => {
+      callback: (e: Event) => {
         const popup = document.getElementById("item-stats-popup");
         if (!popup) return;
+        if (isArmoryTutorialSellLocked()) return;
+        const trigger = e.currentTarget as HTMLElement | null;
         const itemSource = (popup as HTMLElement).dataset.itemSource;
         if (itemSource !== "inventory") return;
         const idxStr = (popup as HTMLElement).dataset.itemIndex;
@@ -10118,28 +10430,16 @@ export function eventConfigs() {
         if (idxStr == null || !json) return;
         const index = parseInt(idxStr, 10);
         if (!Number.isFinite(index) || index < 0) return;
-        let item: Item | null = null;
-        try {
-          item = JSON.parse(json.replace(/&quot;/g, '"')) as Item;
-        } catch {
-          item = null;
-        }
+        const item = parseItemJson(json);
         if (!item) return;
         const companyLevel =
           usePlayerCompanyStore.getState().company?.level ??
           usePlayerCompanyStore.getState().companyLevel ??
           1;
-        const marketPrice = getItemMarketBuyPrice(item, companyLevel);
-        const sellValue = getItemSellPrice(item, companyLevel);
-        const rarity = (item.rarity ?? "common").toLowerCase();
-        if (rarity === "rare" || rarity === "epic") {
-          const ok = window.confirm(
-            `Sell ${item.name} for ${CREDIT_SYMBOL}${sellValue}?\n(Market ${CREDIT_SYMBOL}${marketPrice} -> 50% sell value${item.uses != null ? ", prorated by uses" : ""})`,
-          );
-          if (!ok) return;
-        }
+        if (!confirmSellItem(item, companyLevel)) return;
         const result = usePlayerCompanyStore.getState().sellCompanyItem(index);
         if (!result.success) return;
+        showSellCreditGainFx(trigger, result.credits);
         popup.setAttribute("hidden", "");
         UiManager.renderInventoryScreen();
       },
@@ -10258,6 +10558,17 @@ export function eventConfigs() {
     const screen = document.getElementById("formation-screen");
     if (!screen) return;
     const store = usePlayerCompanyStore.getState();
+    const tutorialFormationMove = store.tutorialDirector?.step === "formation_move";
+    const activeSlotCount = getActiveSlots(store.company);
+    const guidedSoldierId = (s_(DOM.game) as HTMLElement | null)
+      ?.getAttribute("data-tutorial-formation-source-id") ?? "";
+    const selectedCard = screen.querySelector(
+      `.formation-soldier-card[data-slot-index="${selectedIndex}"]`,
+    ) as HTMLElement | null;
+    const selectedSoldierId = selectedCard?.dataset.soldierId ?? "";
+    const restrictToEmptyActiveOnly = tutorialFormationMove &&
+      !!guidedSoldierId &&
+      selectedSoldierId === guidedSoldierId;
     screen.querySelectorAll(".formation-soldier-card").forEach((el) => {
       const card = el as HTMLElement;
       const idxStr = card.dataset.slotIndex;
@@ -10266,6 +10577,10 @@ export function eventConfigs() {
       if (idx === selectedIndex) return;
       if (!isFormationReassignmentAllowed(store.company, selectedIndex, idx))
         return;
+      if (restrictToEmptyActiveOnly) {
+        if (idx >= activeSlotCount) return;
+        if (card.dataset.hasSoldier === "true") return;
+      }
       card.classList.add("formation-drop-zone");
     });
   }
@@ -10308,16 +10623,35 @@ export function eventConfigs() {
 
         const store = usePlayerCompanyStore.getState();
         const formationSlots = getFormationSlots(store.company);
+        const tutorialFormationMove = store.tutorialDirector?.step === "formation_move";
+        const guidedSoldierId = (s_(DOM.game) as HTMLElement | null)
+          ?.getAttribute("data-tutorial-formation-source-id") ?? "";
+        const selectedCard = screen?.querySelector(
+          `.formation-soldier-card[data-slot-index="${selected}"]`,
+        ) as HTMLElement | null;
+        const selectedSoldierId = selectedCard?.dataset.soldierId ?? "";
+        const restrictToEmptyActiveOnly = tutorialFormationMove &&
+          !!guidedSoldierId &&
+          selectedSoldierId === guidedSoldierId;
+        const activeSlotCount = getActiveSlots(store.company);
 
         if (selected >= 0 && selected !== slotIndex) {
           if (selected < 0 || selected >= formationSlots.length) {
             clearFormationSelection();
+            applyTutorialDirectorUi();
             return;
           }
           const targetFilled = hasSoldier;
           const legalMove =
             card.classList.contains("formation-drop-zone") &&
             isFormationReassignmentAllowed(store.company, selected, slotIndex);
+          if (restrictToEmptyActiveOnly) {
+            if (slotIndex >= activeSlotCount || targetFilled) {
+              clearFormationSelection();
+              applyTutorialDirectorUi();
+              return;
+            }
+          }
           if (targetFilled && legalMove) {
             setFormationSwapIndices([selected, slotIndex]);
             store.swapSoldierPositions(selected, slotIndex);
@@ -10332,21 +10666,31 @@ export function eventConfigs() {
             setTimeout(() => setFormationSwapIndices(null), 450);
           }
           clearFormationSelection();
+          applyTutorialDirectorUi();
           return;
         }
 
         if (selected === slotIndex) {
           clearFormationSelection();
+          applyTutorialDirectorUi();
           return;
         }
 
         if (!hasSoldier) return;
+        if (tutorialFormationMove && guidedSoldierId) {
+          const clickedSoldierId = card.dataset.soldierId ?? "";
+          if (clickedSoldierId !== guidedSoldierId) {
+            applyTutorialDirectorUi();
+            return;
+          }
+        }
 
         // Select this soldier and highlight drop zones
         clearFormationSelection();
         card.classList.add("formation-slot-selected");
         screen?.setAttribute("data-selected-index", String(slotIndex));
         applyFormationDropZones(slotIndex);
+        applyTutorialDirectorUi();
       },
     },
   ];
@@ -10542,6 +10886,11 @@ export function eventConfigs() {
           st.onboardingRecruitStep === "troops_recruit" ||
           st.onboardingRecruitStep === "troops_confirm";
         const target = e.target as HTMLElement;
+        if (target.closest("#troops-roles-onboarding-continue")) {
+          advanceTroopsRolesOnboarding();
+          return;
+        }
+        if (target.closest("#troops-roles-onboarding-popup")) return;
         const recruitBtn = target.closest(".recruit-soldier");
         if (recruitBtn) {
           const btn = recruitBtn as HTMLButtonElement;
@@ -10580,11 +10929,22 @@ export function eventConfigs() {
         }
         const confirmBtn = target.closest("#confirm-recruitment");
         if (confirmBtn && !(confirmBtn as HTMLButtonElement).disabled) {
+          const guidedRecruitSoldierId =
+            guided && st.recruitStaging.length === 1
+              ? st.recruitStaging[0]?.id
+              : null;
           const guidedRecruitDesignation = (
             st.onboardingRecruitSoldier?.designation ?? ""
           ).toLowerCase();
           const isMedicGuidedRecruit = guidedRecruitDesignation === "medic";
           st.confirmRecruitment();
+          const gameRoot = s_(DOM.game) as HTMLElement | null;
+          if (guidedRecruitSoldierId && gameRoot) {
+            gameRoot.setAttribute(
+              "data-tutorial-formation-source-id",
+              guidedRecruitSoldierId,
+            );
+          }
           if (guided) {
             st.setOnboardingRecruitStep("none");
             st.setOnboardingRecruitSoldier(null);

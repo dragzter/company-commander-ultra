@@ -223,7 +223,7 @@ export function abilitiesTemplate(): string {
       <div class="home-onboarding-dialog helper-onboarding-dialog">
         <div class="home-onboarding-copy helper-onboarding-copy">
           <h4 class="home-onboarding-title helper-onboarding-title">Tactics</h4>
-          <p class="home-onboarding-text helper-onboarding-text helper-onboarding-typed-text" id="tactics-onboarding-typed-text" data-full-text="These are your company abilities. As your company levels up, you gain passive bonuses and active abilities. Active abilities appear in the battle action bar during missions."></p>
+          <p class="home-onboarding-text helper-onboarding-text helper-onboarding-typed-text" id="tactics-onboarding-typed-text" data-full-text="These are company abilities. Level up to unlock more. Use active abilities in combat."></p>
           <button id="tactics-onboarding-continue" type="button" class="game-btn game-btn-md game-btn-green home-onboarding-continue helper-onboarding-continue">Continue</button>
         </div>
         <div class="home-onboarding-image-wrap helper-onboarding-image-wrap">

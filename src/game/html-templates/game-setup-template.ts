@@ -693,7 +693,7 @@ export const companyHomePageTemplate = () => {
       <div class="home-onboarding-dialog helper-onboarding-dialog">
         <div class="home-onboarding-copy helper-onboarding-copy">
           <h4 class="home-onboarding-title helper-onboarding-title">Welcome, ${playerName}</h4>
-          <p class="home-onboarding-text helper-onboarding-text helper-onboarding-typed-text" id="home-onboarding-typed-text" data-full-text="Your squad is assembled and awaiting orders. Start by opening Missions to launch your first operation."></p>
+          <p class="home-onboarding-text helper-onboarding-text helper-onboarding-typed-text" id="home-onboarding-typed-text" data-full-text="Squad is ready. Open Missions to begin."></p>
           <button id="home-onboarding-continue" type="button" class="game-btn game-btn-md game-btn-green home-onboarding-continue helper-onboarding-continue">Continue</button>
         </div>
         <div class="home-onboarding-image-wrap helper-onboarding-image-wrap">
@@ -709,7 +709,7 @@ export const companyHomePageTemplate = () => {
       <div class="home-onboarding-dialog helper-onboarding-dialog">
         <div class="home-onboarding-copy helper-onboarding-copy">
           <h4 class="home-onboarding-title helper-onboarding-title">Nice Work, Commander</h4>
-          <p class="home-onboarding-text helper-onboarding-text helper-onboarding-typed-text" id="home-recruit-onboarding-typed-text" data-full-text="That went swell, but we need more firepower. Let's recruit a gunner."></p>
+          <p class="home-onboarding-text helper-onboarding-text helper-onboarding-typed-text" id="home-recruit-onboarding-typed-text" data-full-text="Good work. Next, recruit a Gunner."></p>
           <button id="home-recruit-onboarding-continue" type="button" class="game-btn game-btn-md game-btn-green home-onboarding-continue helper-onboarding-continue">Continue</button>
         </div>
         <div class="home-onboarding-image-wrap helper-onboarding-image-wrap">
@@ -725,7 +725,7 @@ export const companyHomePageTemplate = () => {
       <div class="home-onboarding-dialog helper-onboarding-dialog">
         <div class="home-onboarding-copy helper-onboarding-copy">
           <h4 class="home-onboarding-title helper-onboarding-title">New Recruits Available</h4>
-          <p class="home-onboarding-text helper-onboarding-text helper-onboarding-typed-text" id="home-medic-onboarding-typed-text" data-full-text="Command update: Medics are now available in the Troops market. Recruit one to add battlefield healing to your squad."></p>
+          <p class="home-onboarding-text helper-onboarding-text helper-onboarding-typed-text" id="home-medic-onboarding-typed-text" data-full-text="Medics are now available in Troops. Recruit one for healing support."></p>
           <button id="home-medic-onboarding-continue" type="button" class="game-btn game-btn-md game-btn-green home-onboarding-continue helper-onboarding-continue">Continue</button>
         </div>
         <div class="home-onboarding-image-wrap helper-onboarding-image-wrap">
@@ -741,7 +741,7 @@ export const companyHomePageTemplate = () => {
       <div class="home-onboarding-dialog helper-onboarding-dialog">
         <div class="home-onboarding-copy helper-onboarding-copy">
           <h4 class="home-onboarding-title helper-onboarding-title">Resupply Needed</h4>
-          <p class="home-onboarding-text helper-onboarding-text helper-onboarding-typed-text" id="home-supplies-onboarding-typed-text" data-full-text="Commander, it looks like you need supplies. Head to the Market to replenish your armaments."></p>
+          <p class="home-onboarding-text helper-onboarding-text helper-onboarding-typed-text" id="home-supplies-onboarding-typed-text" data-full-text="Resupply time. Open Market for consumables."></p>
           <button id="home-supplies-onboarding-continue" type="button" class="game-btn game-btn-md game-btn-green home-onboarding-continue helper-onboarding-continue">Continue</button>
         </div>
         <div class="home-onboarding-image-wrap helper-onboarding-image-wrap">

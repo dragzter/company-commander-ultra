@@ -132,7 +132,7 @@ export const DOM = {
     releaseBtn: ".roster-release-btn",
   },
   inventory: {
-    destroyBtn: ".inventory-destroy-btn",
+    sellBtn: ".inventory-sell-btn",
     itemCard: ".inventory-item-card",
     itemStatsPopup: "#item-stats-popup",
     itemStatsPopupClose: "#item-stats-popup-close",

@@ -170,8 +170,8 @@ export function readyRoomTemplate(mission: Mission | null): string {
     <div class="ready-room-onboarding-dialog helper-onboarding-dialog">
       <div class="ready-room-onboarding-copy helper-onboarding-copy">
         <h4 class="ready-room-onboarding-title helper-onboarding-title">Ready Room Briefing</h4>
-        <p class="ready-room-onboarding-text helper-onboarding-text helper-onboarding-typed-text" id="ready-room-onboarding-typed-text" data-full-text="Set your squad here: tap Active and Reserve soldiers to swap positions."></p>
-        <p class="ready-room-onboarding-text helper-onboarding-text">Tap <span class="helper-onboarding-inline-btn">Proceed to Mission</span> when ready.</p>
+        <p class="ready-room-onboarding-text helper-onboarding-text helper-onboarding-typed-text" id="ready-room-onboarding-typed-text" data-full-text="Set your squad here. Swap Active and Reserve soldiers."></p>
+        <p class="ready-room-onboarding-text helper-onboarding-text">When ready, tap <span class="helper-onboarding-inline-btn">Proceed to Mission</span>.</p>
         <button id="ready-room-onboarding-continue" type="button" class="game-btn game-btn-md game-btn-green ready-room-onboarding-continue helper-onboarding-continue">Continue</button>
       </div>
       <div class="ready-room-onboarding-image-wrap helper-onboarding-image-wrap">

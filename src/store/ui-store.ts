@@ -631,6 +631,7 @@ export const usePlayerCompanyStore = createStore<CompanyStore>()(
               "recruit_open_market",
               "recruit_market_credits",
               "recruit_open_troops",
+              "recruit_roles_intro",
               "recruit_select",
               "recruit_confirm",
               "formation_open",
